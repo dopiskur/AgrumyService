@@ -6,6 +6,7 @@ using api.Dal.Entities;
 using api.Dal.Interface;
 using api.Models;
 using api.Security;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -120,7 +121,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var settingsOptions = Options.Create(new AgrumySettings());
         var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance);
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository);
-        var tenantRepository = new EfTenantRepository(db);
+        var tenantRepository = new EfTenantRepository(db, new SecretProtector(new EphemeralDataProtectionProvider()));
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
 
         return new EfRepository(db, NullLogger<EfRepository>.Instance,

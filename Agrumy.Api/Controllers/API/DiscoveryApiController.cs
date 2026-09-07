@@ -71,7 +71,7 @@ namespace api.Controllers.API
             };
         }
 
-        /// Lets the Web layer decide the Register modal's shape (free-text SSID/password, a dropdown, or nothing) before the admin ever submits, and backs the WiFi-networks management page. Open to any authenticated caller (same rule as DeviceApiController.DeviceFleetGet) but Password is only ever included for a caller who manages this tenant's devices - a Tenant reader sees SSIDs only.
+        /// Lets the Web layer decide the Register modal's shape (free-text SSID/password, a dropdown, or nothing) before the admin ever submits, and backs the WiFi-networks management page. Open to any authenticated caller (same rule as DeviceApiController.DeviceFleetGet) - write-only, Password is never included here regardless of caller role, same "blank keeps existing" convention as ServerConfig's MqttPassword/EmailPassword (see EfTenantRepository.TenantWifiConfigUpdateAsync).
         [Authorize]
         [HttpGet("WifiConfigs")]
         public async Task<ActionResult<IList<TenantWifiConfig>>> WifiConfigs()
@@ -80,9 +80,8 @@ namespace api.Controllers.API
             {
                 return Ok(new List<TenantWifiConfig>());
             }
-            bool includePassword = CallerManagesDevices(tenantId);
             IList<TenantWifiConfig> configs = await tenantRepo.TenantWifiConfigsGetAsync(tenantId);
-            return Ok(configs.Select(c => new TenantWifiConfig { IDTenantWifiConfig = c.IDTenantWifiConfig, TenantID = c.TenantID, Ssid = c.Ssid, Password = includePassword ? c.Password : null }).ToList());
+            return Ok(configs.Select(c => new TenantWifiConfig { IDTenantWifiConfig = c.IDTenantWifiConfig, TenantID = c.TenantID, Ssid = c.Ssid, Password = null }).ToList());
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

@@ -291,3 +291,49 @@ public class FieldValidatorTests
         Assert.False(FieldValidator.IsValidEmail(email));
     }
 }
+
+/// At-rest encryption for DB-stored secrets (roadmap #395(5)/(6)) - Mqtt/Email/WiFi passwords.
+public class SecretProtectorTests
+{
+    private static ISecretProtector NewProtector() =>
+        new SecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
+
+    [Fact]
+    public void Protect_Then_Unprotect_RoundTrips()
+    {
+        var protector = NewProtector();
+
+        string? stored = protector.Protect("hunter2");
+
+        Assert.NotEqual("hunter2", stored);
+        Assert.Equal("hunter2", protector.Unprotect(stored));
+    }
+
+    [Fact]
+    public void Protect_NullOrEmpty_PassesThroughUnchanged()
+    {
+        var protector = NewProtector();
+
+        Assert.Null(protector.Protect(null));
+        Assert.Equal("", protector.Protect(""));
+    }
+
+    /// A row saved before this protector existed is plain text, not ciphertext - Unprotect must return it as-is instead of throwing, so old rows keep working until their next write re-encrypts them.
+    [Fact]
+    public void Unprotect_LegacyPlaintextValue_ReturnedAsIs_NotThrown()
+    {
+        var protector = NewProtector();
+
+        Assert.Equal("still-plaintext", protector.Unprotect("still-plaintext"));
+    }
+
+    [Fact]
+    public void Unprotect_DifferentProtectorInstance_StillDecrypts()
+    {
+        // Same purpose string, different instance - simulates a fresh process reading a previously-written value, not just round-tripping within one object.
+        var provider = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider();
+        string? stored = new SecretProtector(provider).Protect("hunter2");
+
+        Assert.Equal("hunter2", new SecretProtector(provider).Unprotect(stored));
+    }
+}

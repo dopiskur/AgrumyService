@@ -1,12 +1,13 @@
 using api.Dal.Entities;
 using api.Dal.Interface;
 using api.Models;
+using api.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Dal
 {
     /// ITenantRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain.
-    internal sealed class EfTenantRepository(AgrumyDbContext db) : ITenantRepository
+    internal sealed class EfTenantRepository(AgrumyDbContext db, ISecretProtector secretProtector) : ITenantRepository
     {
         public async Task<bool> TenantGetAsync(string tenantName)
         {
@@ -84,32 +85,27 @@ namespace api.Dal
 
         public async Task<IList<TenantWifiConfig>> TenantWifiConfigsGetAsync(int tenantID)
         {
-            return await db.TenantWifiConfigs.AsNoTracking()
+            var rows = await db.TenantWifiConfigs.AsNoTracking()
                 .Where(c => c.TenantID == tenantID)
-                .Select(c => new TenantWifiConfig
-                {
-                    IDTenantWifiConfig = c.IDTenantWifiConfig,
-                    TenantID = c.TenantID,
-                    Ssid = c.Ssid,
-                    Password = c.Password,
-                })
                 .ToListAsync();
+            return rows.Select(ToDto).ToList();
         }
 
         public async Task<TenantWifiConfig> TenantWifiConfigAddAsync(TenantWifiConfig config)
         {
-            var row = new TenantWifiConfigRow { TenantID = config.TenantID, Ssid = config.Ssid, Password = config.Password ?? "" };
+            var row = new TenantWifiConfigRow { TenantID = config.TenantID, Ssid = config.Ssid, Password = secretProtector.Protect(config.Password) ?? "" };
             db.TenantWifiConfigs.Add(row);
             await db.SaveChangesAsync();
-            return new TenantWifiConfig { IDTenantWifiConfig = row.IDTenantWifiConfig, TenantID = row.TenantID, Ssid = row.Ssid, Password = row.Password };
+            return ToDto(row);
         }
 
         public async Task<TenantWifiConfig?> TenantWifiConfigGetByIdAsync(int idTenantWifiConfig)
         {
             var row = await db.TenantWifiConfigs.AsNoTracking().FirstOrDefaultAsync(c => c.IDTenantWifiConfig == idTenantWifiConfig);
-            return row == null ? null : new TenantWifiConfig { IDTenantWifiConfig = row.IDTenantWifiConfig, TenantID = row.TenantID, Ssid = row.Ssid, Password = row.Password };
+            return row == null ? null : ToDto(row);
         }
 
+        /// Blank Password means "leave the stored password alone" - the caller-facing DTO never carries the real value back (see DiscoveryApiController.WifiConfigs), so blank can only mean "unchanged", never "clear it".
         public async Task TenantWifiConfigUpdateAsync(TenantWifiConfig config)
         {
             var row = await db.TenantWifiConfigs.FirstOrDefaultAsync(c => c.IDTenantWifiConfig == config.IDTenantWifiConfig);
@@ -118,9 +114,20 @@ namespace api.Dal
                 return;
             }
             row.Ssid = config.Ssid;
-            row.Password = config.Password ?? "";
+            if (!string.IsNullOrEmpty(config.Password))
+            {
+                row.Password = secretProtector.Protect(config.Password) ?? "";
+            }
             await db.SaveChangesAsync();
         }
+
+        private TenantWifiConfig ToDto(TenantWifiConfigRow row) => new()
+        {
+            IDTenantWifiConfig = row.IDTenantWifiConfig,
+            TenantID = row.TenantID,
+            Ssid = row.Ssid,
+            Password = secretProtector.Unprotect(row.Password),
+        };
 
         public async Task TenantWifiConfigDeleteAsync(int idTenantWifiConfig)
         {

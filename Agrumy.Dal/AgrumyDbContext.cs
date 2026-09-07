@@ -69,7 +69,8 @@ namespace api.Dal
                 e.HasKey(x => x.IDTenantWifiConfig);
                 e.Property(x => x.IDTenantWifiConfig).ValueGeneratedOnAdd();
                 e.Property(x => x.Ssid).HasMaxLength(32).IsRequired();
-                e.Property(x => x.Password).HasMaxLength(64).IsRequired();
+                // 512, not 64 (the plaintext WiFi-password cap) - this column now stores SecretProtector.Protect's ciphertext, which for a 63-char WPA2 password already runs ~170+ base64 chars.
+                e.Property(x => x.Password).HasMaxLength(512).IsRequired();
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_tenantWifiConfig_tenant");
             });

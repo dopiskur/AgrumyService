@@ -12,6 +12,7 @@ using api.Security;
 using api.Weather;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
@@ -74,6 +75,24 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddScoped<IAuthorizationHandler, DeviceApiKeyHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, DeviceSessionHandler>();
+
+// Persisted outside ContentRootPath (bin/) - a server deploy wipes that dir on every publish, which would erase keys and make every stored secret (Mqtt/Email/WiFi passwords) unreadable.
+try
+{
+    var configuredKeyPath = builder.Configuration["DataProtection:KeyPath"];
+    var keyRingPath = string.IsNullOrWhiteSpace(configuredKeyPath)
+        ? Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "dataprotection-keys"))
+        : Path.GetFullPath(configuredKeyPath);
+    Directory.CreateDirectory(keyRingPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+        .SetApplicationName("Agrumy.Api");
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+{
+    Console.Error.WriteLine($"[DataProtection] Could not set up persisted keys, falling back to ephemeral: {ex.Message}");
+}
+builder.Services.AddSingleton<ISecretProtector, SecretProtector>();
 
 builder.Services.AddScoped<EfRepository>();
 builder.Services.AddScoped<IRepository>(sp => sp.GetRequiredService<EfRepository>());

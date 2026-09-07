@@ -44,12 +44,7 @@
                     {
                         <tr>
                             <td>@config.Ssid</td>
-                            <td>
-                                <div class="input-group input-group-sm" style="max-width:220px;">
-                                    <input type="password" class="form-control wifi-password-field" value="@config.Password" readonly />
-                                    <button type="button" class="btn btn-outline-secondary wifi-password-toggle" title="Show/hide password"><i class="bi bi-eye"></i></button>
-                                </div>
-                            </td>
+                            <td class="text-secondary">Saved (not shown)</td>
                             <td class="text-end">
                                 <div class="btn-group btn-group-sm">
                                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editWifiModal-@config.IDTenantWifiConfig" title="Edit"><i class="bi bi-pencil"></i></button>
@@ -113,8 +108,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="editWifiPassword-@config.IDTenantWifiConfig">Password</label>
-                            <input type="password" name="Password" id="editWifiPassword-@config.IDTenantWifiConfig" class="form-control" maxlength="64" value="@config.Password" />
-                            <div class="form-text">Leave blank for an open network.</div>
+                            <input type="password" name="Password" id="editWifiPassword-@config.IDTenantWifiConfig" class="form-control" maxlength="64" autocomplete="new-password" />
+                            <div class="form-text">Leave blank to keep the currently stored password.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -125,17 +120,4 @@
             </div>
         </div>
     </div>
-}
-
-@section Scripts {
-    <script nonce="@Context.CspNonce()">
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.wifi-password-toggle').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    var field = button.parentElement.querySelector('.wifi-password-field');
-                    field.type = field.type === 'password' ? 'text' : 'password';
-                });
-            });
-        });
-    </script>
 }

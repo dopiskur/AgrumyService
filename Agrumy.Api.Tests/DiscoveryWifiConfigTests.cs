@@ -46,8 +46,9 @@ public class DiscoveryWifiConfigTests
         Assert.Null(Assert.Single(configs).Password);
     }
 
+    /// Write-only, roadmap #395(6) - Password is never returned to ANY caller, DeviceManagers included, so a saved WiFi password can't leak just by loading the list/edit page.
     [Fact]
-    public async Task WifiConfigs_TenantAdmin_PasswordIncluded()
+    public async Task WifiConfigs_TenantAdmin_PasswordAlsoStripped()
     {
         _repo.Setup(r => r.TenantWifiConfigsGetAsync(1)).ReturnsAsync(new List<TenantWifiConfig>
         {
@@ -57,7 +58,7 @@ public class DiscoveryWifiConfigTests
         var result = await NewController(1, RoleNames.TenantAdmin).WifiConfigs();
 
         var configs = Assert.IsType<List<TenantWifiConfig>>(Assert.IsType<OkObjectResult>(result.Result).Value);
-        Assert.Equal("secret", Assert.Single(configs).Password);
+        Assert.Null(Assert.Single(configs).Password);
     }
 
     [Fact]
