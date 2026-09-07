@@ -212,6 +212,23 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(Details), new { idDevice });
         }
 
+        /// Roadmap #401 - the raw key is shown exactly once, right after generation (TempData, gone on the next real page load); AgrumyService itself never returns it again, so this is the admin's only chance to copy it into the node's loraPrivateRegistration.json.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> LoRaPrivateKeyGenerate(int idDevice)
+        {
+            try
+            {
+                TempData["LoRaPrivateKey"] = await api.LoRaPrivateKeyGenerate(idDevice);
+            }
+            catch (ApiException ex)
+            {
+                TempData["LoRaPrivateKeyError"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idDevice });
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         public async Task<ActionResult> Edit(int? idDevice)
         {

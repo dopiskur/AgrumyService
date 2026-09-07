@@ -1774,6 +1774,39 @@ public class ApiControllerTests
         // Strict mock: DeviceHardResetSetAsync was never set up - a call to it here would throw.
     }
 
+    /// Roadmap #395 finding 3 / #401 - generates a fresh key and audits the rotation, without ever putting the key itself in the audit trail.
+    [Fact]
+    public async Task LoRaPrivateKeyGenerate_GeneratesKey_AndWritesAudit()
+    {
+        _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 0, DeviceName = "Node-1" });
+        _repo.Setup(r => r.DeviceLoRaPrivateKeyGenerateAsync(8)).ReturnsAsync("AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899");
+        AuditLogEntry? written = null;
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>()))
+             .Callback<AuditLogEntry>(e => written = e)
+             .Returns(Task.CompletedTask);
+
+        var controller = NewDeviceController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.LoRaPrivateKeyGenerate(8);
+
+        Assert.Equal("AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899", Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal("Device.LoRaPrivateKeyGenerated", written!.Action);
+        Assert.Equal("Node-1", written.Details);
+    }
+
+    [Fact]
+    public async Task LoRaPrivateKeyGenerate_ForeignTenant_Returns403_AndNeverGeneratesKey()
+    {
+        _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 99 });
+
+        var controller = NewDeviceController();
+        SetCallerRoles(controller, 1, "user", RoleNames.TenantReader, RoleNames.TenantDevice);
+        var result = await controller.LoRaPrivateKeyGenerate(8);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        // Strict mock: DeviceLoRaPrivateKeyGenerateAsync was never set up - a call to it here would throw.
+    }
+
     /// Every HardResetPending test needs an explicit scheme - Request.IsHttps defaults to false on a bare DefaultHttpContext, same as a real plain-HTTP request would.
     private static void SetRequestScheme(ControllerBase controller, string scheme) =>
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Request = { Scheme = scheme } } };

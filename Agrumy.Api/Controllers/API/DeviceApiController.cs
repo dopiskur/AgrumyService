@@ -304,7 +304,10 @@ namespace api.Controllers.API
             {
                 return error;
             }
-            return Ok(await deviceRepo.DeviceLoRaPrivateKeyGenerateAsync(device!.IDDevice!.Value));
+            string key = await deviceRepo.DeviceLoRaPrivateKeyGenerateAsync(device!.IDDevice!.Value);
+            // Details deliberately doesn't include the key itself - the audit log is not a place to duplicate a secret this endpoint otherwise only ever returns once.
+            await WriteAuditAsync("Device.LoRaPrivateKeyGenerated", device.TenantID, "Device", idDevice.ToString(), device.DeviceName);
+            return Ok(key);
         }
 
         /// GlobalAdmin-only (stricter than the DeviceManagers bar the other actions on this controller use) since this wipes the device and requires physical/captive-portal re-provisioning - the flag rides to the device via a normal config poll AND, since that path is exactly what a broken apiKey would block, via HardResetPending below.

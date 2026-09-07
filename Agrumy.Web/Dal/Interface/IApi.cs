@@ -344,6 +344,10 @@ namespace api.Dal.Interface
         [Post("/api/Device/HardReset")]
         Task DeviceHardReset(int idDevice);
 
+        /// Generates a new AES-256 key for LoRa private-protocol uplink encryption, returned once as raw hex - see DeviceApiController.LoRaPrivateKeyGenerate.
+        [Post("/api/Device/LoRaPrivateKey/Generate")]
+        Task<string> LoRaPrivateKeyGenerate(int idDevice);
+
         // ---- SensorData ---------------------------------------------------
 
         [Get("/api/SensorData")]

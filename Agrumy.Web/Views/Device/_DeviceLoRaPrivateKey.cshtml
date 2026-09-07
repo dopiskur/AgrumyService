@@ -1,0 +1,24 @@
+@model int
+<div class="card mt-3">
+    <div class="card-header"><h3 class="card-title">LoRa private-protocol key</h3></div>
+    <div class="card-body">
+        @if (TempData["LoRaPrivateKey"] is string key)
+        {
+            <div class="alert alert-success">
+                <strong>New key generated - shown once, copy it now:</strong>
+                <pre class="mb-1 user-select-all">@key</pre>
+                Paste this into the node's own <code>loraPrivateRegistration.json</code> as <code>"psk"</code> before its next uplink - AgrumyService never displays it again.
+            </div>
+        }
+        @if (TempData["LoRaPrivateKeyError"] is string error)
+        {
+            <div class="alert alert-warning">@error</div>
+        }
+        <p class="text-secondary small">AES-256 key for this device's LoRa private-protocol uplink encryption (GatewayApiController.RelayUplink) - only meaningful for a device paired as a LoRa private-protocol node. Generating a new key resets replay tracking, so any node still using the old key stops being accepted until re-provisioned with this one.</p>
+        <form asp-action="LoRaPrivateKeyGenerate" method="post"
+              onsubmit="return confirm('This immediately invalidates the device\'s current key - it will be rejected until re-provisioned with the new one. Continue?');">
+            <input type="hidden" name="idDevice" value="@Model" />
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-key"></i> Generate new key</button>
+        </form>
+    </div>
+</div>
