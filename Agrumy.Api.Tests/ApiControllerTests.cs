@@ -1971,6 +1971,27 @@ public class ApiControllerTests
     }
 
 
+    /// Write-only, roadmap #395(5) - the repo returns the real (decrypted) Mqtt/Email passwords so internal senders can authenticate, but this GET must never echo either one back to the edit form.
+    [Fact]
+    public async Task ServerConfigGet_NeverReturnsMqttOrEmailPassword()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig
+        {
+            IDServerConfig = 1,
+            MqttPassword = "broker-secret",
+            EmailPassword = "smtp-secret",
+        });
+
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.Get();
+
+        var config = Assert.IsType<ServerConfig>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Null(config.MqttPassword);
+        Assert.Null(config.EmailPassword);
+    }
+
     [Fact]
     public async Task ServerConfigUpdate_WaterPumpMaxRunSecondsNegative_Returns400_AndNeverWrites()
     {

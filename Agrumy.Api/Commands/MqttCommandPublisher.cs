@@ -5,7 +5,6 @@ using System.Text.Json.Nodes;
 using api.Dal.Interface;
 using api.Models;
 using MQTTnet;
-using MQTTnet.Client;
 
 namespace api.Commands
 {
@@ -21,7 +20,7 @@ namespace api.Commands
     }
 
     /// Best-effort instant command delivery over MQTT alongside the HTTP/JWT poll cycle - never the only way a command reaches a device, since CommandQueueService.GetPendingCommandAsync's next poll response always carries it too; a no-op when MqttTransportEnabled is off or unconfigured, and any broker/network failure is swallowed so it can never fail the triggering request.
-    public sealed class MqttCommandPublisher(IRepository repo, ILogger<MqttCommandPublisher> logger) : IMqttCommandPublisher
+    public sealed class MqttCommandPublisher(IRepository repo, IMqttConnectionManager connectionManager, ILogger<MqttCommandPublisher> logger) : IMqttCommandPublisher
     {
         public async Task PublishAsync(Device device, PendingCommand command, CancellationToken ct = default)
         {
@@ -43,23 +42,11 @@ namespace api.Commands
 
             try
             {
-                var factory = new MqttFactory();
-                using IMqttClient client = factory.CreateMqttClient();
-                var optionsBuilder = new MqttClientOptionsBuilder()
-                    .WithTcpServer(serverConfig.MqttBrokerHost, serverConfig.MqttBrokerPort)
-                    .WithCleanSession();
-                if (!string.IsNullOrEmpty(serverConfig.MqttUsername))
-                {
-                    optionsBuilder = optionsBuilder.WithCredentials(serverConfig.MqttUsername, serverConfig.MqttPassword);
-                }
-                await client.ConnectAsync(optionsBuilder.Build(), ct);
-
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
                     .WithPayload(payload)
                     .Build();
-                await client.PublishAsync(message, ct);
-                await client.DisconnectAsync(cancellationToken: ct);
+                await connectionManager.PublishAsync(serverConfig.MqttBrokerHost, serverConfig.MqttBrokerPort, serverConfig.MqttUsername, serverConfig.MqttPassword, message, ct);
             }
             catch (Exception ex)
             {

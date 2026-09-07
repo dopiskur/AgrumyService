@@ -119,9 +119,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     private static EfRepository BuildRepository(AgrumyDbContext db)
     {
         var settingsOptions = Options.Create(new AgrumySettings());
-        var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance);
+        var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider());
+        var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector);
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository);
-        var tenantRepository = new EfTenantRepository(db, new SecretProtector(new EphemeralDataProtectionProvider()));
+        var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
 
         return new EfRepository(db, NullLogger<EfRepository>.Instance,
@@ -424,6 +425,41 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(15.982, back.WeatherLocationLon);
         Assert.Equal(30, back.WeatherPollIntervalMinutes);
         Assert.Equal(70.0, back.WeatherRainSkipThreshold);
+    }
+
+    /// Roadmap #395(5) regression - ServerConfigGetAsync must return the real, decrypted password so MqttCommandPublisher/EmailNotificationChannel can actually authenticate; only the API/edit-form boundary (ServerConfigApiController.Get) redacts it.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ServerConfig_MqttAndEmailPassword_UpdateAndGet_RoundTripsTheRealValue_NotNull(DbProviderKind provider)
+    {
+        Use(provider);
+        int id = new Random().Next(1000, 9_000_000);
+        var config = await _repo.ServerConfigGetAsync(id);
+
+        config.MqttPassword = "broker-secret";
+        config.EmailPassword = "smtp-secret";
+        await _repo.ServerConfigUpdateAsync(config);
+
+        var back = await _repo.ServerConfigGetAsync(id);
+        Assert.Equal("broker-secret", back.MqttPassword);
+        Assert.Equal("smtp-secret", back.EmailPassword);
+    }
+
+    /// Blank on an update means "leave the stored password alone", not "clear it" - the edit form never gets the real value back to resubmit (see ServerConfigApiController.Get).
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ServerConfig_BlankMqttPasswordOnUpdate_KeepsThePreviouslyStoredOne(DbProviderKind provider)
+    {
+        Use(provider);
+        int id = new Random().Next(1000, 9_000_000);
+        var config = await _repo.ServerConfigGetAsync(id);
+        config.MqttPassword = "broker-secret";
+        await _repo.ServerConfigUpdateAsync(config);
+
+        var reloaded = await _repo.ServerConfigGetAsync(id);
+        reloaded.MqttPassword = null; // same as what the edit form always submits
+        await _repo.ServerConfigUpdateAsync(reloaded);
+
+        var back = await _repo.ServerConfigGetAsync(id);
+        Assert.Equal("broker-secret", back.MqttPassword);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

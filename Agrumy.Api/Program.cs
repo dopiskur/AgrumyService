@@ -168,6 +168,9 @@ builder.Services.AddHttpClient<IWeatherForecastClient, OpenWeatherMapClient>(cli
 builder.Services.AddScoped<WeatherEvaluator>();
 builder.Services.AddHostedService<WeatherBackgroundService>();
 
+// Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
+builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
+builder.Services.AddSingleton<api.Commands.IMqttConnectionManager, api.Commands.MqttConnectionManager>();
 builder.Services.AddScoped<api.Commands.IMqttCommandPublisher, api.Commands.MqttCommandPublisher>();
 builder.Services.AddScoped<CommandQueueService>();
 builder.Services.AddScoped<ManualActuateService>();

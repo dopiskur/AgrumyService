@@ -1,6 +1,7 @@
 using api.Dal.Entities;
 using api.Dal.Interface;
 using api.Models;
+using api.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,7 +10,7 @@ using Npgsql;
 namespace api.Dal
 {
     /// IServerConfigRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain. Widely read-from by other domains, but that's calls INTO this class, not out of it.
-    internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger) : IServerConfigRepository
+    internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger, ISecretProtector secretProtector) : IServerConfigRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -115,7 +116,7 @@ namespace api.Dal
             // Blank means "leave the stored password alone" - the edit form never gets the real value back to resubmit, so blank can only mean "unchanged", never "clear it" (clearing means disabling the toggle instead).
             if (!string.IsNullOrEmpty(config.MqttPassword))
             {
-                row.MqttPassword = config.MqttPassword;
+                row.MqttPassword = secretProtector.Protect(config.MqttPassword);
             }
             row.EmailEnabled = config.EmailEnabled;
             row.EmailHost = config.EmailHost;
@@ -128,7 +129,7 @@ namespace api.Dal
             // Same "blank keeps existing" handling as MqttPassword above.
             if (!string.IsNullOrEmpty(config.EmailPassword))
             {
-                row.EmailPassword = config.EmailPassword;
+                row.EmailPassword = secretProtector.Protect(config.EmailPassword);
             }
             await db.SaveChangesAsync();
 
@@ -276,8 +277,8 @@ namespace api.Dal
             MqttBrokerHost = r.MqttBrokerHost,
             MqttBrokerPort = r.MqttBrokerPort == 0 ? 1883 : r.MqttBrokerPort,
             MqttUsername = r.MqttUsername,
-            // Never sent back to the edit form - see ServerConfigUpdateAsync's "blank keeps existing" handling above.
-            MqttPassword = null,
+            // Real value, decrypted - MqttCommandPublisher needs it to actually authenticate. The API/edit-form response redacts this at the controller boundary (ServerConfigApiController.Get), not here.
+            MqttPassword = secretProtector.Unprotect(r.MqttPassword),
             EmailEnabled = r.EmailEnabled,
             EmailHost = r.EmailHost,
             // An older row has 0 here, which is not a usable port - same 0-means-unset fallback as GatewayWaitWindowSeconds.
@@ -286,8 +287,8 @@ namespace api.Dal
             EmailUsername = r.EmailUsername,
             EmailFromAddress = r.EmailFromAddress,
             EmailFromName = string.IsNullOrWhiteSpace(r.EmailFromName) ? "Agrumy" : r.EmailFromName,
-            // Never sent back to the edit form - same reasoning as MqttPassword above.
-            EmailPassword = null,
+            // Real value, decrypted - same reasoning as MqttPassword above.
+            EmailPassword = secretProtector.Unprotect(r.EmailPassword),
             // An older row has 0 here, which is not a usable duration - same 0-means-unset fallback as GatewayWaitWindowSeconds.
             DevicePinValidMinutes = r.DevicePinValidMinutes == 0 ? 60 : r.DevicePinValidMinutes,
         };

@@ -22,7 +22,11 @@ namespace api.Controllers.API
             {
                 return StatusCode(403, "Server-wide settings require the Global admin role");
             }
-            return Ok(await serverConfigRepo.ServerConfigGetAsync(1));
+            // Write-only, same "blank keeps existing" convention as TenantWifiConfig.Password - the repo returns the real (decrypted) values for internal senders like MqttCommandPublisher/EmailNotificationChannel to actually authenticate with, but this API boundary never echoes them back.
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
+            config.MqttPassword = null;
+            config.EmailPassword = null;
+            return Ok(config);
         }
 
         [HttpPut]
