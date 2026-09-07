@@ -27,8 +27,8 @@ public class ApiControllerTests
     private readonly Mock<INotificationDispatcher> _notifications = new();
     private readonly BackgroundJobQueue _jobQueue = new();
 
-    // Bound from the same appsettings.json TestConfig.Init() reads Config.* from, so a token signed here and JwtTokenProvider.ValidateToken use the same key/issuer/audience.
-    private static readonly IOptions<AgrumySettings> TestSettings = Options.Create(AgrumySettings.Bind(TestConfig.Configuration));
+    // Same appsettings.json binding TestConfig exposes elsewhere, so a token signed here and JwtTokenProvider.ValidateToken use the same key/issuer/audience.
+    private static readonly IOptions<AgrumySettings> TestSettings = Options.Create(TestConfig.Settings);
 
     // CommandQueueService is a plain sealed class (not mocked); IRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
     private DeviceApiController NewDeviceController()
@@ -871,7 +871,7 @@ public class ApiControllerTests
         Assert.False(string.IsNullOrEmpty(login.Token));
         Assert.False(string.IsNullOrEmpty(login.RefreshToken));
         // Legacy "user" alias first (first-role-claim readers expect it), then the real role.
-        Assert.Equal(new[] { "user", RoleNames.TenantReader }, JwtTokenProvider.ValidateToken(login.Token!));
+        Assert.Equal(new[] { "user", RoleNames.TenantReader }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
     }
 
     [Fact]
@@ -1036,7 +1036,7 @@ public class ApiControllerTests
         Assert.False(string.IsNullOrEmpty(login.Token));
         Assert.False(string.IsNullOrEmpty(login.RefreshToken));
         Assert.NotEqual(presented, login.RefreshToken); // rotated, not reissued
-        Assert.Equal(new[] { RoleNames.LegacyAdmin, RoleNames.GlobalAdmin }, JwtTokenProvider.ValidateToken(login.Token!));
+        Assert.Equal(new[] { RoleNames.LegacyAdmin, RoleNames.GlobalAdmin }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
         _repo.Verify(r => r.RefreshTokenRotateAsync(5, hash, It.IsAny<string>(), It.IsAny<DateTime>()), Times.Once);
     }
 

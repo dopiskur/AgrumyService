@@ -138,15 +138,17 @@ public class AuthenticationProviderTests
 
 public class JwtTokenProviderTests
 {
-    // Config (Agrumy.Shared) reads appsettings.json from the working directory; the test project ships one, so Config.secureKey/jwtIssuer/jwtAudience resolve.
+    // Same appsettings.json TestConfig binds elsewhere - issuer/audience/secureKey are now explicit parameters (roadmap #397(3)), not read from any static state.
     private const string SigningKey = "unit-test-signing-key-not-a-secret-0123456789ABCDEF";
+    private static readonly string? Issuer = TestConfig.Settings.JwtIssuer;
+    private static readonly string? Audience = TestConfig.Settings.JwtAudience;
 
     [Fact]
     public void ValidateToken_AcceptsFreshTokenAndReturnsRoleClaim()
     {
-        string token = JwtTokenProvider.CreateToken(SigningKey, expiration: 5, subject: "alice@example.com", roles: new[] { "admin" }, tenantID: "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken(SigningKey, expiration: 5, subject: "alice@example.com", roles: new[] { "admin" }, tenantID: "0", Issuer, Audience);
 
-        var roles = JwtTokenProvider.ValidateToken(token);
+        var roles = JwtTokenProvider.ValidateToken(token, SigningKey, Issuer, Audience);
 
         Assert.Equal(new[] { "admin" }, roles);
     }
@@ -156,9 +158,9 @@ public class JwtTokenProviderTests
     {
         // Regression lock: CreateToken derived key bytes via UTF8 but ValidateToken via ASCII - any SecureKey character above U+007F silently produced two DIFFERENT keys ('š' collapses to '?'), failing signature validation with no diagnostic.
         const string nonAsciiKey = "šifra-with-a-non-ascii-char-0123456789ABCDEF";
-        string token = JwtTokenProvider.CreateToken(nonAsciiKey, expiration: 5, subject: "alice@example.com", roles: new[] { "admin" }, tenantID: "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken(nonAsciiKey, expiration: 5, subject: "alice@example.com", roles: new[] { "admin" }, tenantID: "0", Issuer, Audience);
 
-        var roles = JwtTokenProvider.ValidateToken(token, nonAsciiKey);
+        var roles = JwtTokenProvider.ValidateToken(token, nonAsciiKey, Issuer, Audience);
 
         Assert.NotNull(roles);
         Assert.Equal(new[] { "admin" }, roles);
@@ -168,9 +170,9 @@ public class JwtTokenProviderTests
     public void ValidateToken_MultipleRoles_ReturnsAllOfThem()
     {
         // A caller can hold several roles at once - every one of them must round-trip.
-        string token = JwtTokenProvider.CreateToken(SigningKey, 5, "alice@example.com", new[] { "admin", "Tenant reader", "Tenant Device" }, "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken(SigningKey, 5, "alice@example.com", new[] { "admin", "Tenant reader", "Tenant Device" }, "0", Issuer, Audience);
 
-        var roles = JwtTokenProvider.ValidateToken(token);
+        var roles = JwtTokenProvider.ValidateToken(token, SigningKey, Issuer, Audience);
 
         Assert.Equal(new[] { "admin", "Tenant reader", "Tenant Device" }, roles);
     }
@@ -190,27 +192,27 @@ public class JwtTokenProviderTests
         var handler = new JwtSecurityTokenHandler();
         string expired = handler.WriteToken(handler.CreateToken(descriptor));
 
-        Assert.Null(JwtTokenProvider.ValidateToken(expired));
+        Assert.Null(JwtTokenProvider.ValidateToken(expired, SigningKey, Issuer, Audience));
     }
 
     [Fact]
     public void ValidateToken_RejectsTokenSignedWithADifferentKey()
     {
-        string token = JwtTokenProvider.CreateToken("a-totally-different-signing-key-that-is-long-enough", 5, "eve@example.com", new[] { "user" }, "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken("a-totally-different-signing-key-that-is-long-enough", 5, "eve@example.com", new[] { "user" }, "0", Issuer, Audience);
 
-        Assert.Null(JwtTokenProvider.ValidateToken(token));
+        Assert.Null(JwtTokenProvider.ValidateToken(token, SigningKey, Issuer, Audience));
     }
 
     [Fact]
     public void ValidateToken_RejectsGarbage()
     {
-        Assert.Null(JwtTokenProvider.ValidateToken("not-a-jwt"));
+        Assert.Null(JwtTokenProvider.ValidateToken("not-a-jwt", SigningKey, Issuer, Audience));
     }
 
     [Fact]
     public void ValidateToken_RejectsWrongIssuerOrAudience()
     {
-        // Regression guard: correctly signed with the same key Config.secureKey validates against, but stamped with an issuer/audience that doesn't match Config.jwtIssuer/jwtAudience.
+        // Regression guard: correctly signed with the same key ValidateToken is given below, but stamped with an issuer/audience that doesn't match.
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey));
         var descriptor = new SecurityTokenDescriptor
         {
@@ -223,13 +225,13 @@ public class JwtTokenProviderTests
         var handler = new JwtSecurityTokenHandler();
         string tokenWithWrongIssuerAndAudience = handler.WriteToken(handler.CreateToken(descriptor));
 
-        Assert.Null(JwtTokenProvider.ValidateToken(tokenWithWrongIssuerAndAudience));
+        Assert.Null(JwtTokenProvider.ValidateToken(tokenWithWrongIssuerAndAudience, SigningKey, Issuer, Audience));
     }
 
     [Fact]
     public void DecodeRolesWithoutVerification_ReadsRoles_EvenWithoutTheSigningKey()
     {
-        string token = JwtTokenProvider.CreateToken(SigningKey, 5, "alice@example.com", new[] { "admin", "Tenant reader" }, "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken(SigningKey, 5, "alice@example.com", new[] { "admin", "Tenant reader" }, "0", Issuer, Audience);
 
         var roles = JwtTokenProvider.DecodeRolesWithoutVerification(token);
 
@@ -257,7 +259,7 @@ public class JwtTokenProviderTests
     [Fact]
     public void DecodeRolesWithoutVerification_StillReadsATokenSignedWithAnUnknownKey()
     {
-        string token = JwtTokenProvider.CreateToken("a-totally-different-signing-key-that-is-long-enough", 5, "eve@example.com", new[] { "user" }, "0", Config.jwtIssuer, Config.jwtAudience);
+        string token = JwtTokenProvider.CreateToken("a-totally-different-signing-key-that-is-long-enough", 5, "eve@example.com", new[] { "user" }, "0", Issuer, Audience);
 
         Assert.Equal(new[] { "user" }, JwtTokenProvider.DecodeRolesWithoutVerification(token));
     }

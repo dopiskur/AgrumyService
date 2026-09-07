@@ -9,9 +9,6 @@ namespace api.Security
 {
     public partial class JwtTokenProvider
     {
-        /// Static bridge into ILogger since this class has no DI reach; each host assigns it once at startup. Null (e.g. unit tests) means rejections stay silent.
-        public static ILogger? Logger { get; set; }
-
         [LoggerMessage(Level = LogLevel.Warning, Message = "JWT rejected: expired.")]
         private static partial void LogTokenExpired(ILogger logger);
 
@@ -72,9 +69,6 @@ namespace api.Security
             }
         }
 
-        /// Every role claim on a valid token, or null if the token is invalid/expired/wrongly-signed. An empty (non-null) list means the token validated but carried no roles — callers must treat that as "no roles", not "check failed".
-        public static IReadOnlyList<string>? ValidateToken(string token) => ValidateToken(token, Config.secureKey);
-
         /// The one place TokenValidationParameters is built - Agrumy.Api's AddJwtBearer (Program.cs) uses this too, so two independently hand-written parameter sets can no longer drift apart on ClockSkew or any other setting.
         public static TokenValidationParameters BuildValidationParameters(string secureKey, string? issuer, string? audience) => new()
         {
@@ -89,8 +83,8 @@ namespace api.Security
             ClockSkew = TimeSpan.Zero,
         };
 
-        /// Key-parameterized overload for tests driving the real validation path with a chosen key; production callers never pass a key (the single-arg overload reads Config.secureKey live rather than a cached field, since it must reflect Config.Init() having run at host startup).
-        public static IReadOnlyList<string>? ValidateToken(string token, string? secureKey)
+        /// Every role claim on a valid token, or null if the token is invalid/expired/wrongly-signed. An empty (non-null) list means the token validated but carried no roles — callers must treat that as "no roles", not "check failed". All four values are explicit parameters (roadmap #397(3)) rather than read from static state, so this has no hidden dependency on any host having run first - a caller passes whatever IOptions&lt;AgrumySettings&gt;/config it already has.
+        public static IReadOnlyList<string>? ValidateToken(string token, string? secureKey, string? issuer, string? audience, ILogger? logger = null)
         {
             if (token == null || secureKey == null)
                 return null;
@@ -98,8 +92,7 @@ namespace api.Security
             var tokenHandler = new JwtSecurityTokenHandler();
             try
             {
-                // Reads Config.jwtIssuer/jwtAudience directly (not builder.Configuration) - this overload also runs from unit tests that never call Config.Init() through a host.
-                tokenHandler.ValidateToken(token, BuildValidationParameters(secureKey, Config.jwtIssuer, Config.jwtAudience), out SecurityToken validatedToken);
+                tokenHandler.ValidateToken(token, BuildValidationParameters(secureKey, issuer, audience), out SecurityToken validatedToken);
 
                 var jwtToken = (JwtSecurityToken)validatedToken;
                 return jwtToken.Claims.Where(x => x.Type == "role").Select(x => x.Value).ToList();
@@ -107,17 +100,17 @@ namespace api.Security
             // Every failure returns the same null result (callers depend on that); the cause still reaches the log via the distinct catch blocks below.
             catch (SecurityTokenExpiredException)
             {
-                if (Logger is not null) { LogTokenExpired(Logger); }
+                if (logger is not null) { LogTokenExpired(logger); }
                 return null;
             }
             catch (SecurityTokenInvalidSignatureException)
             {
-                if (Logger is not null) { LogInvalidSignature(Logger); }
+                if (logger is not null) { LogInvalidSignature(logger); }
                 return null;
             }
             catch (Exception ex)
             {
-                if (Logger is not null) { LogMalformedToken(Logger, ex.GetType().Name); }
+                if (logger is not null) { LogMalformedToken(logger, ex.GetType().Name); }
                 return null;
             }
         }

@@ -16,9 +16,6 @@ CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Must run before anything touches the static JwtTokenProvider (LoginController, BearerTokenHandler); Agrumy.Web's JWT section here must match Agrumy.Api's.
-Config.Init(builder.Configuration);
-
 var apiServiceUrl = builder.Configuration["WebView:ApiService"];
 if (string.IsNullOrEmpty(apiServiceUrl))
     throw new InvalidOperationException("WebView:ApiService is missing in configuration.");
@@ -101,9 +98,6 @@ builder.Services
 builder.Services.AddLogging();
 
 var app = builder.Build();
-
-// LoginController validates the freshly issued JWT through the static JwtTokenProvider, so a rejection here (key mismatch between the two appsettings.json files) must be logged in this process.
-JwtTokenProvider.Logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtTokenProvider));
 
 if (!app.Environment.IsDevelopment())
 {

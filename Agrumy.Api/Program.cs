@@ -24,9 +24,6 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Must run before anything touches the static JwtTokenProvider, which this populates.
-Config.Init(builder.Configuration);
-
 AgrumySettings settingsForBootCheck = AgrumySettings.Bind(builder.Configuration);
 builder.Services.AddSingleton(Options.Create(settingsForBootCheck));
 
@@ -351,9 +348,6 @@ builder.Services.AddHsts(options =>
 });
 
 var app = builder.Build();
-
-// JwtTokenProvider is static (no DI reach) - hand it a logger once so token rejections land in the normal log pipeline instead of vanishing.
-JwtTokenProvider.Logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtTokenProvider));
 
 // Must run before anything that reads Connection.RemoteIpAddress or Request.Scheme - the rate limiter below, but also UseHttpsRedirection/UseHsts further down.
 app.UseForwardedHeaders();
