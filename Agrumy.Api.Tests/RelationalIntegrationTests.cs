@@ -2159,6 +2159,29 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.All(zoneDetail.Trend.Temperature.Take(zoneDetail.Trend.Temperature.Length - 1), Assert.Null);
     }
 
+    // Roadmap #410 - the ReadUncommitted display variant must return the exact same shape as the ReadCommitted one RuleNotificationEvaluator uses, just under a different isolation level.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZoneDashboardForDisplay_MatchesAlertVariant(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (unit, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        await _repo.SensorDataPushAsync(new JsonArray(new JsonObject { ["temperature"] = "22.5" }),
+            d.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
+
+        var forAlert = await _repo.DeviceFarmUnitZoneDashboardGetAsync(zone.IDDeviceFarmUnitZone!.Value);
+        var forDisplay = await _repo.DeviceFarmUnitZoneDashboardForDisplayGetAsync(zone.IDDeviceFarmUnitZone!.Value);
+
+        Assert.NotNull(forDisplay);
+        Assert.Equal(forAlert!.DeviceCount, forDisplay!.DeviceCount);
+        Assert.Equal(forAlert.Averages.Temperature, forDisplay.Averages.Temperature);
+        Assert.Equal(forAlert.Trend.Temperature[^1], forDisplay.Trend.Temperature[^1]);
+
+        Assert.Null(await _repo.DeviceFarmUnitZoneDashboardForDisplayGetAsync(-1));
+    }
+
     // Deleting a Unit cascades its Zones and unassigns (not deletes) their devices.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitDelete_CascadesZones_AndUnassignsDevices_WithoutDeletingThem(DbProviderKind provider)

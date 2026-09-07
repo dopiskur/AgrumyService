@@ -83,6 +83,8 @@ namespace api.Dal
 
         public Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardGetAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDashboardGetAsync(idDeviceFarmUnitZone);
 
+        public Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDashboardForDisplayGetAsync(idDeviceFarmUnitZone);
+
         public Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync() => deviceFarmUnitRepository.TankRefillAlertCandidatesGetAsync();
 
         public Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt) => deviceFarmUnitRepository.TankRefillNotifiedSetAsync(idDeviceFarmUnitZone, notifiedAt);

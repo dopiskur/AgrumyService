@@ -95,8 +95,11 @@ namespace api.Dal.Interface
         /// One cube per Zone within one Unit, same shape narrowed in scope - Devices list stays empty, populated only by the single-zone detail below.
         Task<IList<DeviceFarmUnitZoneDashboard>> DeviceFarmUnitZoneDashboardListGetAsync(int idDeviceFarmUnit);
 
-        /// Single-zone detail: roll-up plus the actual device list, null if the zone id doesn't exist.
+        /// Single-zone detail: roll-up plus the actual device list, null if the zone id doesn't exist. ReadCommitted (default) - RuleNotificationEvaluator's only caller, where a since-rolled-back read must never drive a notification decision.
         Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardGetAsync(int idDeviceFarmUnitZone);
+
+        /// Same result shape as DeviceFarmUnitZoneDashboardGetAsync, for the Web dashboard display instead of alert evaluation (roadmap #410) - ReadUncommitted, same "dirty reads are fine for a display snapshot" reasoning as SensorDataExportGetAsync (#253), so a #409 purge batch never blocks/is blocked by a dashboard load.
+        Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone);
 
         // ---- Rules (Zone/Unit/Farm/Global scope) ------------------------------
 

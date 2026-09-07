@@ -729,7 +729,7 @@ namespace api.Controllers.API
             {
                 return error;
             }
-            DeviceFarmUnitZoneDashboard? dashboard = await deviceFarmUnitRepo.DeviceFarmUnitZoneDashboardGetAsync(zone!.IDDeviceFarmUnitZone!.Value);
+            DeviceFarmUnitZoneDashboard? dashboard = await deviceFarmUnitRepo.DeviceFarmUnitZoneDashboardForDisplayGetAsync(zone!.IDDeviceFarmUnitZone!.Value);
             return dashboard is null ? NotFound() : Ok(dashboard);
         }
 
