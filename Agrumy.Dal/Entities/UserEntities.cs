@@ -139,7 +139,7 @@ namespace api.Dal.Entities
         public bool PasswordRequireComplexity { get; set; }
 
         // See api.Models.ServerConfig's own copy for the full explanation.
-        public int ConfigHeartbeatHours { get; set; } = 24;
+        public int ConfigHeartbeatHours { get; set; } = 1;
 
         // See api.Models.ServerConfig's own copies of these for the full explanation.
         public bool MqttTransportEnabled { get; set; }

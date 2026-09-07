@@ -55,7 +55,7 @@ namespace api.Dal
                 ProblemEventAlertsEnabled = true,
                 ProblemEventExpiryHours = 24,
                 PasswordMinLength = 8,
-                ConfigHeartbeatHours = 24,
+                ConfigHeartbeatHours = 1,
                 MqttBrokerPort = 1883,
                 EmailPort = 587,
                 EmailUseStartTls = true,

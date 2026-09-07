@@ -891,19 +891,30 @@ namespace api.Dal
                     && z.TankCapacityLiters != null && z.WaterLevelRawEmpty != null && z.WaterLevelRawFull != null)
                 .ToListAsync();
 
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
             var result = new List<TankRefillAlertCandidate>();
             foreach (var z in zones)
             {
                 // Latest reading per device in the zone (portable scalar subquery, same shape as LowBatteryAlertCandidatesGetAsync's Battery column), averaged client-side.
                 var latestPerDevice = await db.Devices.AsNoTracking()
                     .Where(d => d.DeviceFarmUnitZoneID == z.IDDeviceFarmUnitZone)
-                    .Select(d => db.SensorData.AsNoTracking()
-                        .Where(s => s.DeviceID == d.IDDevice)
-                        .OrderByDescending(s => s.DateCreated)
-                        .Select(s => (int?)s.WaterLevel)
-                        .FirstOrDefault())
+                    .Select(d => new
+                    {
+                        d.SleepSeconds,
+                        Reading = db.SensorData.AsNoTracking()
+                            .Where(s => s.DeviceID == d.IDDevice)
+                            .OrderByDescending(s => s.DateCreated)
+                            .Select(s => new { s.WaterLevel, s.DateCreated })
+                            .FirstOrDefault(),
+                    })
                     .ToListAsync();
-                double? waterLevel = latestPerDevice.Select(w => (double?)w).Average();
+
+                // Same staleness window DeviceFarmUnitZoneDashboardGetAsync uses (roadmap #345) - a dead/unreachable sensor's stale last reading must not count toward the average, or the alert never fires despite an actually-empty tank.
+                double? waterLevel = latestPerDevice
+                    .Where(d => d.Reading?.DateCreated != null && (utcNow - d.Reading.DateCreated.Value).TotalSeconds <=
+                        (d.SleepSeconds ?? 60) * (double)DeviceFleetStatus.OfflineMissedPolls + DeviceFleetStatus.OfflineGraceSeconds)
+                    .Select(d => (double?)d.Reading!.WaterLevel)
+                    .Average();
 
                 result.Add(new TankRefillAlertCandidate(
                     z.IDDeviceFarmUnitZone, z.TenantID!.Value, z.DeviceFarmUnitZoneName,

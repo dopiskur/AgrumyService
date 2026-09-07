@@ -114,9 +114,9 @@ namespace api.Models
         [Display(Name = "Require upper/lower case, digit, and symbol")]
         public bool PasswordRequireComplexity { get; set; }
 
-        // 0 disables it. DeviceConfigBuilder recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh on every build, but neither bumps ConfigVersion when it changes (a DST transition, an admin edit to ScheduleTimeZone, or a weather-poll flip) - this forces a full config resend periodically so those changes still reach a device that otherwise has nothing else queued. Clamped 1-168 (a week) by ServerConfigApiController.Update when non-zero.
+        // 0 disables it. DeviceConfigBuilder recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh on every build, but neither bumps ConfigVersion when it changes (a DST transition, an admin edit to ScheduleTimeZone, or a weather-poll flip) - this forces a full config resend periodically so those changes still reach a device that otherwise has nothing else queued. Clamped 1-168 (a week) by ServerConfigApiController.Update when non-zero. Default 1h, not 24h (roadmap #396(2)) - DST/rain-veto changes were tolerating up to a full day of staleness before this.
         [Display(Name = "Config heartbeat (hours, 0 = off)")]
-        public int ConfigHeartbeatHours { get; set; } = 24;
+        public int ConfigHeartbeatHours { get; set; } = 1;
 
         // Opt-in alternative alongside the HTTP/JWT poll cycle: when enabled, a newly-queued command is also published immediately to this broker so a persistently-connected device (AgrumyFirmware's MqttController) can act before its next HTTP poll, instead of only through CommandQueueService/GetPendingCommandAsync; OTA/registration/firmware distribution stay on HTTP (see api.Commands.MqttCommandPublisher).
         [Display(Name = "Enable MQTT instant command push")]
