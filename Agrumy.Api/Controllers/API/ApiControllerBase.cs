@@ -33,9 +33,6 @@ namespace api.Controllers.API
             }
         }
 
-        /// The caller's FIRST role claim, kept so legacy "admin"/"user" checks keep working (JwtTokenProvider.CreateToken always adds that alias first) - new code should prefer <see cref="CallerHasRole"/> or <see cref="CallerRoles"/> instead, since a caller can hold several roles.
-        protected string? CallerRole => (User.Identity as ClaimsIdentity)?.FindFirst(ClaimTypes.Role)?.Value;
-
         /// Every role claim on the caller's token.
         protected IEnumerable<string> CallerRoles =>
             (User.Identity as ClaimsIdentity)?.FindAll(ClaimTypes.Role).Select(c => c.Value) ?? Enumerable.Empty<string>();
@@ -68,8 +65,6 @@ namespace api.Controllers.API
             [RoleNames.TenantDevice] = 20,
             [RoleNames.TenantDataReader] = 15,
             [RoleNames.TenantReader] = 10,
-            [RoleNames.LegacyAdmin] = 50,
-            [RoleNames.LegacyUser] = 20,
         };
 
         private static int RoleRank(IEnumerable<string> roleNames) =>

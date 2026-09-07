@@ -2,7 +2,7 @@ using api.Models;
 
 namespace api.Dal.Interface
 {
-    /// User facet: accounts, secrets, composable roles, email activation, and the legacy userGroup mapping (groups exist solely as the legacy role assignment).
+    /// User facet: accounts, secrets, composable roles, and email activation.
     public interface IUserRepository
     {
         Task UserAddAsync(User user, UserSecret userHash);

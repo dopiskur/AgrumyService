@@ -6,7 +6,7 @@
     string UserField(string name) => $"{nameof(Model.UserUpdate)}.{name}";
 
     var enabledToggle = new EnabledToggleFieldViewModel { Name = UserField(nameof(userUpdate.Enabled)), Label = "Account", Value = userUpdate.Enabled };
-    bool viewerIsAdmin = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.TenantAdmin) || User.IsInRole(RoleNames.LegacyAdmin);
+    bool viewerIsAdmin = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.TenantAdmin);
     List<string> assignedRoles = userUpdate.RoleNames ?? new();
 }
 

@@ -11,7 +11,7 @@ namespace api.Controllers.API
 {
     /// "Optimize Old Data" / "Purge Old Data", Global admin only (affects every tenant's telemetry) - both dispatch to BackgroundJobQueue and return 202 immediately instead of holding the request open for a large table's processing time.
     [Route("api/DataMaintenance")]
-    [Authorize(Roles = RoleNames.LegacyAdmin)]
+    [Authorize(Roles = RoleNames.GlobalAdmin)]
     public class DataMaintenanceApiController(
         IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, AgrumyDbContext db, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger, IServerConfigRepository serverConfigRepo)
         : ApiControllerBase(userRepo, auditLogRepo, cache)

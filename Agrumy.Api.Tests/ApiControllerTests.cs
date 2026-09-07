@@ -62,12 +62,12 @@ public class ApiControllerTests
         new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
-    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" also carries the real modern role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces; ApiControllerBase's own single-legacy-claim fallback was removed as unreachable (roadmap #397(1), no login path can ever issue a legacy-alias-only token).
+    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId)
     {
-        if (role == RoleNames.LegacyAdmin)
+        if (role == "admin")
         {
-            SetCallerRoles(controller, tenantId, RoleNames.LegacyAdmin, tenantId == 0 ? RoleNames.GlobalAdmin : RoleNames.TenantAdmin);
+            SetCallerRoles(controller, tenantId, tenantId == 0 ? RoleNames.GlobalAdmin : RoleNames.TenantAdmin);
             return;
         }
         SetCallerRoles(controller, tenantId, role);
@@ -902,8 +902,7 @@ public class ApiControllerTests
         Assert.Equal("alice@example.com", login.Email);
         Assert.False(string.IsNullOrEmpty(login.Token));
         Assert.False(string.IsNullOrEmpty(login.RefreshToken));
-        // Legacy "user" alias first (first-role-claim readers expect it), then the real role.
-        Assert.Equal(new[] { "user", RoleNames.TenantReader }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
+        Assert.Equal(new[] { RoleNames.TenantReader }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
     }
 
     [Fact]
@@ -1068,7 +1067,7 @@ public class ApiControllerTests
         Assert.False(string.IsNullOrEmpty(login.Token));
         Assert.False(string.IsNullOrEmpty(login.RefreshToken));
         Assert.NotEqual(presented, login.RefreshToken); // rotated, not reissued
-        Assert.Equal(new[] { RoleNames.LegacyAdmin, RoleNames.GlobalAdmin }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
+        Assert.Equal(new[] { RoleNames.GlobalAdmin }, JwtTokenProvider.ValidateToken(login.Token!, TestSettings.Value.JwtSecureKey, TestSettings.Value.JwtIssuer, TestSettings.Value.JwtAudience));
         _repo.Verify(r => r.RefreshTokenRotateAsync(5, hash, It.IsAny<string>(), It.IsAny<DateTime>()), Times.Once);
     }
 
@@ -2755,18 +2754,6 @@ public class ApiControllerTests
 
         Assert.IsType<OkObjectResult>((await controller.Get()).Result);
         Assert.IsType<OkResult>(await controller.Update(new ServerConfig()));
-    }
-
-    /// A token holding only the legacy "admin" alias with no #66 RBAC role is no longer treated as Global admin - roadmap #397(1) removed that fallback as unreachable, since every real login token carries the modern role too.
-    [Fact]
-    public async Task ServerConfig_LegacyAliasOnly_NoModernRole_Forbidden()
-    {
-        var controller = NewServerConfigController();
-        SetCallerRoles(controller, 0, RoleNames.LegacyAdmin);
-
-        var result = await controller.Get();
-
-        Assert.Equal(403, (result.Result as ObjectResult)?.StatusCode);
     }
 
     /// An out-of-range timeRange must 400 before reaching the repo - strict mock (SensorDataGetAsync never set up) proves it.

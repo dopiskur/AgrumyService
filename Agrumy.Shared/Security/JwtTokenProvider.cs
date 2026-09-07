@@ -19,7 +19,7 @@ namespace api.Security
         private static partial void LogMalformedToken(ILogger logger, string exceptionType);
 
 
-        /// A user can hold several roles at once, so <paramref name="roles"/> becomes one <see cref="ClaimTypes.Role"/> claim per entry; the caller must include the legacy "admin"/"user" alias in the set for old single-role checks to keep working (see api.Security.RoleNames.ImpliesLegacyAdmin).
+        /// A user can hold several roles at once, so <paramref name="roles"/> becomes one <see cref="ClaimTypes.Role"/> claim per entry.
         public static string CreateToken(string secureKey, int expiration, string subject, IEnumerable<string> roles, string tenantID, string? issuer, string? audience)
         {
             var tokenKey = Encoding.UTF8.GetBytes(secureKey);

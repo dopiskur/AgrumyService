@@ -28,20 +28,18 @@ namespace api.Migration
         {
             var result = new TenantImportResult { TargetTenantId = tenantId, TargetTenantName = tenantName };
 
-            Dictionary<int, int> userIdMap = await ImportUsersAsync(export, tenantId, result);
+            await ImportUsersAsync(export, tenantId, result);
             Dictionary<int, int> unitIdMap = await ImportUnitsAsync(export, tenantId, result);
             Dictionary<int, int> zoneIdMap = await ImportZonesAsync(export, tenantId, unitIdMap, result);
             await ImportZoneRulesAsync(export, tenantId, zoneIdMap, result);
             Dictionary<int, int> deviceIdMap = await ImportDevicesAsync(export, tenantId, unitIdMap, zoneIdMap, result);
             await ImportSensorDataAsync(export, tenantId, deviceIdMap, unitIdMap, zoneIdMap, result);
 
-            _ = userIdMap; // no downstream use yet (users own no FKs into other exported tables today) - kept for symmetry/future use
             return result;
         }
 
-        private async Task<Dictionary<int, int>> ImportUsersAsync(TenantExport export, int tenantId, TenantImportResult result)
+        private async Task ImportUsersAsync(TenantExport export, int tenantId, TenantImportResult result)
         {
-            var map = new Dictionary<int, int>();
             foreach (TenantExportUser eu in export.Users)
             {
                 // Email/Username carry a GLOBAL unique index (not per-tenant) - a collision (re-run import, or already has an account) is expected, so skip the row rather than fail the batch.
@@ -82,16 +80,11 @@ namespace api.Migration
                     result.SkippedReasons.Add($"User {eu.User.Email}: did not persist.");
                     continue;
                 }
-                if (eu.User.IDUser is int oldId)
-                {
-                    map[oldId] = newId;
-                }
                 // Global-* roles are a server-level concept, not portable across a tenant export/import boundary - never let an imported user land on this server as a Global admin/reader/etc.
                 var importableRoles = eu.Roles.Where(r => !r.StartsWith("Global", StringComparison.Ordinal)).ToList();
                 await repo.UserRolesSetAsync(newId, importableRoles);
                 result.UsersImported++;
             }
-            return map;
         }
 
         private async Task<Dictionary<int, int>> ImportUnitsAsync(TenantExport export, int tenantId, TenantImportResult result)

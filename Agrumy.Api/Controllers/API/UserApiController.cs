@@ -191,18 +191,9 @@ namespace api.Controllers.API
             });
         }
 
-        /// The full set of role-claim values this user's token should carry: real roles from userUserRole plus a prepended legacy admin/user alias so old [Authorize(Roles=...)]/CallerRole checks (ApiControllerBase.CallerRole reads only the FIRST claim) still work - empty only if userUserRole has nothing for this user.
-        private async Task<IReadOnlyList<string>> ResolveCallerTokenRolesAsync(User user)
-        {
-            IReadOnlyList<string> roleNames = await userRepository.UserRoleNamesGetAsync(user.IDUser!.Value);
-            if (roleNames.Count == 0)
-            {
-                return Array.Empty<string>();
-            }
-
-            string legacyAlias = RoleNames.ImpliesLegacyAdmin(roleNames) ? RoleNames.LegacyAdmin : RoleNames.LegacyUser;
-            return new[] { legacyAlias }.Concat(roleNames).ToList();
-        }
+        /// The full set of role-claim values this user's token should carry - empty only if userUserRole has nothing for this user.
+        private async Task<IReadOnlyList<string>> ResolveCallerTokenRolesAsync(User user) =>
+            await userRepository.UserRoleNamesGetAsync(user.IDUser!.Value);
 
         [HttpPost("Login")]
         [EnableRateLimiting("login")]
@@ -574,7 +565,7 @@ namespace api.Controllers.API
         /// Requested roles are honored only for an admin caller (never a non-admin UserManager, even via a forged body) and only within UserRolesSet's own allowed set - same privilege boundary, shared by UserAdd.
         private (List<string>? roleNames, ActionResult? error) ResolveGrantedRoles(IEnumerable<string>? requested)
         {
-            bool callerIsAdmin = CallerIsGlobalAdmin || CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.LegacyAdmin);
+            bool callerIsAdmin = CallerIsGlobalAdmin || CallerHasRole(RoleNames.TenantAdmin);
             List<string> wanted = requested?.ToList() ?? new();
 
             if (!callerIsAdmin || wanted.Count == 0)
@@ -647,7 +638,7 @@ namespace api.Controllers.API
             }
 
             // Non-admin callers can't touch roles at all - silently ignored, same guard as TenantID above.
-            bool callerIsAdmin = CallerIsGlobalAdmin || CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.LegacyAdmin);
+            bool callerIsAdmin = CallerIsGlobalAdmin || CallerHasRole(RoleNames.TenantAdmin);
             if (value.RoleNames != null && callerIsAdmin)
             {
                 HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();

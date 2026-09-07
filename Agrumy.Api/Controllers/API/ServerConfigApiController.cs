@@ -12,10 +12,10 @@ namespace api.Controllers.API
     [Route("api/ServerConfig")]
     public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        // These are SERVER-WIDE settings, so Global admin only. The attribute stays at the wider RoleNames.LegacyAdmin gate so an account the multi-role migration missed reaches the inline check, where CallerIsGlobalAdmin's legacy fallback (tenant-0 admin) still lets it through.
+        // These are SERVER-WIDE settings, so Global admin only.
 
         [HttpGet]
-        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult<ServerConfig>> Get()
         {
             if (!CallerIsGlobalAdmin)
@@ -31,7 +31,7 @@ namespace api.Controllers.API
         }
 
         [HttpPut]
-        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> Update([FromBody] ServerConfig config)
         {
             if (!CallerIsGlobalAdmin)
@@ -195,7 +195,7 @@ namespace api.Controllers.API
 
         /// Sends a real test message through the saved (not the unsaved form's) Email settings - "Save" first, then test - so an admin can confirm SMTP actually works without waiting on a real alert/activation email.
         [HttpPost("TestEmail")]
-        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> TestEmail(string toEmail)
         {
             if (!CallerIsGlobalAdmin)
@@ -223,7 +223,7 @@ namespace api.Controllers.API
 
         /// Roadmap #209 - tests the UNSAVED form's archive DB credentials before ServerConfigApiController.Update ever persists them, so a bad host/port/password never silently disables archiving later. Password blank means "use whatever's already saved" (see ArchiveDbTestRequest's own remarks).
         [HttpPost("TestArchiveDatabase")]
-        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> TestArchiveDatabase([FromBody] ArchiveDbTestRequest request)
         {
             if (!CallerIsGlobalAdmin)
@@ -255,7 +255,7 @@ namespace api.Controllers.API
 
         /// Roadmap #209 - the "Data Archiving" subsection's own self-contained save (Web's ServerConfigController.SaveArchiveSettings JS button, not the main Server Settings form), independent of every other tab. Tests the connection first when enabling (skipped when Enabled is false - "disable" needs no working credentials, roadmap #209's own explicit design decision), only THEN persists.
         [HttpPost("ArchiveSettings")]
-        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> SaveArchiveSettings([FromBody] ArchiveSettingsSaveRequest request)
         {
             if (!CallerIsGlobalAdmin)
