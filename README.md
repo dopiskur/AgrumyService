@@ -523,6 +523,11 @@ Hitting Enter at every prompt is a complete install: `1` (Quick install) ->
      saving a connection there restarts the service, and the existing
      bootstrap Global Admin wizard takes over from there unchanged.
 
+**Need more than one node's worth of capacity?** `deploy/k8s/` has a full Kubernetes manifest set -
+multi-replica Deployments for `Agrumy.Api`/`Agrumy.Web`, a ConfigMap/Secret pair instead of
+`appsettings.json`, an optional autoscaler, and an Ingress with TLS termination. Most installs don't
+need this - see that directory's own README for when it's actually worth reaching for.
+
 **Bare-metal first boot: keep the port firewalled off until setup completes** -
 the setup wizard is protected against CSRF, not against network access, so
 whoever reaches it first can submit the database connection. `install.sh`

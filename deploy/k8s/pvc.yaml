@@ -1,0 +1,36 @@
+# Both claims MUST be backed by a StorageClass that supports ReadWriteMany (NFS, Longhorn, CephFS,
+# a cloud provider's file-share CSI driver, etc.) the moment either Deployment runs more than one
+# replica - every pod needs to see the SAME files, not its own private copy:
+#   - agrumy-firmware-store: Agrumy.Api's Local-source firmware .bin uploads (roadmap #94's firmware
+#     catalog) - a device could get routed to a pod that never received the upload otherwise.
+#   - agrumy-web-keys: Agrumy.Web's DataProtection key ring (cookie auth + antiforgery). A cookie
+#     encrypted by one pod's key can't be decrypted by another - without a shared key ring, requests
+#     start failing unpredictably depending which pod happens to serve them.
+# Staying at replicas: 1 for whichever Deployment you can't give RWX storage to is a perfectly valid,
+# explicit choice (set spec.replicas in api.yaml/web.yaml and delete/skip that Deployment's HPA) -
+# just don't scale past 1 replica on ReadWriteOnce storage, which silently corrupts instead of erroring
+# obviously (a second pod's writes and the first pod's cached reads disagree instead of one failing).
+#
+# storageClassName is left unset here (cluster default) - set it explicitly to whichever StorageClass
+# in your cluster actually supports ReadWriteMany if the default doesn't.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agrumy-firmware-store
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agrumy-web-keys
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi

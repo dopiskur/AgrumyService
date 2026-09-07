@@ -1,0 +1,43 @@
+# Kubernetes equivalent of deploy/nginx-path.conf.template / apache-path.conf.template (roadmap
+# #387's path-based routing: one domain, /api routed to Agrumy.Api, everything else to Agrumy.Web) -
+# this Ingress replaces that reverse-proxy template approach for this deployment mode specifically,
+# TLS terminates here instead of at a certbot-managed nginx/Apache in front of systemd services.
+#
+# host/TLS need one of:
+#   (a) cert-manager installed, with a ClusterIssuer already set up (e.g. Let's Encrypt) - uncomment
+#       the annotation below and set secretName to whatever cert-manager will create/manage; or
+#   (b) a TLS Secret you create yourself first:
+#         kubectl create secret tls agrumy-tls -n agrumy --cert=fullchain.pem --key=privkey.pem
+#
+# ingressClassName depends on which ingress controller your cluster runs (ingress-nginx, Traefik,
+# etc.) - set it to match; left commented here since there's no universal default.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agrumy
+  annotations: {}
+  #  cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  # ingressClassName: nginx
+  tls:
+    - hosts:
+        - agrumy.example.com # CHANGE ME
+      secretName: agrumy-tls
+  rules:
+    - host: agrumy.example.com # CHANGE ME - must match configmap.yaml's JWT__Issuer host and both TLS hosts entries
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: agrumy-api
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agrumy-web
+                port:
+                  number: 5001

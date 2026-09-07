@@ -1,0 +1,51 @@
+# Self-hosted horizontal scaling: full Kubernetes manifests (Deployment/Service/Ingress for
+# Agrumy.Api and Agrumy.Web, ConfigMap/Secret instead of appsettings.json, optional HPA) - the
+# self-hosted/cloud-agnostic equivalent of an Azure Container Apps + KEDA setup, for anyone who
+# wants real multi-replica scaling without cloud lock-in. docker-compose.yml/docker-compose.large.yml
+# stay the right choice for a single-node install - see deploy/k8s/README.md before applying any of
+# this directory.
+#
+# Every key here is a double-underscore ASP.NET Core config path, same convention the compose files
+# already use (double underscore = one level of nesting, e.g. JWT__SecureKey -> JWT:SecureKey). Both
+# Deployments read this SAME ConfigMap via envFrom - keeping JWT settings in one place instead of two
+# per-service copies rules out a JWT:Issuer/Audience mismatch between Agrumy.Api and Agrumy.Web
+# (silently fails every login otherwise, since token validation just rejects it with no obvious
+# error) at the cost of a handful of harmless, unread keys landing in whichever pod doesn't use them.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agrumy-config
+data:
+  # mysql or postgres - must match whichever external database ConnectionStrings__DefaultConnection
+  # (in secret.example.yaml) actually points at. This manifest set does not run the database itself,
+  # same "point at an external instance" choice docker-compose.large.yml already offers - a
+  # multi-replica API needs a database that already tolerates concurrent connections from several
+  # pods, which is a production DB concern, not something a demo StatefulSet here should paper over.
+  Database__Provider: "mysql"
+
+  # Must be reachable from inside the cluster: either an external managed DB, or your own
+  # separately-managed StatefulSet/Service, not part of this manifest set.
+  # (the actual connection string with credentials lives in the Secret, not here)
+
+  JWT__Issuer: "https://agrumy.example.com"
+  JWT__Audience: "agrumy-api"
+
+  # TLS terminates at the Ingress (see ingress.yaml) - both apps stay on plain HTTP behind it, same
+  # reasoning as docker-compose.yml's Security__EnforceHttps.
+  Security__EnforceHttps: "false"
+
+  # Required for correctness once Agrumy.Api runs more than one replica - without a shared cache,
+  # each pod's in-process MemoryCache disagrees with the others (stale fleet-dashboard reads,
+  # per-leaf gateway rate-limit counters that don't actually share a limit across pods, etc.).
+  # Points at redis.yaml's Service; unset only if you intentionally pin Agrumy.Api to one replica.
+  Cache__Redis__ConnectionString: "agrumy-redis:6379"
+
+  # Agrumy.Web's own outbound calls to Agrumy.Api go through the in-cluster Service, not the public
+  # Ingress hostname.
+  WebView__ApiService: "http://agrumy-api:5000"
+
+  # web.yaml mounts a PersistentVolumeClaim here - see that file's own remarks on why it MUST be
+  # ReadWriteMany once Agrumy.Web runs more than one replica (cookie auth/antiforgery keys have to be
+  # the same file set on every pod, or a request landing on a different pod than the one that issued
+  # the cookie fails to decrypt it).
+  DataProtection__KeyPath: "/keys"

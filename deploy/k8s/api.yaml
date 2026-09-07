@@ -1,0 +1,99 @@
+# Build+push your own image first (no published registry image exists yet - see deploy/k8s/README.md):
+#   docker build -f Agrumy.Api/Dockerfile -t YOUR_REGISTRY/agrumy-api:TAG .
+#   docker push YOUR_REGISTRY/agrumy-api:TAG
+# then replace the image: line below with that exact reference.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrumy-api
+  labels:
+    app: agrumy-api
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: agrumy-api
+  template:
+    metadata:
+      labels:
+        app: agrumy-api
+    spec:
+      containers:
+        - name: agrumy-api
+          image: YOUR_REGISTRY/agrumy-api:latest # CHANGE ME
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: agrumy-config
+            - secretRef:
+                name: agrumy-secrets
+          volumeMounts:
+            - name: firmware-store
+              mountPath: /app/firmware-store
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          # /api/health checks the database and (Degraded, not Unhealthy) the cache, so a slow/dead
+          # DB correctly pulls a pod out of rotation instead of leaving it serving 500s - same
+          # endpoint docker-compose.yml's own healthcheck uses (roadmap #143).
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 5
+      volumes:
+        - name: firmware-store
+          persistentVolumeClaim:
+            claimName: agrumy-firmware-store
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agrumy-api
+spec:
+  selector:
+    app: agrumy-api
+  ports:
+    - port: 5000
+      targetPort: 5000
+---
+# Optional - delete this whole Deployment/HorizontalPodAutoscaler pairing (or just this object) if you'd
+# rather scale by hand; requires metrics-server (or another metrics.k8s.io provider) running in the
+# cluster, which most distributions ship by default but not all.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agrumy-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agrumy-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

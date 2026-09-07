@@ -1,0 +1,15 @@
+# kubectl apply -k deploy/k8s applies every manifest in this directory in one shot. Namespace stays
+# a separate, explicit apply (see README.md) rather than kustomize's own `namespace:` field, since
+# that field only stamps namespace onto resources - it does not create the Namespace object itself,
+# and applying everything else before the namespace exists just fails.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - configmap.yaml
+  - redis.yaml
+  - pvc.yaml
+  - api.yaml
+  - web.yaml
+  - ingress.yaml
+  # secret.example.yaml is NOT listed here on purpose - see that file's own header.

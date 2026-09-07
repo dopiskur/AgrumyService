@@ -1,0 +1,97 @@
+# Build+push your own image first (same as api.yaml):
+#   docker build -f Agrumy.Web/Dockerfile -t YOUR_REGISTRY/agrumy-web:TAG .
+#   docker push YOUR_REGISTRY/agrumy-web:TAG
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrumy-web
+  labels:
+    app: agrumy-web
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: agrumy-web
+  template:
+    metadata:
+      labels:
+        app: agrumy-web
+    spec:
+      containers:
+        - name: agrumy-web
+          image: YOUR_REGISTRY/agrumy-web:latest # CHANGE ME
+          ports:
+            - containerPort: 5001
+          envFrom:
+            - configMapRef:
+                name: agrumy-config
+            - secretRef:
+                name: agrumy-secrets
+          volumeMounts:
+            - name: web-keys
+              mountPath: /keys
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          # Same endpoint docker-compose.yml's own healthcheck uses - Agrumy.Web has no dedicated
+          # /health of its own, /Login is a plain anonymous page that only responds once the app has
+          # actually finished starting (DataProtection key ring loaded, etc.).
+          readinessProbe:
+            httpGet:
+              path: /Login
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /Login
+              port: 5001
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 5
+      volumes:
+        - name: web-keys
+          persistentVolumeClaim:
+            claimName: agrumy-web-keys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agrumy-web
+spec:
+  selector:
+    app: agrumy-web
+  ports:
+    - port: 5001
+      targetPort: 5001
+---
+# Same caveats as api.yaml's HPA - optional, needs metrics-server. Doubly make sure pvc.yaml's
+# agrumy-web-keys claim is actually on ReadWriteMany storage before letting this scale past 1 replica.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agrumy-web
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agrumy-web
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

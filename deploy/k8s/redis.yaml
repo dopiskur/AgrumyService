@@ -1,0 +1,56 @@
+# Single replica by design - CacheRepository/api.Diagnostics health checks already treat the cache
+# as a performance dependency, not a correctness one (a Redis outage degrades, cache misses just fall
+# through to the database, GET /api/health reports it degraded rather than failing the whole check),
+# so this is an honest default rather than a corner cut. Point Cache__Redis__ConnectionString
+# (configmap.yaml) at your own HA Redis (Sentinel/cluster) instead if you need one - no code change,
+# it's the same config key either way.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agrumy-redis
+  labels:
+    app: agrumy-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: agrumy-redis
+  template:
+    metadata:
+      labels:
+        app: agrumy-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agrumy-redis
+spec:
+  selector:
+    app: agrumy-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
