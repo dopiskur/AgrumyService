@@ -1,6 +1,6 @@
-using api.Devices;
-using api.Models;
-using api.Simulation;
+using Agrumy.Api.Devices;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Simulation;
 
 namespace Agrumy.Api.Tests;
 

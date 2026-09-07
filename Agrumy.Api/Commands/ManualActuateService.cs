@@ -1,7 +1,7 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Commands
+namespace Agrumy.Api.Commands
 {
     public enum ManualActuateOutcome
     {

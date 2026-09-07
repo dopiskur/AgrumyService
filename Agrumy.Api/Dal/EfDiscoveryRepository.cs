@@ -1,10 +1,11 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Utils;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Utils;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IDiscoveryRepository, extracted out of the EfRepository god class (roadmap #246) - reads db.Devices directly for scanner scoping rather than calling into IDeviceRepository, but that's a direct DbSet read, not a facet-interface dependency.
     internal sealed class EfDiscoveryRepository(AgrumyDbContext db) : IDiscoveryRepository

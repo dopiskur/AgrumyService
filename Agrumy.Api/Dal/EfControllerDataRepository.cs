@@ -1,11 +1,12 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
-    /// IControllerDataRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other facet. See api.Dal.Entities.ControllerDataRow for why this upserts current state rather than appending a log.
+    /// IControllerDataRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other facet. See Agrumy.Dal.Entities.ControllerDataRow for why this upserts current state rather than appending a log.
     internal sealed class EfControllerDataRepository(AgrumyDbContext db) : IControllerDataRepository
     {
         public async Task ControllerDataPushAsync(int deviceID, int tenantID, IList<ControllerDataPush> entries)

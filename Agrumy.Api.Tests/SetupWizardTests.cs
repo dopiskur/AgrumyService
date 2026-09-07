@@ -1,5 +1,5 @@
-using api.Dal;
-using api.Setup;
+using Agrumy.Dal;
+using Agrumy.Api.Setup;
 
 namespace Agrumy.Api.Tests;
 

@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using api;
-using api.Commands;
-using api.Controllers.API;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Shared;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;

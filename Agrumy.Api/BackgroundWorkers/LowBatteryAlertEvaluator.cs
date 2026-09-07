@@ -1,8 +1,8 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
     public sealed class LowBatteryAlertEvaluator(

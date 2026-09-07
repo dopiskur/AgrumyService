@@ -1,9 +1,9 @@
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
-using api.Utils;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Utils;
 
-namespace api.Devices
+namespace Agrumy.Api.Devices
 {
     /// Builds the DeviceConfig body a Config poll or Register response sends back, shared so GatewayApiController.Batch's Config entries produce byte-for-byte the same response as a direct POST /api/Device/Config.
     public class DeviceConfigBuilder(IRepository repo, FirmwareCatalogService firmwareCatalog)

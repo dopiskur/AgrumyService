@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Tenant facet - lookups, the silent create-on-registration path (see UserApiController.UserRegistration), and Tenant Management CRUD.
     public interface ITenantRepository

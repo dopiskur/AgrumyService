@@ -1,9 +1,10 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IAuditLogRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet.
     internal sealed class EfAuditLogRepository(AgrumyDbContext db) : IAuditLogRepository

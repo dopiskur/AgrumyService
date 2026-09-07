@@ -1,13 +1,13 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Simulation;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Simulation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
-    /// Admin-facing create/list/delete for fully virtual devices - the actual per-tick simulation runs in api.BackgroundWorkers.VirtualDeviceRunnerBackgroundService, not here.
+    /// Admin-facing create/list/delete for fully virtual devices - the actual per-tick simulation runs in Agrumy.Api.BackgroundWorkers.VirtualDeviceRunnerBackgroundService, not here.
     [Route("/api/Simulation")]
     public class SimulationApiController(ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, IHttpClientFactory httpClientFactory) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {

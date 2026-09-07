@@ -1,10 +1,10 @@
-@model api.ViewModels.UnitZonesViewModel
+@model Agrumy.Web.ViewModels.UnitZonesViewModel
 @{
     ViewData["Title"] = Model.Unit.DeviceFarmUnitName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     var renameModel = new InlineRenameViewModel
     {
-        Action = nameof(api.Controllers.View.DeviceFarmUnitController.UnitRename),
+        Action = nameof(Agrumy.Web.Controllers.View.DeviceFarmUnitController.UnitRename),
         IdFieldName = "idDeviceFarmUnit",
         IdValue = Model.Unit.IDDeviceFarmUnit!.Value,
         NameFieldName = "deviceFarmUnitName",

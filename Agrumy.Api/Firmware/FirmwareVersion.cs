@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace api.Firmware
+namespace Agrumy.Api.Firmware
 {
     /// Semver ordering for catalog versions and the release file naming convention, in one place - a string sort would wrongly put "1.10.0" before "1.9.0".
     public readonly partial record struct FirmwareVersion(int Major, int Minor, int Patch, string? PreRelease) : IComparable<FirmwareVersion>

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace api.Security
+namespace Agrumy.Web.Security
 {
     /// Deduplicates concurrent refreshes per stale-refresh-token (not one global lock/slot) - the API's refresh token is single-use, so two callers presenting the same spent token must share one in-flight call, without serializing behind or evicting unrelated users' entries; in-process only, a multi-instance Web deployment would need a distributed lock instead.
     public sealed class RefreshCoordinator

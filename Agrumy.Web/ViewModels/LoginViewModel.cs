@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     public class SetupAdminViewModel
     {

@@ -1,7 +1,7 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// ISensorDataRepository members - forwarded to the standalone EfSensorDataRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository

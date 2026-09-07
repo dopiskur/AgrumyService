@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     /// Turns a Register outcome into the TempData message shown after the redirect, shared by every page that has a Register modal.
     public static class DiscoveryRegisterOutcomeMessage

@@ -1,4 +1,4 @@
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     public enum NotificationSeverity
     {

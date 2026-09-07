@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
-    /// Probes the raw <see cref="IDistributedCache"/> directly, not through <see cref="api.Dal.Interface.ICache"/> which swallows backend exceptions and would hide the failure; a failed round-trip reports Degraded, not Unhealthy.
+    /// Probes the raw <see cref="IDistributedCache"/> directly, not through <see cref="Agrumy.Api.Dal.Interface.ICache"/> which swallows backend exceptions and would hide the failure; a failed round-trip reports Degraded, not Unhealthy.
     internal sealed class CacheHealthCheck(IDistributedCache cache) : IHealthCheck
     {
         private const string ProbeKey = "healthcheck:cache-probe";

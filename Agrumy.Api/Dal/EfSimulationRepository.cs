@@ -1,9 +1,10 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// ISimulationRepository, extracted out of the EfRepository god class (roadmap #246) - the virtual-device registry plus simulation sessions (#403). VirtualDeviceDeleteAsync needs IDeviceRepository (delegates the actual device-row delete to it), an already-extracted facet, so no circular dependency.
     internal sealed class EfSimulationRepository(AgrumyDbContext db, IDeviceRepository deviceRepository) : ISimulationRepository

@@ -1,8 +1,8 @@
 using System.Text.Json;
-using api;
-using api.Dal;
-using api.Dal.Entities;
-using api.Dal.Interface;
+using Agrumy.Dal;
+using Agrumy.Api.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -181,16 +181,16 @@ public class VpdCalculatorTests
 {
     [Fact]
     public void Compute_TemperatureMissing_ReturnsNull() =>
-        Assert.Null(api.Utils.VpdCalculator.Compute(null, 60));
+        Assert.Null(Agrumy.Shared.Utils.VpdCalculator.Compute(null, 60));
 
     [Fact]
     public void Compute_HumidityMissing_ReturnsNull() =>
-        Assert.Null(api.Utils.VpdCalculator.Compute(20, null));
+        Assert.Null(Agrumy.Shared.Utils.VpdCalculator.Compute(20, null));
 
     [Fact]
     public void Compute_20C_60Percent_MatchesTetensFormula()
     {
-        double? vpd = api.Utils.VpdCalculator.Compute(20, 60);
+        double? vpd = Agrumy.Shared.Utils.VpdCalculator.Compute(20, 60);
         Assert.True(vpd.HasValue);
         Assert.True(Math.Abs(vpd!.Value - 0.9353) < 0.001);
     }
@@ -206,7 +206,7 @@ public class TankCalculatorTests
     [InlineData(50.0, 50, 50, 200.0)] // rawEmpty == rawFull - undefined calibration, not a divide-by-zero crash
     public void Compute_MissingCalibrationInput_ReturnsNullPair(double? raw, int? empty, int? full, double? capacity)
     {
-        var (percent, liters) = api.Utils.TankCalculator.Compute(raw, empty, full, capacity);
+        var (percent, liters) = Agrumy.Shared.Utils.TankCalculator.Compute(raw, empty, full, capacity);
         Assert.Null(percent);
         Assert.Null(liters);
     }
@@ -214,7 +214,7 @@ public class TankCalculatorTests
     [Fact]
     public void Compute_Midpoint_Returns50PercentAndHalfCapacity()
     {
-        var (percent, liters) = api.Utils.TankCalculator.Compute(50, 0, 100, 200.0);
+        var (percent, liters) = Agrumy.Shared.Utils.TankCalculator.Compute(50, 0, 100, 200.0);
         Assert.Equal(50.0, percent);
         Assert.Equal(100.0, liters);
     }
@@ -222,7 +222,7 @@ public class TankCalculatorTests
     [Fact]
     public void Compute_BelowEmptyCalibration_ClampsToZero()
     {
-        var (percent, liters) = api.Utils.TankCalculator.Compute(-10, 0, 100, 200.0);
+        var (percent, liters) = Agrumy.Shared.Utils.TankCalculator.Compute(-10, 0, 100, 200.0);
         Assert.Equal(0.0, percent);
         Assert.Equal(0.0, liters);
     }
@@ -230,7 +230,7 @@ public class TankCalculatorTests
     [Fact]
     public void Compute_AboveFullCalibration_ClampsTo100()
     {
-        var (percent, liters) = api.Utils.TankCalculator.Compute(150, 0, 100, 200.0);
+        var (percent, liters) = Agrumy.Shared.Utils.TankCalculator.Compute(150, 0, 100, 200.0);
         Assert.Equal(100.0, percent);
         Assert.Equal(200.0, liters);
     }
@@ -239,7 +239,7 @@ public class TankCalculatorTests
     public void Compute_InvertedCalibration_StillInterpolatesCorrectly()
     {
         // Some raw sensors read HIGHER when the tank is more empty - rawEmpty > rawFull is a valid, deliberately supported calibration.
-        var (percent, liters) = api.Utils.TankCalculator.Compute(75, 100, 0, 200.0);
+        var (percent, liters) = Agrumy.Shared.Utils.TankCalculator.Compute(75, 100, 0, 200.0);
         Assert.Equal(25.0, percent);
         Assert.Equal(50.0, liters);
     }

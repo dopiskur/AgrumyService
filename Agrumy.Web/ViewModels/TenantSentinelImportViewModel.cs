@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     /// LoginController.ImportSentinel's model - no target-name field since AsSentinel always means TenantID=0. Exactly one of ExportFile/ExportJson is expected - LoginController.ImportSentinel enforces that, same reasoning as TenantImportViewModel.
     public class TenantSentinelImportViewModel

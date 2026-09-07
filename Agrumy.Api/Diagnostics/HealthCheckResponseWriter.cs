@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Replaces MapHealthChecks()'s bare status string with per-check detail so a monitor can tell WHICH dependency is degraded.
     internal static class HealthCheckResponseWriter

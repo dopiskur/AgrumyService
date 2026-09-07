@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 
-namespace api.Security
+namespace Agrumy.Api.Security
 {
     /// At-rest encryption for DB-stored secrets (broker/SMTP/WiFi passwords) - Protect on every write, Unprotect on every read.
     public interface ISecretProtector

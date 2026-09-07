@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Allowed cutoffs for data maintenance actions, validated server-side so a hand-crafted API call can't pass an arbitrary value.
     public static class DataMaintenanceThresholds
@@ -22,7 +22,7 @@ namespace api.Models
         public bool ShrinkAfterPurge { get; set; }
     }
 
-    /// Lets Agrumy.Web decide whether to show the MariaDB-only "shrink files on disk?" dialog without the Refit contract needing to know about api.Dal.DbProviderKind.
+    /// Lets Agrumy.Web decide whether to show the MariaDB-only "shrink files on disk?" dialog without the Refit contract needing to know about Agrumy.Dal.DbProviderKind.
     public class DataMaintenanceProviderInfo
     {
         public bool IsMySql { get; set; }

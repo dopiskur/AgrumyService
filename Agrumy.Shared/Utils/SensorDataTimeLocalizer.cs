@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace api.Utils
+namespace Agrumy.Shared.Utils
 {
     /// Display-side companion to TimeZoneHelper for the SensorData JSON payload: dateCreated values are rewritten to the user's zone before the page renders, while the database and API payload stay UTC-only.
     public static class SensorDataTimeLocalizer

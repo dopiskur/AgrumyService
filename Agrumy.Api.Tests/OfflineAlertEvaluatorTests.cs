@@ -1,7 +1,7 @@
-using api.BackgroundWorkers;
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
 using Moq;
 
 namespace Agrumy.Api.Tests;

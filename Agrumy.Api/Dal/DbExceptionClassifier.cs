@@ -1,9 +1,9 @@
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Npgsql;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// Pure exception-to-DbFailureKind mapping, pulled out of EfRepository (roadmap #246) so domain repositories (EfCommandRepository, EfRepository.Devices.Diagnostics.cs) can classify a caught exception without depending on the whole ISystemRepository facet.
     internal static class DbExceptionClassifier

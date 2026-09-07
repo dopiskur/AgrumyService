@@ -1,9 +1,9 @@
-using api.Commands;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Actively (re)connects via IMqttConnectionManager.TestConnectionAsync - MQTT otherwise only connects lazily on the first real command push, so a passive health card would stay blank until then.
     internal sealed class MqttHealthCheck(IServerConfigRepository serverConfigRepo, IMqttConnectionManager mqttConnectionManager) : IHealthCheck

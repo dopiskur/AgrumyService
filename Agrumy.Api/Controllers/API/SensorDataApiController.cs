@@ -1,11 +1,12 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/SensorData")]
     public class SensorDataController(ISensorDataRepository sensorDataRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)

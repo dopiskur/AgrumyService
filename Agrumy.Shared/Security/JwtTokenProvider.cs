@@ -5,7 +5,7 @@ using System.Security.Claims;
 using System.Text;
 
 
-namespace api.Security
+namespace Agrumy.Shared.Security
 {
     public partial class JwtTokenProvider
     {

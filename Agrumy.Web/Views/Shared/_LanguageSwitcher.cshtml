@@ -1,6 +1,6 @@
 @using Microsoft.AspNetCore.Localization
 @{
-    var currentUiCulture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.UICulture.TwoLetterISOLanguageName ?? api.Utils.SupportedCultures.Default;
+    var currentUiCulture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.UICulture.TwoLetterISOLanguageName ?? Agrumy.Web.Utils.SupportedCultures.Default;
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 <form asp-controller="Language" asp-action="Set" method="post" class="d-inline">

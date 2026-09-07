@@ -1,4 +1,4 @@
-namespace api.Security
+namespace Agrumy.Shared.Security
 {
     /// Role catalog; a user can hold several at once. These constants exist so the RoleName strings seeded by the migration and checked in [Authorize(Roles=...)]/CallerHasRole never drift apart by a typo.
     public static class RoleNames

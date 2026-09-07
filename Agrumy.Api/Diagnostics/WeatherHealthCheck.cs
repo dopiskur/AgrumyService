@@ -1,8 +1,8 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Passive - reads WeatherEvaluator's own last-checked timestamp instead of calling OpenWeatherMap again, so refreshing this card never burns extra forecast API quota.
     internal sealed class WeatherHealthCheck(IServerConfigRepository serverConfigRepo) : IHealthCheck

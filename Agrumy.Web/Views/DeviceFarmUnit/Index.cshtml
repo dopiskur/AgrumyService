@@ -1,4 +1,4 @@
-@model api.ViewModels.GroupedUnitCubesViewModel
+@model Agrumy.Web.ViewModels.GroupedUnitCubesViewModel
 @{
     ViewData["Title"] = "Dashboard";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);

@@ -1,4 +1,4 @@
-using api;
+using Agrumy.Shared;
 using Microsoft.Extensions.Configuration;
 
 namespace Agrumy.Api.Tests;

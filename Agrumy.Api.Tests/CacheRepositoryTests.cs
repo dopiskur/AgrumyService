@@ -1,5 +1,5 @@
-using api.Dal;
-using api.Models;
+using Agrumy.Api.Dal;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

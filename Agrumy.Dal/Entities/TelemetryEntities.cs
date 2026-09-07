@@ -1,4 +1,4 @@
-namespace api.Dal.Entities
+namespace Agrumy.Dal.Entities
 {
     public class SensorDataRow
     {
@@ -45,7 +45,7 @@ namespace api.Dal.Entities
         public string? SensorData { get; set; }
     }
 
-    /// Catalog of api.Models.DeviceEventType values, seeded 1:1 from that enum - backs EventDeviceRow.EventID and EventServiceRow.EventID so a future event type has one source of truth instead of a magic-number agreement.
+    /// Catalog of Agrumy.Shared.Models.DeviceEventType values, seeded 1:1 from that enum - backs EventDeviceRow.EventID and EventServiceRow.EventID so a future event type has one source of truth instead of a magic-number agreement.
     public class EventTypeRow
     {
         public int IDEventType { get; set; }

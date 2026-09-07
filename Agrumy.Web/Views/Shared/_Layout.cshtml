@@ -1,4 +1,4 @@
-@inject api.Dal.Interface.IApi Api
+@inject Agrumy.Web.Dal.Interface.IApi Api
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
@@ -19,7 +19,7 @@
             tenantManagementEnabled = serverConfig.TenantManagementEnabled;
             gatewayEnabled = serverConfig.GatewayEnabled;
         }
-        catch (api.Utils.ApiException) { }
+        catch (Agrumy.Web.Utils.ApiException) { }
     }
 
     // Roadmap #408 - "Farm" (singular) until a second one exists, then "Farms" - swallowed on failure same as the GlobalAdmin-only calls above, defaults to singular (the more common case).
@@ -28,7 +28,7 @@
     {
         farmCount = (await Api.DeviceFarmsGet()).Count;
     }
-    catch (api.Utils.ApiException) { }
+    catch (Agrumy.Web.Utils.ApiException) { }
 
     bool canEmergencyStop = hasAnyRole(RoleNames.DeviceManagers);
     bool emergencyStopActive = false;
@@ -38,7 +38,7 @@
         {
             emergencyStopActive = await Api.EmergencyStopStatus();
         }
-        catch (api.Utils.ApiException) { }
+        catch (Agrumy.Web.Utils.ApiException) { }
     }
     string returnUrl = Context.Request.Path + Context.Request.QueryString;
 }

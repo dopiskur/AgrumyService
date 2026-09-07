@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// On-demand counterpart to PeriodicBackgroundService: a controller action enqueues one job and returns immediately (202 Accepted) instead of blocking; singleton so the channel outlives any one request's DI scope.
     public sealed class BackgroundJobQueue

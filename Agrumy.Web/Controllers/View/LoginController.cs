@@ -1,16 +1,17 @@
 using System.Security.Claims;
 using System.Text.Json;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Web.Security;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [AllowAnonymous]
     public class LoginController(IApi api, IAuthApi authApi, ILogger<LoginController> logger) : Controller
@@ -74,7 +75,7 @@ namespace api.Controllers.View
             return RedirectToAction("Index", "DeviceFarmUnit");
         }
 
-        /// Tenant-import counterpart to the login form, reached via the 428 redirect (api.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
+        /// Tenant-import counterpart to the login form, reached via the 428 redirect (Agrumy.Shared.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
         public ActionResult ForceChangePassword()
         {
             return View(new UserForceChangePassword { Login = TempData["ForceChangePasswordLogin"] as string });

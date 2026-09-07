@@ -1,4 +1,4 @@
-﻿namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public class Tenant
     {

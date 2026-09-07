@@ -1,7 +1,7 @@
 using System.Net;
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;

@@ -2,9 +2,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Simulation
+namespace Agrumy.Api.Simulation
 {
     /// Drives one virtual device through the EXACT same HTTP wire protocol a real AgrumyFirmware device uses (Register -> Authenticate -> Config -> SensorData -> ControllerData), against the server's own public address - the device-facing endpoints have no idea the caller isn't real hardware.
     public class VirtualDeviceClient(HttpClient http)

@@ -1,6 +1,7 @@
+using Agrumy.Shared;
 using System.Net.Http.Headers;
 
-namespace api.Firmware
+namespace Agrumy.Api.Firmware
 {
     /// The only thing in the firmware code that touches the network, behind an interface so FirmwareCatalogService is unit-testable with canned GitHub/manifest responses.
     public interface IFirmwareFetcher

@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// One catalog entry: a published build of one version for one board; the newest <see cref="Version"/> per <see cref="Board"/> (semver order) is offered unless <c>Device.FirmwareTargetVersion</c> pins a specific one. Rows with a null Board are legacy, matched by DeviceTypeID instead.
     public class DeviceFirmware

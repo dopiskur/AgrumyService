@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     public class SensorSummaryViewModel
     {

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Agrumy.Gateway registers through the same PIN flow as DeviceRegistration but forwards other devices' traffic instead of reporting its own sensors - Profile picks which mechanism it runs.
     public enum GatewayProfile
@@ -9,7 +9,7 @@ namespace api.Models
         WiFiRepeater = 0,
         /// LoRa gateway: uplinks arrive over ChirpStack MQTT keyed by DevEUI, which Gateway maps to a device's ApiId/ApiKey via GatewayDeviceMapping before forwarding.
         LoRaGateway = 1,
-        /// LoRa gateway, private (non-LoRaWAN) protocol: uplinks arrive over a serial-attached RadioLib radio-frontend board keyed by a 16-bit node address, mapped the same way as LoRaGateway's DevEUI (GatewayDeviceMapping.DevEUI holds the address as a string here) - no ChirpStack/network-server dependency, see api.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
+        /// LoRa gateway, private (non-LoRaWAN) protocol: uplinks arrive over a serial-attached RadioLib radio-frontend board keyed by a 16-bit node address, mapped the same way as LoRaGateway's DevEUI (GatewayDeviceMapping.DevEUI holds the address as a string here) - no ChirpStack/network-server dependency, see Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
         LoRaPrivateProtocol = 2,
     }
 
@@ -80,11 +80,11 @@ namespace api.Models
         public DateTimeOffset? DateCreated { get; set; }
     }
 
-    /// Body of POST /api/Gateway/RelayUplink (roadmap #383) - a WiFi-connected LoRaGatewayEnabled device forwards one raw, already RF-decoded private-protocol frame, letting the server do the SAME address->device resolution + envelope dispatch api.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService does for the serial-bridge path (GatewayDeviceMapping.DevEUI holds the address as a string here too) - "gateway is a transparent forwarder", same principle as Batch/LoRaGatewayBridgeController.
+    /// Body of POST /api/Gateway/RelayUplink (roadmap #383) - a WiFi-connected LoRaGatewayEnabled device forwards one raw, already RF-decoded private-protocol frame, letting the server do the SAME address->device resolution + envelope dispatch Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService does for the serial-bridge path (GatewayDeviceMapping.DevEUI holds the address as a string here too) - "gateway is a transparent forwarder", same principle as Batch/LoRaGatewayBridgeController.
     public class GatewayRelayUplinkRequest
     {
         public ushort SourceAddress { get; set; }
-        /// Base64 of the frame's raw encrypted payload bytes (api.LoRa.LoRaPrivatePayloadCrypto's wire format: counter + AES-256-GCM ciphertext + tag) - untouched by the relaying gateway, which never holds the decryption key. GatewayApiController.RelayUplink decrypts this into the {"t":"sensor","d":[...]} JSON envelope the sensor node actually built (Logic/LoRaPayloadLogic).
+        /// Base64 of the frame's raw encrypted payload bytes (Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto's wire format: counter + AES-256-GCM ciphertext + tag) - untouched by the relaying gateway, which never holds the decryption key. GatewayApiController.RelayUplink decrypts this into the {"t":"sensor","d":[...]} JSON envelope the sensor node actually built (Logic/LoRaPayloadLogic).
         public string Payload { get; set; } = "";
     }
 }

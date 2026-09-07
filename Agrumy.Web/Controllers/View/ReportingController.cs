@@ -1,9 +1,9 @@
-using api.Dal.Interface;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Cross-device list of every SensorDataReport in scope - the per-device Report tab (SensorDataController.Report) covers one device, this is the overview across all of them.
     [Authorize]

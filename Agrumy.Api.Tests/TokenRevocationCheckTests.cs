@@ -1,4 +1,4 @@
-using api.Security;
+using Agrumy.Shared.Security;
 
 namespace Agrumy.Api.Tests;
 

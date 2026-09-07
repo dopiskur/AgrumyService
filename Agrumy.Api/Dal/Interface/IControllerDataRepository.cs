@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Real-time relay on/off state - "/api/ControllerData", parallel to ISensorDataRepository's SensorData push/read but upserted (current state) rather than appended (time series).
     public interface IControllerDataRepository

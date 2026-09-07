@@ -1,6 +1,6 @@
-using api.Dal.Interface;
+using Agrumy.Api.Dal.Interface;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Only terminal (Executed/Expired) deviceCommand rows age out - Pending/Acknowledged rows are never purged regardless of age.
     public sealed class DeviceCommandRetentionEvaluator(ICommandRepository commandRepo)

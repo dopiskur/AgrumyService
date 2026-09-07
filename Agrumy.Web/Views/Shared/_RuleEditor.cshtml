@@ -1,57 +1,57 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.Html
-@model api.ViewModels.RuleEditorViewModel
+@model Agrumy.Web.ViewModels.RuleEditorViewModel
 @{
     // Roadmap #396(4): recursive ConditionNode tree (replaces the old flat conditions[]+ops[] fold),
     // Name/Description/IsSafetyRule per rule - shared across the Zone page, the Unit/Farm "Rules"
     // tabs, and the tenant-wide Global Rules page.
-    var relayRules = Model.Rules.Where(r => r.ActionType == api.Models.ActionType.Relay).ToList();
-    var notificationRules = Model.Rules.Where(r => r.ActionType == api.Models.ActionType.Notification).ToList();
+    var relayRules = Model.Rules.Where(r => r.ActionType == Agrumy.Shared.Models.ActionType.Relay).ToList();
+    var notificationRules = Model.Rules.Where(r => r.ActionType == Agrumy.Shared.Models.ActionType.Notification).ToList();
     var rulesByFunction = relayRules.GroupBy(r => r.RelayFunction!.Value).ToDictionary(g => g.Key, g => g.ToList());
 
-    (api.Models.RelayFunction Value, string Label)[] functions =
+    (Agrumy.Shared.Models.RelayFunction Value, string Label)[] functions =
     [
-        (api.Models.RelayFunction.Ventilation, "Ventilation"),
-        (api.Models.RelayFunction.Light, "Light"),
-        (api.Models.RelayFunction.Heating, "Heating"),
-        (api.Models.RelayFunction.WaterPump, "Water pump"),
+        (Agrumy.Shared.Models.RelayFunction.Ventilation, "Ventilation"),
+        (Agrumy.Shared.Models.RelayFunction.Light, "Light"),
+        (Agrumy.Shared.Models.RelayFunction.Heating, "Heating"),
+        (Agrumy.Shared.Models.RelayFunction.WaterPump, "Water pump"),
     ];
-    (api.Models.SensorMetric Value, string Label)[] metrics =
+    (Agrumy.Shared.Models.SensorMetric Value, string Label)[] metrics =
     [
-        (api.Models.SensorMetric.Temperature, "Temperature"), (api.Models.SensorMetric.SoilTemperature, "SoilTemperature"),
-        (api.Models.SensorMetric.Humidity, "Humidity"), (api.Models.SensorMetric.Vpd, "Vpd"),
-        (api.Models.SensorMetric.DewPoint, "DewPoint"), (api.Models.SensorMetric.DewPointSpread, "DewPointSpread"),
-        (api.Models.SensorMetric.Moisture, "Moisture"), (api.Models.SensorMetric.Light, "Light"),
-        (api.Models.SensorMetric.Co2, "Co2"), (api.Models.SensorMetric.Tvoc, "Tvoc"),
-        (api.Models.SensorMetric.Barometer, "Barometer"), (api.Models.SensorMetric.LiquidPH, "LiquidPH"),
-        (api.Models.SensorMetric.RainLevel, "RainLevel"), (api.Models.SensorMetric.WaterLevel, "WaterLevel"),
-        (api.Models.SensorMetric.Wind, "Wind"),
-        (api.Models.SensorMetric.Ec, "Ec"), (api.Models.SensorMetric.Weight, "Weight"),
+        (Agrumy.Shared.Models.SensorMetric.Temperature, "Temperature"), (Agrumy.Shared.Models.SensorMetric.SoilTemperature, "SoilTemperature"),
+        (Agrumy.Shared.Models.SensorMetric.Humidity, "Humidity"), (Agrumy.Shared.Models.SensorMetric.Vpd, "Vpd"),
+        (Agrumy.Shared.Models.SensorMetric.DewPoint, "DewPoint"), (Agrumy.Shared.Models.SensorMetric.DewPointSpread, "DewPointSpread"),
+        (Agrumy.Shared.Models.SensorMetric.Moisture, "Moisture"), (Agrumy.Shared.Models.SensorMetric.Light, "Light"),
+        (Agrumy.Shared.Models.SensorMetric.Co2, "Co2"), (Agrumy.Shared.Models.SensorMetric.Tvoc, "Tvoc"),
+        (Agrumy.Shared.Models.SensorMetric.Barometer, "Barometer"), (Agrumy.Shared.Models.SensorMetric.LiquidPH, "LiquidPH"),
+        (Agrumy.Shared.Models.SensorMetric.RainLevel, "RainLevel"), (Agrumy.Shared.Models.SensorMetric.WaterLevel, "WaterLevel"),
+        (Agrumy.Shared.Models.SensorMetric.Wind, "Wind"),
+        (Agrumy.Shared.Models.SensorMetric.Ec, "Ec"), (Agrumy.Shared.Models.SensorMetric.Weight, "Weight"),
     ];
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-    string SummarizeTree(api.Models.ConditionNode? node)
+    string SummarizeTree(Agrumy.Shared.Models.ConditionNode? node)
     {
         if (node == null) { return "?"; }
         string body = node.Type switch
         {
-            api.Models.NodeType.Comparison => $"{node.Metric} {OpSymbol(node.Operator)} {node.Value1:0.##}{(node.Operator == api.Models.ComparisonOperator.Between ? $"-{node.Value2:0.##}" : "")}{(node.Hysteresis is > 0 ? $" (hyst {node.Hysteresis:0.##})" : "")}",
-            api.Models.NodeType.Interval => $"on {node.IntervalLength}s / every {node.Interval}s",
-            api.Models.NodeType.Schedule => ScheduleText(node.DaysOfWeek, node.Start, node.Duration),
-            api.Models.NodeType.Astronomical => $"sunrise {node.SunriseOffsetMinutes:+#;-#;0}min / sunset {node.SunsetOffsetMinutes:+#;-#;0}min",
-            api.Models.NodeType.RuleTriggered => $"rule #{node.ReferencedRuleId} fired",
-            api.Models.NodeType.RateOfChange => $"{node.Metric} changes by &gt;={node.ChangeThreshold:0.##} vs {node.WindowHours}h ago",
-            api.Models.NodeType.DifDisruption => $"day-night dif &lt; {node.MinDifDegrees:0.##}&deg; (night {node.NightWindowHours}h vs day {node.DayWindowHours}h before it)",
-            api.Models.NodeType.Group => "(" + string.Join($" {node.GroupOperator} ", node.Children.Select(SummarizeTree)) + ")",
+            Agrumy.Shared.Models.NodeType.Comparison => $"{node.Metric} {OpSymbol(node.Operator)} {node.Value1:0.##}{(node.Operator == Agrumy.Shared.Models.ComparisonOperator.Between ? $"-{node.Value2:0.##}" : "")}{(node.Hysteresis is > 0 ? $" (hyst {node.Hysteresis:0.##})" : "")}",
+            Agrumy.Shared.Models.NodeType.Interval => $"on {node.IntervalLength}s / every {node.Interval}s",
+            Agrumy.Shared.Models.NodeType.Schedule => ScheduleText(node.DaysOfWeek, node.Start, node.Duration),
+            Agrumy.Shared.Models.NodeType.Astronomical => $"sunrise {node.SunriseOffsetMinutes:+#;-#;0}min / sunset {node.SunsetOffsetMinutes:+#;-#;0}min",
+            Agrumy.Shared.Models.NodeType.RuleTriggered => $"rule #{node.ReferencedRuleId} fired",
+            Agrumy.Shared.Models.NodeType.RateOfChange => $"{node.Metric} changes by &gt;={node.ChangeThreshold:0.##} vs {node.WindowHours}h ago",
+            Agrumy.Shared.Models.NodeType.DifDisruption => $"day-night dif &lt; {node.MinDifDegrees:0.##}&deg; (night {node.NightWindowHours}h vs day {node.DayWindowHours}h before it)",
+            Agrumy.Shared.Models.NodeType.Group => "(" + string.Join($" {node.GroupOperator} ", node.Children.Select(SummarizeTree)) + ")",
             _ => "?",
         };
         return $"<span class=\"badge text-bg-secondary me-1\">{node.Type}</span>{body}";
     }
-    string OpSymbol(api.Models.ComparisonOperator? op) => op switch
+    string OpSymbol(Agrumy.Shared.Models.ComparisonOperator? op) => op switch
     {
-        api.Models.ComparisonOperator.GreaterThan => ">", api.Models.ComparisonOperator.LessThan => "<",
-        api.Models.ComparisonOperator.GreaterThanOrEqual => ">=", api.Models.ComparisonOperator.LessThanOrEqual => "<=",
-        api.Models.ComparisonOperator.Equal => "=", api.Models.ComparisonOperator.Between => "between",
+        Agrumy.Shared.Models.ComparisonOperator.GreaterThan => ">", Agrumy.Shared.Models.ComparisonOperator.LessThan => "<",
+        Agrumy.Shared.Models.ComparisonOperator.GreaterThanOrEqual => ">=", Agrumy.Shared.Models.ComparisonOperator.LessThanOrEqual => "<=",
+        Agrumy.Shared.Models.ComparisonOperator.Equal => "=", Agrumy.Shared.Models.ComparisonOperator.Between => "between",
         _ => "?",
     };
     string ScheduleText(int? daysOfWeek, int? start, int? duration)
@@ -61,7 +61,7 @@
         return $"{s / 3600:00}:{s % 3600 / 60:00}-{end / 3600:00}:{end % 3600 / 60:00}, days 0b{Convert.ToString(daysOfWeek ?? 0, 2).PadLeft(7, '0')}";
     }
 
-    IHtmlContent TreeBuilder(string idSuffix, bool isNotification, IList<api.Models.DeviceFarmUnitZoneRule> referenceable)
+    IHtmlContent TreeBuilder(string idSuffix, bool isNotification, IList<Agrumy.Shared.Models.DeviceFarmUnitZoneRule> referenceable)
     {
         string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label }), jsonOpts).Replace("\"", "&quot;");
         string rulesJson = JsonSerializer.Serialize(referenceable.Select(r => new { id = r.IDDeviceFarmUnitZoneRule, name = r.Name }), jsonOpts).Replace("\"", "&quot;");
@@ -129,7 +129,7 @@
                         {
                             <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
                         }
-                        <input type="hidden" name="ActionType" value="@((int)api.Models.ActionType.Relay)" />
+                        <input type="hidden" name="ActionType" value="@((int)Agrumy.Shared.Models.ActionType.Relay)" />
                         <input type="hidden" name="RelayFunction" value="@((int)function)" />
                         <div class="row g-2 mb-2">
                             <div class="col-auto">
@@ -204,7 +204,7 @@
                 {
                     <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
                 }
-                <input type="hidden" name="ActionType" value="@((int)api.Models.ActionType.Notification)" />
+                <input type="hidden" name="ActionType" value="@((int)Agrumy.Shared.Models.ActionType.Notification)" />
                 <div class="row g-2 mb-2">
                     <div class="col-auto">
                         <label class="form-label small mb-0">Name</label>

@@ -1,4 +1,4 @@
-namespace api.Dal.Entities
+namespace Agrumy.Dal.Entities
 {
     /// TenantID null means the shared global sentinel row (IDDeviceFarmUnit=0 "Default", see EfRepository.SeedDeviceFarmUnitSentinelsAsync), not a real per-tenant Unit.
     /// Roadmap #384 - top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
@@ -39,29 +39,29 @@ namespace api.Dal.Entities
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
-        // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation.
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation.
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }
 
-        // See api.Models.DeviceFarmUnitZone.SkipWaterPumpWhenRainPredicted.
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone.SkipWaterPumpWhenRainPredicted.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
-        // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #234).
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #234).
         public double? TankCapacityLiters { get; set; }
         public int? WaterLevelRawEmpty { get; set; }
         public int? WaterLevelRawFull { get; set; }
         public DateTimeOffset? TankRefillNotifiedAt { get; set; }
         public double? WaterPumpMinLevel { get; set; }
 
-        // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
 
-        // See api.Models.DeviceFarmUnitZone.DashboardWidgets (roadmap #238) - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone.DashboardWidgets (roadmap #238) - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
         public string? DashboardWidgetsJson { get; set; }
     }
 
-    /// See api.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree (roadmap #396(4)), (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
+    /// See Agrumy.Shared.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree (roadmap #396(4)), (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
     public class DeviceFarmUnitZoneRuleRow
     {
         public int IDDeviceFarmUnitZoneRule { get; set; }
@@ -80,7 +80,7 @@ namespace api.Dal.Entities
         public string? NotificationBody { get; set; }
     }
 
-    /// Per-(rule, zone) dedup latch for api.BackgroundWorkers.RuleNotificationEvaluator - a rule scoped above Zone level is evaluated independently against every zone it reaches, so the "already notified, don't re-fire every tick" state is keyed per zone, not just per rule.
+    /// Per-(rule, zone) dedup latch for Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator - a rule scoped above Zone level is evaluated independently against every zone it reaches, so the "already notified, don't re-fire every tick" state is keyed per zone, not just per rule.
     public class RuleNotificationStateRow
     {
         public int IDRuleNotificationState { get; set; }
@@ -146,7 +146,7 @@ namespace api.Dal.Entities
         public double? WaterLow { get; set; }
         public double? WaterHigh { get; set; }
 
-        // Hysteresis (dead zone) margins - see api.Models.DeviceConfigController.
+        // Hysteresis (dead zone) margins - see Agrumy.Shared.Models.DeviceConfigController.
         public double? WaterLevelHysteresis { get; set; }
         public double? TemperatureHysteresis { get; set; }
         public double? HumidityHysteresis { get; set; }
@@ -166,7 +166,7 @@ namespace api.Dal.Entities
         public int? WaterPumpInterval { get; set; } = 0;
         public int? WaterPumpIntervalLength { get; set; } = 0;
 
-        // See api.Models.DeviceConfigController.WaterPumpMaxRunSeconds/WaterPumpCooldownSeconds.
+        // See Agrumy.Shared.Models.DeviceConfigController.WaterPumpMaxRunSeconds/WaterPumpCooldownSeconds.
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }
 
@@ -196,7 +196,7 @@ namespace api.Dal.Entities
     {
         public int IDDeviceConfigSensor { get; set; }
         public int? SensorBattery { get; set; }
-        // See api.Models.DeviceConfigSensor.BatteryDividerR1/R2.
+        // See Agrumy.Shared.Models.DeviceConfigSensor.BatteryDividerR1/R2.
         public double? BatteryDividerR1 { get; set; }
         public double? BatteryDividerR2 { get; set; }
         public int? SensorTemp { get; set; }
@@ -251,7 +251,7 @@ namespace api.Dal.Entities
         public int IDSimulationSession { get; set; }
         public int TenantID { get; set; }
         public string? Name { get; set; }
-        // Nullable now, see api.Models.SimulationSession's own copy for the full explanation.
+        // Nullable now, see Agrumy.Shared.Models.SimulationSession's own copy for the full explanation.
         public DateTimeOffset? StartedAtUtc { get; set; }
         public DateTimeOffset? ExpiresAtUtc { get; set; }
         public DateTimeOffset? StoppedAtUtc { get; set; }
@@ -285,7 +285,7 @@ namespace api.Dal.Entities
         public string? ServicePublicKey { get; set; }
         public int? SleepSeconds { get; set; }
         public bool? SleepDeepEnabled { get; set; }
-        // Roadmap #383 - see api.Models.Device.LoRaGatewayEnabled.
+        // Roadmap #383 - see Agrumy.Shared.Models.Device.LoRaGatewayEnabled.
         public bool? LoRaGatewayEnabled { get; set; }
         public bool? DeviceSensorEnabled { get; set; }
         public bool? DeviceControllerEnabled { get; set; }
@@ -295,16 +295,16 @@ namespace api.Dal.Entities
         public bool? Reboot { get; set; }
         public bool? Reset { get; set; }
         public bool? FirmwareUpdate { get; set; }
-        public string? FirmwareTargetVersion { get; set; } // See api.Models.Device.FirmwareTargetVersion.
+        public string? FirmwareTargetVersion { get; set; } // See Agrumy.Shared.Models.Device.FirmwareTargetVersion.
         public int? ConfigVersion { get; set; }
-        public int CommandVersion { get; set; } // See api.Models.DeviceConfig.CommandVersion.
+        public int CommandVersion { get; set; } // See Agrumy.Shared.Models.DeviceConfig.CommandVersion.
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
 
         public bool IsGateway { get; set; }
         public int? GatewayProfile { get; set; }
 
-        public DateTimeOffset? LastFullConfigSentAt { get; set; } // See api.Models.Device.LastFullConfigSentAt.
+        public DateTimeOffset? LastFullConfigSentAt { get; set; } // See Agrumy.Shared.Models.Device.LastFullConfigSentAt.
 
         // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
@@ -336,7 +336,7 @@ namespace api.Dal.Entities
         public DateTimeOffset DateReported { get; set; }
     }
 
-    /// One discrete, one-shot device action - see api.Models.CommandStatus for why Acknowledged is a real, persisted state.
+    /// One discrete, one-shot device action - see Agrumy.Shared.Models.CommandStatus for why Acknowledged is a real, persisted state.
     public class DeviceCommandRow
     {
         public int IDDeviceCommand { get; set; }
@@ -377,8 +377,8 @@ namespace api.Dal.Entities
         public DateTimeOffset? OfflineNotifiedAt { get; set; } // When OfflineAlertBackgroundService last notified admins about the device's current offline streak; one notification per streak, not per tick.
         public DateTimeOffset? LowBatteryNotifiedAt { get; set; } // Same dedup-by-streak rule as OfflineNotifiedAt, but for LowBatteryAlertEvaluator.
         public string? FirmwareVersion { get; set; }
-        public string? Board { get; set; } // See api.Models.DeviceConfigPoll.Board.
-        // Real FK to deviceType.IDDeviceType, resolved from the firmware-reported Kit string (api.Models.DeviceConfigPoll.Kit) by DeviceDiagnosticUpsertAsync - the wire protocol still carries a string, only storage is numeric.
+        public string? Board { get; set; } // See Agrumy.Shared.Models.DeviceConfigPoll.Board.
+        // Real FK to deviceType.IDDeviceType, resolved from the firmware-reported Kit string (Agrumy.Shared.Models.DeviceConfigPoll.Kit) by DeviceDiagnosticUpsertAsync - the wire protocol still carries a string, only storage is numeric.
         public int? DeviceTypeID { get; set; }
     }
 
@@ -391,7 +391,7 @@ namespace api.Dal.Entities
         public string? PinoutJson { get; set; }
     }
 
-    // Board/Source/FileName/SizeBytes/Sha256/PublishedAt - see api.Models.DeviceFirmware for what each means; DeviceTypeID is the legacy key.
+    // Board/Source/FileName/SizeBytes/Sha256/PublishedAt - see Agrumy.Shared.Models.DeviceFirmware for what each means; DeviceTypeID is the legacy key.
     public class DeviceFirmwareRow
     {
         public int IDDeviceFirmware { get; set; }
@@ -406,7 +406,7 @@ namespace api.Dal.Entities
         public DateTimeOffset? PublishedAt { get; set; }
         public DateTimeOffset? DateAdded { get; set; }
 
-        // See api.Models.DeviceFirmware's own copy of these for the full explanation.
+        // See Agrumy.Shared.Models.DeviceFirmware's own copy of these for the full explanation.
         public string? FullImageFileName { get; set; }
         public string? FullImageUrl { get; set; }
         public long? FullImageSizeBytes { get; set; }

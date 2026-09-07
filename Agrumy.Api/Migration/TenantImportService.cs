@@ -1,9 +1,9 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Migration
+namespace Agrumy.Api.Migration
 {
-    /// Applies a TenantExport to this server (see api.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
+    /// Applies a TenantExport to this server (see Agrumy.Shared.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
     public class TenantImportService(IRepository repo)
     {
         /// ByName: ties to an existing tenant with this exact name, or creates one; GlobalAdmin-only at the controller layer.
@@ -69,7 +69,7 @@ namespace api.Migration
                     Enabled = eu.User.Enabled,
                     EmailVerified = eu.User.EmailVerified,
                     TimeZone = eu.User.TimeZone,
-                    // Portable hash, unproven identity on THIS server - see api.Models.User.MustChangePassword.
+                    // Portable hash, unproven identity on THIS server - see Agrumy.Shared.Models.User.MustChangePassword.
                     MustChangePassword = true,
                 };
                 await repo.UserAddAsync(newUser, new UserSecret { PwdHash = eu.PwdHash, PwdSalt = eu.PwdSalt });

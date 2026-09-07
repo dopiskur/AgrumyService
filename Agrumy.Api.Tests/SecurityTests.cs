@@ -2,9 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using api;
-using api.Security;
-using api.Utils;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Utils;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 

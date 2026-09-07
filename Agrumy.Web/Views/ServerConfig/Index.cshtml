@@ -1,4 +1,4 @@
-@model api.Models.ServerConfig
+@model Agrumy.Shared.Models.ServerConfig
 
 @{
     ViewData["Title"] = "Server Settings";
@@ -462,7 +462,7 @@
                     </div>
                     <div class="mb-3" style="max-width:20rem">
                         <label asp-for="GatewayMode" class="form-label"></label>
-                        <select asp-for="GatewayMode" class="form-select" asp-items="Html.GetEnumSelectList<api.Models.GatewayMode>()"></select>
+                        <select asp-for="GatewayMode" class="form-select" asp-items="Html.GetEnumSelectList<Agrumy.Shared.Models.GatewayMode>()"></select>
                         <div class="form-text">
                             Realtime forwards every entry immediately. Aggregated holds entries up to
                             the wait window below before flushing as one batch - only meaningful for

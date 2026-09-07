@@ -1,19 +1,20 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Commands;
-using api.Dal.Interface;
-using api.Devices;
-using api.Firmware;
-using api.LoRa;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.LoRa;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
-    /// Agrumy.Gateway's own endpoints - a gateway is a device row like any other (see api.Models.Device.IsGateway) that authenticates the same way (DeviceAuth.ApiKeyPolicy, its own apiId/apiKey), just forwarding OTHER devices' traffic through Batch instead of reporting its own sensors.
+    /// Agrumy.Gateway's own endpoints - a gateway is a device row like any other (see Agrumy.Shared.Models.Device.IsGateway) that authenticates the same way (DeviceAuth.ApiKeyPolicy, its own apiId/apiKey), just forwarding OTHER devices' traffic through Batch instead of reporting its own sensors.
     [Route("/api/Gateway")]
     public class GatewayApiController(
         IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, ISensorDataRepository sensorDataRepo, IGatewayRepository gatewayRepo,

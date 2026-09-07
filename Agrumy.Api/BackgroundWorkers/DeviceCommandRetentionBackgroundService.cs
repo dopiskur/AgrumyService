@@ -1,4 +1,4 @@
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Thin PeriodicBackgroundService wrapper - the actual logic lives in DeviceCommandRetentionEvaluator, kept separate for testability.
     public sealed class DeviceCommandRetentionBackgroundService(

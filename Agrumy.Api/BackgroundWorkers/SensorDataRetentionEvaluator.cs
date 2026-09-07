@@ -1,8 +1,8 @@
-using api.Dal;
-using api.Dal.Interface;
+using Agrumy.Dal;
+using Agrumy.Api.Dal.Interface;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// MariaDB/MySQL has no add_retention_policy equivalent, so this daily-DELETEs past the cutoff (no OPTIMIZE TABLE - too expensive to run unattended); no-ops on Postgres, where ApplyRetentionPolicyAsync handles it instead.
     public sealed class SensorDataRetentionEvaluator(

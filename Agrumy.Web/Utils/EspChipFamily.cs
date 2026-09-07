@@ -1,4 +1,4 @@
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     internal static class EspChipFamily
     {

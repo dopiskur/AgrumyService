@@ -1,6 +1,6 @@
-using api.Dal.Interface;
-using api.Devices;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Shared.Models;
 using Moq;
 
 namespace Agrumy.Api.Tests;

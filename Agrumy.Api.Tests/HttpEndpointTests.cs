@@ -1,13 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
-using api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Agrumy.Api.Tests;
 
 /// Drives the real HTTP middleware pipeline (auth, rate limiting, exception handling) end-to-end instead of unit-testing the pieces in isolation - see roadmap #315.
-public sealed class ApiWebApplicationFactory : WebApplicationFactory<api.ApiHostMarker>
+public sealed class ApiWebApplicationFactory : WebApplicationFactory<Agrumy.Api.ApiHostMarker>
 {
     // This factory's own Program.cs run reads these via env vars below - no shared static state with TestConfig/other test classes to race under xUnit's parallel execution (roadmap #397(3) removed the static Config bridge JwtTokenProvider used to depend on).
     public const string SigningKey = "unit-test-signing-key-not-a-secret-0123456789ABCDEF";

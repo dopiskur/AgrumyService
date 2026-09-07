@@ -1,8 +1,8 @@
 using System.IO.Compression;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Http;
 
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     /// Shared by TenantController.Import and LoginController.ImportSentinel - unpacks the ZIP TenantExportService.BuildExportZipAsync produces (Agrumy.Web has no reference to Agrumy.Api, so the unpacking lives here instead).
     public static class TenantExportZipReader

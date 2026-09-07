@@ -1,11 +1,11 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
-using api.Utils;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
+using Agrumy.Shared.Utils;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A calibrated zone's fill percent (api.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
+    /// A calibrated zone's fill percent (Agrumy.Shared.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
     public sealed class TankRefillAlertEvaluator(
         IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {

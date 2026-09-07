@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IUserRepository role members - forwarded to the standalone EfUserRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository

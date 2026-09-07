@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Models;
+using Agrumy.Shared.Models;
 using Json.Schema;
 
 namespace Agrumy.Api.Tests;

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     public class SelectFieldViewModel
     {

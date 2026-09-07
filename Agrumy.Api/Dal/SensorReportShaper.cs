@@ -1,8 +1,8 @@
 using System.Text.Json;
-using api.Dal.Entities;
-using api.Utils;
+using Agrumy.Dal.Entities;
+using Agrumy.Shared.Utils;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// Time-bucket grouping and JSON assembly only (the caller does the row filter) - timeMDMY buckets: 0=minute, 1=hour, 2/3=day; one row per bucket, pinned to latest by DateCreated.
     internal static class SensorReportShaper

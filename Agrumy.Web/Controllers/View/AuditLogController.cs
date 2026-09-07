@@ -1,11 +1,11 @@
 using System.Text;
-using api.Dal.Interface;
-using api.Security;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Security;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Read-only - the API itself already scopes the result to the caller's tenant (or every tenant for a Global admin), nothing further to decide here.
     [Authorize(Roles = RoleNames.Admins)]

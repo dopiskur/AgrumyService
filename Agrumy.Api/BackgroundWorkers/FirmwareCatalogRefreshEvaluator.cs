@@ -1,9 +1,10 @@
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
+using Agrumy.Shared;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Options;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Periodically re-syncs the firmware catalog from its active source, same fixed-tick/live-reread-interval pattern as WeatherEvaluator.
     public sealed class FirmwareCatalogRefreshEvaluator(

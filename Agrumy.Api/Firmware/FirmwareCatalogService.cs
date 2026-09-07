@@ -1,10 +1,10 @@
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Firmware
+namespace Agrumy.Api.Firmware
 {
     /// Business logic over the deviceFirmware catalog: active source, Local repository population (GitHub pull, directory import, manual upload), GitHub/Custom-manifest reads, and per-device offer resolution.
     public sealed class FirmwareCatalogService(

@@ -1,4 +1,4 @@
-﻿namespace api.Security
+﻿namespace Agrumy.Shared.Security
 {
     public class PasswordHash
     {

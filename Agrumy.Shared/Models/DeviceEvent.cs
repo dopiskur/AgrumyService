@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public enum DeviceEventType
     {
@@ -31,7 +31,7 @@ namespace api.Models
         LoRaHardwareNotDetected = 18,
     }
 
-    /// Body of POST /api/Device/Event; deliberately has no device/tenant identity field — the caller's apiId (see api.Security.DeviceAuth) is the only trusted source for that.
+    /// Body of POST /api/Device/Event; deliberately has no device/tenant identity field — the caller's apiId (see Agrumy.Api.Security.DeviceAuth) is the only trusted source for that.
     public class DeviceEventPush
     {
         public string? EventType { get; set; }

@@ -1,9 +1,10 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Weather;
+using Agrumy.Shared;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Weather;
 using Microsoft.Extensions.Options;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Computes the install-wide ServerConfig.WeatherRainPredicted flag; BuildDeviceConfigAsync combines it with each zone's own opt-in into the per-device veto.
     public sealed class WeatherEvaluator(

@@ -1,11 +1,11 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Alerts settings, split out of Server Settings into their own sidebar page (roadmap #338) -
     /// still the same ServerConfig model/endpoint, just a different View surfacing a different

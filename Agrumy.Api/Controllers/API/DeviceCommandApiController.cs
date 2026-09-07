@@ -1,13 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Commands;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Issues a device command, resolved/fanned-out server-side by CommandQueueService - ownership checks reuse ApiControllerBase.EnsureOwnedDeviceEntityAsync, always as a write since issuing a command is never a read-only action.
     [Route("/api/DeviceCommand")]
@@ -65,7 +65,7 @@ namespace api.Controllers.API
             return Ok(command);
         }
 
-        /// ProvisionDevice/UpdateWifiCredentials payloads carry a WiFi password, registration PIN, and username in plaintext (see api.Models.DiscoveryProvisionPayload/WifiUpdatePayload) - fully redacted here, not partially masked like ServiceController::maskSecret does for apiKey, since a password must never have any real character visible. Null on a non-JSON or non-sensitive payload (plain Reboot/ForceOTA commands carry none) so those pass through unchanged.
+        /// ProvisionDevice/UpdateWifiCredentials payloads carry a WiFi password, registration PIN, and username in plaintext (see Agrumy.Shared.Models.DiscoveryProvisionPayload/WifiUpdatePayload) - fully redacted here, not partially masked like ServiceController::maskSecret does for apiKey, since a password must never have any real character visible. Null on a non-JSON or non-sensitive payload (plain Reboot/ForceOTA commands carry none) so those pass through unchanged.
         private static string? MaskSensitivePayload(string? payload)
         {
             if (string.IsNullOrEmpty(payload))

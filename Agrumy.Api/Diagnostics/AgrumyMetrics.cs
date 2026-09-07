@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     public sealed record RouteMetricsSnapshot(string Route, string Method, long RequestCount, long ErrorCount, double AvgDurationMs, double MinDurationMs, double MaxDurationMs);
 

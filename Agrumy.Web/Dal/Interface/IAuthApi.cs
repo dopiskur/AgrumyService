@@ -1,7 +1,7 @@
-using api.Models;
+using Agrumy.Shared.Models;
 using Refit;
 
-namespace api.Dal.Interface
+namespace Agrumy.Web.Dal.Interface
 {
     // Deliberately registered WITHOUT BearerTokenHandler - routing through it here would recurse back into itself.
     public interface IAuthApi

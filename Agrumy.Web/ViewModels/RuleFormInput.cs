@@ -1,11 +1,11 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     /// Bound from DeviceFarmUnitController's RuleAdd/UnitRuleAdd/GlobalRuleAdd forms (roadmap #396(4)) - RootConditionJson is the whole ConditionNode tree, built client-side by wwwroot/js/rule-builder.js and serialized into one hidden field on submit, deserialized server-side with ConditionConfigJson.Options. A JS-free fallback isn't attempted (the old per-slot form couldn't express real nesting anyway).
     public class RuleFormInput
     {
-        public ActionType ActionType { get; set; } = api.Models.ActionType.Relay;
+        public ActionType ActionType { get; set; } = Agrumy.Shared.Models.ActionType.Relay;
         public RelayFunction? RelayFunction { get; set; }
         public string Name { get; set; } = "";
         public string? Description { get; set; }

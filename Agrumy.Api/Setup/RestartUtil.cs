@@ -1,4 +1,4 @@
-namespace api.Setup
+namespace Agrumy.Api.Setup
 {
     /// Generic self-restart: stops this process cleanly and lets whatever supervises it bring it back up; never calls systemctl/docker directly since deploy accounts have no sudo.
     internal static class RestartUtil

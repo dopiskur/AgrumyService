@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Utils
+namespace Agrumy.Api.Utils
 {
     /// Pure computation of SensorDataArchiveEvaluator's cutoff (roadmap #209) - rows with DateCreated strictly before the result move to the archive database. Kept separate from the evaluator so the three modes are testable without a database.
     public static class ArchiveCutoffCalculator

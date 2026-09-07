@@ -1,4 +1,4 @@
-using api.Firmware;
+using Agrumy.Api.Firmware;
 
 namespace Agrumy.Api.Tests;
 

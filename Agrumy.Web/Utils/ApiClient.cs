@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Refit;
 
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     /// Raised when Agrumy.Api answers a call from the web app with a non-success status.
     public sealed class ApiException(int statusCode, string body, bool isAuthChallenge = false)
@@ -16,7 +16,7 @@ namespace api.Utils
         public bool IsAuthChallenge { get; } = isAuthChallenge;
     }
 
-    /// Refit configuration for the <see cref="api.Dal.Interface.IApi"/> client.
+    /// Refit configuration for the <see cref="Agrumy.Web.Dal.Interface.IApi"/> client.
     public static class RefitConfig
     {
         public static readonly RefitSettings Settings = new()

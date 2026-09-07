@@ -1,11 +1,11 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
-using api.LoRa;
+using Agrumy.Shared.LoRa;
 
 namespace Agrumy.Api.Tests;
 
-/// Covers api.LoRa.LoRaPrivatePayloadCrypto.Decrypt against ciphertext built the same way AgrumyFirmware's
+/// Covers Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto.Decrypt against ciphertext built the same way AgrumyFirmware's
 /// LoRaPrivateController will (AES-256-GCM, nonce = 4 zero bytes + 8-byte big-endian counter) - the actual
 /// over-the-air round trip is untestable without hardware, same status as MqttCommandPublisherTests' own network call.
 public class LoRaPrivatePayloadCryptoTests

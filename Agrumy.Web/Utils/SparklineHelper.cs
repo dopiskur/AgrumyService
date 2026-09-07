@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     /// Roadmap #238 - builds an SVG &lt;polyline&gt; points attribute from a 24-bucket trend array, no charting library needed for a widget this small. Null buckets (no reading that hour) are simply skipped, leaving a gap rather than interpolating a fake value.
     public static class SparklineHelper

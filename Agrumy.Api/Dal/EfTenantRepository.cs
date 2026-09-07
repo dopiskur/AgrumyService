@@ -1,10 +1,11 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// ITenantRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain.
     internal sealed class EfTenantRepository(AgrumyDbContext db, ISecretProtector secretProtector) : ITenantRepository

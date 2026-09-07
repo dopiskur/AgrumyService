@@ -1,9 +1,9 @@
 using System.Net.Http.Json;
-using api.Models;
-using api.Gateway.Registration;
+using Agrumy.Shared.Models;
+using Agrumy.Gateway.Registration;
 using Microsoft.Extensions.Options;
 
-namespace api.Gateway
+namespace Agrumy.Gateway
 {
     /// AgrumyService rate-limited this gateway's own Batch call (many devices share one egress IP) - carries RetryAfterSeconds so ProfileAEndpoints can turn this into a "Wait" response on the device's own config-poll instead of masking it as a generic failure.
     public class GatewayRateLimitedException(int retryAfterSeconds) : Exception

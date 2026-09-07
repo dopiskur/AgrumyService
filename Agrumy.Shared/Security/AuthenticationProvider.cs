@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace api.Security
+namespace Agrumy.Shared.Security
 {
     public class AuthenticationProvider
     {
@@ -93,6 +93,6 @@ namespace api.Security
             return CryptographicOperations.FixedTimeEquals(storedBytes, computedBytes);
         }
 
-        // Device apiId/apiKey verification lives in api.Security.DeviceAuth (Agrumy.Api) since it needs the data-access layer, which this shared assembly must not reference.
+        // Device apiId/apiKey verification lives in Agrumy.Api.Security.DeviceAuth (Agrumy.Api) since it needs the data-access layer, which this shared assembly must not reference.
     }
 }

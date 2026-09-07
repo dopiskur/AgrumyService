@@ -1,13 +1,13 @@
-using api.BackgroundWorkers;
-using api.Dal;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Dal;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// "Optimize Old Data" / "Purge Old Data", Global admin only (affects every tenant's telemetry) - both dispatch to BackgroundJobQueue and return 202 immediately instead of holding the request open for a large table's processing time.
     [Route("api/DataMaintenance")]

@@ -1,8 +1,8 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Simulation
+namespace Agrumy.Api.Simulation
 {
-    /// A plausible, gently-drifting synthetic reading per tick - not physically modeled, just a bounded random walk within api.Models.SimulationMetricRange so values stay realistic enough to exercise threshold/interval/schedule rules meaningfully. Registered as a singleton (not scoped) so per-device history survives across PeriodicBackgroundService's per-tick DI scopes.
+    /// A plausible, gently-drifting synthetic reading per tick - not physically modeled, just a bounded random walk within Agrumy.Shared.Models.SimulationMetricRange so values stay realistic enough to exercise threshold/interval/schedule rules meaningfully. Registered as a singleton (not scoped) so per-device history survives across PeriodicBackgroundService's per-tick DI scopes.
     public class SimulatedSensorGenerator
     {
         private readonly Dictionary<int, SimulatedReading> lastByDevice = new();

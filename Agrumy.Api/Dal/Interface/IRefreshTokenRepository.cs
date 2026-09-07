@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Refresh-token facet - tokens are opaque, single-use, rotated on every redemption; only a SHA-256 hash ever reaches the DB or these signatures.
     public interface IRefreshTokenRepository

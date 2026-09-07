@@ -1,8 +1,8 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Offline-detection/notification logic, kept separate from OfflineAlertBackgroundService so it is directly unit-testable with mocked repositories.
     public sealed class OfflineAlertEvaluator(IDeviceRepository deviceRepo, IUserRepository userRepo, INotificationDispatcher dispatcher)

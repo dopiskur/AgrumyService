@@ -1,15 +1,18 @@
-using api;
+using Agrumy.Api;
+using Agrumy.Shared;
 using Asp.Versioning;
-using api.BackgroundWorkers;
-using api.Commands;
-using api.Diagnostics;
-using api.Firmware;
-using api.Dal;
-using api.Dal.Interface;
-using api.Filters;
-using api.Notifications;
-using api.Security;
-using api.Weather;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Diagnostics;
+using Agrumy.Api.Firmware;
+using Agrumy.Dal;
+using Agrumy.Api.Dal;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Filters;
+using Agrumy.Api.Notifications;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Weather;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -30,10 +33,10 @@ builder.Services.AddSingleton(Options.Create(settingsForBootCheck));
 // A first boot with no DB connection string routes to the minimal setup wizard instead of the rest of this file, until an admin supplies one - see Agrumy.Api/Setup/SetupWizard.cs.
 if (string.IsNullOrWhiteSpace(settingsForBootCheck.DefaultConnection))
 {
-    api.Setup.SetupWizard.ConfigureServices(builder);
+    Agrumy.Api.Setup.SetupWizard.ConfigureServices(builder);
     var wizardApp = builder.Build();
-    api.Setup.SetupWizard.LogSetupToken(wizardApp.Services.GetRequiredService<ILogger<Program>>());
-    api.Setup.SetupWizard.MapEndpoints(wizardApp);
+    Agrumy.Api.Setup.SetupWizard.LogSetupToken(wizardApp.Services.GetRequiredService<ILogger<Program>>());
+    Agrumy.Api.Setup.SetupWizard.MapEndpoints(wizardApp);
     await wizardApp.RunAsync();
     return;
 }
@@ -64,7 +67,7 @@ builder.Services
         o.Events = new JwtBearerEvents { OnTokenValidated = TokenRevocationValidator.ValidateAsync };
     });
 
-// Device-communication endpoints authenticate by apiId/apiKey (or the short-lived apiAuth session token), not a user JWT - see api.Security.DeviceAuth.
+// Device-communication endpoints authenticate by apiId/apiKey (or the short-lived apiAuth session token), not a user JWT - see Agrumy.Api.Security.DeviceAuth.
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(DeviceAuth.ApiKeyPolicy, p => p.AddRequirements(new DeviceApiKeyRequirement()));
@@ -179,13 +182,13 @@ builder.Services.AddHostedService<WeatherBackgroundService>();
 
 // Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
-builder.Services.AddSingleton<api.Commands.IMqttConnectionManager, api.Commands.MqttConnectionManager>();
-builder.Services.AddScoped<api.Commands.IMqttCommandPublisher, api.Commands.MqttCommandPublisher>();
+builder.Services.AddSingleton<Agrumy.Api.Commands.IMqttConnectionManager, Agrumy.Api.Commands.MqttConnectionManager>();
+builder.Services.AddScoped<Agrumy.Api.Commands.IMqttCommandPublisher, Agrumy.Api.Commands.MqttCommandPublisher>();
 builder.Services.AddScoped<CommandQueueService>();
 builder.Services.AddScoped<ManualActuateService>();
-builder.Services.AddScoped<api.Devices.DeviceConfigBuilder>();
-builder.Services.AddScoped<api.Migration.TenantExportService>();
-builder.Services.AddScoped<api.Migration.TenantImportService>();
+builder.Services.AddScoped<Agrumy.Api.Devices.DeviceConfigBuilder>();
+builder.Services.AddScoped<Agrumy.Api.Migration.TenantExportService>();
+builder.Services.AddScoped<Agrumy.Api.Migration.TenantImportService>();
 
 // Singleton so it outlives any one request's DI scope; BackgroundJobRunner consumes it one job at a time.
 builder.Services.AddSingleton<BackgroundJobQueue>();
@@ -212,7 +215,7 @@ builder.Services.AddHttpClient(VirtualDeviceRunnerBackgroundService.HttpClientNa
     string firstUrl = urls.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "http://localhost:5000";
     client.BaseAddress = new Uri(firstUrl);
 });
-builder.Services.AddSingleton<api.Simulation.SimulatedSensorGenerator>();
+builder.Services.AddSingleton<Agrumy.Api.Simulation.SimulatedSensorGenerator>();
 builder.Services.AddHostedService<VirtualDeviceRunnerBackgroundService>();
 
 // AgrumyMetrics is a singleton because its ConcurrentDictionary aggregate must span every request/scope, unlike the AddScoped registrations above.
@@ -449,7 +452,7 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
-namespace api
+namespace Agrumy.Api
 {
     /// Marker type for Agrumy.Api.Tests' WebApplicationFactory - a dedicated type instead of the
     /// implicit top-level Program avoids a CS0433 clash with Agrumy.Web's own Program once both

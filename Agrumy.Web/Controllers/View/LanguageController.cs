@@ -1,10 +1,10 @@
-using api.Utils;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Sets the UI-language cookie read by Program.cs's RequestLocalizationOptions - reachable pre-login (_AuthLayout) as well as from the main app shell, so it must stay anonymous.
     [AllowAnonymous]

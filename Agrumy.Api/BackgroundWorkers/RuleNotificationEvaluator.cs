@@ -1,10 +1,10 @@
-using api.Dal.Interface;
-using api.Devices;
-using api.Models;
-using api.Notifications;
-using api.Utils;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
+using Agrumy.Shared.Utils;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Evaluates every Notification-action rule (roadmap #212) against each zone it reaches (Zone>Unit>Farm>Global
     /// precedence resolved per zone via RuleHierarchyResolver.ResolveNotificationRules, same "more specific

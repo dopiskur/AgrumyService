@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Async so the backing store can be a real distributed cache (Redis, SQL Server) as well as the in-process default - see CacheRepository.
     public interface ICache

@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IDeviceRepository fixed-type-list members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository

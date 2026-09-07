@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;

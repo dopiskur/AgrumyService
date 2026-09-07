@@ -1,4 +1,4 @@
-@model api.ViewModels.ZoneViewModel
+@model Agrumy.Web.ViewModels.ZoneViewModel
 @{
     var zone = Model.Dashboard;
     ViewData["Title"] = zone.DeviceFarmUnitZoneName;
@@ -6,7 +6,7 @@
     bool hasController = zone.Devices.Any(d => d.DeviceControllerEnabled == true);
     var renameModel = new InlineRenameViewModel
     {
-        Action = nameof(api.Controllers.View.DeviceFarmUnitController.ZoneRename),
+        Action = nameof(Agrumy.Web.Controllers.View.DeviceFarmUnitController.ZoneRename),
         IdFieldName = "idDeviceFarmUnitZone",
         IdValue = zone.IDDeviceFarmUnitZone,
         NameFieldName = "deviceFarmUnitZoneName",

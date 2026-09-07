@@ -1,7 +1,7 @@
 using MQTTnet;
 using MQTTnet.Client;
 
-namespace api.Commands
+namespace Agrumy.Api.Commands
 {
     public interface IMqttConnectionManager
     {

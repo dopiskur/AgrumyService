@@ -1,13 +1,13 @@
 using System.Linq;
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Devices
+namespace Agrumy.Api.Devices
 {
     /// Server-side evaluation of one rule's ConditionNode tree (roadmap #396(4)), mirroring AgrumyFirmware's
     /// RelayLogic.cpp/ActuatorController semantics exactly (same GT/LT dead-zone math, same grid-aligned
     /// Interval formula, same Schedule window check, same recursive AND/OR fold) - reimplemented in C#
     /// rather than shared, since firmware runs a genuinely separate language/runtime. Used directly by
-    /// Notification-action rules (server-side); api.Devices.SimulatedRelayEvaluator reuses EvaluateNode
+    /// Notification-action rules (server-side); Agrumy.Api.Devices.SimulatedRelayEvaluator reuses EvaluateNode
     /// for simulated Relay-action rules too, passing its own readMetric - the tree-walk itself doesn't
     /// need reimplementing a second time now that it's this much more than a few lines.
     public static class RuleConditionEvaluator

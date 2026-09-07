@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
-namespace api.Security
+namespace Agrumy.Api.Security
 {
     /// Authorization for device-communication endpoints (no user JWT): <see cref="ApiKeyPolicy"/> needs the permanent apiId+apiKey headers (Authenticate bootstrap), <see cref="SessionPolicy"/> needs apiId plus the short-lived apiAuth token (Config/SensorData); either lands the verified apiId in <c>HttpContext.Items</c>, read via <see cref="HttpContextExtensions.DeviceApiId"/>.
     public static class DeviceAuth

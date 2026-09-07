@@ -1,8 +1,8 @@
-@model api.ViewModels.ZoneViewModel
+@model Agrumy.Web.ViewModels.ZoneViewModel
 @{
-    var ruleEditorModel = new api.ViewModels.RuleEditorViewModel
+    var ruleEditorModel = new Agrumy.Web.ViewModels.RuleEditorViewModel
     {
-        Scope = api.ViewModels.RuleScope.Zone,
+        Scope = Agrumy.Web.ViewModels.RuleScope.Zone,
         ScopeId = Model.Zone!.IDDeviceFarmUnitZone,
         Rules = Model.Rules,
         RedirectActionName = "Zone",

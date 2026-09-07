@@ -1,10 +1,10 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Read-only view of the admin-action trail written by AuditLogRepository.AuditLogAddAsync - a Global admin sees every tenant's history, a Tenant admin only their own.
     [Route("api/AuditLog")]

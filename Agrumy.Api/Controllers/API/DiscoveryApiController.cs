@@ -1,14 +1,16 @@
+using Agrumy.Shared;
 using System.Text.Json;
-using api.Commands;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// "Scan for new devices" - device-facing report intake, the admin scan trigger, the aggregated results list, and Register (PIN + WiFi credentials to the winning scanning device).
     [Route("/api/Discovery")]
@@ -158,7 +160,7 @@ namespace api.Controllers.API
             return Ok(await discoveryRepo.DiscoveryResultsGetAsync(tenantId, unitID, zoneID));
         }
 
-        /// Resolves the winning scanning device for DiscoveredApMac, resolves WiFi credentials (0/1/many saved TenantWifiConfig rows - see api.Models.DiscoveryRegisterRequest), (re)issues the caller's own device-PIN, and queues a ProvisionDevice command carrying both plus DeviceName/UnitID/ZoneID/ManualDeviceTypeID to that device, applied once it completes its own real registration (see CommandQueueService.ConsumePendingProvisionAsync).
+        /// Resolves the winning scanning device for DiscoveredApMac, resolves WiFi credentials (0/1/many saved TenantWifiConfig rows - see Agrumy.Shared.Models.DiscoveryRegisterRequest), (re)issues the caller's own device-PIN, and queues a ProvisionDevice command carrying both plus DeviceName/UnitID/ZoneID/ManualDeviceTypeID to that device, applied once it completes its own real registration (see CommandQueueService.ConsumePendingProvisionAsync).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Register")]
         public async Task<ActionResult<DiscoveryRegisterResult>> Register([FromBody] DiscoveryRegisterRequest request)
@@ -279,7 +281,7 @@ namespace api.Controllers.API
         private Task<(TenantWifiConfig? Config, ActionResult? Error)> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
             EnsureOwnedDeviceEntityAsync(() => tenantRepo.TenantWifiConfigGetByIdAsync(idTenantWifiConfig), c => (int?)c.TenantID, "WiFi network", forWrite: true);
 
-        /// Same precedence as FirmwareApiController.PublicBaseUrl (WebView:ApiService, else the request's own host), but host-only - api.Models.DeviceConfig.ServicePoint has no scheme, firmware prepends http(s):// itself.
+        /// Same precedence as FirmwareApiController.PublicBaseUrl (WebView:ApiService, else the request's own host), but host-only - Agrumy.Shared.Models.DeviceConfig.ServicePoint has no scheme, firmware prepends http(s):// itself.
         private string PublicHost
         {
             get

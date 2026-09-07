@@ -1,8 +1,8 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Reflects whether ANY registered Agrumy.Gateway device is currently online (same heartbeat mechanism as any other device, DeviceFleetStatus.ComputeOnline) - Agrumy.Api has no visibility into a gateway's own internal ChirpStack/LoRa transport (that state lives entirely inside the separate Agrumy.Gateway process), so this is the closest available proxy for both "Gateway service" and "LoRaWAN/ChirpStack" connectivity on this card.
     internal sealed class GatewayHealthCheck(IGatewayRepository gatewayRepo, IDeviceRepository deviceRepo) : IHealthCheck

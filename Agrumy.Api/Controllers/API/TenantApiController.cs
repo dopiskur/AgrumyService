@@ -1,13 +1,13 @@
-using api.Commands;
-using api.Dal.Interface;
-using api.Migration;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Migration;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
@@ -167,7 +167,7 @@ namespace api.Controllers.API
             return File(content, "application/zip", fileName);
         }
 
-        /// ByName only (see api.Models.TenantImportTarget), Global admin only - unlike Export this can create a brand-new tenant or add into one the caller doesn't administer, same bar as TenantAdd/TenantUpdate.
+        /// ByName only (see Agrumy.Shared.Models.TenantImportTarget), Global admin only - unlike Export this can create a brand-new tenant or add into one the caller doesn't administer, same bar as TenantAdd/TenantUpdate.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost("Import")]
         public async Task<ActionResult<TenantImportResult>> Import([FromBody] TenantImportRequest value)

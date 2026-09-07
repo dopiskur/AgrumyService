@@ -1,9 +1,9 @@
-﻿using api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public class User
     {
@@ -185,7 +185,7 @@ namespace api.Models
         public int? RoleScopeID { get; set; }
     }
 
-    /// Replaces a user's entire composable role set (not incremental) - see api.Security.RoleNames for the valid values.
+    /// Replaces a user's entire composable role set (not incremental) - see Agrumy.Shared.Security.RoleNames for the valid values.
     public class UserRolesUpdate
     {
         public int IDUser { get; set; }

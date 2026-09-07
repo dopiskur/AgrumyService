@@ -1,7 +1,7 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IFirmwareRepository members - forwarded to the standalone EfFirmwareRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository

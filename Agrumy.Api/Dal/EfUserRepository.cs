@@ -1,10 +1,11 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IUserRepository, extracted out of the EfRepository god class (roadmap #246) - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (same tenant-create branch also seeds the tenant's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
     internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository) : IUserRepository

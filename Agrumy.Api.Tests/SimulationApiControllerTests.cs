@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using api.Controllers.API;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;

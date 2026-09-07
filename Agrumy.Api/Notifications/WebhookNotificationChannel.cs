@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
-using api.Firmware;
+using Agrumy.Api.Firmware;
 using Microsoft.Extensions.Options;
 
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     /// Posts a JSON event to an operator-configured URL, so an external system learns about an alert without polling Agrumy. Configured under <c>Notifications:Webhook</c>.
     public sealed class WebhookNotificationChannel : INotificationChannel

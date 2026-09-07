@@ -1,4 +1,4 @@
-using api.LoRa;
+using Agrumy.Shared.LoRa;
 using Xunit;
 
 namespace Agrumy.Api.Tests;

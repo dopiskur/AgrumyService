@@ -1,7 +1,7 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IServerConfigRepository members - forwarded to the standalone EfServerConfigRepository (roadmap #246) so IRepository's broad consumers keep working unchanged. Defaults preserved on idServerConfig since some internal callers (Devices.cs, DeviceFarmUnits.cs, Devices.Diagnostics.cs) rely on them.
     internal partial class EfRepository

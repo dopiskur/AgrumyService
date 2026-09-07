@@ -1,4 +1,4 @@
-namespace api.Dal
+namespace Agrumy.Dal
 {
     /// Which relational provider the app talks to - selected by Database:Provider in appsettings, the AGRUMY_DB_PROVIDER env var, or a --provider arg to the ef tool.
     public enum DbProviderKind

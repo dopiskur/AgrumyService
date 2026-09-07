@@ -1,13 +1,14 @@
+using Agrumy.Shared.Security;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using api.Dal.Interface;
-using api.Models;
-using api.Utils;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-namespace api.Security
+namespace Agrumy.Web.Security
 {
     // Access token lives ~2h, the auth cookie 7 days: on a 401, redeem the refresh token via RefreshCoordinator, re-sign the cookie, and retry once.
     public sealed class BearerTokenHandler(

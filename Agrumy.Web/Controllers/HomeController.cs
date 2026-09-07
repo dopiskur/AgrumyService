@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers
+namespace Agrumy.Web.Controllers
 {
     public class HomeController : Controller
     {

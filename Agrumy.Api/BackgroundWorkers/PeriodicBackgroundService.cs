@@ -1,4 +1,4 @@
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Reusable recurring-work base for hosted services; each tick runs in its own DI scope since IHostedService is singleton-lifetime, and one tick throwing is logged without killing the loop.
     public abstract class PeriodicBackgroundService(IServiceScopeFactory scopeFactory, ILogger logger) : BackgroundService

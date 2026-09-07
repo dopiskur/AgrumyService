@@ -1,8 +1,8 @@
-using api;
-using api.Commands;
-using api.Controllers.API;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Shared;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -30,7 +30,7 @@ public class DeviceFirmwareOtaTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()));
         var result = controller.DeviceRegistration(new DeviceRegistration
         {

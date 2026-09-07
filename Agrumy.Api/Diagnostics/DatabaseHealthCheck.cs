@@ -1,7 +1,7 @@
-using api.Dal.Interface;
+using Agrumy.Api.Dal.Interface;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Reuses <see cref="ISystemRepository.TestConnectionAsync"/>, the same check Program.cs runs at startup, so this reflects whichever provider is actually configured.
     internal sealed class DatabaseHealthCheck(ISystemRepository repository) : IHealthCheck

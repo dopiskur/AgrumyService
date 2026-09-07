@@ -1,13 +1,15 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Dal;
+using Agrumy.Shared;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IServerConfigRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain. Widely read-from by other domains, but that's calls INTO this class, not out of it.
     internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger, ISecretProtector secretProtector) : IServerConfigRepository

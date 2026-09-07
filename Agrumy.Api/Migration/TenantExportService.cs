@@ -1,11 +1,11 @@
 using System.IO.Compression;
 using System.Text.Json;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Migration
+namespace Agrumy.Api.Migration
 {
-    /// Builds the full portable snapshot of one tenant - see api.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
+    /// Builds the full portable snapshot of one tenant - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
     public class TenantExportService(IRepository repo)
     {
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.

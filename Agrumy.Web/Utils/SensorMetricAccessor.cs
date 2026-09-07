@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Utils
+namespace Agrumy.Web.Utils
 {
     /// Roadmap #238 - maps a SensorMetric enum value to the matching field on SensorAverages/SensorTrend, so a widget's stored Metric selection can pull the right reading without a giant switch at every call site.
     public static class SensorMetricAccessor

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Where the firmware catalog is populated from and where a device's OTA .bin is downloaded from: GitHub (public releases, zero-config default), Local (this API hosts the files, the only air-gapped-capable option), or Custom (operator-run repository serving the same manifest.json format).
     public enum FirmwareSource

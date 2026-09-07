@@ -1,11 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api;
-using api.Dal;
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Shared;
+using Agrumy.Dal;
+using Agrumy.Api.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -2513,12 +2515,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, 10, 0, 0);
         Assert.Contains(utcStamp.ToString("yyyy-MM-dd HH:mm:ss"), json);
 
-        string? localized = api.Utils.SensorDataTimeLocalizer.LocalizeDates(json, "Europe/Zagreb");
-        var expectedLocal = api.Utils.TimeZoneHelper.ToUserLocalTime(utcStamp, "Europe/Zagreb");
+        string? localized = Agrumy.Shared.Utils.SensorDataTimeLocalizer.LocalizeDates(json, "Europe/Zagreb");
+        var expectedLocal = Agrumy.Shared.Utils.TimeZoneHelper.ToUserLocalTime(utcStamp, "Europe/Zagreb");
         Assert.NotEqual(utcStamp, expectedLocal); // Zagreb is never UTC+0, so the shift must show
         Assert.Contains(expectedLocal.ToString("yyyy-MM-dd HH:mm:ss"), localized);
 
-        Assert.Equal(json, api.Utils.SensorDataTimeLocalizer.LocalizeDates(json, null));
+        Assert.Equal(json, Agrumy.Shared.Utils.SensorDataTimeLocalizer.LocalizeDates(json, null));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

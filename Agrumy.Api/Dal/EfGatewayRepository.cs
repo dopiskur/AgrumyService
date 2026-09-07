@@ -1,10 +1,11 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IGatewayRepository, extracted out of the EfRepository god class (roadmap #246) - reads db.Devices directly rather than calling into IDeviceRepository, and reuses EfDeviceRepository.ToDto for the one DeviceRow-to-Device mapping it needs.
     internal sealed class EfGatewayRepository(AgrumyDbContext db) : IGatewayRepository

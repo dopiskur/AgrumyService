@@ -1,8 +1,8 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Devices
+namespace Agrumy.Api.Devices
 {
-    /// Resolves the CSS-cascade-style Zone>Unit>Farm>Global(per-tenant) rule precedence for one zone's rules (roadmap #384 added the Farm tier) - a scope's rules for a function/name fully replace (not merge with) a less specific scope's, they never combine, UNLESS a rule is IsSafetyRule (roadmap #396(5)) which always survives regardless of scope. ResolveRelayRules groups by RelayFunction (called from DeviceConfigBuilder, output goes to firmware); ResolveNotificationRules groups by Name, not SensorMetric (#396(4) - a rule's conditions can now span several metrics, so metric is no longer a meaningful override key; called from api.BackgroundWorkers.RuleNotificationEvaluator, server-side only).
+    /// Resolves the CSS-cascade-style Zone>Unit>Farm>Global(per-tenant) rule precedence for one zone's rules (roadmap #384 added the Farm tier) - a scope's rules for a function/name fully replace (not merge with) a less specific scope's, they never combine, UNLESS a rule is IsSafetyRule (roadmap #396(5)) which always survives regardless of scope. ResolveRelayRules groups by RelayFunction (called from DeviceConfigBuilder, output goes to firmware); ResolveNotificationRules groups by Name, not SensorMetric (#396(4) - a rule's conditions can now span several metrics, so metric is no longer a meaningful override key; called from Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator, server-side only).
     public static class RuleHierarchyResolver
     {
         public static IList<DeviceFarmUnitZoneRule> ResolveRelayRules(IList<DeviceFarmUnitZoneRule> zoneRules, IList<DeviceFarmUnitZoneRule> unitRules, IList<DeviceFarmUnitZoneRule> farmRules, IList<DeviceFarmUnitZoneRule> globalRules)

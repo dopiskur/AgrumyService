@@ -1,11 +1,11 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Lists registered gateways and manages a LoRaGateway's DevEUI-&gt;device mapping; gateways are install-wide infrastructure (IGatewayRepository), so this is Global-Admin-only, not tenant-scoped.
     [Authorize(Roles = RoleNames.GlobalAdmin)]

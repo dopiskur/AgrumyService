@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace api.Security
+namespace Agrumy.Web.Security
 {
     public static class UserClaims
     {

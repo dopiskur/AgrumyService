@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace api.Security
+namespace Agrumy.Api.Security
 {
     /// A gateway-scoped, short-lived credential (roadmap #395 finding 7) - GET /api/Gateway/DeviceMapping hands this out instead of a mapped device's real, permanent ApiKey, so a compromised gateway leaks only a time-boxed proof rather than every leaf device's actual credential. GatewayApiController.RunEntryAsync accepts this OR a real ApiKey, since a WiFiRepeater-profile device still sends its own genuine credential directly, unrelated to this path.
     public static class GatewayDeviceToken

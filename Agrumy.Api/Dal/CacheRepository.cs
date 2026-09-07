@@ -1,10 +1,10 @@
 using System.Text.Json;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IDistributedCache-backed device apiAuth session cache - still in-process today (AddDistributedMemoryCache in Program.cs), but swapping to Redis later is a one-line Program.cs change.
     internal sealed partial class CacheRepository(IDistributedCache cache, ILogger<CacheRepository> logger) : ICache

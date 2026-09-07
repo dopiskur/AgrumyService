@@ -1,15 +1,17 @@
-using api.Commands;
-using api.Dal.Interface;
-using api.Devices;
-using api.Firmware;
-using api.Models;
-using api.Security;
+using Agrumy.Shared;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/Device")]
     public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions) : ApiControllerBase(userRepo, auditLogRepo, cache)
@@ -140,7 +142,7 @@ namespace api.Controllers.API
             return Ok(await deviceRepo.EventDeviceGetAsync(device!.IDDevice, device.TenantID));
         }
 
-        /// Dismisses one non-critical problem alert (see api.Dal.EfRepository.ComputeStatus) so it stops keeping its device's Unit/Zone Orange - only EventDeviceRow.AcknowledgedAt is set, the event row itself stays for history.
+        /// Dismisses one non-critical problem alert (see Agrumy.Api.Dal.EfRepository.ComputeStatus) so it stops keeping its device's Unit/Zone Orange - only EventDeviceRow.AcknowledgedAt is set, the event row itself stays for history.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPut("Event/{idEventDevice}/Acknowledge")]
         public async Task<ActionResult<bool>> DeviceEventAcknowledge(int idEventDevice)
@@ -273,7 +275,7 @@ namespace api.Controllers.API
             return Ok();
         }
 
-        /// Queues an UpdateWifiCredentials command carrying the new Ssid/WifiPassword - see api.Models.WifiUpdatePayload for what the device does with it (verify-then-persist, fall back to the old network on failure).
+        /// Queues an UpdateWifiCredentials command carrying the new Ssid/WifiPassword - see Agrumy.Shared.Models.WifiUpdatePayload for what the device does with it (verify-then-persist, fall back to the old network on failure).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("WifiUpdate")]
         public async Task<ActionResult> WifiUpdateRequest([FromBody] DeviceWifiUpdateRequest request)

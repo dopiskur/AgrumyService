@@ -1,4 +1,4 @@
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     /// Bound from the <c>Notifications</c> configuration section.
     public sealed class NotificationOptions

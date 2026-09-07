@@ -1,12 +1,14 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
-using api.ViewModels;
+using Agrumy.Web.Security;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Shared.Utils;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [Authorize]
     public class DeviceController(IApi api) : Controller

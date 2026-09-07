@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Roadmap #384 - top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site, e.g. separate LoRa networks or gateways naturally map to separate Farms); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarm
@@ -40,7 +40,7 @@ namespace api.Models
         // Per-zone opt-in, not a global switch; combined server-side with ServerConfig.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
-        // Tank calibration (roadmap #234) - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (api.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.
+        // Tank calibration (roadmap #234) - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (Agrumy.Shared.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.
         public double? TankCapacityLiters { get; set; }
         /// Raw sensorData.WaterLevel reading when the tank is empty - not necessarily 0, depends on the physical sensor.
         public int? WaterLevelRawEmpty { get; set; }
@@ -50,7 +50,7 @@ namespace api.Models
         // Dry-run protection - blocks WaterPump (device-side, covers Interval/Schedule/Manual too, not just Threshold) below this fill percent. Null/<=0, or WaterLevelRawEmpty==WaterLevelRawFull (no tank calibration), disables it - a Water Valve zone with no tank sensor to protect.
         public double? WaterPumpMinLevel { get; set; }
 
-        // Roadmap #219 - generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
+        // Roadmap #219 - generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (Agrumy.Api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
 
@@ -116,7 +116,7 @@ namespace api.Models
         RainLevel = 11,
         WaterLevel = 12,
         Wind = 13,
-        /// DERIVED (api.Utils.DewPointCalculator, Magnus formula) - Temperature+Humidity.
+        /// DERIVED (Agrumy.Shared.Utils.DewPointCalculator, Magnus formula) - Temperature+Humidity.
         DewPoint = 14,
         /// DERIVED - Temperature minus DewPoint; a small/shrinking spread is an early condensation/fungal-disease signal, distinct from absolute humidity alone.
         DewPointSpread = 15,
@@ -126,7 +126,7 @@ namespace api.Models
         Weight = 17,
     }
 
-    /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.
+    /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.
     public enum ActionType
     {
         Relay = 1,
@@ -147,11 +147,11 @@ namespace api.Models
         Interval = 2,
         Schedule = 3,
         Group = 4,
-        /// Never reaches evaluation as-is on either action path - api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date first (Relay: before the device config is sent; Notification: roadmap #398(2), resolved server-side each tick).
+        /// Never reaches evaluation as-is on either action path - Agrumy.Api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date first (Relay: before the device config is sent; Notification: roadmap #398(2), resolved server-side each tick).
         Astronomical = 5,
         /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
         RuleTriggered = 6,
-        /// Roadmap #398(1) - only valid inside a Notification-action rule; compares a live reading against api.Models.SensorTrend's hourly history, which only the server (not firmware) has.
+        /// Roadmap #398(1) - only valid inside a Notification-action rule; compares a live reading against Agrumy.Shared.Models.SensorTrend's hourly history, which only the server (not firmware) has.
         RateOfChange = 7,
         /// Roadmap #398(3) - only valid inside a Notification-action rule, same SensorTrend dependency as RateOfChange; always reads Temperature, no Metric field.
         DifDisruption = 8,
@@ -217,7 +217,7 @@ namespace api.Models
         public static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, all three null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule (roadmap #396(5)) rules always survive being overridden regardless of scope - see api.Devices.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, all three null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule (roadmap #396(5)) rules always survive being overridden regardless of scope - see Agrumy.Api.Devices.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule
     {
         [HiddenInput(DisplayValue = true)]
@@ -245,9 +245,9 @@ namespace api.Models
         public double? Temperature { get; set; }
         public double? SoilTemperature { get; set; }
         public double? Humidity { get; set; }
-        /// Derived from Temperature+Humidity (api.Utils.VpdCalculator) - null whenever either is, never computed from a stale pairing.
+        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.VpdCalculator) - null whenever either is, never computed from a stale pairing.
         public double? Vpd { get; set; }
-        /// Derived from Temperature+Humidity (api.Utils.DewPointCalculator, roadmap #396(4)).
+        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator, roadmap #396(4)).
         public double? DewPoint { get; set; }
         /// Temperature minus DewPoint - a shrinking spread (typically &lt;2-3°C) is an early condensation/fungal-disease signal.
         public double? DewPointSpread { get; set; }
@@ -262,7 +262,7 @@ namespace api.Models
         public double? Wind { get; set; }
         public double? Ec { get; set; }
         public double? Weight { get; set; }
-        /// Derived from WaterLevel + the zone's tank calibration (api.Utils.TankCalculator) - null for a Unit rollup (spans zones with potentially different/no calibration) or an uncalibrated zone.
+        /// Derived from WaterLevel + the zone's tank calibration (Agrumy.Shared.Utils.TankCalculator) - null for a Unit rollup (spans zones with potentially different/no calibration) or an uncalibrated zone.
         public double? TankFillPercent { get; set; }
         public double? TankVolumeLiters { get; set; }
     }
@@ -284,7 +284,7 @@ namespace api.Models
         public double?[] SoilTemperature { get; set; } = new double?[HourBuckets];
         public double?[] Humidity { get; set; } = new double?[HourBuckets];
         public double?[] Vpd { get; set; } = new double?[HourBuckets];
-        /// Derived from Temperature+Humidity (api.Utils.DewPointCalculator) - added for roadmap #398(1)'s RateOfChange node, so every SensorMetric (not just the raw ones) has a bucketed history to compare against.
+        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator) - added for roadmap #398(1)'s RateOfChange node, so every SensorMetric (not just the raw ones) has a bucketed history to compare against.
         public double?[] DewPoint { get; set; } = new double?[HourBuckets];
         public double?[] DewPointSpread { get; set; } = new double?[HourBuckets];
         public double?[] Moisture { get; set; } = new double?[HourBuckets];

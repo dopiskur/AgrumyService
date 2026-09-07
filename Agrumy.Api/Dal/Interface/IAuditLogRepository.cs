@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Write-once admin-action trail - who changed another account's access/state, when, and to what.
     public interface IAuditLogRepository

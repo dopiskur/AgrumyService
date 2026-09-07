@@ -1,8 +1,8 @@
-using api.Gateway;
+using Agrumy.Gateway;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace api.Gateway.Registration
+namespace Agrumy.Gateway.Registration
 {
     /// Loads a persisted registration if one exists; otherwise registers once via the SAME PIN flow AgrumyFirmware uses, then persists the result - same boot sequence, minus the captive-portal UI since config comes from appsettings.json instead.
     public sealed partial class GatewayRegistrationService(

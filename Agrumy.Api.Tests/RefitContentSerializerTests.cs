@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Models;
-using api.Utils;
+using Agrumy.Shared.Models;
+using Agrumy.Web.Utils;
 
 namespace Agrumy.Api.Tests;
 

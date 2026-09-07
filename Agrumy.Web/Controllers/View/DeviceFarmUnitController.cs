@@ -1,12 +1,14 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
-using api.ViewModels;
+using Agrumy.Web.Security;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Shared.Utils;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [Authorize]
     public class DeviceFarmUnitController(IApi api) : Controller
@@ -292,7 +294,7 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone = request.ZoneID });
         }
 
-        // Roadmap #219. durationMinutes is the admin-facing unit (matches the quick-preset buttons); converted to seconds only for the wire request. TargetMetric/TargetThreshold/TargetHysteresis are ignored server-side for Duration mode and vice versa (api.Commands.ManualActuateService), so posting all six fields regardless of the selected mode is harmless.
+        // Roadmap #219. durationMinutes is the admin-facing unit (matches the quick-preset buttons); converted to seconds only for the wire request. TargetMetric/TargetThreshold/TargetHysteresis are ignored server-side for Duration mode and vice versa (Agrumy.Api.Commands.ManualActuateService), so posting all six fields regardless of the selected mode is harmless.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

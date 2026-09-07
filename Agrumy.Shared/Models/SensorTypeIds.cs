@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Canonical deviceTypeSensor IDs - must match AgrumyFirmware's SensorController.h/.cpp SensorTypeIds:: constants exactly, renumbering desyncs the two independently-versioned repos.
     public static class SensorTypeIds

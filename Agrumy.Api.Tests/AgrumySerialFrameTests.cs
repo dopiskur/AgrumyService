@@ -1,5 +1,5 @@
 using System.Text;
-using api.Gateway.LoRaPrivate;
+using Agrumy.Gateway.LoRaPrivate;
 
 namespace Agrumy.Api.Tests;
 

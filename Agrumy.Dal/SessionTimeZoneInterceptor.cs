@@ -1,7 +1,7 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace api.Dal
+namespace Agrumy.Dal
 {
     /// Forces the DB session's own timezone to UTC on every connection open so a `CURRENT_TIMESTAMP`/`NOW()` column default computes in UTC, matching what every app-level DateTime.UtcNow assumes.
     internal sealed class SessionTimeZoneInterceptor(string setTimeZoneSql) : DbConnectionInterceptor

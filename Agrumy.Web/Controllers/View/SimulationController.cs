@@ -1,11 +1,11 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// Roadmap #403 - "Add Simulation" is the entry point (create a named, time-boxed session first), devices are added INTO it afterward; replaces the old bare virtual-device list and the per-device Fleet toggle both.
     [Authorize(Roles = RoleNames.SimulationManagers)]

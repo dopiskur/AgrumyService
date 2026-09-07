@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
-using api.Dal;
+using Agrumy.Dal;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Setup
+namespace Agrumy.Api.Setup
 {
     /// If ConnectionStrings:DefaultConnection is missing at boot, Program.cs routes here instead of the normal pipeline - an unauthenticated DB-details-only form that writes appsettings.json and restarts (RestartUtil) once the admin submits a connection that opens; container installs never reach this since install.sh always sets it upfront.
     internal static class SetupWizard

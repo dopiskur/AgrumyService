@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Http;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     /// Import.cshtml's model - ExportJson/ExportFile are unpacked/deserialized server-side (not posted as a typed object) so a malformed file surfaces as a validation error, not an MVC model-binding failure. Exactly one of the two is expected - TenantController.Import enforces that, not a DataAnnotation, since "at least one of these two" isn't expressible as a single [Required].
     public class TenantImportViewModel

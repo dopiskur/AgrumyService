@@ -1,5 +1,5 @@
-using api.Commands;
-using api.Models;
+using Agrumy.Api.Commands;
+using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests;
 

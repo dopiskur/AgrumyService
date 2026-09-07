@@ -1,4 +1,4 @@
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     public class UserRolesViewModel
     {

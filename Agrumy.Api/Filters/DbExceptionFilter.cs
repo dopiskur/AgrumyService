@@ -1,9 +1,9 @@
-using api.Dal;
-using api.Dal.Interface;
+using Agrumy.Api.Dal;
+using Agrumy.Api.Dal.Interface;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace api.Filters
+namespace Agrumy.Api.Filters
 {
     /// Turns any exception escaping an API action into a response: a named unique-constraint hit becomes a 409 business message, anything else goes through <see cref="ISystemRepository.ClassifyException"/>; registered globally in Program.cs.
     public sealed class DbExceptionFilter(ISystemRepository repo, ILogger<DbExceptionFilter> logger) : IExceptionFilter

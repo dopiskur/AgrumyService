@@ -1,7 +1,7 @@
-using api.Dal.Interface;
-using api.Migration;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Migration;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Moq;
 
 namespace Agrumy.Api.Tests;

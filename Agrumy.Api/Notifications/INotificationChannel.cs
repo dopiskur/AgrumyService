@@ -1,4 +1,4 @@
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     /// One delivery mechanism for an alert (email, push, ...); <see cref="NotificationDispatcher"/> fans out to every registered channel whose <see cref="IsConfiguredAsync"/> is true.
     public interface INotificationChannel

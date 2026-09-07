@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace api.Weather
+namespace Agrumy.Api.Weather
 {
-    /// Abstraction over the actual HTTP call, so WeatherEvaluator's own logic is unit-testable with a mock - same shape as api.Firmware.IFirmwareFetcher.
+    /// Abstraction over the actual HTTP call, so WeatherEvaluator's own logic is unit-testable with a mock - same shape as Agrumy.Api.Firmware.IFirmwareFetcher.
     public interface IWeatherForecastClient
     {
         /// Null means the request failed (already logged) - the caller must leave the last known state alone rather than treat a failed fetch as "no rain".

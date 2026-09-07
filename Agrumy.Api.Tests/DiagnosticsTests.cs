@@ -1,6 +1,6 @@
-using api.Dal;
-using api.Dal.Interface;
-using api.Diagnostics;
+using Agrumy.Api.Dal;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;

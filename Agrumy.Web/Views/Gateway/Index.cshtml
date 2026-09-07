@@ -1,4 +1,4 @@
-@model api.ViewModels.GatewayListViewModel
+@model Agrumy.Web.ViewModels.GatewayListViewModel
 
 @{
     ViewData["Title"] = "Gateway Devices";
@@ -39,13 +39,13 @@
                             <td>@(gateway.GatewayProfile?.ToString() ?? (gateway.LoRaGatewayEnabled == true ? "LoRaGatewayEnabled (dual-role)" : "-"))</td>
                             <td class="text-secondary small">@gateway.MacAddress</td>
                             <td>
-                                @if (gateway.GatewayProfile == api.Models.GatewayProfile.LoRaGateway)
+                                @if (gateway.GatewayProfile == Agrumy.Shared.Models.GatewayProfile.LoRaGateway)
                                 {
                                     <a asp-action="Mapping" asp-route-idGatewayDevice="@gateway.IDDevice" class="btn btn-sm btn-primary">
                                         DevEUI Mapping
                                     </a>
                                 }
-                                else if (gateway.GatewayProfile == api.Models.GatewayProfile.LoRaPrivateProtocol || gateway.LoRaGatewayEnabled == true)
+                                else if (gateway.GatewayProfile == Agrumy.Shared.Models.GatewayProfile.LoRaPrivateProtocol || gateway.LoRaGatewayEnabled == true)
                                 {
                                     <a asp-action="Mapping" asp-route-idGatewayDevice="@gateway.IDDevice" class="btn btn-sm btn-primary">
                                         Node Address Mapping

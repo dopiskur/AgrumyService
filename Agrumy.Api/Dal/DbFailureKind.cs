@@ -1,4 +1,4 @@
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// Coarse classification of a database-layer failure, used to shape a consistent API response.
     public enum DbFailureKind

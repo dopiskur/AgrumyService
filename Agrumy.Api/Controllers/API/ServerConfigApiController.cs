@@ -1,16 +1,16 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
-using api.Security;
-using api.Utils;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Server-wide settings, admin-only; there is exactly one row (id 1), auto-created on first read.
     [Route("api/ServerConfig")]
-    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, api.Diagnostics.IServerHealthService serverHealthService) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, Agrumy.Api.Diagnostics.IServerHealthService serverHealthService) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // These are SERVER-WIDE settings, so Global admin only.
 

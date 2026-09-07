@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace api.LoRa
+namespace Agrumy.Shared.LoRa
 {
     /// AES-256-GCM confidentiality+integrity for LoRa private-protocol uplinks (roadmap #395) - the
     /// physical gateway (serial-bridge or WiFi-relay) only ever forwards these bytes verbatim, it

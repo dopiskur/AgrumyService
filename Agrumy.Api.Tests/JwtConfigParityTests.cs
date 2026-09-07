@@ -1,5 +1,5 @@
 using System.Text.Json;
-using api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Agrumy.Api.Tests;

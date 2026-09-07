@@ -1,8 +1,8 @@
-using api.Models;
-using api.Simulation;
-using api.Utils;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Simulation;
+using Agrumy.Shared.Utils;
 
-namespace api.Devices
+namespace Agrumy.Api.Devices
 {
     /// Decides a simulated device's relay on/off state from the SAME rules a real device would receive over /api/Device/Config, via RuleConditionEvaluator.EvaluateNode - the tree-walk itself is shared (roadmap #396(4) made it substantial enough that reimplementing a third time no longer made sense), only readMetric (this file) differs from RuleNotificationEvaluator's (SensorAverages-backed).
     public static class SimulatedRelayEvaluator

@@ -1,9 +1,9 @@
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Only meaningful for GitHub/Custom sources - Local never reaches the network (FirmwareCatalogService), so ServerHealthService skips this check entirely when FirmwareSource is Local. Reuses IFirmwareFetcher so the probe goes through the same SsrfGuard as a real catalog refresh.
     internal sealed class FirmwareSourceHealthCheck(IServerConfigRepository serverConfigRepo, IFirmwareFetcher firmwareFetcher) : IHealthCheck

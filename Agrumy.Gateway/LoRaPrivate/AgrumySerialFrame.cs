@@ -1,4 +1,4 @@
-namespace api.Gateway.LoRaPrivate
+namespace Agrumy.Gateway.LoRaPrivate
 {
     /// Direction byte of a serial frame between Agrumy.Gateway and its locally-attached ESP32+SX126x radio-frontend board - see AgrumySerialFrame remarks for the full wire layout.
     public enum AgrumySerialFrameType : byte

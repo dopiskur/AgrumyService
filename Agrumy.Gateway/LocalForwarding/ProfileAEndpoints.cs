@@ -1,10 +1,10 @@
 using System.Text.Json;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace api.Gateway.LocalForwarding
+namespace Agrumy.Gateway.LocalForwarding
 {
     /// Profile A (WiFiRepeater): a local device points its ServicePoint at this gateway instead of api.agrumy.com, sending unmodified requests - each call becomes one always-immediate GatewayBatchEntry through the same /api/Gateway/Batch path Profile B uses.
     public static class ProfileAEndpoints

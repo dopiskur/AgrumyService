@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 
-namespace api.Security
+namespace Agrumy.Web.Security
 {
     // ASP.NET Core's CookieAuthenticationHandler does not catch a failed Unprotect; without this wrapper an undecryptable cookie crashes the request instead of being treated as anonymous.
     public sealed class SafeTicketDataFormat(

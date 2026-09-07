@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// DevEUI&lt;-&gt;device mapping and gateway listing for Agrumy.Gateway's LoRaGateway profile and its admin UI - gateway device rows themselves live in the ordinary device table (IDeviceRepository).
     public interface IGatewayRepository

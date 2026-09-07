@@ -1,10 +1,10 @@
-@model api.ViewModels.GatewayMappingViewModel
+@model Agrumy.Web.ViewModels.GatewayMappingViewModel
 
 @{
     // LoRaPrivateProtocol reuses this exact same mapping mechanism (GatewayDeviceMapping.DevEUI holds
     // a 16-bit node address as a decimal string instead of a 16-hex-char LoRaWAN DevEUI) - only the
-    // labels/input pattern below differ, see api.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
-    bool isPrivateProtocol = Model.Gateway.GatewayProfile == api.Models.GatewayProfile.LoRaPrivateProtocol;
+    // labels/input pattern below differ, see Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
+    bool isPrivateProtocol = Model.Gateway.GatewayProfile == Agrumy.Shared.Models.GatewayProfile.LoRaPrivateProtocol;
     string idLabel = isPrivateProtocol ? "Node Address" : "DevEUI";
     ViewData["Title"] = "Gateway Devices - " + Model.Gateway.DeviceName + " " + idLabel + " Mapping";
 }

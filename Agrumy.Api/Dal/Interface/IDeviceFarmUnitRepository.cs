@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// The minimal shape TankRefillAlertEvaluator needs - WaterLevel is the zone's latest-per-device reading averaged (same shape as SensorAverages.WaterLevel), null when no device in the zone has reported one.
     public sealed record TankRefillAlertCandidate(

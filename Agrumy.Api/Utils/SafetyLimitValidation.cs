@@ -1,4 +1,4 @@
-namespace api.Utils
+namespace Agrumy.Api.Utils
 {
     /// Shared bound for WaterPump's device-side hard safety limits (seconds), used by both ServerConfigApiController and DeviceApiController so the two save paths can't accept different ranges; null/0 means intentionally disabled.
     public static class SafetyLimitValidation

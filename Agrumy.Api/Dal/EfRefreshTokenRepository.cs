@@ -1,9 +1,10 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IRefreshTokenRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, only called into (by EfUserRepository), never calls out.
     internal sealed class EfRefreshTokenRepository(AgrumyDbContext db) : IRefreshTokenRepository

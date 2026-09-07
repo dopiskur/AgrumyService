@@ -1,5 +1,5 @@
-using api.Models;
-using api.Utils;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Utils;
 
 namespace Agrumy.Api.Tests;
 

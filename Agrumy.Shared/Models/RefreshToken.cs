@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// DAL-facing view of a stored refresh token — never the plaintext, only its hash lives in the DB.
     public class RefreshTokenInfo

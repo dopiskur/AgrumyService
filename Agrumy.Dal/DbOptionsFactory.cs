@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Dal
+namespace Agrumy.Dal
 {
     /// Builds DbContextOptions for the selected provider, pointing each at its own per-provider migrations assembly (Agrumy.Api.Migrations.MySql / .Postgres) - the two providers' generated SQL differs too much to share one migrations history.
     public static class DbOptionsFactory

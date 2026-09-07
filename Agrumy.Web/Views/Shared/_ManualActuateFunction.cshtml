@@ -1,5 +1,5 @@
-@model api.ViewModels.ManualActuateFunctionViewModel
-@using api.Utils
+@model Agrumy.Web.ViewModels.ManualActuateFunctionViewModel
+@using Agrumy.Shared.Utils
 @{
     string fid = $"manualActuate_{Model.RelayFunction}_{Model.ScopeId}";
     string startAction = Model.IsUnitLevel ? "UnitManualActuateStart" : "ZoneManualActuateStart";

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// One recorded admin-facing action - who changed another account's access/state, when, and to what. Write-once: nothing ever updates or deletes a row.
     public class AuditLogEntry

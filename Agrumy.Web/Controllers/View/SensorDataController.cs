@@ -1,12 +1,12 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Web.Security;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [Authorize]
     public class SensorDataController(IApi api) : Controller

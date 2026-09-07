@@ -1,4 +1,4 @@
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Same deliberate departure as WeatherBackgroundService: fixed 1-minute cadence, not the admin-configured interval - FirmwareCatalogRefreshEvaluator re-checks the live interval every tick.
     public sealed class FirmwareCatalogRefreshBackgroundService(IServiceScopeFactory scopeFactory, ILogger<FirmwareCatalogRefreshBackgroundService> logger)

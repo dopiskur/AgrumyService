@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IDeviceRepository core CRUD members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged. ToDto(DeviceRow) moved to EfDeviceRepository.ToDto - EfRepository.DeviceFarmUnits.cs (not yet extracted) now calls that directly.
     internal partial class EfRepository

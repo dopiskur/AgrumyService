@@ -1,7 +1,7 @@
 using System.Text.Json;
-using api.Dal;
-using api.Dal.Interface;
-using api.Filters;
+using Agrumy.Api.Dal;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Filters;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;

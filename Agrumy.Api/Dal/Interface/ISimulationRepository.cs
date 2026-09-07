@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// The server-internal registry of which devices are fully virtual, used only by the Simulation admin endpoints and VirtualDeviceRunnerBackgroundService - never consulted by any device-facing endpoint.
     public interface ISimulationRepository

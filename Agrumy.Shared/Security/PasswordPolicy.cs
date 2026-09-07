@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Security
+namespace Agrumy.Shared.Security
 {
     /// Minimal, server-configurable password policy (ServerConfig.PasswordMinLength/PasswordRequireComplexity) - checked wherever a NEW password is set, never against an existing hash being verified.
     public static class PasswordPolicy

@@ -1,12 +1,14 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
+using Agrumy.Dal;
+using Agrumy.Shared;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// IDeviceRepository, extracted out of the EfRepository god class (roadmap #246) - device CRUD, configs, fixed type lists, firmware's legacy board-less lookup, diagnostics/fleet, events, and the offline/low-battery alert queries. Needs IServerConfigRepository (hysteresis defaults on add, EventDedupeMinutes, active firmware source) - an already-extracted leaf facet, so no circular dependency.
     internal sealed class EfDeviceRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ICache cache, IServerConfigRepository serverConfigRepository) : IDeviceRepository

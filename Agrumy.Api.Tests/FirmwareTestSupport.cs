@@ -1,7 +1,7 @@
 using System.Text;
-using api;
-using api.Dal.Interface;
-using api.Firmware;
+using Agrumy.Shared;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

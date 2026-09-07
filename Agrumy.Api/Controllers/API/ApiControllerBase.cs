@@ -1,13 +1,13 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
-    /// Shared base for the JSON API controllers - cache injection and caller identity off the JWT; <see cref="api.Filters.DbExceptionFilter"/> turns data-access exceptions into responses so actions don't catch them individually. Only takes the two facets WriteAuditAsync itself needs - controllers inject whichever wider/narrower repository facets their own actions call, not through this base.
+    /// Shared base for the JSON API controllers - cache injection and caller identity off the JWT; <see cref="Agrumy.Api.Filters.DbExceptionFilter"/> turns data-access exceptions into responses so actions don't catch them individually. Only takes the two facets WriteAuditAsync itself needs - controllers inject whichever wider/narrower repository facets their own actions call, not through this base.
     [ApiController]
     [ApiVersion("1.0")]
     public abstract class ApiControllerBase : ControllerBase

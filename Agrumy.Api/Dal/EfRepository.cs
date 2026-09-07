@@ -1,12 +1,13 @@
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Dal;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// EF Core implementation of IRepository, split into partial files mirroring its facets (EfRepository.Users.cs, EfRepository.Devices.cs, ...) - this file holds connection plumbing and the ISystemRepository members.
     internal partial class EfRepository(AgrumyDbContext db, ILogger<EfRepository> logger, IAuditLogRepository auditLogRepository, IRefreshTokenRepository refreshTokenRepository, IControllerDataRepository controllerDataRepository, IDiscoveryRepository discoveryRepository, ITenantRepository tenantRepository, IGatewayRepository gatewayRepository, IServerConfigRepository serverConfigRepository, ICommandRepository commandRepository, IFirmwareRepository firmwareRepository, IUserRepository userRepository, IDeviceRepository deviceRepository, ISimulationRepository simulationRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, ISensorDataRepository sensorDataRepository) : IRepository

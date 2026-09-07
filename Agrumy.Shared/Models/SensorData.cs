@@ -1,8 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using api.Json;
+using Agrumy.Shared.Json;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// One item of the JSON array body for POST /api/SensorData - see contracts/device-api/sensordata.request.schema.json. DeviceID/TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID are present on the wire but always ignored (identity comes from the authenticated device, see SensorDataController.Post); every measurement accepts a JSON number OR a numeric string, since legacy pre-#326 firmware still sends strings.
     public class SensorDataPushReading

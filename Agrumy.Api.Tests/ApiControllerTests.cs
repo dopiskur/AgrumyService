@@ -2,15 +2,16 @@ using System.IO.Compression;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api;
-using api.BackgroundWorkers;
-using api.Commands;
-using api.Controllers.API;
-using api.Dal.Interface;
-using api.Diagnostics;
-using api.Models;
-using api.Notifications;
-using api.Security;
+using Agrumy.Shared;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Diagnostics;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
+using Agrumy.Api.Security;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +38,7 @@ public class ApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings);
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings);
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings);
     private DeviceCommandApiController NewDeviceCommandController() =>
@@ -57,10 +58,10 @@ public class ApiControllerTests
 
     private void AssertNoJobWasQueued() =>
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
-    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new api.Commands.ManualActuateService(_repo.Object),
+    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-        new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object),
+        new Agrumy.Api.Migration.TenantExportService(_repo.Object), new Agrumy.Api.Migration.TenantImportService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
@@ -545,7 +546,7 @@ public class ApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
             Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }));
     }
 
@@ -1942,7 +1943,7 @@ public class ApiControllerTests
     [Fact]
     public async Task TenantUpdate_BlankScheduleTimeZone_ClearsToNull()
     {
-        // Blank is a valid "not configured" state (see api.Models.Tenant) - must not be rejected like an actually-invalid value.
+        // Blank is a valid "not configured" state (see Agrumy.Shared.Models.Tenant) - must not be rejected like an actually-invalid value.
         Tenant? saved = null;
         _repo.Setup(r => r.TenantUpdateAsync(It.IsAny<Tenant>()))
              .Callback<Tenant>(t => saved = t)
@@ -3064,7 +3065,7 @@ public class RoleGateAuthorizationTests
     [Fact]
     public void GatewayController_MappingWrites_RequireAntiForgeryToken()
     {
-        var controller = typeof(api.Controllers.View.GatewayController);
+        var controller = typeof(Agrumy.Web.Controllers.View.GatewayController);
         Assert.Contains(controller.GetMethod("MappingAdd")!.GetCustomAttributes(inherit: true),
             a => a is Microsoft.AspNetCore.Mvc.ValidateAntiForgeryTokenAttribute);
         Assert.Contains(controller.GetMethod("MappingDelete")!.GetCustomAttributes(inherit: true),

@@ -1,4 +1,4 @@
-namespace api.Gateway.Registration
+namespace Agrumy.Gateway.Registration
 {
     /// What gets persisted to GatewaySelfOptions.RegistrationFilePath once POST /api/Device/Register succeeds - the same three values AgrumyFirmware keeps in deviceRegistration.json, just plain JSON instead of LittleFS.
     public class GatewayRegistrationState

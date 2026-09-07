@@ -1,14 +1,14 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 
-namespace api
+namespace Agrumy.Shared
 {
     /// Populated via Bind() from the host's own IConfiguration (env-var/user-secrets overrides included), not a static singleton, so it stays constructor-injectable and mockable.
     public class AgrumySettings
     {
         public string? DefaultConnection { get; set; }
 
-        /// Raw Database:Provider value (mysql|mariadb|postgres|postgresql); AGRUMY_DB_PROVIDER env var takes precedence, null/empty defaults to mysql via api.Dal.DbProviderKindParser.
+        /// Raw Database:Provider value (mysql|mariadb|postgres|postgresql); AGRUMY_DB_PROVIDER env var takes precedence, null/empty defaults to mysql via Agrumy.Dal.DbProviderKindParser.
         public string? DatabaseProvider { get; set; }
 
         public string? JwtSecureKey { get; set; }
@@ -26,11 +26,11 @@ namespace api
         public double HysteresisHumidity { get; set; } = 5.0;
         public double HysteresisLight { get; set; } = 20.0;
 
-        // See api.Models.ServerConfig.BatteryLowThreshold/BatteryLowHysteresis for the dead-zone rule they feed into.
+        // See Agrumy.Shared.Models.ServerConfig.BatteryLowThreshold/BatteryLowHysteresis for the dead-zone rule they feed into.
         public double BatteryLowThreshold { get; set; } = 20.0;
         public double BatteryLowHysteresis { get; set; } = 5.0;
 
-        // See api.Models.ServerConfig.TankRefillThreshold/TankRefillHysteresis - same dead-zone rule, applied to TankCalculator's fill percent instead of Battery.
+        // See Agrumy.Shared.Models.ServerConfig.TankRefillThreshold/TankRefillHysteresis - same dead-zone rule, applied to TankCalculator's fill percent instead of Battery.
         public double TankRefillThreshold { get; set; } = 20.0;
         public double TankRefillHysteresis { get; set; } = 5.0;
 
@@ -64,7 +64,7 @@ namespace api
         // Days of sensorData history to auto-purge; null = admin hasn't opted in, data just accumulates.
         public int? SensorDataRetentionDays { get; set; }
 
-        // A secret, never exposed through ServerConfigApiController - unlike location/poll-interval/threshold, which are operational and live in api.Models.ServerConfig instead.
+        // A secret, never exposed through ServerConfigApiController - unlike location/poll-interval/threshold, which are operational and live in Agrumy.Shared.Models.ServerConfig instead.
         public string? WeatherApiKey { get; set; }
         public int WeatherPollIntervalMinutes { get; set; } = 15;
         public double WeatherRainSkipThreshold { get; set; } = 50.0;

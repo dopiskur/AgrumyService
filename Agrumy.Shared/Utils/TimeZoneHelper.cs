@@ -1,4 +1,4 @@
-namespace api.Utils
+namespace Agrumy.Shared.Utils
 {
     /// UTC-to-user-local display conversion: the database keeps every timestamp in UTC and only the presentation layer converts, using the IANA zone id from user.TimeZone so DST resolves correctly on both Windows and Linux.
     public static class TimeZoneHelper

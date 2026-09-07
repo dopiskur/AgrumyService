@@ -1,4 +1,4 @@
-namespace api.Dal.Entities
+namespace Agrumy.Dal.Entities
 {
     public class AuditLogRow
     {

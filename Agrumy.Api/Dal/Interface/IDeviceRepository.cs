@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// The minimal shape OfflineAlertBackgroundService needs - not the full DeviceFleetStatus, since OfflineNotifiedAt is alert-bookkeeping the Web UI has no business displaying.
     public sealed record OfflineAlertCandidate(

@@ -1,10 +1,10 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Roadmap #409 - lists and restores soft-deleted Farms/Devices (see AgrumyDbContext's HasQueryFilter on each). Actual deletion still happens through the existing DeviceApiController.DeviceDelete / DeviceFarmUnitApiController.DeviceFarmDelete endpoints - this controller only reads the recycle bin and undoes it.
     [Route("/api/RecycleBin")]

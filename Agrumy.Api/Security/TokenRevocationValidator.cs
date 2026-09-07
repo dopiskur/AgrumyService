@@ -1,14 +1,15 @@
+using Agrumy.Shared.Security;
 using System.IdentityModel.Tokens.Jwt;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace api.Security
+namespace Agrumy.Api.Security
 {
     /// Just the field this check actually needs - deliberately not the full User (PwdHash/PwdSalt have no business sitting in the cache backing store for this).
     internal sealed record CachedRevocationState(DateTimeOffset? TokensValidAfterUtc);
 
-    /// AddJwtBearer's OnTokenValidated hook - rejects a structurally valid, unexpired token if the caller's password changed or account was disabled after it was issued. See api.Security.TokenRevocationCheck for the actual decision.
+    /// AddJwtBearer's OnTokenValidated hook - rejects a structurally valid, unexpired token if the caller's password changed or account was disabled after it was issued. See Agrumy.Shared.Security.TokenRevocationCheck for the actual decision.
     public static class TokenRevocationValidator
     {
         // Roadmap #397(4) - this hook ran a DB query on every authenticated request. 30s is a deliberate trade-off (user's own call): a revoked token can still pass for up to this long, in exchange for cutting DB load on every single API call.

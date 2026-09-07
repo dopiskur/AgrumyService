@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public class Device
     {
         public int? ConfigVersion { get; set; } = 1;
-        // See api.Models.DeviceConfig.CommandVersion for the full story.
+        // See Agrumy.Shared.Models.DeviceConfig.CommandVersion for the full story.
         public int? CommandVersion { get; set; }
 
         [HiddenInput(DisplayValue = true)]
@@ -293,7 +293,7 @@ namespace api.Models
 
         public int? SleepSeconds { get; set; } = 60;
         public bool? SleepDeep { get; set; } = false;
-        // Roadmap #383 - see api.Models.Device.LoRaGatewayEnabled; firmware only actually listens if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise.
+        // Roadmap #383 - see Agrumy.Shared.Models.Device.LoRaGatewayEnabled; firmware only actually listens if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise.
         public bool? LoRaGatewayEnabled { get; set; } = false;
 
         // UTC offset (seconds, positive east) for ServerConfig.ScheduleTimeZone, computed fresh each sync so firmware needs no timezone database of its own; 0 when unconfigured.
@@ -523,7 +523,7 @@ namespace api.Models
         Target = 2,
     }
 
-    /// One admin-triggered manual actuation (roadmap #219), DB-backed server-side shape - api.Commands.ManualActuateService is the only writer; api.Dal.EfRepository upserts on (DeviceID, RelayFunction). See DeviceManualOverridePush for the narrower wire shape actually sent to the device.
+    /// One admin-triggered manual actuation (roadmap #219), DB-backed server-side shape - Agrumy.Api.Commands.ManualActuateService is the only writer; Agrumy.Api.Dal.EfRepository upserts on (DeviceID, RelayFunction). See DeviceManualOverridePush for the narrower wire shape actually sent to the device.
     public class DeviceManualOverride
     {
         [HiddenInput(DisplayValue = true)]
@@ -541,7 +541,7 @@ namespace api.Models
         public double? TargetHysteresis { get; set; }
     }
 
-    /// POST /api/DeviceFarmUnit/Zone/ManualActuate and .../Unit/ManualActuate's request body - api.Commands.ManualActuateService validates/caps it into a DeviceManualOverride. DurationSeconds is Duration-mode only (the admin's requested length, before the zone's MaxRunSeconds caps it); TargetMetric/TargetThreshold/TargetHysteresis are Target-mode only.
+    /// POST /api/DeviceFarmUnit/Zone/ManualActuate and .../Unit/ManualActuate's request body - Agrumy.Api.Commands.ManualActuateService validates/caps it into a DeviceManualOverride. DurationSeconds is Duration-mode only (the admin's requested length, before the zone's MaxRunSeconds caps it); TargetMetric/TargetThreshold/TargetHysteresis are Target-mode only.
     public sealed record ManualActuateRequest(RelayFunction RelayFunction, ManualOverrideMode Mode, int? DurationSeconds,
         SensorMetric? TargetMetric, double? TargetThreshold, double? TargetHysteresis);
 

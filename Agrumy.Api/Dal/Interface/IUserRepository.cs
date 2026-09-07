@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// User facet: accounts, secrets, composable roles, and email activation.
     public interface IUserRepository
@@ -51,7 +51,7 @@ namespace api.Dal.Interface
         /// Every role name currently assigned to this user via userUserRole - empty (never null) for a user nobody has migrated/assigned yet.
         Task<IReadOnlyList<string>> UserRoleNamesGetAsync(int idUser);
 
-        /// Replaces this user's entire role set with exactly <paramref name="roleNames"/> (not incremental) - unknown names are silently ignored since the Web UI only ever offers api.Security.RoleNames.All.
+        /// Replaces this user's entire role set with exactly <paramref name="roleNames"/> (not incremental) - unknown names are silently ignored since the Web UI only ever offers Agrumy.Shared.Security.RoleNames.All.
         Task UserRolesSetAsync(int idUser, IEnumerable<string> roleNames);
 
         // Email activation

@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     /// Drives DeviceFarmUnit/Farms.cshtml (roadmap #384) - Units rides along so each farm row can offer an "assign unit" picker without a second round trip per row.
     public class FarmListViewModel

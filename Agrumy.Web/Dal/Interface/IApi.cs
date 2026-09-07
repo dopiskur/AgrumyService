@@ -1,7 +1,7 @@
-using api.Models;
+using Agrumy.Shared.Models;
 using Refit;
 
-namespace api.Dal.Interface
+namespace Agrumy.Web.Dal.Interface
 {
     /// Declarative Refit client for Agrumy.Api (AddRefitClient in Program.cs) - BearerTokenHandler attaches the JWT so no method takes a token param, and non-success responses raise ApiException (RefitConfig) carrying the response body.
     public interface IApi
@@ -11,7 +11,7 @@ namespace api.Dal.Interface
         [Post("/api/User/Login")]
         Task<UserLoginResult?> UserLogin([Body] UserLogin userLogin);
 
-        /// Tenant-import counterpart to Login - proves identity with the old (imported) password since MustChangePassword blocks Login itself (428, api.Models.User.MustChangePassword).
+        /// Tenant-import counterpart to Login - proves identity with the old (imported) password since MustChangePassword blocks Login itself (428, Agrumy.Shared.Models.User.MustChangePassword).
         [Post("/api/User/ForceChangePassword")]
         Task<UserLoginResult?> UserForceChangePassword([Body] UserForceChangePassword value);
 
@@ -19,7 +19,7 @@ namespace api.Dal.Interface
         [Get("/api/User/BootstrapPending")]
         Task<bool> BootstrapPending();
 
-        /// The one-shot call that gives the bootstrap Global Admin a real password - see api.Models.BootstrapAdminSetPassword for why it takes no login/email.
+        /// The one-shot call that gives the bootstrap Global Admin a real password - see Agrumy.Shared.Models.BootstrapAdminSetPassword for why it takes no login/email.
         [Post("/api/User/BootstrapSetPassword")]
         Task BootstrapSetPassword([Body] BootstrapAdminSetPassword value);
 

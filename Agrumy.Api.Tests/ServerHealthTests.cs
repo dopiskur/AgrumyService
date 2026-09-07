@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
-using api.Commands;
-using api.Dal;
-using api.Dal.Interface;
-using api.Diagnostics;
-using api.Firmware;
-using api.Models;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Diagnostics;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Moq;

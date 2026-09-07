@@ -1,9 +1,8 @@
 using System.Globalization;
-using api;
-using api.Dal.Interface;
-using api.Filters;
-using api.Security;
-using api.Utils;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Web.Filters;
+using Agrumy.Web.Security;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Localization;

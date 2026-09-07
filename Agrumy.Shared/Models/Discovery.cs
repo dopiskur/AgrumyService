@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Body of POST /api/Discovery/Report - scanning device identity comes exclusively from the authenticated apiId, same rule as DeviceApiController.PushEvent, not from this body.
     public class DiscoveryReportRequest
@@ -14,7 +14,7 @@ namespace api.Models
         public int? ZoneID { get; set; }
     }
 
-    /// One row per unique DiscoveredApMac in GET /api/Discovery/Results - see api.Utils.DiscoveryResultPicker for the best-report/tiebreak rule.
+    /// One row per unique DiscoveredApMac in GET /api/Discovery/Results - see Agrumy.Api.Utils.DiscoveryResultPicker for the best-report/tiebreak rule.
     public class DiscoveryResult
     {
         public string DiscoveredApMac { get; set; } = "";

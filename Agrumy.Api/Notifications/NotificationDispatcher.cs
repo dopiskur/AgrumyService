@@ -1,4 +1,4 @@
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     /// Fans one notification out to every configured channel.
     public interface INotificationDispatcher

@@ -1,13 +1,14 @@
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
-using api.Security;
+using Agrumy.Shared;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// The firmware catalog and its population paths - every write is Global admin only (install-wide, same rule as ServerConfigApiController), reads are open to device managers for the per-device update UI, Download is anonymous on purpose (see its own comment).
     [Route("/api/Firmware")]

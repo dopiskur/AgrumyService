@@ -1,11 +1,12 @@
+using Agrumy.Dal;
 using System.Globalization;
-using api.Dal.Entities;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Dal.Entities;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// ISensorDataRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet.
     internal sealed class EfSensorDataRepository(AgrumyDbContext db) : ISensorDataRepository
@@ -440,7 +441,7 @@ namespace api.Dal
                 LiquidPH = r.LiquidPH,
                 RainLevel = r.RainLevel,
                 WaterLevel = r.WaterLevel,
-                Wind = (int?)r.Wind, // SensorDataRow.Wind is int, api.Models.SensorData.Wind is double
+                Wind = (int?)r.Wind, // SensorDataRow.Wind is int, Agrumy.Shared.Models.SensorData.Wind is double
                 Ec = r.Ec,
                 Weight = r.Weight,
                 DateCreated = r.DateCreated,

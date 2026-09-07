@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
     /// Firebase Cloud Messaging push channel (Android now, iOS via APNs later) - PREPARED, NOT LIVE: stays skipped since <see cref="PushChannelOptions.Enabled"/> defaults false and no Android app exists yet to supply <see cref="NotificationRecipient.PushTokens"/>.
     public sealed class FcmPushNotificationChannel : INotificationChannel

@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
     // Deliberately NOT UserView/UserUpdate, which carry admin-only fields (Enabled/TenantID) this page must never post.
     public class ProfileViewModel

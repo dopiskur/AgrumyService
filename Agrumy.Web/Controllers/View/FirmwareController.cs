@@ -1,14 +1,14 @@
 using System.Text.Json.Serialization;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StreamPart = Refit.StreamPart; // not `using Refit;` - its AuthorizeAttribute clashes with ASP.NET's
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [Authorize(Roles = RoleNames.GlobalAdmin)]
     public class FirmwareController(IApi api) : Controller

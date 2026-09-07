@@ -1,7 +1,8 @@
+using Agrumy.Shared;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 
-namespace api.Firmware
+namespace Agrumy.Api.Firmware
 {
     /// The directory this API serves .bin files from (Firmware:LocalPath, default "firmware-store" - not "firmware", which collides case-insensitively with the source folder) - file names are always release-convention, validated so a request path can never escape it.
     public sealed class FirmwareStorage(IOptions<AgrumySettings> settings, IHostEnvironment environment)

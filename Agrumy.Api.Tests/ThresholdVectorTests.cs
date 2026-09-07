@@ -1,5 +1,5 @@
 using System.Globalization;
-using api.Devices;
+using Agrumy.Api.Devices;
 
 namespace Agrumy.Api.Tests;
 

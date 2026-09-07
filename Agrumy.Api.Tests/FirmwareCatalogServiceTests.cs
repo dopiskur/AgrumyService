@@ -1,8 +1,8 @@
 using System.IO.Compression;
 using System.Text.Json;
-using api.Dal.Interface;
-using api.Firmware;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Moq;
 
 namespace Agrumy.Api.Tests;

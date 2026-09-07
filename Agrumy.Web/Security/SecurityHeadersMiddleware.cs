@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace api.Security
+namespace Agrumy.Web.Security
 {
     /// Sets response headers with no per-route variation, so plain response mutation (not endpoint-specific) is enough - runs early, before routing.
     internal sealed class SecurityHeadersMiddleware(RequestDelegate next)

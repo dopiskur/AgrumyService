@@ -1,6 +1,6 @@
-using api.Dal.Interface;
+using Agrumy.Api.Dal.Interface;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Roadmap #409 - the scheduled half of "Purge orphaned sensor data" (the other half is the manual trigger on DataMaintenanceApiController.PurgeOrphaned); both call the same ISensorDataRepository.PurgeOrphanedSensorDataAsync.
     public sealed class PurgeOrphanedSensorDataEvaluator(IServerConfigRepository serverConfigRepo, ISensorDataRepository sensorDataRepo, ILogger<PurgeOrphanedSensorDataEvaluator> logger)

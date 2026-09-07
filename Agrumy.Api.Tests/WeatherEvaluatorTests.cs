@@ -1,8 +1,8 @@
-using api;
-using api.BackgroundWorkers;
-using api.Dal.Interface;
-using api.Models;
-using api.Weather;
+using Agrumy.Shared;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Weather;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;

@@ -1,4 +1,4 @@
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Startup/health facet of the data layer - the only part infrastructure like DbExceptionFilter and the startup DB check needs.
     public interface ISystemRepository

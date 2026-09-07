@@ -1,10 +1,10 @@
-using api.Dal.Interface;
-using api.Security;
-using api.Utils;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Security;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     /// One-click, tenant-wide fail-closed actuator stop (roadmap #230) - reachable from every page via _Layout.cshtml, not tied to the Global-admin-only Tenant Management area.
     [Authorize(Roles = RoleNames.DeviceManagers)]

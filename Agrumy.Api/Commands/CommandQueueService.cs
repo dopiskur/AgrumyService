@@ -1,8 +1,8 @@
 using System.Text.Json;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 
-namespace api.Commands
+namespace Agrumy.Api.Commands
 {
     /// Success (>=1 command created) allows Message to be null; AllDuplicates and TargetNotFound always carry one so the API controller can pass it straight through as the error body.
     public enum IssueCommandOutcome
@@ -93,7 +93,7 @@ namespace api.Commands
             return await IssueToTargetsAsync(targets, CommandActionType.ScanForDevices);
         }
 
-        /// Issues a ProvisionDevice command to exactly one device (the Register flow's winning scanning device), carrying payloadJson - see api.Models.DiscoveryProvisionPayload.
+        /// Issues a ProvisionDevice command to exactly one device (the Register flow's winning scanning device), carrying payloadJson - see Agrumy.Shared.Models.DiscoveryProvisionPayload.
         public async Task<IssueCommandResult> IssueProvisionCommandAsync(int deviceId, string payloadJson)
         {
             DateTime utcNow = DateTime.UtcNow;

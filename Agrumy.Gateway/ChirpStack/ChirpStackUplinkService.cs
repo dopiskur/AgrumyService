@@ -1,14 +1,14 @@
 using System.Text;
 using System.Text.Json;
-using api.LoRa;
-using api.Models;
+using Agrumy.Shared.LoRa;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 
-namespace api.Gateway.ChirpStack
+namespace Agrumy.Gateway.ChirpStack
 {
     /// Profile B (LoRaGateway) only - subscribes to ChirpStack's MQTT uplink topic, forwards each through the same /api/Gateway/Batch path Profile A uses, and publishes the result back as a downlink; UNTESTED against any real ChirpStack instance, gateway, or LoRa device - treat as a first draft, not a working integration.
     public sealed partial class ChirpStackUplinkService(
@@ -204,7 +204,7 @@ namespace api.Gateway.ChirpStack
                     ? Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
                     {
                         ok = result?.Success ?? false,
-                        // Hint for the (not-yet-existing) LoRa firmware profile: how long to wait before its next config-poll uplink, scaled to this uplink's own SF - see api.LoRa.LoRaInterval.
+                        // Hint for the (not-yet-existing) LoRa firmware profile: how long to wait before its next config-poll uplink, scaled to this uplink's own SF - see Agrumy.Shared.LoRa.LoRaInterval.
                         retryAfterSeconds = (int)LoRaInterval.ForSpreadingFactor(sf).TotalSeconds,
                     })))
                     : null,

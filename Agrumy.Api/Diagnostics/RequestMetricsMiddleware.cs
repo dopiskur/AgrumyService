@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Routing;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// Must run after UseRouting (so <c>GetEndpoint()</c> resolves the route pattern, not one series per device id) but before the endpoint executes, so timing covers the full request.
     internal sealed class RequestMetricsMiddleware(RequestDelegate next, AgrumyMetrics metrics)

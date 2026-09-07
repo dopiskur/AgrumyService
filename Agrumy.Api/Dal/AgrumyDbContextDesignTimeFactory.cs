@@ -1,6 +1,7 @@
+using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// Lets `dotnet ef` build an AgrumyDbContext without booting the web host - provider via --provider mysql|postgres or AGRUMY_DB_PROVIDER, else mysql; connection via --connection or ConnectionStrings__DefaultConnection, else a localhost placeholder (only commands that touch the database need a real one).
     public class AgrumyDbContextDesignTimeFactory : IDesignTimeDbContextFactory<AgrumyDbContext>

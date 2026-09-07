@@ -1,6 +1,6 @@
 using Npgsql;
 
-namespace api.Dal
+namespace Agrumy.Api.Dal
 {
     /// Builds a consistent { reason, message } response body for database failures instead of a bare false / raw exception message.
     public static class DbErrorResponse

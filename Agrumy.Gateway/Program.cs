@@ -1,9 +1,9 @@
-using api.Models;
-using api.Gateway;
-using api.Gateway.ChirpStack;
-using api.Gateway.LocalForwarding;
-using api.Gateway.LoRaPrivate;
-using api.Gateway.Registration;
+using Agrumy.Shared.Models;
+using Agrumy.Gateway;
+using Agrumy.Gateway.ChirpStack;
+using Agrumy.Gateway.LocalForwarding;
+using Agrumy.Gateway.LoRaPrivate;
+using Agrumy.Gateway.Registration;
 
 var builder = WebApplication.CreateBuilder(args);
 

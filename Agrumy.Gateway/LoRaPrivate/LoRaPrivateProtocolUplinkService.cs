@@ -1,11 +1,11 @@
 using System.IO.Ports;
 using System.Text.Json;
-using api.Models;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace api.Gateway.LoRaPrivate
+namespace Agrumy.Gateway.LoRaPrivate
 {
     /// GatewayProfile.LoRaPrivateProtocol - reads AgrumySerialFrame uplinks from a locally-attached
     /// ESP32+SX126x radio-frontend board (RadioLib raw PHY, not LoRaWAN/ChirpStack) and forwards each,
@@ -150,7 +150,7 @@ namespace api.Gateway.LoRaPrivate
             }
         }
 
-        /// Roadmap #395 finding 3 - uplink.Payload is now AES-256-GCM ciphertext (Logic/CommandReplayLogic-style counter+tag, see api.LoRa.LoRaPrivatePayloadCrypto), not plaintext JSON. This gateway never holds the decryption key - it forwards the still-encrypted bytes to RelayUplink exactly as LoRaGatewayRelayController.cpp's WiFi-direct path already does, and AgrumyService is the only place that ever decrypts. The local mappingByAddress check stays as a cheap pre-filter (skip a network round trip for noise on an unmapped address); it no longer needs DeviceApiKey for anything, only confirms the address is worth forwarding at all.
+        /// Roadmap #395 finding 3 - uplink.Payload is now AES-256-GCM ciphertext (Logic/CommandReplayLogic-style counter+tag, see Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto), not plaintext JSON. This gateway never holds the decryption key - it forwards the still-encrypted bytes to RelayUplink exactly as LoRaGatewayRelayController.cpp's WiFi-direct path already does, and AgrumyService is the only place that ever decrypts. The local mappingByAddress check stays as a cheap pre-filter (skip a network round trip for noise on an unmapped address); it no longer needs DeviceApiKey for anything, only confirms the address is worth forwarding at all.
         private async Task ProcessUplinkAsync(AgrumySerialFrame.DecodedUplink uplink)
         {
             if (!mappingByAddress.ContainsKey(uplink.SourceAddress))

@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using api;
-using api.Controllers.API;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Shared;
+using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Shared.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -150,7 +150,7 @@ public class UserProfileTests
 
     private UserApiController NewController(string? email)
     {
-        var controller = new UserApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new api.BackgroundWorkers.BackgroundJobQueue(), TestSettings);
+        var controller = new UserApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new Agrumy.Api.BackgroundWorkers.BackgroundJobQueue(), TestSettings);
         var claims = new List<Claim> { new("TenantID", "1") };
         if (email != null)
         {

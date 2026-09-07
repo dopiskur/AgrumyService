@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public class ServerConfig
     {
@@ -29,7 +29,7 @@ namespace api.Models
         // A device repeating the identical DeviceEventType within this many minutes is ignored server-side rather than stored.
         public int? EventDedupeMinutes { get; set; }
 
-        // Gates whether non-critical problem events (crash/auth/sync/OTA) turn a Unit/Zone Orange at all - see api.Dal.EfRepository.ComputeStatus.
+        // Gates whether non-critical problem events (crash/auth/sync/OTA) turn a Unit/Zone Orange at all - see Agrumy.Api.Dal.EfRepository.ComputeStatus.
         [Display(Name = "Alert on non-critical device problems")]
         public bool ProblemEventAlertsEnabled { get; set; } = true;
 
@@ -51,7 +51,7 @@ namespace api.Models
         [Display(Name = "Enable Tenant Management page")]
         public bool TenantManagementEnabled { get; set; }
 
-        // Where firmware comes from (api.Models.FirmwareSource); GitHub defaults for zero-setup installs. String on the wire (Refit enum-as-name) since this admin DTO doesn't touch the device-facing raw-int convention.
+        // Where firmware comes from (Agrumy.Shared.Models.FirmwareSource); GitHub defaults for zero-setup installs. String on the wire (Refit enum-as-name) since this admin DTO doesn't touch the device-facing raw-int convention.
         [Display(Name = "Firmware source")]
         [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
         public FirmwareSource FirmwareSource { get; set; }
@@ -59,7 +59,7 @@ namespace api.Models
         [Display(Name = "GitHub repository (owner/name)")]
         public string? FirmwareGitHubRepository { get; set; }
 
-        /// Custom mode only: absolute URL of a manifest.json in api.Models.FirmwareManifest's format - its .bin URLs may be absolute or relative to the manifest's own location.
+        /// Custom mode only: absolute URL of a manifest.json in Agrumy.Shared.Models.FirmwareManifest's format - its .bin URLs may be absolute or relative to the manifest's own location.
         [Display(Name = "Custom repository manifest URL")]
         public string? FirmwareCustomRepositoryUrl { get; set; }
 
@@ -116,7 +116,7 @@ namespace api.Models
         [Display(Name = "Aggregated wait window (seconds)")]
         public int GatewayWaitWindowSeconds { get; set; } = 30;
 
-        // Enforced by api.Security.PasswordPolicy wherever a NEW password is set; clamped 4-128 by ServerConfigApiController.Update.
+        // Enforced by Agrumy.Shared.Security.PasswordPolicy wherever a NEW password is set; clamped 4-128 by ServerConfigApiController.Update.
         [Display(Name = "Minimum password length")]
         public int PasswordMinLength { get; set; } = 8;
 
@@ -127,7 +127,7 @@ namespace api.Models
         [Display(Name = "Config heartbeat (hours, 0 = off)")]
         public int ConfigHeartbeatHours { get; set; } = 1;
 
-        // Opt-in alternative alongside the HTTP/JWT poll cycle: when enabled, a newly-queued command is also published immediately to this broker so a persistently-connected device (AgrumyFirmware's MqttController) can act before its next HTTP poll, instead of only through CommandQueueService/GetPendingCommandAsync; OTA/registration/firmware distribution stay on HTTP (see api.Commands.MqttCommandPublisher).
+        // Opt-in alternative alongside the HTTP/JWT poll cycle: when enabled, a newly-queued command is also published immediately to this broker so a persistently-connected device (AgrumyFirmware's MqttController) can act before its next HTTP poll, instead of only through CommandQueueService/GetPendingCommandAsync; OTA/registration/firmware distribution stay on HTTP (see Agrumy.Api.Commands.MqttCommandPublisher).
         [Display(Name = "Enable MQTT instant command push")]
         public bool MqttTransportEnabled { get; set; }
 
@@ -144,7 +144,7 @@ namespace api.Models
         [Display(Name = "Broker password")]
         public string? MqttPassword { get; set; }
 
-        // SMTP email delivery config, DB-backed replacement for the old appsettings-only Notifications:Email section - see api.Notifications.EmailNotificationChannel, which now reads this instead.
+        // SMTP email delivery config, DB-backed replacement for the old appsettings-only Notifications:Email section - see Agrumy.Api.Notifications.EmailNotificationChannel, which now reads this instead.
         [Display(Name = "Enable email notifications")]
         public bool EmailEnabled { get; set; }
 

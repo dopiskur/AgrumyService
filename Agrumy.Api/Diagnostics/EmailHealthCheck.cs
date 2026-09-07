@@ -1,9 +1,9 @@
 using System.Net.Sockets;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace api.Diagnostics
+namespace Agrumy.Api.Diagnostics
 {
     /// TCP-connect only, not a real SMTP handshake or test email - #223's TestEmail already covers "does auth + sending actually work"; this just needs to be cheap enough to run on every passive health-card refresh.
     internal sealed class EmailHealthCheck(IServerConfigRepository serverConfigRepo) : IHealthCheck

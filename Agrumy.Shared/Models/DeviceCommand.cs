@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     public enum CommandActionType
     {
@@ -44,7 +44,7 @@ namespace api.Models
         public DateTimeOffset IssuedAt { get; set; }
         public DateTimeOffset ExpiresAt { get; set; }
         public DateTimeOffset? ExecutedAt { get; set; }
-        // Only ProvisionDevice sets this - see api.Models.DiscoveryProvisionPayload.
+        // Only ProvisionDevice sets this - see Agrumy.Shared.Models.DiscoveryProvisionPayload.
         public string? Payload { get; set; }
     }
 

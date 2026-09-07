@@ -1,8 +1,8 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.ViewModels
+namespace Agrumy.Web.ViewModels
 {
-    /// One function's row in _ManualActuateFunction.cshtml (roadmap #219). Zone-scoped: Target mode is only offered when MaxRunSeconds is configured (it has no other self-cap), and Active/Stop reflects that one zone's real state. Unit-scoped (IsUnitLevel): a fan-out trigger with no single "active" state to show - Target mode is always offered, individual zones lacking MaxRunSeconds are silently skipped server-side (api.Commands.ManualActuateService), surfaced only in the post-submit message.
+    /// One function's row in _ManualActuateFunction.cshtml (roadmap #219). Zone-scoped: Target mode is only offered when MaxRunSeconds is configured (it has no other self-cap), and Active/Stop reflects that one zone's real state. Unit-scoped (IsUnitLevel): a fan-out trigger with no single "active" state to show - Target mode is always offered, individual zones lacking MaxRunSeconds are silently skipped server-side (Agrumy.Api.Commands.ManualActuateService), surfaced only in the post-submit message.
     public class ManualActuateFunctionViewModel
     {
         /// IDDeviceFarmUnitZone normally, or IDDeviceFarmUnit when IsUnitLevel.

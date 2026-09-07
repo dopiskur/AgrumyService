@@ -1,5 +1,5 @@
 using System.Net;
-using api.Firmware;
+using Agrumy.Api.Firmware;
 using Xunit;
 
 namespace Agrumy.Api.Tests;

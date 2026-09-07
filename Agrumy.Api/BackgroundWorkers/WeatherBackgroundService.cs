@@ -1,4 +1,4 @@
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Fixed 1-minute cadence, not the admin-configured interval - PeriodicBackgroundService reads Interval only once at startup, so WeatherEvaluator re-checks the live value every tick instead.
     public sealed class WeatherBackgroundService(IServiceScopeFactory scopeFactory, ILogger<WeatherBackgroundService> logger)

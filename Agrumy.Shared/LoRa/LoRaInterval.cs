@@ -1,4 +1,4 @@
-namespace api.LoRa
+namespace Agrumy.Shared.LoRa
 {
     /// Config re-poll interval scaled to LoRa spreading factor so a weak-signal device doesn't blow EU868's ~1% duty-cycle budget; SF7/9/12 anchors are confirmed, SF8/10/11 are interpolated and unverified against real hardware.
     public static class LoRaInterval

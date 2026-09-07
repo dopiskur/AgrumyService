@@ -1,13 +1,13 @@
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
-    /// Real-time relay on/off state, parallel to SensorDataController but fired on every actual relay CHANGE rather than a fixed interval - see api.Dal.Entities.ControllerDataRow.
+    /// Real-time relay on/off state, parallel to SensorDataController but fired on every actual relay CHANGE rather than a fixed interval - see Agrumy.Dal.Entities.ControllerDataRow.
     [Route("/api/ControllerData")]
     public class ControllerDataApiController(IControllerDataRepository controllerDataRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {

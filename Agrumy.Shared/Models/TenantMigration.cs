@@ -1,4 +1,4 @@
-namespace api.Models
+namespace Agrumy.Shared.Models
 {
     /// Where an import lands: ByName matches/creates a tenant by exact name; AsSentinel targets TenantID=0 and is only reachable via TenantApiController.ImportAsSentinel while the bootstrap Global Admin is still unclaimed (ITenantRepository.TenantZeroIsEmptyAsync).
     public enum TenantImportTarget

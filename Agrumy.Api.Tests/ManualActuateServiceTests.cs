@@ -1,6 +1,6 @@
-using api.Commands;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using Moq;
 
 namespace Agrumy.Api.Tests;

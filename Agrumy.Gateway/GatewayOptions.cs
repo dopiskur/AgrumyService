@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Gateway
+namespace Agrumy.Gateway
 {
     /// Bound from appsettings.json / environment variables (AgrumyService/Gateway/ChirpStack sections) - see appsettings.json.example for the full set with comments.
     public class GatewayOptions
@@ -45,7 +45,7 @@ namespace api.Gateway
         public int MappingRefreshSeconds { get; set; } = 60;
     }
 
-    /// GatewayProfile.LoRaPrivateProtocol only - a locally attached ESP32+SX126x radio-frontend board (RadioLib raw PHY, not LoRaWAN) speaks a small length-framed protocol over this serial port; see api.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
+    /// GatewayProfile.LoRaPrivateProtocol only - a locally attached ESP32+SX126x radio-frontend board (RadioLib raw PHY, not LoRaWAN) speaks a small length-framed protocol over this serial port; see Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService.
     public class LoRaPrivateProtocolOptions
     {
         /// Linux device path (e.g. /dev/ttyUSB0) or Windows COM port of the radio-frontend board.

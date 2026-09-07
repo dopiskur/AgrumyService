@@ -1,4 +1,4 @@
-namespace api.Utils
+namespace Agrumy.Shared.Utils
 {
     /// Air VPD (kPa) via the Tetens formula from Temperature (°C) + Humidity (%RH); null if either is missing.
     public static class VpdCalculator

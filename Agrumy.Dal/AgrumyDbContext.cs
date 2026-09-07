@@ -1,8 +1,8 @@
-using api.Dal.Entities;
+using Agrumy.Dal.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace api.Dal
+namespace Agrumy.Dal
 {
     /// Provider-neutral EF Core context (MySQL/MariaDB via Pomelo or PostgreSQL via Npgsql, chosen at runtime) mapped against the legacy camelCase/IDXxx schema - relationship NAVIGATION properties are deliberately not exposed (no .Include()-based traversal), EfRepository does every join in LINQ; the HasOne() calls below configure FK constraints/cascade behavior only, not C# navigation.
     public class AgrumyDbContext : DbContext
@@ -486,7 +486,7 @@ namespace api.Dal
             {
                 e.ToTable("eventType");
                 e.HasKey(x => x.IDEventType);
-                e.Property(x => x.IDEventType).ValueGeneratedNever(); // Fixed catalog, mirrors api.Models.DeviceEventType's own numeric values.
+                e.Property(x => x.IDEventType).ValueGeneratedNever(); // Fixed catalog, mirrors Agrumy.Shared.Models.DeviceEventType's own numeric values.
                 e.Property(x => x.EventTypeName).HasMaxLength(64);
             });
 

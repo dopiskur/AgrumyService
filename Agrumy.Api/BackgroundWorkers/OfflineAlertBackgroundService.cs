@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using api.Notifications;
+using Agrumy.Api.Notifications;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Thin PeriodicBackgroundService wrapper - the actual logic lives in OfflineAlertEvaluator, kept separate for testability.
     public sealed class OfflineAlertBackgroundService(

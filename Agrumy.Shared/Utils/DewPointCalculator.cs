@@ -1,4 +1,4 @@
-namespace api.Utils
+namespace Agrumy.Shared.Utils
 {
     /// Dew point (°C) via the Magnus formula from Temperature (°C) + Humidity (%RH); null if either is missing.
     public static class DewPointCalculator

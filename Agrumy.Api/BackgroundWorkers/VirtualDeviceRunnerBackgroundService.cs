@@ -1,10 +1,10 @@
-using api.Dal.Interface;
-using api.Devices;
-using api.Models;
-using api.Simulation;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Simulation;
 using Microsoft.Extensions.Options;
 
-namespace api.BackgroundWorkers
+namespace Agrumy.Api.BackgroundWorkers
 {
     /// Drives every registered virtual device through the real device-facing HTTP wire protocol once per tick - Authenticate, Config, SensorData, ControllerData - exactly as a real AgrumyFirmware device would, just generated instead of read off real hardware.
     public sealed class VirtualDeviceRunnerBackgroundService(

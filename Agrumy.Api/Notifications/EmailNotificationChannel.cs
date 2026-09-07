@@ -1,12 +1,12 @@
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 
-namespace api.Notifications
+namespace Agrumy.Api.Notifications
 {
-    /// SMTP email delivery via MailKit. Config lives in the DB-backed ServerConfig (Email* fields, admin-editable via Server Settings), not appsettings - read fresh on every call rather than a bound options snapshot, same pattern as api.Commands.MqttCommandPublisher's ServerConfigGetAsync(1) read.
+    /// SMTP email delivery via MailKit. Config lives in the DB-backed ServerConfig (Email* fields, admin-editable via Server Settings), not appsettings - read fresh on every call rather than a bound options snapshot, same pattern as Agrumy.Api.Commands.MqttCommandPublisher's ServerConfigGetAsync(1) read.
     public sealed class EmailNotificationChannel(IRepository repo, ILogger<EmailNotificationChannel> logger) : INotificationChannel
     {
         public string Name => "email";

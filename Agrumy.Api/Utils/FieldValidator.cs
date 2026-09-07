@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace api.Utils
+namespace Agrumy.Api.Utils
 {
     public static partial class FieldValidator
     {

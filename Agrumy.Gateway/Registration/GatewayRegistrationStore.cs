@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
-namespace api.Gateway.Registration
+namespace Agrumy.Gateway.Registration
 {
     /// In-memory holder for this gateway's own ApiId/ApiKey/IDDevice, backed by a JSON file on disk - registered as a singleton so every handler/background service sees the same state without re-reading the file.
     public class GatewayRegistrationStore(IOptions<GatewayOptions> options)

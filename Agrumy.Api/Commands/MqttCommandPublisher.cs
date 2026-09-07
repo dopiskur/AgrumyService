@@ -2,11 +2,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using api.Dal.Interface;
-using api.Models;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
 using MQTTnet;
 
-namespace api.Commands
+namespace Agrumy.Api.Commands
 {
     public interface IMqttCommandPublisher
     {

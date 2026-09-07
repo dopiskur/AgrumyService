@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using api.Security;
+using Agrumy.Api.Security;
 
 namespace Agrumy.Api.Tests;
 

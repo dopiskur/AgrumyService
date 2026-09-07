@@ -1,16 +1,17 @@
 using System.Security.Claims;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
-using api.ViewModels;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Web.Security;
+using Agrumy.Shared.Utils;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace api.Controllers.View
+namespace Agrumy.Web.Controllers.View
 {
     [Authorize]
     public class ProfileController(IApi api) : Controller

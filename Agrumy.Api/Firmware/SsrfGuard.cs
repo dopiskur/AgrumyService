@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace api.Firmware
+namespace Agrumy.Api.Firmware
 {
     /// Blocks HttpFirmwareFetcher from fetching a private/loopback address, since an admin-configured Custom repository URL is otherwise trusted outright.
     public static class SsrfGuard

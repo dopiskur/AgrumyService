@@ -1,4 +1,4 @@
-namespace api.Dal.Interface
+namespace Agrumy.Api.Dal.Interface
 {
     /// Full data-layer contract composed from the per-domain facets below - controllers inject this since their flows cross domains, narrow infrastructure injects just its facet, both resolve to the same scoped EfRepository instance.
     public interface IRepository :

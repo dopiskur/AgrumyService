@@ -1,19 +1,19 @@
-namespace api.Dal.Entities
+namespace Agrumy.Dal.Entities
 {
-    // Persistence entities mapped 1:1 to table columns, kept separate from the api.Models DTOs (flattened joins, MVC attributes) - EfRepository projects these onto the DTOs.
+    // Persistence entities mapped 1:1 to table columns, kept separate from the Agrumy.Shared.Models DTOs (flattened joins, MVC attributes) - EfRepository projects these onto the DTOs.
 
     public class TenantRow
     {
         public int IDTenant { get; set; }
         public string TenantName { get; set; } = "";
-        public string? ScheduleTimeZone { get; set; } // See api.Models.Tenant.ScheduleTimeZone.
-        public double? Latitude { get; set; } // See api.Models.Tenant.Latitude.
-        public double? Longitude { get; set; } // See api.Models.Tenant.Longitude.
-        public bool EmergencyStopActive { get; set; } // See api.Models.Tenant.EmergencyStopActive.
+        public string? ScheduleTimeZone { get; set; } // See Agrumy.Shared.Models.Tenant.ScheduleTimeZone.
+        public double? Latitude { get; set; } // See Agrumy.Shared.Models.Tenant.Latitude.
+        public double? Longitude { get; set; } // See Agrumy.Shared.Models.Tenant.Longitude.
+        public bool EmergencyStopActive { get; set; } // See Agrumy.Shared.Models.Tenant.EmergencyStopActive.
         public DateTimeOffset? DateCreated { get; set; }
     }
 
-    /// See api.Models.TenantWifiConfig.
+    /// See Agrumy.Shared.Models.TenantWifiConfig.
     public class TenantWifiConfigRow
     {
         public int IDTenantWifiConfig { get; set; }
@@ -68,11 +68,11 @@ namespace api.Dal.Entities
 
         public DateTimeOffset? ActivationLastSentAt { get; set; } // Resend-cooldown bookkeeping only, never surfaced on the public User DTO.
 
-        public string? TimeZone { get; set; } // IANA zone id, not a raw UTC offset, so TimeZoneInfo resolves it correctly across DST; null = presented as UTC (see api.Utils.TimeZoneHelper).
+        public string? TimeZone { get; set; } // IANA zone id, not a raw UTC offset, so TimeZoneInfo resolves it correctly across DST; null = presented as UTC (see Agrumy.Shared.Utils.TimeZoneHelper).
 
-        public bool MustChangePassword { get; set; } // See api.Models.User.MustChangePassword.
+        public bool MustChangePassword { get; set; } // See Agrumy.Shared.Models.User.MustChangePassword.
 
-        public DateTimeOffset? TokensValidAfterUtc { get; set; } // See api.Models.User.TokensValidAfterUtc.
+        public DateTimeOffset? TokensValidAfterUtc { get; set; } // See Agrumy.Shared.Models.User.TokensValidAfterUtc.
     }
 
     /// One issued JWT refresh token - single-use, a rotation marks the row revoked and points ReplacedByTokenHash at its successor so a reused token is detectable; only the hash is stored.
@@ -94,7 +94,7 @@ namespace api.Dal.Entities
         public int? PortHTTP { get; set; }
         public int? PortHTTPS { get; set; }
 
-        // Server-wide hysteresis defaults - see api.Models.ServerConfig for the full story.
+        // Server-wide hysteresis defaults - see Agrumy.Shared.Models.ServerConfig for the full story.
         public double? WaterLevelHysteresis { get; set; }
         public double? TemperatureHysteresis { get; set; }
         public double? HumidityHysteresis { get; set; }
@@ -124,7 +124,7 @@ namespace api.Dal.Entities
         // Roadmap #409 - PurgeOrphanedSensorDataBackgroundService only runs when this is true (manual "Purge orphaned sensor data" trigger is always available regardless).
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public double? WeatherLocationLat { get; set; }
         public double? WeatherLocationLon { get; set; }
         public int? WeatherPollIntervalMinutes { get; set; }
@@ -132,30 +132,30 @@ namespace api.Dal.Entities
         public bool WeatherRainPredicted { get; set; }
         public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool GatewayEnabled { get; set; }
         public int GatewayMode { get; set; }
         public int GatewayWaitWindowSeconds { get; set; } = 30;
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool ProblemEventAlertsEnabled { get; set; } = true;
         public int ProblemEventExpiryHours { get; set; } = 24;
 
-        // See api.Security.PasswordPolicy for the full explanation.
+        // See Agrumy.Shared.Security.PasswordPolicy for the full explanation.
         public int PasswordMinLength { get; set; }
         public bool PasswordRequireComplexity { get; set; }
 
-        // See api.Models.ServerConfig's own copy for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copy for the full explanation.
         public int ConfigHeartbeatHours { get; set; } = 1;
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool MqttTransportEnabled { get; set; }
         public string? MqttBrokerHost { get; set; }
         public int MqttBrokerPort { get; set; } = 1883;
         public string? MqttUsername { get; set; }
         public string? MqttPassword { get; set; }
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool EmailEnabled { get; set; }
         public string? EmailHost { get; set; }
         public int EmailPort { get; set; } = 587;
@@ -166,7 +166,7 @@ namespace api.Dal.Entities
         public string EmailFromName { get; set; } = "Agrumy";
         public int DevicePinValidMinutes { get; set; } = 60;
 
-        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool ArchiveEnabled { get; set; }
         public int ArchiveCutoffMode { get; set; }
         public DateOnly? ArchiveCustomCutoffDate { get; set; }

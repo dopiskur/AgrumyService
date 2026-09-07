@@ -1,6 +1,6 @@
-using api.Models;
+using Agrumy.Shared.Models;
 
-namespace api.Utils
+namespace Agrumy.Api.Utils
 {
     /// One winner per DiscoveredApMac: highest Rssi, tiebreak on equal Rssi is the higher (newer) ScanningDeviceID.
     public static class DiscoveryResultPicker

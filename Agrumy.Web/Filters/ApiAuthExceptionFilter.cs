@@ -1,10 +1,10 @@
-using api.Utils;
+using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace api.Filters
+namespace Agrumy.Web.Filters
 {
     // A 401 here means the stored JWT expired (~2h) or was revoked; clear the now-useless cookie instead of showing an error page.
     public sealed class ApiAuthExceptionFilter : IAsyncExceptionFilter

@@ -1,17 +1,19 @@
+using Agrumy.Shared;
 using System.Security.Cryptography;
 using System.Text;
-using api.BackgroundWorkers;
-using api.Dal.Interface;
-using api.Models;
-using api.Notifications;
-using api.Security;
-using api.Utils;
+using Agrumy.Api.BackgroundWorkers;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Utils;
+using Agrumy.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     [Route("api/User")]
     public class UserApiController(

@@ -1,13 +1,14 @@
-using api.Commands;
-using api.Dal.Interface;
-using api.Models;
-using api.Security;
-using api.Utils;
+using Agrumy.Shared;
+using Agrumy.Api.Commands;
+using Agrumy.Api.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Api.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-namespace api.Controllers.API
+namespace Agrumy.Api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
@@ -220,7 +221,7 @@ namespace api.Controllers.API
                 return error;
             }
 
-            // Catches human error server-side - see api.Utils.SafetyLimitValidation for the shared range.
+            // Catches human error server-side - see Agrumy.Api.Utils.SafetyLimitValidation for the shared range.
             if (!SafetyLimitValidation.IsValid(zone.WaterPumpMaxRunSeconds))
             {
                 return BadRequest($"WaterPump max run time must be between 0 (disabled) and {SafetyLimitValidation.MaxReasonableSeconds} seconds.");
