@@ -62,7 +62,28 @@ namespace api.Controllers.API
             ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantUser) || LegacyAdminFallback)
              && targetTenantId == CallerTenantId);
 
-        /// Beyond CallerManagesUsers' tenant check: may the caller act on a user holding <paramref name="targetRoleNames"/>, given relative privilege - Global admin outranks everyone; a Global User grant outranks everyone except a Global admin; Tenant admin outranks everyone in-tenant; a plain Tenant User grant outranks everyone in-tenant except a Tenant admin.
+        // Numeric privilege per role - CallerOutranksTarget requires callerRank strictly greater than targetRank, so two peers holding the same role (e.g. two Tenant Users) never outrank each other.
+        private static readonly Dictionary<string, int> RoleRanks = new()
+        {
+            [RoleNames.GlobalAdmin] = 100,
+            [RoleNames.GlobalUser] = 90,
+            [RoleNames.GlobalDevice] = 90,
+            [RoleNames.GlobalReader] = 80,
+            [RoleNames.GlobalDataReader] = 80,
+            [RoleNames.TenantAdmin] = 50,
+            [RoleNames.SimulationAdministrator] = 25,
+            [RoleNames.TenantUser] = 20,
+            [RoleNames.TenantDevice] = 20,
+            [RoleNames.TenantDataReader] = 15,
+            [RoleNames.TenantReader] = 10,
+            [RoleNames.LegacyAdmin] = 50,
+            [RoleNames.LegacyUser] = 20,
+        };
+
+        private static int RoleRank(IEnumerable<string> roleNames) =>
+            roleNames.Select(r => RoleRanks.GetValueOrDefault(r, 0)).DefaultIfEmpty(0).Max();
+
+        /// Beyond CallerManagesUsers' tenant check: may the caller act on a user holding <paramref name="targetRoleNames"/>, given relative privilege - Global admin outranks everyone including a Global admin peer; a Global User grant outranks everyone except a Global admin, including a Global User peer; Tenant admin outranks everyone in-tenant including a Tenant admin peer; below that, a strictly-greater numeric rank is required, so a Tenant User (or other composable grant) can never act on a peer holding the same or a higher rank.
         protected bool CallerOutranksTarget(IEnumerable<string> targetRoleNames)
         {
             ICollection<string> targetRoles = targetRoleNames as ICollection<string> ?? targetRoleNames.ToList();
@@ -78,7 +99,7 @@ namespace api.Controllers.API
             {
                 return true;
             }
-            return !targetRoles.Contains(RoleNames.TenantAdmin);
+            return RoleRank(CallerRoles) > RoleRank(targetRoles);
         }
 
         protected bool CallerManagesDevicesGlobally =>

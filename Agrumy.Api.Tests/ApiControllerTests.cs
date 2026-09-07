@@ -2374,6 +2374,35 @@ public class ApiControllerTests
     }
 
     [Fact]
+    public async Task UserUpdate_TenantUser_TargetIsPeerTenantUser_Returns403()
+    {
+        _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 1, Email = "peer@test.local" });
+        _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantUser });
+
+        var controller = NewUserController();
+        SetCallerRoles(controller, 1, "user", RoleNames.TenantReader, RoleNames.TenantUser);
+        var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, Enabled = false });
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        _repo.Verify(r => r.UserUpdateAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UserUpdate_TenantUser_TargetIsLowerRankedTenantReader_Succeeds()
+    {
+        _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 1, Email = "reader@test.local" });
+        _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
+        _repo.Setup(r => r.UserUpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+
+        var controller = NewUserController();
+        SetCallerRoles(controller, 1, "user", RoleNames.TenantReader, RoleNames.TenantUser);
+        var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, FirstName = "New" });
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        _repo.Verify(r => r.UserUpdateAsync(It.IsAny<User>()), Times.Once);
+    }
+
+    [Fact]
     public async Task UserUpdate_TenantAdmin_TargetIsAnotherTenantAdmin_Succeeds()
     {
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 1, Email = "peer-admin@test.local" });
