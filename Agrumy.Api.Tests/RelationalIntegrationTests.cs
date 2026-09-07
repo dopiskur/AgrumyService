@@ -1748,8 +1748,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         await _repo.VirtualDeviceRegisterAsync(d.IDDevice!.Value);
         // Roadmap #403 - the parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
-        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test", StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1) });
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
+        // Roadmap #414 (2) - Add no longer sets a time window; the device only counts as "active" once the session is actually Started.
+        await _repo.SimulationSessionStartAsync(session.IDSimulationSession!.Value, 60);
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync());
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId));
         Assert.DoesNotContain(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId + 12345)); // wrong tenant

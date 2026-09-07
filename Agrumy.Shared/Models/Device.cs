@@ -454,17 +454,23 @@ namespace api.Models
         public int? IDSimulationSession { get; set; }
         public int? TenantID { get; set; }
         public string? Name { get; set; }
-        public DateTimeOffset StartedAtUtc { get; set; }
-        public DateTimeOffset ExpiresAtUtc { get; set; }
+        // Roadmap #414 (2) - both null until Start is called for the first time: "create" only names the session, "start" is a separate step (also what a later Resume calls again, after a Stop).
+        public DateTimeOffset? StartedAtUtc { get; set; }
+        public DateTimeOffset? ExpiresAtUtc { get; set; }
         public DateTimeOffset? StoppedAtUtc { get; set; }
         /// Populated only on the single-session detail fetch, not the list - same "list is cheap, detail is not" convention as most other list/detail pairs in this codebase.
         public IList<DeviceDto> Devices { get; set; } = [];
     }
 
-    /// Body of POST /api/Simulation/Session - DurationMinutes is clamped 1-2880 (48h, roadmap #403's hard cap) server-side, whether it came from a preset or the free-text custom field.
+    /// Body of POST /api/Simulation/Session (roadmap #414 (2)) - name only, no duration; a session starts un-started, Start below is a separate step.
     public class SimulationSessionCreateRequest
     {
         public string? Name { get; set; }
+    }
+
+    /// Body of POST /api/Simulation/Session/{id}/Start - DurationMinutes is clamped 1-2880 (48h, roadmap #403's hard cap) server-side, whether it came from a preset or the free-text custom field. Same request/endpoint whether this is the session's first start or a later Resume after a Stop.
+    public class SimulationSessionStartRequest
+    {
         public int DurationMinutes { get; set; }
     }
 

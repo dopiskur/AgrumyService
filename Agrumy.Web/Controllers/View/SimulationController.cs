@@ -13,13 +13,14 @@ namespace api.Controllers.View
     {
         public async Task<ActionResult> Index() => View(await api.SimulationSessionList());
 
+        /// Roadmap #414 (2) - name only now, no duration; Details is where the session actually gets started.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create(string name, int durationMinutes)
+        public async Task<ActionResult> Create(string name)
         {
             try
             {
-                SimulationSession created = await api.SimulationSessionCreate(new SimulationSessionCreateRequest { Name = name, DurationMinutes = durationMinutes });
+                SimulationSession created = await api.SimulationSessionCreate(new SimulationSessionCreateRequest { Name = name });
                 return RedirectToAction(nameof(Details), new { idSimulationSession = created.IDSimulationSession });
             }
             catch (ApiException ex)
@@ -29,11 +30,42 @@ namespace api.Controllers.View
             }
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Delete(int idSimulationSession)
+        {
+            try
+            {
+                await api.SimulationSessionDelete(idSimulationSession);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
         public async Task<ActionResult> Details(int idSimulationSession)
         {
             SimulationSession session = await api.SimulationSessionGet(idSimulationSession);
             ViewBag.Fleet = await api.DeviceFleetGet();
             return View(session);
+        }
+
+        /// Roadmap #414 (2) - starts a never-started session, or resumes one that was Stopped/expired; same action either way.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Start(int idSimulationSession, int durationMinutes)
+        {
+            try
+            {
+                await api.SimulationSessionStart(idSimulationSession, new SimulationSessionStartRequest { DurationMinutes = durationMinutes });
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
         [HttpPost]

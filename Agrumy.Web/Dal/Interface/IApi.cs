@@ -126,8 +126,14 @@ namespace api.Dal.Interface
         [Get("/api/Simulation/Session/{idSimulationSession}")]
         Task<SimulationSession> SimulationSessionGet(int idSimulationSession);
 
+        [Post("/api/Simulation/Session/{idSimulationSession}/Start")]
+        Task SimulationSessionStart(int idSimulationSession, [Body] SimulationSessionStartRequest request);
+
         [Post("/api/Simulation/Session/{idSimulationSession}/Stop")]
         Task SimulationSessionStop(int idSimulationSession);
+
+        [Delete("/api/Simulation/Session/{idSimulationSession}")]
+        Task SimulationSessionDelete(int idSimulationSession);
 
         [Post("/api/Simulation/Session/{idSimulationSession}/Device/{idDevice}")]
         Task SimulationSessionDeviceAdd(int idSimulationSession, int idDevice);

@@ -244,8 +244,9 @@ namespace api.Dal.Entities
         public int IDSimulationSession { get; set; }
         public int TenantID { get; set; }
         public string? Name { get; set; }
-        public DateTimeOffset StartedAtUtc { get; set; }
-        public DateTimeOffset ExpiresAtUtc { get; set; }
+        // Roadmap #414 (2) - nullable now, see api.Models.SimulationSession's own copy for the full explanation.
+        public DateTimeOffset? StartedAtUtc { get; set; }
+        public DateTimeOffset? ExpiresAtUtc { get; set; }
         public DateTimeOffset? StoppedAtUtc { get; set; }
     }
 

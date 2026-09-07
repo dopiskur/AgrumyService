@@ -3,7 +3,10 @@
 
 @{
     ViewData["Title"] = Model.Name;
-    bool ended = Model.StoppedAtUtc != null || Model.ExpiresAtUtc <= DateTimeOffset.UtcNow;
+    // Roadmap #414 (2) - a session with no StartedAtUtc yet was only just created, never started; Stopped/expired are both "not currently running" but past a real start, so the form below reads "Resume" instead of "Start".
+    bool notStarted = Model.StartedAtUtc == null;
+    bool running = !notStarted && Model.StoppedAtUtc == null && Model.ExpiresAtUtc > DateTimeOffset.UtcNow;
+    bool everStarted = Model.StartedAtUtc != null;
     var fleet = (IList<DeviceFleetStatus>)ViewBag.Fleet;
     var memberIds = Model.Devices.Select(d => d.IDDevice).ToHashSet();
     var candidates = fleet.Where(f => !memberIds.Contains(f.IDDevice)).ToList();
@@ -11,10 +14,17 @@
 
 <h1>@Model.Name</h1>
 <p class="text-muted">
-    Started @Model.StartedAtUtc.ToString("u"), expires @Model.ExpiresAtUtc.ToString("u")
-    @if (Model.StoppedAtUtc != null)
+    @if (notStarted)
     {
-        <text>- stopped @Model.StoppedAtUtc.Value.ToString("u")</text>
+        <text>Not started yet.</text>
+    }
+    else
+    {
+        <text>Started @Model.StartedAtUtc!.Value.ToString("u"), expires @Model.ExpiresAtUtc!.Value.ToString("u")</text>
+        @if (Model.StoppedAtUtc != null)
+        {
+            <text> - stopped @Model.StoppedAtUtc.Value.ToString("u")</text>
+        }
     }
 </p>
 
@@ -23,7 +33,7 @@
     <div class="alert alert-warning">@error</div>
 }
 
-@if (!ended)
+@if (running)
 {
     <form asp-action="Stop" method="post" class="mb-3" onsubmit="return confirm('Stop this simulation now? Every member device returns to its real readings immediately.');">
         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
@@ -32,7 +42,32 @@
 }
 else
 {
-    <div class="alert alert-secondary">This simulation has ended - devices can no longer be added or removed.</div>
+    <form asp-action="Start" method="post" class="row g-2 align-items-end mb-3">
+        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+        <div class="col-auto">
+            <label class="form-label" for="simDurationPreset">Duration</label>
+            <select id="simDurationPreset" class="form-select" onchange="document.getElementById('simDurationMinutes').value = this.value === 'custom' ? '' : this.value; document.getElementById('simCustomDurationWrap').style.display = this.value === 'custom' ? 'block' : 'none';">
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="360">6 hours</option>
+                <option value="720">12 hours</option>
+                <option value="1440" selected>24 hours</option>
+                <option value="2880">48 hours (maximum)</option>
+                <option value="custom">Custom...</option>
+            </select>
+        </div>
+        <div class="col-auto" id="simCustomDurationWrap" style="display:none">
+            <label class="form-label" for="simDurationMinutesInput">Custom minutes</label>
+            <input type="number" id="simDurationMinutesInput" class="form-control" min="1" max="2880"
+                   oninput="document.getElementById('simDurationMinutes').value = this.value" />
+        </div>
+        <input type="hidden" id="simDurationMinutes" name="durationMinutes" value="1440" />
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">@(everStarted ? "Resume simulation" : "Start simulation")</button>
+        </div>
+    </form>
 }
 
 <h4>Devices in this simulation</h4>
@@ -50,14 +85,11 @@ else
                 <td><a asp-controller="Device" asp-action="Details" asp-route-idDevice="@device.IDDevice">@device.DeviceName</a></td>
                 <td>
                     <a asp-controller="Device" asp-action="Simulation" asp-route-idDevice="@device.IDDevice" asp-route-idSimulationSession="@Model.IDSimulationSession" class="btn btn-outline-primary btn-sm">Configure overrides</a>
-                    @if (!ended)
-                    {
-                        <form asp-action="RemoveDevice" method="post" class="d-inline">
-                            <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-                            <input type="hidden" name="idDevice" value="@device.IDDevice" />
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
-                        </form>
-                    }
+                    <form asp-action="RemoveDevice" method="post" class="d-inline">
+                        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                        <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
+                    </form>
                 </td>
             </tr>
         }
@@ -68,29 +100,27 @@ else
     </tbody>
 </table>
 
-@if (!ended)
-{
-    <h4>Add a device</h4>
-    <form asp-action="AddDevice" method="post" class="row g-2 align-items-end mb-3">
-        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-        <div class="col-auto">
-            <select name="idDevice" class="form-select" required>
-                <option value="">Choose an existing device...</option>
-                @foreach (var candidate in candidates)
-                {
-                    <option value="@candidate.IDDevice">@candidate.DeviceName</option>
-                }
-            </select>
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Add to simulation</button>
-        </div>
-    </form>
+@* Roadmap #414 (3)/(4) - "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
+<form asp-action="CreateVirtualDevice" method="post" class="mb-3">
+    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+    <button type="submit" class="btn btn-outline-primary">Create new virtual device and add it</button>
+</form>
 
-    <form asp-action="CreateVirtualDevice" method="post">
-        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-        <button type="submit" class="btn btn-outline-primary">Create new virtual device and add it</button>
-    </form>
-}
+<h4>Add existing physical device</h4>
+<form asp-action="AddDevice" method="post" class="row g-2 align-items-end mb-3">
+    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+    <div class="col-auto">
+        <select name="idDevice" class="form-select" required>
+            <option value="">Choose an existing device...</option>
+            @foreach (var candidate in candidates)
+            {
+                <option value="@candidate.IDDevice">@candidate.DeviceName</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Add to simulation</button>
+    </div>
+</form>
 
 <a asp-action="Index" class="btn btn-link mt-3">Back to simulations</a>

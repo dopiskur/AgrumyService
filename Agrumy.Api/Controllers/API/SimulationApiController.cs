@@ -78,6 +78,7 @@ namespace api.Controllers.API
         /// Hard cap regardless of preset/custom entry - SimulationSessionExpiryEvaluator's own safety net only works if no session can ever be created past this.
         private const int MaxDurationMinutes = 48 * 60;
 
+        /// Roadmap #414 (2) - name only now; devices are added and the session is started as separate later steps (StartSession below), not bundled into creation.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost("Session")]
         public async Task<ActionResult<SimulationSession>> CreateSession([FromBody] SimulationSessionCreateRequest request)
@@ -86,18 +87,11 @@ namespace api.Controllers.API
             {
                 return BadRequest("Name is required.");
             }
-            if (request.DurationMinutes is < 1 or > MaxDurationMinutes)
-            {
-                return BadRequest($"Duration must be between 1 and {MaxDurationMinutes} minutes (48 hours).");
-            }
 
-            DateTimeOffset now = DateTimeOffset.UtcNow;
             SimulationSession created = await simulationRepo.SimulationSessionAddAsync(new SimulationSession
             {
                 TenantID = CallerTenantId ?? 0,
                 Name = request.Name.Trim(),
-                StartedAtUtc = now,
-                ExpiresAtUtc = now.AddMinutes(request.DurationMinutes),
             });
             await WriteAuditAsync("Simulation.SessionCreated", created.TenantID, "SimulationSession", created.IDSimulationSession.ToString()!, created.Name);
             return Ok(created);
@@ -125,6 +119,35 @@ namespace api.Controllers.API
             return Ok(session);
         }
 
+        /// Roadmap #414 (2) - starts a never-started session, or resumes one that was previously Stopped/expired; rejected if the session is CURRENTLY running (Stop it first). Devices already added stay added - this only sets the time window.
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpPost("Session/{idSimulationSession}/Start")]
+        public async Task<ActionResult> StartSession(int idSimulationSession, [FromBody] SimulationSessionStartRequest request)
+        {
+            if (request.DurationMinutes is < 1 or > MaxDurationMinutes)
+            {
+                return BadRequest($"Duration must be between 1 and {MaxDurationMinutes} minutes (48 hours).");
+            }
+            SimulationSession? session = await simulationRepo.SimulationSessionGetByIdAsync(idSimulationSession);
+            if (session is null)
+            {
+                return NotFound();
+            }
+            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            {
+                return StatusCode(403, "Session belongs to a different tenant");
+            }
+            bool isRunning = session.StartedAtUtc != null && session.StoppedAtUtc == null && session.ExpiresAtUtc > DateTimeOffset.UtcNow;
+            if (isRunning)
+            {
+                return Conflict("This session is already running - stop it first.");
+            }
+
+            await simulationRepo.SimulationSessionStartAsync(idSimulationSession, request.DurationMinutes);
+            await WriteAuditAsync("Simulation.SessionStarted", session.TenantID, "SimulationSession", idSimulationSession.ToString(), session.Name);
+            return Ok();
+        }
+
         /// Explicit early stop - also turns off every member physical device's sensor override, same cleanup SimulationSessionExpiryEvaluator does on a natural 48h expiry.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost("Session/{idSimulationSession}/Stop")]
@@ -150,6 +173,34 @@ namespace api.Controllers.API
             }
             await simulationRepo.SimulationSessionStopAsync(idSimulationSession);
             await WriteAuditAsync("Simulation.SessionStopped", session.TenantID, "SimulationSession", idSimulationSession.ToString(), session.Name);
+            return Ok();
+        }
+
+        /// Roadmap #414 (1) - same physical-override cleanup as StopSession first (a running session must never leave a device stuck simulating just because its session was deleted), then hard-removes the session and its device memberships. A virtual device that was only IN this session is left as-is (still exists, just no longer in an active session) - deleting it entirely is the separate, explicit DeleteVirtualDevice action.
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpDelete("Session/{idSimulationSession}")]
+        public async Task<ActionResult> DeleteSession(int idSimulationSession)
+        {
+            SimulationSession? session = await simulationRepo.SimulationSessionGetByIdAsync(idSimulationSession);
+            if (session is null)
+            {
+                return NotFound();
+            }
+            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            {
+                return StatusCode(403, "Session belongs to a different tenant");
+            }
+
+            IList<int> virtualIds = await simulationRepo.VirtualDeviceIdsGetAsync(session.TenantID);
+            foreach (DeviceDto member in session.Devices)
+            {
+                if (!virtualIds.Contains(member.IDDevice!.Value))
+                {
+                    await deviceRepo.DeviceSimulationSetAsync(member.IDDevice!.Value, new DeviceSimulation { Enabled = false });
+                }
+            }
+            await simulationRepo.SimulationSessionDeleteAsync(idSimulationSession);
+            await WriteAuditAsync("Simulation.SessionDeleted", session.TenantID, "SimulationSession", idSimulationSession.ToString(), session.Name);
             return Ok();
         }
 

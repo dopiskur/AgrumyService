@@ -15,6 +15,10 @@ namespace api.Dal
 
         public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session) => simulationRepository.SimulationSessionAddAsync(session);
 
+        public Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes) => simulationRepository.SimulationSessionStartAsync(idSimulationSession, durationMinutes);
+
+        public Task SimulationSessionDeleteAsync(int idSimulationSession) => simulationRepository.SimulationSessionDeleteAsync(idSimulationSession);
+
         public Task<IList<SimulationSession>> SimulationSessionsGetAsync(int? tenantID) => simulationRepository.SimulationSessionsGetAsync(tenantID);
 
         public Task<SimulationSession?> SimulationSessionGetByIdAsync(int idSimulationSession) => simulationRepository.SimulationSessionGetByIdAsync(idSimulationSession);

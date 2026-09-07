@@ -17,31 +17,12 @@
     <div class="alert alert-warning">@error</div>
 }
 
+@* Roadmap #414 (2) - name only here; duration is chosen when the session is actually started, inside its own Details page. *@
 <form asp-action="Create" method="post" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
         <label class="form-label" for="simName">Name</label>
         <input type="text" id="simName" name="name" class="form-control" required maxlength="128" placeholder="e.g. Irrigation rule test" />
     </div>
-    <div class="col-auto">
-        <label class="form-label" for="simDurationPreset">Duration</label>
-        <select id="simDurationPreset" class="form-select" onchange="document.getElementById('simDurationMinutes').value = this.value === 'custom' ? '' : this.value; document.getElementById('simCustomDurationWrap').style.display = this.value === 'custom' ? 'block' : 'none';">
-            <option value="5">5 minutes</option>
-            <option value="15">15 minutes</option>
-            <option value="30">30 minutes</option>
-            <option value="60">1 hour</option>
-            <option value="360">6 hours</option>
-            <option value="720">12 hours</option>
-            <option value="1440" selected>24 hours</option>
-            <option value="2880">48 hours (maximum)</option>
-            <option value="custom">Custom...</option>
-        </select>
-    </div>
-    <div class="col-auto" id="simCustomDurationWrap" style="display:none">
-        <label class="form-label" for="simDurationMinutesInput">Custom minutes</label>
-        <input type="number" id="simDurationMinutesInput" class="form-control" min="1" max="2880"
-               oninput="document.getElementById('simDurationMinutes').value = this.value" />
-    </div>
-    <input type="hidden" id="simDurationMinutes" name="durationMinutes" value="1440" />
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Add Simulation</button>
     </div>
@@ -60,13 +41,19 @@
     <tbody>
         @foreach (var session in Model)
         {
-            bool ended = session.StoppedAtUtc != null || session.ExpiresAtUtc <= DateTimeOffset.UtcNow;
+            // Roadmap #414 (2) - a session with no StartedAtUtc yet was only just created, never started.
+            bool notStarted = session.StartedAtUtc == null;
+            bool running = !notStarted && session.StoppedAtUtc == null && session.ExpiresAtUtc > DateTimeOffset.UtcNow;
             <tr>
                 <td><a asp-action="Details" asp-route-idSimulationSession="@session.IDSimulationSession">@session.Name</a></td>
-                <td>@session.StartedAtUtc.ToString("u")</td>
-                <td>@session.ExpiresAtUtc.ToString("u")</td>
+                <td>@(session.StartedAtUtc?.ToString("u") ?? "-")</td>
+                <td>@(session.ExpiresAtUtc?.ToString("u") ?? "-")</td>
                 <td>
-                    @if (!ended)
+                    @if (notStarted)
+                    {
+                        <span class="badge text-bg-info">Not started</span>
+                    }
+                    else if (running)
                     {
                         <span class="badge text-bg-success">Running</span>
                     }
@@ -79,7 +66,13 @@
                         <span class="badge text-bg-secondary">Expired</span>
                     }
                 </td>
-                <td><a asp-action="Details" asp-route-idSimulationSession="@session.IDSimulationSession" class="btn btn-outline-secondary btn-sm">Open</a></td>
+                <td>
+                    <a asp-action="Details" asp-route-idSimulationSession="@session.IDSimulationSession" class="btn btn-outline-secondary btn-sm">Open</a>
+                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Delete simulation \'@session.Name\'? Any member physical device returns to its real readings immediately. This cannot be undone.');">
+                        <input type="hidden" name="idSimulationSession" value="@session.IDSimulationSession" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                    </form>
+                </td>
             </tr>
         }
         @if (Model.Count == 0)

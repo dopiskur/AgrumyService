@@ -18,7 +18,14 @@ namespace api.Dal.Interface
 
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
+        /// Roadmap #414 (2) - name only, StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session);
+
+        /// Sets a fresh StartedAtUtc/ExpiresAtUtc window from now and clears StoppedAtUtc - same call whether this is the session's first start or a later Resume.
+        Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes);
+
+        /// Removes the session and its device memberships outright - caller is responsible for turning off any member physical device's sensor override first (same as SimulationSessionStopAsync's own cleanup).
+        Task SimulationSessionDeleteAsync(int idSimulationSession);
 
         /// Every session for tenantID (or every tenant when null, caller's own Global-admin check already applied) - Devices left empty, same "list is cheap" convention as the rest of this codebase's list/detail pairs.
         Task<IList<SimulationSession>> SimulationSessionsGetAsync(int? tenantID);

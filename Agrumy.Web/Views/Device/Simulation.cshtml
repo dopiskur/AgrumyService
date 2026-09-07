@@ -38,12 +38,16 @@
 <h1>Simulation Mode</h1>
 <h4>@device.DeviceName</h4>
 <p class="text-muted">Per-metric overrides for THIS physical device. A metric left off keeps its real, physical reading; a metric turned on replaces the reading with the slider value before the device's own controller logic runs. Turning off "Simulation Mode" below returns the device to fully real readings without deleting anything.</p>
-<div class="alert alert-warning">
-    <strong>This can move real hardware.</strong> If this device has a live physical relay attached, a simulated
-    reading can trigger it exactly like a real one - e.g. a low simulated moisture value can start irrigation, a
-    high simulated temperature can turn on ventilation. Only enable a metric here if you understand what rule it
-    may fire on this device.
-</div>
+@if (!(bool)(ViewBag.IsVirtualDevice ?? false))
+{
+    @* Roadmap #414 (5) - a virtual device has no physical relay to move, so this warning is physical-device-only. *@
+    <div class="alert alert-warning">
+        <strong>This can move real hardware.</strong> If this device has a live physical relay attached, a simulated
+        reading can trigger it exactly like a real one - e.g. a low simulated moisture value can start irrigation, a
+        high simulated temperature can turn on ventilation. Only enable a metric here if you understand what rule it
+        may fire on this device.
+    </div>
+}
 
 <form asp-action="Simulation" method="post">
     <input type="hidden" asp-for="Device!.IDDevice" />

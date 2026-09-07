@@ -39,27 +39,15 @@ public class SimulationApiControllerTests
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
 
-        var result = await controller.CreateSession(new SimulationSessionCreateRequest { Name = "", DurationMinutes = 60 });
+        var result = await controller.CreateSession(new SimulationSessionCreateRequest { Name = "" });
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         // MockBehavior.Strict: SimulationSessionAddAsync has no setup, proving nothing was created.
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(2881)]
-    public async Task CreateSession_DurationOutOfRange_Returns400(int minutes)
-    {
-        var controller = NewController();
-        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
-
-        var result = await controller.CreateSession(new SimulationSessionCreateRequest { Name = "Test", DurationMinutes = minutes });
-
-        Assert.IsType<BadRequestObjectResult>(result.Result);
-    }
-
+    // Roadmap #414 (2) - Create no longer takes a duration; the session is born with no StartedAtUtc/ExpiresAtUtc at all.
     [Fact]
-    public async Task CreateSession_Valid_PersistsWithClampedExpiry()
+    public async Task CreateSession_Valid_PersistsWithNoStartedOrExpiry()
     {
         SimulationSession? saved = null;
         _repo.Setup(r => r.SimulationSessionAddAsync(It.IsAny<SimulationSession>()))
@@ -69,13 +57,111 @@ public class SimulationApiControllerTests
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
 
-        var result = await controller.CreateSession(new SimulationSessionCreateRequest { Name = "Irrigation test", DurationMinutes = 1440 });
+        var result = await controller.CreateSession(new SimulationSessionCreateRequest { Name = "Irrigation test" });
 
         var created = Assert.IsType<SimulationSession>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(42, created.IDSimulationSession);
         Assert.Equal("Irrigation test", saved!.Name);
         Assert.Equal(1, saved.TenantID);
-        Assert.True((saved.ExpiresAtUtc - saved.StartedAtUtc).TotalMinutes is > 1439 and < 1441);
+        Assert.Null(saved.StartedAtUtc);
+        Assert.Null(saved.ExpiresAtUtc);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2881)]
+    public async Task StartSession_DurationOutOfRange_Returns400_NeverWrites(int minutes)
+    {
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.StartSession(5, new SimulationSessionStartRequest { DurationMinutes = minutes });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        // MockBehavior.Strict: SimulationSessionGetByIdAsync has no setup, proving duration was rejected before even loading the session.
+    }
+
+    [Fact]
+    public async Task StartSession_NeverStarted_Starts()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 1, Name = "Test" });
+        _repo.Setup(r => r.SimulationSessionStartAsync(5, 1440)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.StartSession(5, new SimulationSessionStartRequest { DurationMinutes = 1440 });
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    // Roadmap #414 (2) - the same action resumes a Stopped/expired session; only a CURRENTLY running one rejects it.
+    [Fact]
+    public async Task StartSession_PreviouslyStopped_Resumes()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, Name = "Test",
+            StartedAtUtc = DateTimeOffset.UtcNow.AddHours(-2), ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(-1), StoppedAtUtc = DateTimeOffset.UtcNow.AddHours(-1),
+        });
+        _repo.Setup(r => r.SimulationSessionStartAsync(5, 60)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.StartSession(5, new SimulationSessionStartRequest { DurationMinutes = 60 });
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task StartSession_CurrentlyRunning_ReturnsConflict_NeverRestarts()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, Name = "Test",
+            StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1),
+        });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.StartSession(5, new SimulationSessionStartRequest { DurationMinutes = 60 });
+
+        Assert.IsType<ConflictObjectResult>(result);
+        // MockBehavior.Strict: SimulationSessionStartAsync has no setup, proving a running session was never restarted out from under itself.
+    }
+
+    [Fact]
+    public async Task DeleteSession_TurnsOffPhysicalMembers_ThenDeletes()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, Name = "Test",
+            Devices = [new DeviceDto { IDDevice = 8 }],
+        });
+        _repo.Setup(r => r.VirtualDeviceIdsGetAsync(1)).ReturnsAsync(new List<int>());
+        _repo.Setup(r => r.DeviceSimulationSetAsync(8, It.Is<DeviceSimulation>(s => s.Enabled == false))).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SimulationSessionDeleteAsync(5)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeleteSession(5);
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteSession_ForeignTenant_Returns403_NeverDeletes()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 99 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeleteSession(5);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        // MockBehavior.Strict: SimulationSessionDeleteAsync has no setup, proving a foreign tenant's session was never deleted.
     }
 
     [Fact]

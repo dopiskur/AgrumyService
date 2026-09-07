@@ -46,18 +46,35 @@ namespace api.Dal
 
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
+        /// Roadmap #414 (2) - name only; StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         public async Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session)
         {
             var row = new SimulationSessionRow
             {
                 TenantID = session.TenantID ?? 0,
                 Name = session.Name,
-                StartedAtUtc = session.StartedAtUtc,
-                ExpiresAtUtc = session.ExpiresAtUtc,
             };
             db.SimulationSessions.Add(row);
             await db.SaveChangesAsync();
             return ToDtoSession(row);
+        }
+
+        /// Same effect whether this is the session's first start or a later Resume after a Stop - sets a fresh window from now, clearing any previous stop.
+        public async Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            await db.SimulationSessions.Where(s => s.IDSimulationSession == idSimulationSession)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(s => s.StartedAtUtc, now)
+                    .SetProperty(s => s.ExpiresAtUtc, now.AddMinutes(durationMinutes))
+                    .SetProperty(s => s.StoppedAtUtc, (DateTimeOffset?)null));
+        }
+
+        /// Roadmap #414 (1) - turns off every member physical device's sensor override first (same cleanup StopSession does), same reasoning: a deleted session must not leave a physical device stuck simulating forever.
+        public async Task SimulationSessionDeleteAsync(int idSimulationSession)
+        {
+            await db.SimulationSessionDevices.Where(sd => sd.IDSimulationSession == idSimulationSession).ExecuteDeleteAsync();
+            await db.SimulationSessions.Where(s => s.IDSimulationSession == idSimulationSession).ExecuteDeleteAsync();
         }
 
         public async Task<IList<SimulationSession>> SimulationSessionsGetAsync(int? tenantID)
