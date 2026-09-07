@@ -287,7 +287,39 @@ namespace api.Dal
             }
         }
 
+        // Roadmap #409. Device-scoped (not date-scoped like PurgeOldSensorDataAsync above), so drop_chunks (time-partitioned) doesn't apply on Postgres either - both providers use the same subquery-batched DELETE. IgnoreQueryFilters: `device` here is deliberately read past its own HasQueryFilter (only Deleted rows are ever the target of this query).
+        public async Task<long> PurgeOrphanedSensorDataAsync(int retentionDays, CancellationToken ct)
+        {
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+            long totalDeleted = 0;
+            int deletedRows;
+            do
+            {
+                deletedRows = db.Database.IsNpgsql()
+                    ? await db.Database.ExecuteSqlInterpolatedAsync($"""
+                        DELETE FROM "sensorData" WHERE "IDSensorData" IN (
+                            SELECT sd."IDSensorData" FROM "sensorData" sd
+                            INNER JOIN "device" d ON d."IDDevice" = sd."DeviceID"
+                            WHERE d."Deleted" = true AND d."DeletedAtUtc" <= {cutoff}
+                            LIMIT {PurgeOrphanedBatchSize}
+                        )
+                        """, ct)
+                    : await db.Database.ExecuteSqlInterpolatedAsync($"""
+                        DELETE FROM `sensorData` WHERE `DeviceID` IN (
+                            SELECT `IDDevice` FROM `device` WHERE `Deleted` = 1 AND `DeletedAtUtc` <= {cutoff}
+                        ) LIMIT {PurgeOrphanedBatchSize}
+                        """, ct);
+                totalDeleted += deletedRows;
+                if (deletedRows == PurgeOrphanedBatchSize)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
+                }
+            } while (deletedRows == PurgeOrphanedBatchSize);
+            return totalDeleted;
+        }
+
         private const int PurgeBatchSize = 10_000;
+        private const int PurgeOrphanedBatchSize = 10_000;
 
         private static DateTime BucketStart(DateTime timestamp) =>
             new(timestamp.Ticks - (timestamp.Ticks % OptimizeBucketSize.Ticks), DateTimeKind.Utc);

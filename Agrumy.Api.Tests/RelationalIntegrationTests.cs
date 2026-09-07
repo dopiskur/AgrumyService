@@ -1305,10 +1305,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         });
         Assert.Equal(farmRuleId, Assert.Single(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).IDDeviceFarmUnitZoneRule);
 
-        // Deleting the farm unassigns the unit (stays valid) rather than cascading, and the farm-scope rule goes with the farm.
+        // Roadmap #408 - deleting the farm now cascades: the unit (still attached) is soft-deleted right along with it, invisible to the ordinary getter below. The farm-scope rule is untouched (neither deleted nor unreachable-but-orphaned forever) - it just goes dormant until DeviceFarmRestoreAsync brings the unit back.
         await _repo.DeviceFarmDeleteAsync(farm.IDDeviceFarm!.Value);
-        Assert.Null((await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
-        Assert.Empty(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value));
+        Assert.Null(await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit));
+        Assert.Equal(farmRuleId, Assert.Single(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).IDDeviceFarmUnitZoneRule);
+
+        Assert.True(await _repo.DeviceFarmRestoreAsync(farm.IDDeviceFarm!.Value, tenantId));
+        Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1423,13 +1426,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         await _repo.DeviceDeleteAsync(d.IDDevice, tenantId);
 
+        // Roadmap #409 - soft delete now: the device row itself (and its config) stays, just hidden by AgrumyDbContext's HasQueryFilter; only live operational state (diagnostics/controllerData/simulation) is actually removed.
         Assert.Null(await _repo.DeviceGetByIdAsync(d.IDDevice));
         await using var db = _fx.NewContext(t);
-        Assert.False(await db.DeviceConfigSensors.AnyAsync(c => c.IDDeviceConfigSensor == d.DeviceConfigSensorID));
-        Assert.False(await db.DeviceConfigControllers.AnyAsync(c => c.IDDeviceConfigController == d.DeviceConfigControllerID));
+        Assert.True(await db.Devices.IgnoreQueryFilters().AnyAsync(x => x.IDDevice == d.IDDevice && x.Deleted));
+        Assert.True(await db.DeviceConfigSensors.AnyAsync(c => c.IDDeviceConfigSensor == d.DeviceConfigSensorID));
+        Assert.True(await db.DeviceConfigControllers.AnyAsync(c => c.IDDeviceConfigController == d.DeviceConfigControllerID));
         Assert.False(await db.DeviceDiagnostics.AnyAsync(x => x.DeviceID == d.IDDevice));
         Assert.False(await db.ControllerData.AnyAsync(x => x.DeviceID == d.IDDevice));
         Assert.False(await db.DeviceSimulations.AnyAsync(x => x.DeviceID == d.IDDevice));
+
+        Assert.True(await _repo.DeviceRestoreAsync(d.IDDevice!.Value, tenantId));
+        Assert.NotNull(await _repo.DeviceGetByIdAsync(d.IDDevice));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1661,6 +1669,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             d.IDDevice!.Value, tenantId, null, null);
 
         await _repo.VirtualDeviceRegisterAsync(d.IDDevice!.Value);
+        // Roadmap #403 - the parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test", StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1) });
+        Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync());
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId));
         Assert.DoesNotContain(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId + 12345)); // wrong tenant

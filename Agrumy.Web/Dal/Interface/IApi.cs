@@ -191,6 +191,20 @@ namespace api.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Farm")]
         Task DeviceFarmDelete(int? idDeviceFarm);
 
+        // ---- Recycle Bin (roadmap #409) --------------------------
+
+        [Get("/api/RecycleBin/Device")]
+        Task<IList<DeviceDto>> RecycleBinDevicesGet();
+
+        [Get("/api/RecycleBin/Farm")]
+        Task<IList<DeviceFarm>> RecycleBinFarmsGet();
+
+        [Post("/api/RecycleBin/Device/{idDevice}/Restore")]
+        Task RecycleBinDeviceRestore(int idDevice);
+
+        [Post("/api/RecycleBin/Farm/{idDeviceFarm}/Restore")]
+        Task RecycleBinFarmRestore(int idDeviceFarm);
+
         // ---- Unit/Zone -----------------------------------
 
         [Get("/api/DeviceFarmUnit/All")]
@@ -452,6 +466,9 @@ namespace api.Dal.Interface
 
         [Post("/api/DataMaintenance/Purge")]
         Task DataMaintenancePurge([Body] DataPurgeRequest request);
+
+        [Post("/api/DataMaintenance/PurgeOrphaned")]
+        Task DataMaintenancePurgeOrphaned([Body] DataPurgeOrphanedRequest request);
 
         // ---- Audit log --------------------------------------
 

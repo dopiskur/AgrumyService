@@ -9,6 +9,12 @@ namespace api.Dal
 
         public Task DeviceDeleteAsync(int? idDevice, int? tenantID) => deviceRepository.DeviceDeleteAsync(idDevice, tenantID);
 
+        public Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID) => deviceRepository.DeviceRecycleBinGetAsync(tenantID);
+
+        public Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice) => deviceRepository.DeviceRecycleBinGetByIdAsync(idDevice);
+
+        public Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID) => deviceRepository.DeviceRestoreAsync(idDevice, tenantID);
+
         public Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress) =>
             deviceRepository.DeviceGetAsync(tenantID, idDevice, apiId, macAddress);
 

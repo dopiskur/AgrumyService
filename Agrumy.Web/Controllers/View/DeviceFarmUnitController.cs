@@ -60,6 +60,53 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
+        /// Roadmap #408 (b) - the "migrate first" offer in FarmDelete's confirmation flow: every unit still on idDeviceFarm moves to idTargetFarm, one at a time (same UnitAssignFarm write, just looped) - called before FarmDelete, never together with it in one request.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FarmMigrateUnits(int idDeviceFarm, int idTargetFarm)
+        {
+            var units = (await api.DeviceFarmUnitsGet()).Where(u => u.DeviceFarmID == idDeviceFarm).ToList();
+            foreach (DeviceFarmUnit unit in units)
+            {
+                unit.DeviceFarmID = idTargetFarm;
+                await api.DeviceFarmUnitUpdate(unit);
+            }
+            return Ok();
+        }
+
+        // ---- Recycle Bin (roadmap #409) --------------------------------
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        public async Task<ActionResult> RecycleBin()
+        {
+            ServerConfig config = await api.ServerConfigGet();
+            return View(new RecycleBinViewModel
+            {
+                Devices = await api.RecycleBinDevicesGet(),
+                Farms = await api.RecycleBinFarmsGet(),
+                RecycleBinRetentionDays = config.RecycleBinRetentionDays ?? 30,
+            });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> RecycleBinRestoreDevice(int idDevice)
+        {
+            await api.RecycleBinDeviceRestore(idDevice);
+            return RedirectToAction(nameof(RecycleBin));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> RecycleBinRestoreFarm(int idDeviceFarm)
+        {
+            await api.RecycleBinFarmRestore(idDeviceFarm);
+            return RedirectToAction(nameof(RecycleBin));
+        }
+
         public async Task<ActionResult> IndexCubes() => PartialView("_UnitCubes", await api.DeviceFarmUnitDashboardGet());
 
         public async Task<ActionResult> Zones(int idDeviceFarmUnit)

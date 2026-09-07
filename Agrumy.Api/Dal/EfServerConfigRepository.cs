@@ -49,6 +49,7 @@ namespace api.Dal
                 FirmwareGitHubRepository = settings.FirmwareGitHubRepository,
                 FirmwareRefreshIntervalHours = settings.FirmwareRefreshIntervalHours,
                 SensorDataRetentionDays = settings.SensorDataRetentionDays,
+                RecycleBinRetentionDays = 30,
                 WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes,
                 WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold,
                 GatewayWaitWindowSeconds = 30,
@@ -97,6 +98,8 @@ namespace api.Dal
             row.FirmwareRefreshIntervalHours = config.FirmwareRefreshIntervalHours;
             // FirmwareLastRefreshedAtUtc deliberately NOT written here - see ServerConfigFirmwareRefreshStateSetAsync below.
             row.SensorDataRetentionDays = config.SensorDataRetentionDays;
+            row.RecycleBinRetentionDays = config.RecycleBinRetentionDays;
+            row.PurgeOrphanedSensorDataScheduleEnabled = config.PurgeOrphanedSensorDataScheduleEnabled;
             // WeatherRainPredicted/WeatherCheckedAtUtc deliberately NOT written here - WeatherEvaluator owns them via ServerConfigWeatherStateSetAsync, so a form post can't clobber a fresher reading.
             row.WeatherLocationLat = config.WeatherLocationLat;
             row.WeatherLocationLon = config.WeatherLocationLon;
@@ -281,6 +284,8 @@ namespace api.Dal
             FirmwareRefreshIntervalHours = r.FirmwareRefreshIntervalHours ?? settings.FirmwareRefreshIntervalHours,
             FirmwareLastRefreshedAtUtc = r.FirmwareLastRefreshedAtUtc,
             SensorDataRetentionDays = r.SensorDataRetentionDays,
+            RecycleBinRetentionDays = r.RecycleBinRetentionDays ?? 30,
+            PurgeOrphanedSensorDataScheduleEnabled = r.PurgeOrphanedSensorDataScheduleEnabled,
             WeatherLocationLat = r.WeatherLocationLat,
             WeatherLocationLon = r.WeatherLocationLon,
             // An older row has NULL here - same appsettings-seed fallback as FirmwareGitHubRepository, rather than surfacing an empty interval/threshold.

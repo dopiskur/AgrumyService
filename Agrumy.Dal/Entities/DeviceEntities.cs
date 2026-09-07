@@ -7,6 +7,10 @@ namespace api.Dal.Entities
         public int IDDeviceFarm { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmName { get; set; }
+
+        // Roadmap #408/#409 - soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
+        public bool Deleted { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     public class DeviceFarmUnitRow
@@ -17,6 +21,10 @@ namespace api.Dal.Entities
         public bool? ZoneEnabled { get; set; }
         // Roadmap #384 - optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
+
+        // Roadmap #408 - set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
+        public bool Deleted { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     /// DeviceFarmUnitID is the real "Unit contains many Zones" FK (see db/migrations/2026-09-02-deviceunit-zone-containment.sql) - TenantID null means the shared global sentinel row (IDDeviceFarmUnitZone=0 "Disabled"), same convention as DeviceFarmUnitRow.
@@ -26,6 +34,10 @@ namespace api.Dal.Entities
         public int? TenantID { get; set; }
         public int DeviceFarmUnitID { get; set; }
         public string? DeviceFarmUnitZoneName { get; set; }
+
+        // Roadmap #408 - set only as a cascade of the owning DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
+        public bool Deleted { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
 
         // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation.
         public int? WaterPumpMaxRunSeconds { get; set; }
@@ -286,6 +298,10 @@ namespace api.Dal.Entities
         public string? LoRaPrivateKeyHex { get; set; }
         // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.
         public long? LoRaLastUplinkCounter { get; set; }
+
+        // Roadmap #409 - soft delete, see AgrumyDbContext's HasQueryFilter on this entity. SensorData/etc keep pointing at IDDevice unchanged; only RecycleBinApiController/EfRecycleBinRepository ever see a Deleted row (IgnoreQueryFilters), plus PurgeOrphanedSensorDataAsync's own raw SQL.
+        public bool Deleted { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     /// One LoRaWAN end-device's DevEUI mapped to the Agrumy device (ApiId/ApiKey) a LoRaGateway acts on behalf of for that DevEUI's uplinks.

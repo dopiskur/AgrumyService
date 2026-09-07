@@ -1,0 +1,76 @@
+@model api.ViewModels.RecycleBinViewModel
+@{
+    ViewData["Title"] = "Recycle Bin";
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">Farms</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-secondary small">
+            A deleted farm's units/zones/devices went with it - restoring the farm brings all of
+            them back together. Retention: @Model.RecycleBinRetentionDays day(s), configurable in
+            <a asp-controller="ServerConfig" asp-action="Index">Server Settings</a>.
+        </p>
+        @if (!Model.Farms.Any())
+        {
+            <p class="text-secondary fst-italic">Nothing here.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead><tr><th>Name</th><th>Deleted</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var farm in Model.Farms)
+                    {
+                        <tr>
+                            <td>@farm.DeviceFarmName</td>
+                            <td>@farm.DeletedAtUtc?.ToString("u")</td>
+                            <td>
+                                <form asp-action="RecycleBinRestoreFarm" method="post">
+                                    <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Devices</h3>
+    </div>
+    <div class="card-body">
+        @if (!Model.Devices.Any())
+        {
+            <p class="text-secondary fst-italic">Nothing here.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead><tr><th>Name</th><th>MAC</th><th>Deleted</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var device in Model.Devices)
+                    {
+                        <tr>
+                            <td>@device.DeviceName</td>
+                            <td>@device.MacAddress</td>
+                            <td>@device.DeletedAtUtc?.ToString("u")</td>
+                            <td>
+                                <form asp-action="RecycleBinRestoreDevice" method="post">
+                                    <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

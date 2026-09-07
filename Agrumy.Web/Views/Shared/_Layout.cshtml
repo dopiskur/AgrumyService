@@ -22,6 +22,14 @@
         catch (api.Utils.ApiException) { }
     }
 
+    // Roadmap #408 - "Farm" (singular) until a second one exists, then "Farms" - swallowed on failure same as the GlobalAdmin-only calls above, defaults to singular (the more common case).
+    int farmCount = 1;
+    try
+    {
+        farmCount = (await Api.DeviceFarmsGet()).Count;
+    }
+    catch (api.Utils.ApiException) { }
+
     bool canEmergencyStop = hasAnyRole(RoleNames.DeviceManagers);
     bool emergencyStopActive = false;
     if (canEmergencyStop)
@@ -150,8 +158,8 @@
                         </li>
                         <li class="nav-item">
                             <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                <i class="nav-icon bi bi-geo-alt"></i>
-                                <p>@Localizer["Farms"]</p>
+                                <i class="nav-icon bi bi-map"></i>
+                                <p>@Localizer[farmCount > 1 ? "Farms" : "Farm"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -178,6 +186,12 @@
                                 <a asp-area="" asp-controller="WifiConfig" asp-action="Index" class="nav-link @navActive("WifiConfig")">
                                     <i class="nav-icon bi bi-wifi"></i>
                                     <p>@Localizer["WiFi Networks"]</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                    <i class="nav-icon bi bi-trash3"></i>
+                                    <p>@Localizer["Recycle Bin"]</p>
                                 </a>
                             </li>
                         }

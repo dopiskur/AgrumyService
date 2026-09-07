@@ -66,32 +66,58 @@ namespace api.Dal
             return ToDto(row);
         }
 
+        // Roadmap #409 - soft delete, replacing the old hard ExecuteDeleteAsync. SensorData/DeviceConfigSensor/DeviceConfigController rows are left untouched (a restore needs its config back exactly as it was); Diagnostics/ControllerData/Simulation are live operational state, not history worth keeping, so those are still hard-deleted - a restored device just rebuilds them on its next config poll.
         public async Task DeviceDeleteAsync(int? idDevice, int? tenantID)
         {
-            var target = await db.Devices.AsNoTracking()
-                .Where(d => d.IDDevice == idDevice && d.TenantID == tenantID)
-                .Select(d => new { d.DeviceConfigSensorID, d.DeviceConfigControllerID })
-                .FirstOrDefaultAsync();
-            if (target == null)
+            bool exists = await db.Devices.AsNoTracking().AnyAsync(d => d.IDDevice == idDevice && d.TenantID == tenantID);
+            if (!exists)
             {
                 return;
             }
 
             await using var tx = await db.Database.BeginTransactionAsync();
-            // Diagnostics/ControllerData/Simulation first: all three FKs to device are NoAction, so leaving any would block the delete.
             await db.DeviceDiagnostics.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.ControllerData.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.DeviceSimulations.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
-            await db.Devices.Where(d => d.IDDevice == idDevice && d.TenantID == tenantID).ExecuteDeleteAsync();
-            if (target.DeviceConfigSensorID != null)
-            {
-                await db.DeviceConfigSensors.Where(c => c.IDDeviceConfigSensor == target.DeviceConfigSensorID).ExecuteDeleteAsync();
-            }
-            if (target.DeviceConfigControllerID != null)
-            {
-                await db.DeviceConfigControllers.Where(c => c.IDDeviceConfigController == target.DeviceConfigControllerID).ExecuteDeleteAsync();
-            }
+            await db.Devices.Where(d => d.IDDevice == idDevice && d.TenantID == tenantID)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, true).SetProperty(d => d.DeletedAtUtc, DateTimeOffset.UtcNow));
             await tx.CommitAsync();
+        }
+
+        /// Roadmap #409 - every soft-deleted device still within serverConfig.RecycleBinRetentionDays (0/negative means nothing is ever listed - an explicit "no grace period" choice, not "unlimited").
+        public async Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID)
+        {
+            ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
+            int retentionDays = config.RecycleBinRetentionDays ?? 30;
+            if (retentionDays <= 0)
+            {
+                return [];
+            }
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+
+            IQueryable<DeviceRow> q = db.Devices.IgnoreQueryFilters().AsNoTracking().Where(d => d.Deleted && d.DeletedAtUtc >= cutoff);
+            if (tenantID != null)
+            {
+                q = q.Where(d => d.TenantID == tenantID);
+            }
+            var rows = await q.OrderByDescending(d => d.DeletedAtUtc).ToListAsync();
+            return rows.Select(ToDto).ToList();
+        }
+
+        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceGetByIdAsync, but also sees soft-deleted rows - RecycleBinApiController uses this to resolve a device's owning tenant before calling DeviceRestoreAsync.
+        public async Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice)
+        {
+            var row = await db.Devices.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.IDDevice == idDevice && d.Deleted);
+            return row == null ? null : ToDto(row);
+        }
+
+        /// False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant - same "caller's tenant must match" rule as DeviceDeleteAsync.
+        public async Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID)
+        {
+            int updated = await db.Devices.IgnoreQueryFilters()
+                .Where(d => d.IDDevice == idDevice && d.TenantID == tenantID && d.Deleted)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null));
+            return updated > 0;
         }
 
         public async Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress)
@@ -257,6 +283,7 @@ namespace api.Dal
             IsGateway = d.IsGateway,
             GatewayProfile = d.GatewayProfile is int p ? (GatewayProfile)p : null,
             LastFullConfigSentAt = d.LastFullConfigSentAt,
+            DeletedAtUtc = d.DeletedAtUtc,
         };
 
         // ---- Fixed device-type lookup lists -----------------------------

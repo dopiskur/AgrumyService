@@ -80,6 +80,9 @@ namespace api.Models
 
         // Written only when GetConfig/RunConfigAsync actually sends a full DeviceConfig body - drives the ConfigHeartbeatHours periodic resend (see DeviceConfigBuilder.NeedsRefreshAsync); never exposed via DeviceDto, purely internal bookkeeping.
         public DateTimeOffset? LastFullConfigSentAt { get; set; }
+
+        // Roadmap #409 - null means not deleted (the query filter means this is ALWAYS null on an ordinarily-fetched Device; only RecycleBinApiController's listing ever populates it).
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     /// The only shape of a device that ever crosses the HTTP boundary in either direction (GET responses, PUT /api/Device body) - identical to Device minus ApiId/ApiKey, which stay internal to EfRepository/DeviceConfigBuilder no matter what future fields get added here.
@@ -118,6 +121,7 @@ namespace api.Models
         public bool? Enabled { get; set; } = false;
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     /// The Web Edit form's ONLY binding target - deliberately carries just what EfRepository.DeviceUpdateAsync's own whitelist actually writes, so MacAddress/TenantID/IsGateway/GatewayProfile/ApiId/ApiKey/ConfigVersion have no property for an over-posted form value to land on, by construction rather than by remembering to filter them out downstream.
@@ -176,6 +180,7 @@ namespace api.Models
             Enabled = d.Enabled,
             DateCreated = d.DateCreated,
             DateModified = d.DateModified,
+            DeletedAtUtc = d.DeletedAtUtc,
         };
 
         /// The internal round-trip shape EfRepository/IRepository speak - ApiId/ApiKey are left unset here on purpose; DeviceUpdateAsync's own whitelist never reads them off the payload anyway, only off the freshly-loaded row.

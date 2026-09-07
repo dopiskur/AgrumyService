@@ -155,6 +155,10 @@ builder.Services.AddHostedService<RuleNotificationBackgroundService>();
 builder.Services.AddScoped<SensorDataRetentionEvaluator>();
 builder.Services.AddHostedService<SensorDataRetentionBackgroundService>();
 
+// Roadmap #409: opt-in (ServerConfig.PurgeOrphanedSensorDataScheduleEnabled) daily companion to the manual "Purge orphaned sensor data" trigger on DataMaintenanceApiController.
+builder.Services.AddScoped<PurgeOrphanedSensorDataEvaluator>();
+builder.Services.AddHostedService<PurgeOrphanedSensorDataBackgroundService>();
+
 // Roadmap #209: MariaDB/MySQL-only archive to a separate admin-configured database, opt-in, no-op unless ServerConfig.ArchiveEnabled - moves rows instead of deleting them, an alternative to (not a replacement for) the retention purge above.
 builder.Services.AddScoped<SensorDataArchiveEvaluator>();
 builder.Services.AddHostedService<SensorDataArchiveBackgroundService>();

@@ -1,13 +1,14 @@
 @model api.ViewModels.FarmListViewModel
 @{
-    ViewData["Title"] = "Farms";
+    bool multipleFarms = Model.Farms.Count > 1;
+    ViewData["Title"] = multipleFarms ? "Farms" : "Farm";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
 }
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Farms</h3>
+        <h3 class="card-title">@ViewData["Title"]</h3>
         @if (canManage)
         {
             <div class="float-end">
@@ -35,25 +36,36 @@
             {
                 var assignedUnits = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
                 var unassignedUnits = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
+                var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
                 <div class="border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0">@farm.DeviceFarmName</h5>
-                        <div class="d-flex gap-2">
-                            <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
-                            @if (canManage)
-                            {
-                                <form asp-action="FarmRename" method="post" class="d-flex gap-1">
-                                    <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                                    <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
-                                </form>
-                                <form asp-action="FarmDelete" method="post" onsubmit="return confirm('Delete this farm? Its units stay valid, just unassigned.');">
-                                    <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
+                    @* Roadmap #408 (3) - while this is the ONLY farm, it isn't shown as its own object, just its units directly (no name header/card chrome) - a farm becomes visible as a distinct thing only once a second one exists. *@
+                    @if (multipleFarms)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0">@farm.DeviceFarmName</h5>
+                            <div class="d-flex gap-2">
+                                <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                                @if (canManage)
+                                {
+                                    <form asp-action="FarmRename" method="post" class="d-flex gap-1">
+                                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                                        <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-danger farm-delete-button" title="Delete"
+                                            data-id-device-farm="@farm.IDDeviceFarm" data-farm-name="@farm.DeviceFarmName" data-other-farm-count="@otherFarms.Count">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                }
+                            </div>
                         </div>
-                    </div>
+                    }
+                    else if (canManage)
+                    {
+                        <div class="d-flex justify-content-end gap-2 mb-2">
+                            <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                        </div>
+                    }
                     @if (assignedUnits.Count == 0)
                     {
                         <p class="text-secondary small fst-italic mb-2">No units assigned.</p>
@@ -67,10 +79,27 @@
                                     <span>@unit.DeviceFarmUnitName</span>
                                     @if (canManage)
                                     {
-                                        <form asp-action="UnitAssignFarm" method="post">
-                                            <input type="hidden" name="idDeviceFarmUnit" value="@unit.IDDeviceFarmUnit" />
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Unassign</button>
-                                        </form>
+                                        <div class="d-flex gap-1">
+                                            @* Roadmap #408 (5) - moving a unit directly between farms only makes sense once a second farm exists. *@
+                                            @if (otherFarms.Count > 0)
+                                            {
+                                                <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-1">
+                                                    <input type="hidden" name="idDeviceFarmUnit" value="@unit.IDDeviceFarmUnit" />
+                                                    <select name="idDeviceFarm" class="form-select form-select-sm" style="width:auto" required
+                                                            onchange="this.form.requestSubmit()">
+                                                        <option value="" selected disabled>Move to...</option>
+                                                        @foreach (var other in otherFarms)
+                                                        {
+                                                            <option value="@other.IDDeviceFarm">@other.DeviceFarmName</option>
+                                                        }
+                                                    </select>
+                                                </form>
+                                            }
+                                            <form asp-action="UnitAssignFarm" method="post">
+                                                <input type="hidden" name="idDeviceFarmUnit" value="@unit.IDDeviceFarmUnit" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Unassign</button>
+                                            </form>
+                                        </div>
                                     }
                                 </li>
                             }
@@ -95,3 +124,46 @@
         }
     </div>
 </div>
+
+@* Roadmap #408 (b) - delete is now a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
+<form id="farmDeleteForm" asp-action="FarmDelete" method="post">
+    <input type="hidden" id="farmDeleteId" name="idDeviceFarm" />
+</form>
+
+<div class="modal fade" id="farmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete farm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="farmDeleteMigrateSection" style="display:none">
+                    <p>Move this farm's units to another farm first, or continue to delete everything.</p>
+                    <select id="farmDeleteMigrateTarget" class="form-select mb-2">
+                        <option value="">-- select a farm --</option>
+                        @foreach (var f in Model.Farms)
+                        {
+                            <option value="@f.IDDeviceFarm">@f.DeviceFarmName</option>
+                        }
+                    </select>
+                    <button type="button" id="farmDeleteMigrateButton" class="btn btn-outline-primary btn-sm mb-3">Migrate units, don't delete</button>
+                    <hr />
+                </div>
+                <p class="text-danger">
+                    This permanently deletes <strong id="farmDeleteNameLabel"></strong> AND every unit/zone/device
+                    still assigned to it. Everything goes to the Recycle Bin (recoverable there for the
+                    configured retention period), but this cannot be undone from this page.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="farmDeleteConfirmButton" class="btn btn-danger">Delete everything</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/farm-delete.js"></script>
+}

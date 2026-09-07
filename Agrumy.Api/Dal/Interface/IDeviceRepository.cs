@@ -25,7 +25,17 @@ namespace api.Dal.Interface
         /// Returns the created device (with its generated IDDevice) directly - callers don't need a follow-up DeviceGetAsync.
         Task<Device> DeviceAddAsync(Device device);
 
+        /// Roadmap #409 - soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
         Task DeviceDeleteAsync(int? idDevice, int? tenantID);
+
+        /// Every soft-deleted device still within serverConfig.RecycleBinRetentionDays (tenantID null = every tenant).
+        Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID);
+
+        /// Ownership-check lookup for a soft-deleted device (no tenant filter) - null if the device doesn't exist or isn't deleted.
+        Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice);
+
+        /// Undoes DeviceDeleteAsync - false if the device doesn't exist, isn't deleted, or belongs to a different tenant.
+        Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID);
 
         /// The device matched by id / apiId / macAddress within the tenant, or null if none matches (or no key was given).
         Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress);

@@ -75,6 +75,15 @@ namespace api.Models
         [Display(Name = "Sensor data retention (days)")]
         public int? SensorDataRetentionDays { get; set; }
 
+        // Roadmap #409 - how long a soft-deleted Farm/Device stays listed (and restorable) in the Recycle Bin; 0-90, default 30. Past this, a device/farm just drops off the recycle bin listing - its row (and SensorData) is NOT auto-purged, that's the separate manual/schedulable "Purge orphaned sensor data" action below.
+        [Display(Name = "Recycle bin retention (days)")]
+        [Range(0, 90)]
+        public int? RecycleBinRetentionDays { get; set; }
+
+        // PurgeOrphanedSensorDataBackgroundService only runs daily when this is on - the manual "Purge orphaned sensor data" trigger in the Database section works regardless.
+        [Display(Name = "Schedule daily orphaned sensor data purge")]
+        public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
+
         // Install-wide location OpenWeatherMap forecasts are pulled for; null leaves WeatherBackgroundService inert rather than failing loudly.
         [Display(Name = "Latitude")]
         public double? WeatherLocationLat { get; set; }

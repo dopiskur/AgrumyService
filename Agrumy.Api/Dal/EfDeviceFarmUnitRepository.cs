@@ -74,19 +74,92 @@ namespace api.Dal
             await db.SaveChangesAsync();
         }
 
+        /// Roadmap #408 - reverses #384's original "unassign, don't cascade" decision: deleting a Farm now soft-deletes it AND every Unit/Zone/Device still attached to it, all stamped with the same DeletedAtUtc so DeviceFarmRestoreAsync can undo exactly this cascade (and nothing an unrelated, independently-deleted device/unit brought with it). Rules aren't touched at all - a Unit/Zone/Farm-scope rule simply becomes unreachable while its owner is soft-deleted (nothing still-visible ever looks it up, see RuleNotificationEvaluator/DeviceConfigBuilder), and reactivates for free on restore instead of needing to be recreated.
         public async Task DeviceFarmDeleteAsync(int idDeviceFarm)
         {
-            // Units stay valid, just unassigned - same "delete the parent, keep the child" rule as DeviceUnassignFromZoneAsync, not a cascade delete.
+            bool exists = await db.DeviceFarms.AsNoTracking().AnyAsync(f => f.IDDeviceFarm == idDeviceFarm);
+            if (!exists)
+            {
+                return;
+            }
+
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var unitIds = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.DeviceFarmID == idDeviceFarm).Select(u => u.IDDeviceFarmUnit).ToListAsync();
+            var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking().Where(z => unitIds.Contains(z.DeviceFarmUnitID)).Select(z => z.IDDeviceFarmUnitZone).ToListAsync();
+
+            await db.Devices
+                .Where(d => (d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value)) || (d.DeviceFarmUnitZoneID != null && zoneIds.Contains(d.DeviceFarmUnitZoneID.Value)))
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, true).SetProperty(d => d.DeletedAtUtc, now));
+
+            await db.DeviceFarmUnitZones.Where(z => unitIds.Contains(z.DeviceFarmUnitID))
+                .ExecuteUpdateAsync(s => s.SetProperty(z => z.Deleted, true).SetProperty(z => z.DeletedAtUtc, now));
+
             await db.DeviceFarmUnits.Where(u => u.DeviceFarmID == idDeviceFarm)
-                .ExecuteUpdateAsync(s => s.SetProperty(u => u.DeviceFarmID, (int?)null));
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.Deleted, true).SetProperty(u => u.DeletedAtUtc, now));
 
-            // Farm-scope rules (DeviceFarmID set, DeviceFarmUnitID/DeviceFarmUnitZoneID both null) live directly on the farm - they'd otherwise survive as orphans after the farm is gone.
-            var farmRuleIds = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                .Where(r => r.DeviceFarmID == idDeviceFarm).Select(r => r.IDDeviceFarmUnitZoneRule).ToListAsync();
-            await db.RuleNotificationStates.Where(s => farmRuleIds.Contains(s.RuleID)).ExecuteDeleteAsync();
-            await db.DeviceFarmUnitZoneRules.Where(r => r.DeviceFarmID == idDeviceFarm).ExecuteDeleteAsync();
+            await db.DeviceFarms.Where(f => f.IDDeviceFarm == idDeviceFarm)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, true).SetProperty(f => f.DeletedAtUtc, now));
+        }
 
-            await db.DeviceFarms.Where(f => f.IDDeviceFarm == idDeviceFarm).ExecuteDeleteAsync();
+        /// Every soft-deleted Farm still within serverConfig.RecycleBinRetentionDays (0/negative disables the recycle bin entirely, same "no grace period" reading as DeviceRecycleBinGetAsync).
+        public async Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID)
+        {
+            ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
+            int retentionDays = config.RecycleBinRetentionDays ?? 30;
+            if (retentionDays <= 0)
+            {
+                return [];
+            }
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+
+            IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && f.DeletedAtUtc >= cutoff);
+            if (tenantID != null)
+            {
+                q = q.Where(f => f.TenantID == tenantID);
+            }
+            var rows = await q.OrderByDescending(f => f.DeletedAtUtc).ToListAsync();
+            return rows.Select(ToDtoFarm).ToList();
+        }
+
+        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceFarmGetByIdAsync, but also sees soft-deleted rows - RecycleBinApiController uses this to resolve a farm's owning tenant before calling DeviceFarmRestoreAsync.
+        public async Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm)
+        {
+            var row = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.Deleted);
+            return row == null ? null : ToDtoFarm(row);
+        }
+
+        /// Undoes DeviceFarmDeleteAsync's exact cascade - only Units/Zones/Devices stamped with THIS farm's own DeletedAtUtc come back; anything deleted independently (e.g. a device deleted on its own before or after the farm) stays deleted. False if the farm doesn't exist, isn't soft-deleted, or belongs to a different tenant.
+        public async Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID)
+        {
+            var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
+                .FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.TenantID == tenantID && f.Deleted);
+            if (farm == null)
+            {
+                return false;
+            }
+            DateTimeOffset deletedAt = farm.DeletedAtUtc!.Value;
+
+            var unitIds = await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking()
+                .Where(u => u.DeviceFarmID == idDeviceFarm && u.Deleted && u.DeletedAtUtc == deletedAt)
+                .Select(u => u.IDDeviceFarmUnit).ToListAsync();
+            var zoneIds = await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking()
+                .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.Deleted && z.DeletedAtUtc == deletedAt)
+                .Select(z => z.IDDeviceFarmUnitZone).ToListAsync();
+
+            await db.Devices.IgnoreQueryFilters()
+                .Where(d => d.Deleted && d.DeletedAtUtc == deletedAt
+                    && ((d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value)) || (d.DeviceFarmUnitZoneID != null && zoneIds.Contains(d.DeviceFarmUnitZoneID.Value))))
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null));
+
+            await db.DeviceFarmUnitZones.IgnoreQueryFilters().Where(z => zoneIds.Contains(z.IDDeviceFarmUnitZone))
+                .ExecuteUpdateAsync(s => s.SetProperty(z => z.Deleted, false).SetProperty(z => z.DeletedAtUtc, (DateTimeOffset?)null));
+
+            await db.DeviceFarmUnits.IgnoreQueryFilters().Where(u => unitIds.Contains(u.IDDeviceFarmUnit))
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.Deleted, false).SetProperty(u => u.DeletedAtUtc, (DateTimeOffset?)null));
+
+            await db.DeviceFarms.IgnoreQueryFilters().Where(f => f.IDDeviceFarm == idDeviceFarm)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, false).SetProperty(f => f.DeletedAtUtc, (DateTimeOffset?)null));
+            return true;
         }
 
         // ---- Unit CRUD -------------------------------------------------
@@ -113,7 +186,8 @@ namespace api.Dal
             // IDDeviceFarmUnit is ValueGeneratedNever - MySQL's default sql_mode treats an explicit 0 on an AUTO_INCREMENT column as "generate a new value", which would collide with the reserved IDDeviceFarmUnit=0 sentinel (Math.Max(...,1) below keeps 0 free).
             for (int attempt = 0; ; attempt++)
             {
-                int nextId = Math.Max((await db.DeviceFarmUnits.AsNoTracking().Select(u => (int?)u.IDDeviceFarmUnit).MaxAsync() ?? 0) + 1, 1);
+                // IgnoreQueryFilters (roadmap #409) - a soft-deleted row's id is still physically present in the table (unique constraint doesn't care that it's hidden), so computing next-id from the FILTERED max would immediately collide with it.
+                int nextId = Math.Max((await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking().Select(u => (int?)u.IDDeviceFarmUnit).MaxAsync() ?? 0) + 1, 1);
                 var row = new DeviceFarmUnitRow { IDDeviceFarmUnit = nextId, TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID };
                 db.DeviceFarmUnits.Add(row);
                 try
@@ -182,10 +256,10 @@ namespace api.Dal
 
         public async Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone)
         {
-            // Same manual max+1 reasoning, and same collision-retry, as DeviceFarmUnitAddAsync.
+            // Same manual max+1 reasoning, same collision-retry, and same IgnoreQueryFilters reasoning (roadmap #409), as DeviceFarmUnitAddAsync.
             for (int attempt = 0; ; attempt++)
             {
-                int nextId = Math.Max((await db.DeviceFarmUnitZones.AsNoTracking().Select(z => (int?)z.IDDeviceFarmUnitZone).MaxAsync() ?? 0) + 1, 1);
+                int nextId = Math.Max((await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking().Select(z => (int?)z.IDDeviceFarmUnitZone).MaxAsync() ?? 0) + 1, 1);
                 var row = new DeviceFarmUnitZoneRow
                 {
                     IDDeviceFarmUnitZone = nextId,
@@ -1017,6 +1091,7 @@ namespace api.Dal
             IDDeviceFarm = f.IDDeviceFarm,
             TenantID = f.TenantID,
             DeviceFarmName = f.DeviceFarmName,
+            DeletedAtUtc = f.DeletedAtUtc,
         };
 
         private static DeviceFarmUnitZone ToDtoZone(DeviceFarmUnitZoneRow z) => new()

@@ -167,6 +167,9 @@ namespace api.Dal
                 e.HasKey(x => x.IDDeviceFarm);
                 e.Property(x => x.IDDeviceFarm).ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmName).HasMaxLength(100);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                // Roadmap #409 - every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.
+                e.HasQueryFilter(x => !x.Deleted);
             });
 
             modelBuilder.Entity<DeviceFarmUnitRow>(e =>
@@ -175,7 +178,9 @@ namespace api.Dal
                 e.HasKey(x => x.IDDeviceFarmUnit);
                 e.Property(x => x.IDDeviceFarmUnit).ValueGeneratedNever();
                 e.Property(x => x.DeviceFarmUnitName).HasMaxLength(100);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.DeviceFarmID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
+                e.HasQueryFilter(x => !x.Deleted);
             });
 
             // Real containment FK (Zone -> Unit) - see db/migrations/2026-09-02-deviceunit-zone-containment.sql.
@@ -185,7 +190,9 @@ namespace api.Dal
                 e.HasKey(x => x.IDDeviceFarmUnitZone);
                 e.Property(x => x.IDDeviceFarmUnitZone).ValueGeneratedNever();
                 e.Property(x => x.DeviceFarmUnitZoneName).HasMaxLength(120);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
+                e.HasQueryFilter(x => !x.Deleted);
             });
 
             // Several rows may share (scope, RelayFunction/SensorMetric); OR semantics across them, and Zone>Unit>Farm>Global precedence, are resolved in EfRepository/RuleHierarchyResolver, not here. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID/DeviceFarmID is set (Global scope: all three null) - enforced in DeviceFarmUnitApiController, not the DB.
@@ -329,6 +336,9 @@ namespace api.Dal
                 e.HasOne<DeviceTypeRow>().WithMany().HasForeignKey(x => x.ManualDeviceTypeID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController/EfRecycleBinRepository/PurgeOrphanedSensorDataAsync explicitly IgnoreQueryFilters() or use raw SQL.
+                e.HasQueryFilter(x => !x.Deleted);
             });
 
             modelBuilder.Entity<GatewayDeviceMappingRow>(e =>

@@ -151,5 +151,20 @@ namespace api.Controllers.View
                 return StatusCode(ex.StatusCode, ex.Body);
             }
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DataMaintenancePurgeOrphaned([FromBody] DataPurgeOrphanedRequest request)
+        {
+            try
+            {
+                await api.DataMaintenancePurgeOrphaned(request);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
     }
 }

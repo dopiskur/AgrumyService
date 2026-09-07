@@ -27,4 +27,12 @@ namespace api.Models
     {
         public bool IsMySql { get; set; }
     }
+
+    /// Body of POST /api/DataMaintenance/PurgeOrphaned (roadmap #409) - no OlderThanDays, the cutoff is always serverConfig.RecycleBinRetentionDays (a device only ever qualifies once it's left the Recycle Bin).
+    public class DataPurgeOrphanedRequest
+    {
+        public const string RequiredPhrase = "PURGE";
+
+        public string? ConfirmationPhrase { get; set; }
+    }
 }

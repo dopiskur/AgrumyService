@@ -28,8 +28,17 @@ namespace api.Dal.Interface
 
         Task DeviceFarmUpdateAsync(DeviceFarm farm);
 
-        /// Unassigns every Unit currently in this Farm (DeviceFarmID set to NULL, same "stays valid, just unassigned" rule as DeviceUnassignFromZoneAsync), then deletes the Farm row - a no-op if the id doesn't exist.
+        /// Roadmap #408 - soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
         Task DeviceFarmDeleteAsync(int idDeviceFarm);
+
+        /// Every soft-deleted Farm still within serverConfig.RecycleBinRetentionDays (tenantID null = every tenant).
+        Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID);
+
+        /// Ownership-check lookup for a soft-deleted farm (no tenant filter) - null if the farm doesn't exist or isn't deleted.
+        Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm);
+
+        /// Undoes DeviceFarmDeleteAsync's exact cascade - false if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID);
 
         // ---- Unit CRUD -------------------------------------------------
 

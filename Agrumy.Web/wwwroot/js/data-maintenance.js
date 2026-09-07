@@ -95,4 +95,39 @@ document.addEventListener('DOMContentLoaded', function () {
             purgeButton.disabled = false;
         }
     }
+
+    // Roadmap #409 - same confirm-phrase pattern as Purge Old Data above, but no threshold/shrink step (this always targets sensorData for already-deleted devices, cutoff is serverConfig.RecycleBinRetentionDays, not caller-chosen).
+    const purgeOrphanedButton = document.getElementById('purgeOrphanedButton');
+    if (purgeOrphanedButton) {
+        const orphanedStatus = document.getElementById('purgeOrphanedStatus');
+        const orphanedConfirmModalEl = document.getElementById('purgeOrphanedConfirmModal');
+        const orphanedConfirmPhraseInput = document.getElementById('purgeOrphanedConfirmPhrase');
+        const orphanedConfirmSubmitButton = document.getElementById('purgeOrphanedConfirmSubmit');
+        const orphanedConfirmModal = new bootstrap.Modal(orphanedConfirmModalEl);
+
+        purgeOrphanedButton.addEventListener('click', function () {
+            orphanedConfirmPhraseInput.value = '';
+            orphanedConfirmSubmitButton.disabled = true;
+            orphanedConfirmModal.show();
+        });
+
+        orphanedConfirmPhraseInput.addEventListener('input', function () {
+            orphanedConfirmSubmitButton.disabled = orphanedConfirmPhraseInput.value !== 'PURGE';
+        });
+
+        orphanedConfirmSubmitButton.addEventListener('click', async function () {
+            orphanedConfirmModal.hide();
+            purgeOrphanedButton.disabled = true;
+            try {
+                await postJson('/ServerConfig/DataMaintenancePurgeOrphaned', { confirmationPhrase: 'PURGE' });
+                orphanedStatus.textContent = 'Purge started in the background - check back later; this page does not wait for it to finish.';
+                orphanedStatus.className = 'mt-2 text-success';
+            } catch (err) {
+                orphanedStatus.textContent = 'Purge failed to start: ' + err.message;
+                orphanedStatus.className = 'mt-2 text-danger';
+            } finally {
+                purgeOrphanedButton.disabled = false;
+            }
+        });
+    }
 });

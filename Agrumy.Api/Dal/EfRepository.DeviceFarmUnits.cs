@@ -16,6 +16,12 @@ namespace api.Dal
 
         public Task DeviceFarmDeleteAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmDeleteAsync(idDeviceFarm);
 
+        public Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID) => deviceFarmUnitRepository.DeviceFarmRecycleBinGetAsync(tenantID);
+
+        public Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmRecycleBinGetByIdAsync(idDeviceFarm);
+
+        public Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID) => deviceFarmUnitRepository.DeviceFarmRestoreAsync(idDeviceFarm, tenantID);
+
         public Task<IList<DeviceFarmUnit>> DeviceFarmUnitsGetAsync(int? tenantID) => deviceFarmUnitRepository.DeviceFarmUnitsGetAsync(tenantID);
 
         public Task<DeviceFarmUnit?> DeviceFarmUnitGetByIdAsync(int? idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit);
