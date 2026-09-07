@@ -5,9 +5,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace api.Security
 {
+    /// Just the field this check actually needs - deliberately not the full User (PwdHash/PwdSalt have no business sitting in the cache backing store for this).
+    internal sealed record CachedRevocationState(DateTime? TokensValidAfterUtc);
+
     /// AddJwtBearer's OnTokenValidated hook - rejects a structurally valid, unexpired token if the caller's password changed or account was disabled after it was issued. See api.Security.TokenRevocationCheck for the actual decision.
     public static class TokenRevocationValidator
     {
+        // Roadmap #397(4) - this hook ran a DB query on every authenticated request. 30s is a deliberate trade-off (user's own call): a revoked token can still pass for up to this long, in exchange for cutting DB load on every single API call.
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+        private static string CacheKey(string email) => $"tokenRevocation:{email}";
+
         public static async Task ValidateAsync(TokenValidatedContext context)
         {
             if (context.Principal?.Identity?.Name is not string email ||
@@ -16,9 +23,22 @@ namespace api.Security
                 return;
             }
 
-            IRepository repo = context.HttpContext.RequestServices.GetRequiredService<IRepository>();
-            User? user = await repo.UserGetAsync(null, email, null);
-            if (user is not null && TokenRevocationCheck.IsRevoked(jwt.IssuedAt, user.TokensValidAfterUtc))
+            ICache cache = context.HttpContext.RequestServices.GetRequiredService<ICache>();
+            string cacheKey = CacheKey(email);
+            CachedRevocationState? state = await cache.GetAsync<CachedRevocationState>(cacheKey);
+            if (state is null)
+            {
+                IRepository repo = context.HttpContext.RequestServices.GetRequiredService<IRepository>();
+                User? user = await repo.UserGetAsync(null, email, null);
+                if (user is null)
+                {
+                    return; // unreachable for a token that passed signature validation, but nothing to cache either way
+                }
+                state = new CachedRevocationState(user.TokensValidAfterUtc);
+                await cache.SetAsync(cacheKey, state, CacheTtl);
+            }
+
+            if (TokenRevocationCheck.IsRevoked(jwt.IssuedAt, state.TokensValidAfterUtc))
             {
                 context.Fail("Token revoked - password changed or account disabled.");
             }
