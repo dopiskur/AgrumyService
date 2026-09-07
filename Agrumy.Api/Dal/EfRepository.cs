@@ -174,7 +174,7 @@ namespace api.Dal
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogVoltage, SensorName = "Analog voltage", Battery = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogMoisture, SensorName = "Analog moisture", Moisture = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogWaterLevel, SensorName = "Analog water tank", WaterTankLevel = 1 },
-                    // Roadmap #416 - extended catalog.
+                    // Extended catalog.
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31855, SensorName = "MAX31855", SensorDescription = "K-type thermocouple amplifier, SPI", Temperature = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31856, SensorName = "MAX31856", SensorDescription = "Thermocouple amplifier, SPI", Temperature = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31865, SensorName = "MAX31865", SensorDescription = "PT100 RTD amplifier, SPI", Temperature = 1, TemperatureSoil = 1 },

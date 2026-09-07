@@ -18,7 +18,7 @@ namespace api.Dal.Interface
 
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
-        /// Roadmap #414 (2) - name only, StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
+        /// Name only, StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session);
 
         /// Sets a fresh StartedAtUtc/ExpiresAtUtc window from now and clears StoppedAtUtc - same call whether this is the session's first start or a later Resume.

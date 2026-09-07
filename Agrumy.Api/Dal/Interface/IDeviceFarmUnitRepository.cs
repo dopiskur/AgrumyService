@@ -26,7 +26,7 @@ namespace api.Dal.Interface
 
         Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm);
 
-        /// Roadmap #412 (c) - no-op if the tenant already has any farm.
+        /// No-op if the tenant already has any farm.
         Task EnsureFirstFarmAsync(int tenantId);
 
         Task DeviceFarmUpdateAsync(DeviceFarm farm);

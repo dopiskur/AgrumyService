@@ -78,7 +78,7 @@ namespace api.Controllers.API
         /// Hard cap regardless of preset/custom entry - SimulationSessionExpiryEvaluator's own safety net only works if no session can ever be created past this.
         private const int MaxDurationMinutes = 48 * 60;
 
-        /// Roadmap #414 (2) - name only now; devices are added and the session is started as separate later steps (StartSession below), not bundled into creation.
+        /// Name only now; devices are added and the session is started as separate later steps (StartSession below), not bundled into creation.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost("Session")]
         public async Task<ActionResult<SimulationSession>> CreateSession([FromBody] SimulationSessionCreateRequest request)
@@ -119,7 +119,7 @@ namespace api.Controllers.API
             return Ok(session);
         }
 
-        /// Roadmap #414 (2) - starts a never-started session, or resumes one that was previously Stopped/expired; rejected if the session is CURRENTLY running (Stop it first). Devices already added stay added - this only sets the time window.
+        /// Starts a never-started session, or resumes one that was previously Stopped/expired; rejected if the session is CURRENTLY running (Stop it first). Devices already added stay added - this only sets the time window.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost("Session/{idSimulationSession}/Start")]
         public async Task<ActionResult> StartSession(int idSimulationSession, [FromBody] SimulationSessionStartRequest request)
@@ -176,7 +176,7 @@ namespace api.Controllers.API
             return Ok();
         }
 
-        /// Roadmap #414 (1) - same physical-override cleanup as StopSession first (a running session must never leave a device stuck simulating just because its session was deleted), then hard-removes the session and its device memberships. A virtual device that was only IN this session is left as-is (still exists, just no longer in an active session) - deleting it entirely is the separate, explicit DeleteVirtualDevice action.
+        /// Same physical-override cleanup as StopSession first (a running session must never leave a device stuck simulating just because its session was deleted), then hard-removes the session and its device memberships. A virtual device that was only IN this session is left as-is (still exists, just no longer in an active session) - deleting it entirely is the separate, explicit DeleteVirtualDevice action.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpDelete("Session/{idSimulationSession}")]
         public async Task<ActionResult> DeleteSession(int idSimulationSession)

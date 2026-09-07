@@ -46,7 +46,7 @@ namespace api.Dal
 
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
-        /// Roadmap #414 (2) - name only; StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
+        /// Name only; StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         public async Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session)
         {
             var row = new SimulationSessionRow
@@ -70,7 +70,7 @@ namespace api.Dal
                     .SetProperty(s => s.StoppedAtUtc, (DateTimeOffset?)null));
         }
 
-        /// Roadmap #414 (1) - turns off every member physical device's sensor override first (same cleanup StopSession does), same reasoning: a deleted session must not leave a physical device stuck simulating forever.
+        /// Turns off every member physical device's sensor override first (same cleanup StopSession does), same reasoning: a deleted session must not leave a physical device stuck simulating forever.
         public async Task SimulationSessionDeleteAsync(int idSimulationSession)
         {
             await db.SimulationSessionDevices.Where(sd => sd.IDSimulationSession == idSimulationSession).ExecuteDeleteAsync();

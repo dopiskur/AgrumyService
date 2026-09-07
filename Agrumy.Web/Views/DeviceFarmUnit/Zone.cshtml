@@ -16,7 +16,7 @@
 }
 
 @{
-    // Roadmap #412 (d) - same threshold as Zones.cshtml/Farms.cshtml.
+    // Same threshold as Zones.cshtml/Farms.cshtml.
     bool multipleFarms = Model.Farms.Count > 1;
     var unitFarm = multipleFarms ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.UnitFarmID) : null;
 }

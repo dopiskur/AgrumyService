@@ -17,7 +17,7 @@
     <div class="alert alert-warning">@error</div>
 }
 
-@* Roadmap #414 (2) - name only here; duration is chosen when the session is actually started, inside its own Details page. *@
+@* Name only here; duration is chosen when the session is actually started, inside its own Details page. *@
 <form asp-action="Create" method="post" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
         <label class="form-label" for="simName">Name</label>
@@ -41,7 +41,7 @@
     <tbody>
         @foreach (var session in Model)
         {
-            // Roadmap #414 (2) - a session with no StartedAtUtc yet was only just created, never started.
+            // A session with no StartedAtUtc yet was only just created, never started.
             bool notStarted = session.StartedAtUtc == null;
             bool running = !notStarted && session.StoppedAtUtc == null && session.ExpiresAtUtc > DateTimeOffset.UtcNow;
             <tr>

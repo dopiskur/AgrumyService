@@ -120,9 +120,9 @@ namespace api.Models
         DewPoint = 14,
         /// DERIVED - Temperature minus DewPoint; a small/shrinking spread is an early condensation/fungal-disease signal, distinct from absolute humidity alone.
         DewPointSpread = 15,
-        /// RAW (roadmap #416) - electrical conductivity, ADS1115Ec.
+        /// RAW - electrical conductivity, ADS1115Ec.
         Ec = 16,
-        /// RAW (roadmap #416) - load cell reading, HX711.
+        /// RAW - load cell reading, HX711.
         Weight = 17,
     }
 
@@ -316,7 +316,7 @@ namespace api.Models
     {
         public int IDDeviceFarmUnit { get; set; }
         public string? DeviceFarmUnitName { get; set; }
-        // Roadmap #412 (4) - null means unassigned; only used to group units by farm on the dashboard once a tenant has a second farm.
+        // Null means unassigned; only used to group units by farm on the dashboard once a tenant has a second farm.
         public int? DeviceFarmID { get; set; }
         public int ZoneCount { get; set; }
         public int DeviceCount { get; set; }

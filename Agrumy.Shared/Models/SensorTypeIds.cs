@@ -13,7 +13,7 @@ namespace api.Models
         public const int Ds18B20 = 1007;
         public const int Bh1750 = 1008;
         public const int Max17048 = 1009;
-        // Roadmap #416 - extended catalog, one ID per physical sensor model.
+        // Extended catalog, one ID per physical sensor model.
         public const int Max31855 = 1010;
         public const int Max31856 = 1011;
         public const int Max31865 = 1012;

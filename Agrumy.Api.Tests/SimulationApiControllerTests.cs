@@ -45,7 +45,7 @@ public class SimulationApiControllerTests
         // MockBehavior.Strict: SimulationSessionAddAsync has no setup, proving nothing was created.
     }
 
-    // Roadmap #414 (2) - Create no longer takes a duration; the session is born with no StartedAtUtc/ExpiresAtUtc at all.
+    // Create no longer takes a duration; the session is born with no StartedAtUtc/ExpiresAtUtc at all.
     [Fact]
     public async Task CreateSession_Valid_PersistsWithNoStartedOrExpiry()
     {
@@ -95,7 +95,7 @@ public class SimulationApiControllerTests
         Assert.IsType<OkResult>(result);
     }
 
-    // Roadmap #414 (2) - the same action resumes a Stopped/expired session; only a CURRENTLY running one rejects it.
+    // The same action resumes a Stopped/expired session; only a CURRENTLY running one rejects it.
     [Fact]
     public async Task StartSession_PreviouslyStopped_Resumes()
     {

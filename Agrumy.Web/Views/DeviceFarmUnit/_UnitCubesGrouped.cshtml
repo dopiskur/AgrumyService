@@ -1,6 +1,6 @@
 @model api.ViewModels.GroupedUnitCubesViewModel
 @{
-    // Roadmap #412 (4) - while there's only one farm it stays invisible (same rule as Farms.cshtml), units render flat exactly as before. A second farm existing is what turns this into Farm > Unit grouping.
+    // While there's only one farm it stays invisible (same rule as Farms.cshtml), units render flat exactly as before. A second farm existing is what turns this into Farm > Unit grouping.
     bool multipleFarms = Model.Farms.Count > 1;
 }
 @if (!multipleFarms || Model.Units.Count == 0)

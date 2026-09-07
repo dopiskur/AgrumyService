@@ -5,7 +5,7 @@ namespace api.ViewModels
     public class UnitZonesViewModel
     {
         public DeviceFarmUnit Unit { get; set; } = new();
-        // Roadmap #412 (d) - breadcrumb only grows a Farm segment once there's a second one (Unit.DeviceFarmID alone tells the view which one, if any).
+        // Breadcrumb only grows a Farm segment once there's a second one (Unit.DeviceFarmID alone tells the view which one, if any).
         public IList<DeviceFarm> Farms { get; set; } = [];
         public IList<DeviceFarmUnitZoneDashboard> Zones { get; set; } = new List<DeviceFarmUnitZoneDashboard>();
         public string DisplayTimeZone { get; set; } = "UTC";

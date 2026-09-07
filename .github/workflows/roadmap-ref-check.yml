@@ -1,0 +1,38 @@
+name: Roadmap ref check
+
+# Rejects a PR/push that introduces a NEW "Roadmap #NNN"-style ticket reference in a code
+# comment (tools/check_roadmap_refs.py) - CLAUDE.md's comment-style rule says that number
+# belongs only in the commit message. Existing occurrences are left alone (roadmap #269's
+# gradual cleanup already covers those); this only gates new ones from creeping back in.
+# Kept as its own workflow (separate from build.yml) so it stays fast and does not
+# conflict-merge with it.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  roadmap-ref-check:
+    runs-on: ubuntu-latest
+    steps:
+      # Roadmap #75/#121: SHA-pinned instead of a version tag - a moving tag could be repointed
+      # at anything; the pinned commit is exactly what was reviewed.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.x'
+      - name: Determine base commit
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check for new Roadmap #NNN comments
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+        run: python tools/check_roadmap_refs.py

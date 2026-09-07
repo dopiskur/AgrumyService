@@ -2,7 +2,7 @@ using api.Models;
 
 namespace api.ViewModels
 {
-    /// Drives DeviceFarmUnit/_UnitCubesGrouped.cshtml (roadmap #412 (4)).
+    /// Drives DeviceFarmUnit/_UnitCubesGrouped.cshtml.
     public class GroupedUnitCubesViewModel
     {
         public IList<DeviceFarmUnitDashboard> Units { get; init; } = [];

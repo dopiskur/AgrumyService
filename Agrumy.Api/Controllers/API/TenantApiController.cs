@@ -49,7 +49,7 @@ namespace api.Controllers.API
                 return BadRequest("Tenant name is required.");
             }
             int idTenant = await tenantRepo.TenantAddAsync(tenant.TenantName.Trim());
-            await deviceFarmUnitRepo.EnsureFirstFarmAsync(idTenant); // Roadmap #412 (c) - same as the self-service registration path.
+            await deviceFarmUnitRepo.EnsureFirstFarmAsync(idTenant); // Same as the self-service registration path.
             return Ok(idTenant);
         }
 

@@ -1309,7 +1309,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(globalRuleId, Assert.Single(await _repo.RulesGetForTenantGlobalAsync(tenantId)).IDDeviceFarmUnitZoneRule);
     }
 
-    // Roadmap #412 (c) - the freshly-created farm scoops up a unit that already existed unassigned.
+    // The freshly-created farm scoops up a unit that already existed unassigned.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task EnsureFirstFarm_NoExistingFarm_CreatesOneAndSweepsUnassignedUnits(DbProviderKind provider)
     {
@@ -1326,7 +1326,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
     }
 
-    // Roadmap #412 (c) - idempotent: a tenant that already has a farm (of any name) is left alone.
+    // Idempotent: a tenant that already has a farm (of any name) is left alone.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task EnsureFirstFarm_TenantAlreadyHasFarm_IsNoOp(DbProviderKind provider)
     {
@@ -1342,7 +1342,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotEqual("First farm", farm.DeviceFarmName);
     }
 
-    // Roadmap #412 (c) - a brand-new self-service tenant registration gets a "First farm" for free, via the same isNewTenant branch as TenantApiController.TenantAdd.
+    // A brand-new self-service tenant registration gets a "First farm" for free, via the same isNewTenant branch as TenantApiController.TenantAdd.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task RegisterUserAsync_NewTenant_GetsFirstFarm(DbProviderKind provider)
     {
@@ -1750,7 +1750,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         // Roadmap #403 - the parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
         var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
-        // Roadmap #414 (2) - Add no longer sets a time window; the device only counts as "active" once the session is actually Started.
+        // Add no longer sets a time window; the device only counts as "active" once the session is actually Started.
         await _repo.SimulationSessionStartAsync(session.IDSimulationSession!.Value, 60);
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync());
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId));
@@ -1795,7 +1795,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(status.RelayStates!.Single(r => r.RelayFunction == RelayFunction.WaterPump).IsOn);
     }
 
-    // Roadmap #421 - a virtual device has no real WiFi/poll cycle, so the Fleet page must flag it distinctly instead of showing a misleading Online/Offline.
+    // A virtual device has no real WiFi/poll cycle, so the Fleet page must flag it distinctly instead of showing a misleading Online/Offline.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFleetGet_FlagsVirtualDevices(DbProviderKind provider)
     {

@@ -21,7 +21,7 @@ namespace api.ViewModels
         public IList<DiscoveryResult> DiscoveredDevices { get; set; } = [];
         public IList<TenantWifiConfig> WifiConfigs { get; set; } = [];
 
-        // Roadmap #412 (d) - breadcrumb only grows a Farm segment once there's a second one.
+        // Breadcrumb only grows a Farm segment once there's a second one.
         public string? UnitName { get; init; }
         public int? UnitFarmID { get; init; }
         public IList<DeviceFarm> Farms { get; init; } = [];

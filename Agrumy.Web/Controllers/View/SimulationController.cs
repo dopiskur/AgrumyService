@@ -13,7 +13,7 @@ namespace api.Controllers.View
     {
         public async Task<ActionResult> Index() => View(await api.SimulationSessionList());
 
-        /// Roadmap #414 (2) - name only now, no duration; Details is where the session actually gets started.
+        /// Name only now, no duration; Details is where the session actually gets started.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(string name)
@@ -52,7 +52,7 @@ namespace api.Controllers.View
             return View(session);
         }
 
-        /// Roadmap #414 (2) - starts a never-started session, or resumes one that was Stopped/expired; same action either way.
+        /// Starts a never-started session, or resumes one that was Stopped/expired; same action either way.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Start(int idSimulationSession, int durationMinutes)

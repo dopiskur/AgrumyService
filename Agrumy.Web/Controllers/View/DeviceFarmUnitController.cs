@@ -13,7 +13,7 @@ namespace api.Controllers.View
     {
         public async Task<ActionResult> Index() => View(await BuildGroupedUnitCubesAsync());
 
-        // Roadmap #412 (4) - shared by the full page and its 10s-polled fragment (IndexCubes below) so a live update never reverts the farm grouping.
+        // Shared by the full page and its 10s-polled fragment (IndexCubes below) so a live update never reverts the farm grouping.
         private async Task<GroupedUnitCubesViewModel> BuildGroupedUnitCubesAsync() => new()
         {
             Units = await api.DeviceFarmUnitDashboardGet(),
@@ -237,7 +237,7 @@ namespace api.Controllers.View
                 manualOverrides = await api.DeviceFarmUnitZoneManualActuateStatus(idDeviceFarmUnitZone);
             }
 
-            // Roadmap #412 (d) - breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
+            // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
             DeviceFarmUnit unit = await api.DeviceFarmUnitGet(dashboard.IDDeviceFarmUnit);
 
             return new ZoneViewModel

@@ -370,7 +370,7 @@ namespace api.Controllers.View
         {
             var device = await api.DeviceGet(idDevice);
             ViewBag.IdSimulationSession = idSimulationSession;
-            // Roadmap #414 (5) - the "this can move real hardware" warning only makes sense for a physical device; a virtual one has no relay to move.
+            // The "this can move real hardware" warning only makes sense for a physical device; a virtual one has no relay to move.
             ViewBag.IsVirtualDevice = (await api.SimulationDeviceList()).Contains(idDevice!.Value);
             return View(new DeviceView
             {

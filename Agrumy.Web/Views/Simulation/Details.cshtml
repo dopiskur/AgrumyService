@@ -3,7 +3,7 @@
 
 @{
     ViewData["Title"] = Model.Name;
-    // Roadmap #414 (2) - a session with no StartedAtUtc yet was only just created, never started; Stopped/expired are both "not currently running" but past a real start, so the form below reads "Resume" instead of "Start".
+    // A session with no StartedAtUtc yet was only just created, never started; Stopped/expired are both "not currently running" but past a real start, so the form below reads "Resume" instead of "Start".
     bool notStarted = Model.StartedAtUtc == null;
     bool running = !notStarted && Model.StoppedAtUtc == null && Model.ExpiresAtUtc > DateTimeOffset.UtcNow;
     bool everStarted = Model.StartedAtUtc != null;
@@ -100,7 +100,7 @@ else
     </tbody>
 </table>
 
-@* Roadmap #414 (3)/(4) - "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
+@* "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
 <form asp-action="CreateVirtualDevice" method="post" class="mb-3">
     <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
     <button type="submit" class="btn btn-outline-primary">Create new virtual device and add it</button>

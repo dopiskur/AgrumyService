@@ -13,7 +13,7 @@
 }
 
 @{
-    // Roadmap #412 (d) - the Farm segment only appears once a tenant has a second farm (same threshold as Farms.cshtml/the dashboard grouping).
+    // The Farm segment only appears once a tenant has a second farm (same threshold as Farms.cshtml/the dashboard grouping).
     bool multipleFarms = Model.Farms.Count > 1;
     var unitFarm = multipleFarms ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.Unit.DeviceFarmID) : null;
 }

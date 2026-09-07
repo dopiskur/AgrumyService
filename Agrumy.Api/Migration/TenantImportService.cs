@@ -30,7 +30,7 @@ namespace api.Migration
 
             await ImportUsersAsync(export, tenantId, result);
             Dictionary<int, int> unitIdMap = await ImportUnitsAsync(export, tenantId, result);
-            // Roadmap #412 (c) - TenantExport predates Farm (#384) and carries no farm data, so every imported unit lands farm-less; this is a no-op for an existing tenant that already has a farm, and otherwise sweeps the freshly-imported units into a new "First farm" same as a brand-new registration would.
+            // TenantExport predates Farm and carries no farm data, so every imported unit lands farm-less; this is a no-op for an existing tenant that already has a farm, and otherwise sweeps the freshly-imported units into a new "First farm" same as a brand-new registration would.
             await repo.EnsureFirstFarmAsync(tenantId);
             Dictionary<int, int> zoneIdMap = await ImportZonesAsync(export, tenantId, unitIdMap, result);
             await ImportZoneRulesAsync(export, tenantId, zoneIdMap, result);

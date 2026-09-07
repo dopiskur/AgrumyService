@@ -363,7 +363,7 @@ namespace api.Models
         public string? FirmwareTargetVersion { get; set; }
         public int? Battery { get; set; }
         public bool Online { get; set; }
-        // Roadmap #421 - a virtual (simulated) device has no real WiFi/poll cycle for Online to mean anything; the Web UI shows a distinct "Virtual" badge instead of Online/Offline for these.
+        // A virtual (simulated) device has no real WiFi/poll cycle for Online to mean anything; the Web UI shows a distinct "Virtual" badge instead of Online/Offline for these.
         public bool IsVirtual { get; set; }
         // Commercial board last reported in the heartbeat; empty = generic chip-target, null = never reported.
         public string? Kit { get; set; }
@@ -432,7 +432,7 @@ namespace api.Models
         public int? SensorWeight { get; set; }
         // HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install.
         public double? WeightCalibrationFactor { get; set; }
-        // No universal analog-EC-probe formula exists (same reason #202 left Wind/pH/rainLevel unimplemented) - identity default (1.0/0.0) reports raw millivolts until a real install calibrates against known-EC reference solutions.
+        // No universal analog-EC-probe formula exists (same reason Wind/pH/rainLevel stayed unimplemented for so long) - identity default (1.0/0.0) reports raw millivolts until a real install calibrates against known-EC reference solutions.
         public double? EcCalibrationSlope { get; set; }
         public double? EcCalibrationOffset { get; set; }
 
@@ -463,7 +463,7 @@ namespace api.Models
         public int? IDSimulationSession { get; set; }
         public int? TenantID { get; set; }
         public string? Name { get; set; }
-        // Roadmap #414 (2) - both null until Start is called for the first time: "create" only names the session, "start" is a separate step (also what a later Resume calls again, after a Stop).
+        // Both null until Start is called for the first time: "create" only names the session, "start" is a separate step (also what a later Resume calls again, after a Stop).
         public DateTimeOffset? StartedAtUtc { get; set; }
         public DateTimeOffset? ExpiresAtUtc { get; set; }
         public DateTimeOffset? StoppedAtUtc { get; set; }
@@ -471,7 +471,7 @@ namespace api.Models
         public IList<DeviceDto> Devices { get; set; } = [];
     }
 
-    /// Body of POST /api/Simulation/Session (roadmap #414 (2)) - name only, no duration; a session starts un-started, Start below is a separate step.
+    /// Body of POST /api/Simulation/Session - name only, no duration; a session starts un-started, Start below is a separate step.
     public class SimulationSessionCreateRequest
     {
         public string? Name { get; set; }
