@@ -120,6 +120,22 @@ public class SimulationApiControllerTests
     }
 
     [Fact]
+    public async Task AddDeviceToSession_ForeignTenantSession_Returns403_NeverAdds()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 99, StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1),
+        });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.AddDeviceToSession(5, 8);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        // MockBehavior.Strict: DeviceGetByIdAsync/SimulationSessionDeviceAddAsync have no setup, proving a caller's own device was never added to another tenant's session.
+    }
+
+    [Fact]
     public async Task AddDeviceToSession_DeviceBusyInAnotherSession_ReturnsConflict()
     {
         _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession

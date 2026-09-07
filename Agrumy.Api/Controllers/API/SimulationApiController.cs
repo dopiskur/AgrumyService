@@ -163,6 +163,10 @@ namespace api.Controllers.API
             {
                 return NotFound("Session not found.");
             }
+            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            {
+                return StatusCode(403, "Session belongs to a different tenant");
+            }
             if (session.StoppedAtUtc != null || session.ExpiresAtUtc <= DateTimeOffset.UtcNow)
             {
                 return BadRequest("This session has already ended.");
