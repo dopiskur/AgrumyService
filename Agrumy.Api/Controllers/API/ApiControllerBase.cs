@@ -43,15 +43,7 @@ namespace api.Controllers.API
         /// True if the caller holds this exact role name, among possibly several.
         protected bool CallerHasRole(string roleName) => CallerRoles.Contains(roleName);
 
-        // Legacy fallback: an account missed by the multi-role migration has only the old admin/user claim - treat tenant-0 admin as global, any other admin as tenant-wide.
-
-        /// Token carries none of the current role names - only the legacy "admin"/"user" claim.
-        private bool LegacyOnlyToken => !CallerRoles.Any(r => RoleNames.All.Contains(r));
-
-        private bool LegacyAdminFallback => LegacyOnlyToken && CallerHasRole(RoleNames.LegacyAdmin);
-
-        protected bool CallerIsGlobalAdmin =>
-            CallerHasRole(RoleNames.GlobalAdmin) || (LegacyAdminFallback && CallerTenantId == 0);
+        protected bool CallerIsGlobalAdmin => CallerHasRole(RoleNames.GlobalAdmin);
 
         protected bool CallerManagesUsersGlobally =>
             CallerIsGlobalAdmin || CallerHasRole(RoleNames.GlobalUser);
@@ -59,7 +51,7 @@ namespace api.Controllers.API
         /// May the caller create/edit/delete users belonging to <paramref name="targetTenantId"/>.
         protected bool CallerManagesUsers(int? targetTenantId) =>
             CallerManagesUsersGlobally ||
-            ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantUser) || LegacyAdminFallback)
+            ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantUser))
              && targetTenantId == CallerTenantId);
 
         // Numeric privilege per role - CallerOutranksTarget requires callerRank strictly greater than targetRank, so two peers holding the same role (e.g. two Tenant Users) never outrank each other.
@@ -95,7 +87,7 @@ namespace api.Controllers.API
             {
                 return true;
             }
-            if (CallerHasRole(RoleNames.TenantAdmin) || LegacyAdminFallback)
+            if (CallerHasRole(RoleNames.TenantAdmin))
             {
                 return true;
             }
@@ -108,7 +100,7 @@ namespace api.Controllers.API
         /// May the caller modify/delete devices belonging to <paramref name="targetTenantId"/>.
         protected bool CallerManagesDevices(int? targetTenantId) =>
             CallerManagesDevicesGlobally ||
-            ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantDevice) || LegacyAdminFallback)
+            ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantDevice))
              && targetTenantId == CallerTenantId);
 
         // Reads: managing implies reading; Global reader reads everything everywhere but writes nothing.

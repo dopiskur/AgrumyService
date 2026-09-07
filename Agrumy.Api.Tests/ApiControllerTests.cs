@@ -61,9 +61,16 @@ public class ApiControllerTests
         new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
-    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User.
-    private static void SetCaller(ControllerBase controller, string role, int? tenantId) =>
+    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" also carries the real modern role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces; ApiControllerBase's own single-legacy-claim fallback was removed as unreachable (roadmap #397(1), no login path can ever issue a legacy-alias-only token).
+    private static void SetCaller(ControllerBase controller, string role, int? tenantId)
+    {
+        if (role == RoleNames.LegacyAdmin)
+        {
+            SetCallerRoles(controller, tenantId, RoleNames.LegacyAdmin, tenantId == 0 ? RoleNames.GlobalAdmin : RoleNames.TenantAdmin);
+            return;
+        }
         SetCallerRoles(controller, tenantId, role);
+    }
 
     /// Same, but with the full multi-role claim set a real token carries (legacy alias first, then granular roles - order matters only for CallerRole).
     private static void SetCallerRoles(ControllerBase controller, int? tenantId, params string[] roles)
@@ -2572,15 +2579,16 @@ public class ApiControllerTests
         Assert.IsType<OkResult>(await controller.Update(new ServerConfig()));
     }
 
+    /// A token holding only the legacy "admin" alias with no #66 RBAC role is no longer treated as Global admin - roadmap #397(1) removed that fallback as unreachable, since every real login token carries the modern role too.
     [Fact]
-    public async Task ServerConfig_LegacyOnlyTenant0Admin_StillAllowed_MigrationMissedFallback()
+    public async Task ServerConfig_LegacyAliasOnly_NoModernRole_Forbidden()
     {
-        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { IDServerConfig = 1 });
-
         var controller = NewServerConfigController();
-        SetCaller(controller, "admin", 0); // single legacy claim, no #66 roles on the token
+        SetCallerRoles(controller, 0, RoleNames.LegacyAdmin);
 
-        Assert.IsType<OkObjectResult>((await controller.Get()).Result);
+        var result = await controller.Get();
+
+        Assert.Equal(403, (result.Result as ObjectResult)?.StatusCode);
     }
 
     /// An out-of-range timeRange must 400 before reaching the repo - strict mock (SensorDataGetAsync never set up) proves it.
