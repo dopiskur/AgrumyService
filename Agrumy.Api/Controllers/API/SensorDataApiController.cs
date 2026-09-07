@@ -56,7 +56,7 @@ namespace api.Controllers.API
                 return Unauthorized();
             }
 
-            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID,
+            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID ?? 0,
                 device.DeviceFarmUnitID, device.DeviceFarmUnitZoneID);
 
             return Ok(device.ConfigVersion);

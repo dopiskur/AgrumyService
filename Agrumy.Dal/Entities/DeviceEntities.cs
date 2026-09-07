@@ -256,7 +256,8 @@ namespace api.Dal.Entities
     public class DeviceRow
     {
         public int IDDevice { get; set; }
-        public int TenantID { get; set; } // Non-nullable, matching the DB column (NOT NULL DEFAULT 0).
+        // Roadmap #406 - nullable, matching the DB column (now nullable, no DEFAULT). TenantID=0 stays a real tenant (the bootstrap/default one); null means genuinely unassigned.
+        public int? TenantID { get; set; }
         public int? DeviceRoleID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }

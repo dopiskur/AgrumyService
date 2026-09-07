@@ -12,7 +12,7 @@ namespace api.Dal
 
         public Task<IList<GatewayDeviceMapping>> GatewayDeviceMappingsWithSecretsGetAsync(int idGatewayDevice) => gatewayRepository.GatewayDeviceMappingsWithSecretsGetAsync(idGatewayDevice);
 
-        public Task<bool> GatewayDeviceMappingAddAsync(int idGatewayDevice, string devEUI, int idDevice, int gatewayTenantId) =>
+        public Task<bool> GatewayDeviceMappingAddAsync(int idGatewayDevice, string devEUI, int idDevice, int? gatewayTenantId) =>
             gatewayRepository.GatewayDeviceMappingAddAsync(idGatewayDevice, devEUI, idDevice, gatewayTenantId);
 
         public Task<bool> GatewayDeviceMappingDeleteAsync(int idGatewayDeviceMapping, int idGatewayDevice) =>

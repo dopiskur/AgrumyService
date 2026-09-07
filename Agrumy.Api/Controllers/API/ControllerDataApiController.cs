@@ -30,7 +30,7 @@ namespace api.Controllers.API
                 return Unauthorized();
             }
 
-            await controllerDataRepo.ControllerDataPushAsync(device.IDDevice!.Value, device.TenantID, entries);
+            await controllerDataRepo.ControllerDataPushAsync(device.IDDevice!.Value, device.TenantID ?? 0, entries);
             return Ok();
         }
 

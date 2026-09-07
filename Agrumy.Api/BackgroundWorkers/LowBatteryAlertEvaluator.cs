@@ -27,6 +27,11 @@ namespace api.BackgroundWorkers
                 {
                     continue;
                 }
+                // Roadmap #406 - a genuinely tenant-less device has no tenant admins to notify.
+                if (d.TenantID is not int tenantId)
+                {
+                    continue;
+                }
 
                 bool low = battery <= threshold;
                 bool recovered = battery >= clearAt;
@@ -49,10 +54,10 @@ namespace api.BackgroundWorkers
                 string deviceLabel = string.IsNullOrWhiteSpace(d.DeviceName) ? $"Device {d.IDDevice}" : d.DeviceName;
 
                 // Same eventDevice table/timeline as device-pushed events - server-detected, not device-pushed, same as Offline.
-                await deviceRepo.EventDevicePushAsync(d.IDDevice, d.TenantID, DeviceEventType.LowBattery,
+                await deviceRepo.EventDevicePushAsync(d.IDDevice, tenantId, DeviceEventType.LowBattery,
                     $"Battery at {battery}% (threshold {threshold:0.#}%)");
 
-                var admins = await userRepo.TenantAdminsGetAsync(d.TenantID);
+                var admins = await userRepo.TenantAdminsGetAsync(tenantId);
                 var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
                 if (recipients.Count > 0)
                 {

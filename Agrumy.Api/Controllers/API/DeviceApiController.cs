@@ -222,14 +222,14 @@ namespace api.Controllers.API
                 return NotFound();
             }
 
-            await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID, value);
+            await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID ?? 0, value);
 
             // The heartbeat is also how the server learns an OTA actually took - the first poll reporting the requested version fulfils the request (flags cleared, event logged).
             if (await firmwareCatalog.NoteHeartbeatAsync(device, value.FirmwareVersion, value.Board))
             {
                 device.FirmwareUpdate = false;
                 device.FirmwareTargetVersion = null;
-                await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID, DeviceEventType.FirmwareUpdated, "version=" + value.FirmwareVersion);
+                await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID ?? 0, DeviceEventType.FirmwareUpdated, "version=" + value.FirmwareVersion);
             }
 
             // Compared against the device row read above (not a stale/absent session-cache copy) - config-unchanged alone is no longer enough to skip the response, since a pending command must ride along on this same poll.
@@ -364,7 +364,7 @@ namespace api.Controllers.API
                 return Unauthorized();
             }
 
-            await deviceRepo.EventDevicePushAsync(device.IDDevice!.Value, device.TenantID, eventType, value.Message);
+            await deviceRepo.EventDevicePushAsync(device.IDDevice!.Value, device.TenantID ?? 0, eventType, value.Message);
 
             // The device's post-execution confirmation rides on this same event-push endpoint - CommandId links it back to the specific command row.
             if (eventType == DeviceEventType.CommandExecuted && value.CommandId is int commandId)
@@ -422,7 +422,8 @@ namespace api.Controllers.API
                 device = await deviceRepo.DeviceAddAsync(new Device
                 {
                     ConfigVersion = 1,
-                    TenantID = user.TenantID ?? 0,
+                    // Roadmap #406 - no longer collapsed to 0: a device registered under a genuinely tenant-less user now stays genuinely tenant-less too, instead of silently landing in the bootstrap tenant.
+                    TenantID = user.TenantID,
                     // Discovery-provisioned name (admin, pre-registration) beats the captive-portal one (device owner, at setup) beats the generic default.
                     DeviceName = !string.IsNullOrWhiteSpace(provision?.DeviceName) ? provision.DeviceName
                         : !string.IsNullOrWhiteSpace(value.DisplayName) ? value.DisplayName

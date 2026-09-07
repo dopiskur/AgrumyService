@@ -650,6 +650,30 @@ public class ApiControllerTests
         captured = () => c;
     }
 
+    // Roadmap #406 - a device registered under a genuinely tenant-less user must stay tenant-less
+    // itself, not get silently collapsed into the TenantID=0 bootstrap tenant's identity.
+    [Fact]
+    public async Task DeviceRegistration_OwnerHasNoTenant_NewDeviceAlsoHasNoTenant()
+    {
+        _repo.Setup(r => r.UserGetAsync(null, "owner@example.com", null))
+             .ReturnsAsync(new User { IDUser = 77, TenantID = null, DevicePin = "ABC234", DevicePinExpires = DateTime.UtcNow.AddHours(1) });
+        _repo.Setup(r => r.DeviceGetAsync(null, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
+        Device? captured = null;
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
+             .Callback<Device>(d => captured = d)
+             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
+        _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand>());
+
+        var result = await NewDeviceController().DeviceRegistration(PinRegistration("ABC234"));
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(captured!.TenantID);
+        // MockBehavior.Strict: TenantGetByIdAsync/RulesGetForTenantGlobalAsync have no setup, proving BuildAsync never looked either up for a tenant-less device.
+    }
+
     [Fact]
     public async Task DeviceRegistration_NewDevice_UsesCaptivePortalDisplayName_WhenNoProvisionQueued()
     {

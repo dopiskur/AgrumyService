@@ -35,7 +35,7 @@ namespace api.Dal
             return await ids.ToListAsync();
         }
 
-        public async Task VirtualDeviceDeleteAsync(int deviceID, int tenantID)
+        public async Task VirtualDeviceDeleteAsync(int deviceID, int? tenantID)
         {
             // Synthetic telemetry has no historical value once the device is gone - unlike DeviceDeleteAsync's rule for a REAL device, whose sensorData stays for the record.
             await db.SensorData.Where(s => s.DeviceID == deviceID).ExecuteDeleteAsync();

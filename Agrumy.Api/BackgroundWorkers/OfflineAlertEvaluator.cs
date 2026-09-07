@@ -38,14 +38,19 @@ namespace api.BackgroundWorkers
                 {
                     continue; // already alerted for this ongoing streak - dedup
                 }
+                // Roadmap #406 - a genuinely tenant-less device has no tenant admins to notify.
+                if (d.TenantID is not int tenantId)
+                {
+                    continue;
+                }
 
                 string deviceLabel = string.IsNullOrWhiteSpace(d.DeviceName) ? $"Device {d.IDDevice}" : d.DeviceName;
 
                 // Same eventDevice table/timeline as device-pushed events - server-detected, not device-pushed, but should appear alongside them on the Events page.
-                await deviceRepo.EventDevicePushAsync(d.IDDevice, d.TenantID, DeviceEventType.Offline,
+                await deviceRepo.EventDevicePushAsync(d.IDDevice, tenantId, DeviceEventType.Offline,
                     $"No contact since {d.LastSeenAt:u}");
 
-                var admins = await userRepo.TenantAdminsGetAsync(d.TenantID);
+                var admins = await userRepo.TenantAdminsGetAsync(tenantId);
                 var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
                 if (recipients.Count > 0)
                 {

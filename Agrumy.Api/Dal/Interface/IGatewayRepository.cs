@@ -15,7 +15,7 @@ namespace api.Dal.Interface
         Task<IList<GatewayDeviceMapping>> GatewayDeviceMappingsWithSecretsGetAsync(int idGatewayDevice);
 
         /// False (no-op) if idDevice doesn't exist, belongs to a different tenant than gatewayTenantId, or DevEUI is already mapped for this gateway - the unique index is the real guard for the last case, this is just a friendlier failure than a raw constraint exception.
-        Task<bool> GatewayDeviceMappingAddAsync(int idGatewayDevice, string devEUI, int idDevice, int gatewayTenantId);
+        Task<bool> GatewayDeviceMappingAddAsync(int idGatewayDevice, string devEUI, int idDevice, int? gatewayTenantId);
 
         Task<bool> GatewayDeviceMappingDeleteAsync(int idGatewayDeviceMapping, int idGatewayDevice);
     }

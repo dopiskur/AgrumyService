@@ -11,9 +11,9 @@ namespace api.Models
 
         [HiddenInput(DisplayValue = true)]
         public int? IDDevice { get; set; }
-        // Non-nullable - TenantID=0 is a real default tenant, not a "no tenant" sentinel; nullable would let an impossible third state leak into consumers.
+        // Roadmap #406 - nullable (reversing the earlier non-nullable decision, per explicit user instruction): TenantID=0 is still a real tenant (the bootstrap/default one), null means genuinely unassigned, same distinction as DeviceRoleID below.
         [HiddenInput(DisplayValue = true)]
-        public int TenantID { get; set; } = 0;
+        public int? TenantID { get; set; }
 
         public int? DeviceRoleID { get; set; } = 0;
         // No default (unlike DeviceRoleID above) - null means genuinely unassigned, not a 0-as-sentinel value.
@@ -91,7 +91,8 @@ namespace api.Models
         public int? ConfigVersion { get; set; } = 1;
         public int? CommandVersion { get; set; }
         public int? IDDevice { get; set; }
-        public int TenantID { get; set; } = 0;
+        // Roadmap #406 - nullable, matching Device.TenantID above.
+        public int? TenantID { get; set; }
         public int? DeviceRoleID { get; set; } = 0;
         // No default (unlike DeviceRoleID above) - null means genuinely unassigned, see Device.DeviceFarmUnitID.
         public int? DeviceFarmUnitID { get; set; }

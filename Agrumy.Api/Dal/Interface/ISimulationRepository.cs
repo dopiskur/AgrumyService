@@ -14,7 +14,7 @@ namespace api.Dal.Interface
         Task<IList<int>> VirtualDeviceIdsGetAsync(int? tenantID);
 
         /// Deletes sensorData/controllerData/the registry row/the device itself (in that order) - a virtual device's synthetic telemetry has no historical value once it's gone, unlike a real device's (DeviceDeleteAsync alone does not touch sensorData).
-        Task VirtualDeviceDeleteAsync(int deviceID, int tenantID);
+        Task VirtualDeviceDeleteAsync(int deviceID, int? tenantID);
 
         // ---- Simulation sessions (roadmap #403) ----------------------------
 

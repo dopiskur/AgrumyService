@@ -11,7 +11,7 @@ namespace api.Dal
 
         public Task<IList<int>> VirtualDeviceIdsGetAsync(int? tenantID) => simulationRepository.VirtualDeviceIdsGetAsync(tenantID);
 
-        public Task VirtualDeviceDeleteAsync(int deviceID, int tenantID) => simulationRepository.VirtualDeviceDeleteAsync(deviceID, tenantID);
+        public Task VirtualDeviceDeleteAsync(int deviceID, int? tenantID) => simulationRepository.VirtualDeviceDeleteAsync(deviceID, tenantID);
 
         public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session) => simulationRepository.SimulationSessionAddAsync(session);
 

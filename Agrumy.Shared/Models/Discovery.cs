@@ -21,7 +21,8 @@ namespace api.Models
         public int? Rssi { get; set; }
         public int ScanningDeviceID { get; set; }
         public string? ScanningDeviceName { get; set; }
-        public int TenantID { get; set; }
+        // Roadmap #406 - nullable, matching Device.TenantID.
+        public int? TenantID { get; set; }
         public DateTimeOffset DateReported { get; set; }
     }
 

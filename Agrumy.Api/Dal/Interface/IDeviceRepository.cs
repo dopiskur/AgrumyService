@@ -5,7 +5,7 @@ namespace api.Dal.Interface
     /// The minimal shape OfflineAlertBackgroundService needs - not the full DeviceFleetStatus, since OfflineNotifiedAt is alert-bookkeeping the Web UI has no business displaying.
     public sealed record OfflineAlertCandidate(
         int IDDevice,
-        int TenantID,
+        int? TenantID,
         string? DeviceName,
         int? SleepSeconds,
         DateTimeOffset? LastSeenAt,
@@ -14,7 +14,7 @@ namespace api.Dal.Interface
     /// The minimal shape LowBatteryAlertEvaluator needs - Battery is the latest telemetry reading (not the heartbeat, see DeviceFleetStatus), null when never reported.
     public sealed record LowBatteryAlertCandidate(
         int IDDevice,
-        int TenantID,
+        int? TenantID,
         string? DeviceName,
         int? Battery,
         DateTimeOffset? LowBatteryNotifiedAt);

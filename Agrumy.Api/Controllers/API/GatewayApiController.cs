@@ -108,7 +108,7 @@ namespace api.Controllers.API
             });
         }
 
-        private async Task<GatewayBatchEntryResult> RunEntryAsync(GatewayBatchEntry entry, int gatewayTenantId)
+        private async Task<GatewayBatchEntryResult> RunEntryAsync(GatewayBatchEntry entry, int? gatewayTenantId)
         {
             Device? device = await deviceRepo.DeviceGetByApiIdAsync(entry.DeviceApiId);
             // Either the device's own real ApiKey (WiFiRepeater profile - the device built this entry itself, forwarded verbatim) or a GatewayDeviceToken minted for this gateway (LoRaGateway/LoRaPrivateProtocol profiles - see EfGatewayRepository.GatewayDeviceMappingsWithSecretsGetAsync).
@@ -146,13 +146,13 @@ namespace api.Controllers.API
         {
             DeviceConfigPoll poll = payload.Deserialize<DeviceConfigPoll>() ?? new DeviceConfigPoll();
 
-            await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID, poll);
+            await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID ?? 0, poll);
 
             if (await firmwareCatalog.NoteHeartbeatAsync(device, poll.FirmwareVersion, poll.Board))
             {
                 device.FirmwareUpdate = false;
                 device.FirmwareTargetVersion = null;
-                await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID, DeviceEventType.FirmwareUpdated, "version=" + poll.FirmwareVersion);
+                await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID ?? 0, DeviceEventType.FirmwareUpdated, "version=" + poll.FirmwareVersion);
             }
 
             PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice.Value);
@@ -172,7 +172,7 @@ namespace api.Controllers.API
             JsonArray jsonArray = JsonNode.Parse(payload.GetRawText()) as JsonArray
                 ?? throw new JsonException("SensorData payload must be a JSON array.");
 
-            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID,
+            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID ?? 0,
                 device.DeviceFarmUnitID, device.DeviceFarmUnitZoneID);
 
             return new GatewayBatchEntryResult { Success = true, StatusCode = 200 };
@@ -187,7 +187,7 @@ namespace api.Controllers.API
                 return new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = $"Unknown eventType: {push.EventType}" };
             }
 
-            await deviceRepo.EventDevicePushAsync(device.IDDevice!.Value, device.TenantID, eventType, push.Message);
+            await deviceRepo.EventDevicePushAsync(device.IDDevice!.Value, device.TenantID ?? 0, eventType, push.Message);
 
             if (eventType == DeviceEventType.CommandExecuted && push.CommandId is int commandId)
             {

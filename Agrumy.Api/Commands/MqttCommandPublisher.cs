@@ -30,7 +30,7 @@ namespace api.Commands
                 return;
             }
 
-            string topic = MqttCommandTopic.ForDevice(device.TenantID, deviceId);
+            string topic = MqttCommandTopic.ForDevice(device.TenantID ?? 0, deviceId);
             // ConditionConfigJson.Options camelCases properties and leaves ActionType as its int, matching the shape the HTTP config-poll response already sends this same type as.
             byte[] commandBytes = JsonSerializer.SerializeToUtf8Bytes(command, ConditionConfigJson.Options);
 

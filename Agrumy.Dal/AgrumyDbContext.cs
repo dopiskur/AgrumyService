@@ -334,7 +334,8 @@ namespace api.Dal
                 e.HasOne<DeviceTypeServiceRow>().WithMany().HasForeignKey(x => x.DeviceTypeServiceID).OnDelete(DeleteBehavior.NoAction);
                 // Admin-chosen from the SAME catalog as deviceDiagnostic.DeviceTypeID (no auto-registration needed here - the Web dropdown only ever offers existing catalog entries).
                 e.HasOne<DeviceTypeRow>().WithMany().HasForeignKey(x => x.ManualDeviceTypeID).OnDelete(DeleteBehavior.NoAction);
-                e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction);
+                // Roadmap #406 - IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap tenant).
+                e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController/EfRecycleBinRepository/PurgeOrphanedSensorDataAsync explicitly IgnoreQueryFilters() or use raw SQL.

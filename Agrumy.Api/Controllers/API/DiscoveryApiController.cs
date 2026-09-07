@@ -191,9 +191,14 @@ namespace api.Controllers.API
             {
                 return NotFound($"No scan report found for {request.DiscoveredApMac}.");
             }
+            // Roadmap #406 - the scanning device's own tenant is where a saved WiFi config would live; a genuinely tenant-less scanner has nowhere to save one and can't register a new device into a tenant it doesn't have.
+            if (winner.TenantID is not int winnerTenantId)
+            {
+                return BadRequest("The scanning device has no tenant.");
+            }
 
             string ssid, wifiPassword;
-            IList<TenantWifiConfig> wifiConfigs = await tenantRepo.TenantWifiConfigsGetAsync(winner.TenantID);
+            IList<TenantWifiConfig> wifiConfigs = await tenantRepo.TenantWifiConfigsGetAsync(winnerTenantId);
             if (wifiConfigs.Count == 0)
             {
                 if (string.IsNullOrWhiteSpace(request.Ssid) || string.IsNullOrWhiteSpace(request.WifiPassword))
@@ -204,7 +209,7 @@ namespace api.Controllers.API
                 wifiPassword = request.WifiPassword;
                 if (request.SaveWifiForLater)
                 {
-                    await tenantRepo.TenantWifiConfigAddAsync(new TenantWifiConfig { TenantID = winner.TenantID, Ssid = ssid, Password = wifiPassword });
+                    await tenantRepo.TenantWifiConfigAddAsync(new TenantWifiConfig { TenantID = winnerTenantId, Ssid = ssid, Password = wifiPassword });
                 }
             }
             else if (wifiConfigs.Count == 1)
