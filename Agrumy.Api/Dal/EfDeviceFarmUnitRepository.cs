@@ -558,6 +558,15 @@ namespace api.Dal
             return rows.Select(EfDeviceRepository.ToDto).ToList();
         }
 
+        /// Every device under this unit regardless of role or zone assignment - roadmap #411's bulk WiFi switch fans out to all of these, not just controllers/sensors.
+        public async Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit)
+        {
+            var rows = await db.Devices.AsNoTracking()
+                .Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit)
+                .ToListAsync();
+            return rows.Select(EfDeviceRepository.ToDto).ToList();
+        }
+
         // ---- Device assignment -----------------------------------------
 
         public async Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable)

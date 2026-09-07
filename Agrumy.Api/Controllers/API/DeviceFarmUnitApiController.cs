@@ -11,7 +11,7 @@ namespace api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
-    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -126,6 +126,47 @@ namespace api.Controllers.API
             await deviceFarmUnitRepo.DeviceFarmUnitDeleteAsync(unit!.IDDeviceFarmUnit!.Value);
             await WriteAuditAsync("DeviceFarmUnit.Deleted", unit.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString()!, unit.DeviceFarmUnitName);
             return true;
+        }
+
+        /// Roadmap #411 - reuses #355's per-device IssueWifiUpdateCommandAsync (verify-then-persist runs on the device itself, unchanged) across every device under the unit; a device that already has one pending is skipped, not retried.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("{idDeviceFarmUnit}/WifiUpdate")]
+        public async Task<ActionResult<UnitWifiUpdateResult>> UnitWifiUpdate(int idDeviceFarmUnit, [FromBody] UnitWifiUpdateRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Ssid))
+            {
+                return BadRequest("Ssid is required.");
+            }
+            var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+
+            IList<Device> devices = await deviceFarmUnitRepo.DeviceFarmUnitGetDevicesAsync(unit!.IDDeviceFarmUnit!.Value);
+            var result = new UnitWifiUpdateResult { DeviceCount = devices.Count };
+            foreach (Device device in devices)
+            {
+                if (device.IDDevice is not int deviceId)
+                {
+                    continue;
+                }
+                IssueCommandResult issued = await commandQueue.IssueWifiUpdateCommandAsync(deviceId, request.Ssid, request.WifiPassword);
+                bool success = issued.Outcome == IssueCommandOutcome.Success;
+                if (success)
+                {
+                    result.IssuedCount++;
+                }
+                result.Devices.Add(new UnitWifiUpdateDeviceResult
+                {
+                    IDDevice = deviceId,
+                    DeviceName = device.DeviceName,
+                    Issued = success,
+                    Message = success ? null : issued.Message,
+                });
+            }
+            await WriteAuditAsync("DeviceFarmUnit.WifiUpdateIssued", unit.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), $"{result.IssuedCount}/{result.DeviceCount} devices");
+            return Ok(result);
         }
 
         #endregion

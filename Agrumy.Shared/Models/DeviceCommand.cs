@@ -71,6 +71,29 @@ namespace api.Models
         public string WifiPassword { get; set; } = "";
     }
 
+    /// Body of POST /api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate (roadmap #411) - same Ssid/WifiPassword as the single-device request, applied to every device under the unit.
+    public class UnitWifiUpdateRequest
+    {
+        public string Ssid { get; set; } = "";
+        public string WifiPassword { get; set; } = "";
+    }
+
+    /// One device's outcome from a unit-wide WiFi switch - Issued means the UpdateWifiCredentials command was queued (same #355 verify-then-persist mechanism then runs on the device itself, not tracked further here); Issued=false with Message set means IssueWifiUpdateCommandAsync's own dedup rejected it (already had one pending).
+    public class UnitWifiUpdateDeviceResult
+    {
+        public int IDDevice { get; set; }
+        public string? DeviceName { get; set; }
+        public bool Issued { get; set; }
+        public string? Message { get; set; }
+    }
+
+    public class UnitWifiUpdateResult
+    {
+        public int DeviceCount { get; set; }
+        public int IssuedCount { get; set; }
+        public IList<UnitWifiUpdateDeviceResult> Devices { get; set; } = [];
+    }
+
     /// The DeviceCommand.Payload JSON for an UpdateWifiCredentials command - the target device connects to this AP, verifies it can still reach this same server before persisting it, and falls back to its previously-saved network otherwise (see ServiceController::switchWifiNetwork).
     public class WifiUpdatePayload
     {

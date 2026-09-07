@@ -77,6 +77,8 @@ namespace api.Dal
 
         public Task<IList<Device>> DeviceFarmUnitGetSensorsAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitGetSensorsAsync(idDeviceFarmUnit);
 
+        public Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitGetDevicesAsync(idDeviceFarmUnit);
+
         public Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable) => deviceFarmUnitRepository.DeviceUnassignedGetAsync(tenantID, controllerCapable);
 
         public Task DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceAssignToZoneAsync(idDevice, idDeviceFarmUnitZone);

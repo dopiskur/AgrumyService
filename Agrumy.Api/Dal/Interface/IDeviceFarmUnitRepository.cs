@@ -85,6 +85,9 @@ namespace api.Dal.Interface
         /// Every sensor-only device across every zone under this unit.
         Task<IList<Device>> DeviceFarmUnitGetSensorsAsync(int idDeviceFarmUnit);
 
+        /// Every device under this unit regardless of role or zone assignment - roadmap #411.
+        Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit);
+
         // ---- Device assignment -----------------------------------------
 
         /// The "Add Controller"/"Add Sensor" picker list: every unassigned device in the tenant, filtered by DeviceControllerEnabled or DeviceSensorEnabled per controllerCapable.

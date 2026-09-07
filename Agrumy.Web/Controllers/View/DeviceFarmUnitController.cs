@@ -147,6 +147,27 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit = request.UnitID });
         }
 
+        /// Roadmap #411 - bulk WiFi switch for every device under the unit, reusing #355's per-device mechanism (see DeviceFarmUnitApiController.UnitWifiUpdate).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitWifiUpdate(int idDeviceFarmUnit, string ssid, string wifiPassword)
+        {
+            try
+            {
+                UnitWifiUpdateResult result = await api.UnitWifiUpdate(idDeviceFarmUnit, new UnitWifiUpdateRequest { Ssid = ssid, WifiPassword = wifiPassword });
+                int skipped = result.DeviceCount - result.IssuedCount;
+                TempData["Message"] = skipped == 0
+                    ? $"WiFi switch requested for all {result.DeviceCount} device(s) in this unit."
+                    : $"WiFi switch requested for {result.IssuedCount} of {result.DeviceCount} device(s) - {skipped} already had one pending, skipped.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
