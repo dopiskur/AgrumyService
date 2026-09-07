@@ -1,3 +1,5 @@
+using Agrumy.Api.Dal.Interface;
+
 namespace Agrumy.Api.BackgroundWorkers
 {
     /// Reusable recurring-work base for hosted services; each tick runs in its own DI scope since IHostedService is singleton-lifetime, and one tick throwing is logged without killing the loop.
@@ -18,6 +20,15 @@ namespace Agrumy.Api.BackgroundWorkers
                 try
                 {
                     using var scope = scopeFactory.CreateScope();
+                    var distributedLock = scope.ServiceProvider.GetRequiredService<IDistributedLock>();
+
+                    // Lease = Interval: covers one tick's normal runtime, and self-heals if a replica dies mid-tick instead of holding the key forever.
+                    await using var held = await distributedLock.TryAcquireAsync(GetType().Name, Interval, stoppingToken);
+                    if (held is null)
+                    {
+                        continue; // another replica already owns this tick
+                    }
+
                     await DoWorkAsync(scope.ServiceProvider, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

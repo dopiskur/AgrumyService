@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using OpenTelemetry.Metrics;
+using StackExchange.Redis;
 using System.Net;
 using System.Threading.RateLimiting;
 
@@ -117,10 +118,15 @@ string? redisConnectionString = builder.Configuration["Cache:Redis:ConnectionStr
 if (string.IsNullOrWhiteSpace(redisConnectionString))
 {
     builder.Services.AddDistributedMemoryCache();
+
+    // Single replica means no other process to race a background-worker tick against.
+    builder.Services.AddSingleton<IDistributedLock, NoOpDistributedLock>();
 }
 else
 {
     builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+    builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+    builder.Services.AddSingleton<IDistributedLock, RedisDistributedLock>();
 }
 builder.Services.AddScoped<ICache, CacheRepository>();
 builder.Services.AddScoped<DbExceptionFilter>();
