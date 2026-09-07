@@ -159,8 +159,10 @@ namespace api.Migration
                     DeviceFarmUnitZoneID = newZoneId,
                     ActionType = r.ActionType,
                     RelayFunction = r.RelayFunction,
-                    SensorMetric = r.SensorMetric,
-                    Conditions = r.Conditions,
+                    Name = r.Name,
+                    Description = r.Description,
+                    Root = r.Root,
+                    IsSafetyRule = r.IsSafetyRule,
                     NotificationSubject = r.NotificationSubject,
                     NotificationBody = r.NotificationBody,
                 });

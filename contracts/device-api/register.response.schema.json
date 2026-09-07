@@ -545,7 +545,7 @@
     "deviceFarmUnitZoneRule": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Roadmap #21/#212. camelCase serialization of api.Models.DeviceFarmUnitZoneRule - the SAME class the DB/admin-API CRUD side uses (not split into a firmware-only DTO), so every property below is always present on the wire even though a rule reaching a device is always already resolved to Zone scope and filtered to Relay action (api.Devices.RuleHierarchyResolver) - tenantID/deviceFarmUnitID/actionType/sensorMetric/notificationSubject/notificationBody are consequently fixed/null shapes here, never meaningfully read by firmware.",
+      "description": "Roadmap #21/#212/#396(4). camelCase serialization of api.Models.DeviceFarmUnitZoneRule - the SAME class the DB/admin-API CRUD side uses (not split into a firmware-only DTO), so every property below is always present on the wire even though a rule reaching a device is always already resolved to Zone scope and filtered to Relay action (api.Devices.RuleHierarchyResolver) - tenantID/deviceFarmUnitID/actionType/notificationSubject/notificationBody are consequently fixed/null shapes here, never meaningfully read by firmware.",
       "required": [
         "idDeviceFarmUnitZoneRule",
         "tenantID",
@@ -554,8 +554,10 @@
         "deviceFarmUnitZoneID",
         "actionType",
         "relayFunction",
-        "sensorMetric",
-        "conditions",
+        "name",
+        "description",
+        "root",
+        "isSafetyRule",
         "notificationSubject",
         "notificationBody"
       ],
@@ -592,21 +594,24 @@
           "type": "integer",
           "description": "1=Relay, 2=Notification (api.Models.ActionType) - always 1 here, a Notification-action rule is never sent to a device (api.BackgroundWorkers.RuleNotificationEvaluator evaluates those server-side instead)."
         },
-        "sensorMetric": {
+        "name": {
+          "type": "string",
+          "description": "Roadmap #396(4). Admin-facing label, required - never read by firmware, only used server-side for Notification-rule hierarchy override-by-name (api.Devices.RuleHierarchyResolver)."
+        },
+        "description": {
           "type": [
-            "integer",
+            "string",
             "null"
           ],
-          "description": "Notification-action only - always null here."
+          "description": "Roadmap #396(4). Optional admin-facing note - never read by firmware."
         },
-        "conditions": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 8,
-          "items": {
-            "$ref": "#/definitions/ruleCondition"
-          },
-          "description": "Roadmap #212. Flat, left-to-right AND/OR list - folds as ((A op B) op C) op D..., never nested/parenthesized. Several RULES for the same relayFunction still OR together on top of this (AgrumyFirmware's ActuatorController::initController), unchanged from #21."
+        "root": {
+          "$ref": "#/definitions/conditionNode",
+          "description": "Roadmap #396(4). Recursive condition tree replacing the old flat conditions[] array - a GroupNode's children may nest arbitrarily (AgrumyFirmware's RelayLogic::evaluateNode), up to MAX_NODES_PER_RULE(8) total nodes and MAX_CHILDREN_PER_GROUP(4) per group."
+        },
+        "isSafetyRule": {
+          "type": "boolean",
+          "description": "Roadmap #396(5). Survives RuleHierarchyResolver's normal scope-override even when a more specific scope has its own rule(s) for the same relayFunction - ORs in alongside whichever rule 'won'. Not read by firmware itself, already resolved into the final rule set server-side."
         },
         "notificationSubject": {
           "type": [
@@ -631,100 +636,138 @@
         }
       }
     },
-    "ruleCondition": {
+    "conditionNode": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Roadmap #212. camelCase serialization of api.Models.RuleCondition - one entry in a deviceFarmUnitZoneRule's conditions array.",
+      "description": "Roadmap #396(4). camelCase serialization of api.Models.ConditionNode - a flat tagged-union, recursive only via the group/children case; only the fields matching type are meaningful, the rest are null. Astronomical(5)/RuleTriggered(6) never reach this wire shape - Astronomical is resolved into an effective Schedule node server-side (api.Devices.AstronomicalRuleResolver) before a rule ever reaches a device, and RuleTriggered only ever appears inside a Notification-action rule, which is never sent to a device at all (only Relay-action rules are).",
       "required": [
-        "conditionType",
-        "conditionConfig",
-        "operator"
+        "type",
+        "metric",
+        "operator",
+        "value1",
+        "value2",
+        "hysteresis",
+        "interval",
+        "intervalLength",
+        "daysOfWeek",
+        "start",
+        "duration",
+        "sunriseOffsetMinutes",
+        "sunsetOffsetMinutes",
+        "referencedRuleId",
+        "groupOperator",
+        "children"
       ],
       "properties": {
-        "conditionType": {
+        "type": {
           "type": "integer",
-          "description": "1=Threshold, 2=Interval, 3=Schedule (api.Models.ConditionType) - selects which of the three conditionConfig shapes below applies. Astronomical(4)/RuleTriggered(5) never reach this wire shape - resolved (Astronomical) or rejected at validation time (RuleTriggered, Notification-action only) server-side first."
+          "description": "1=Comparison, 2=Interval, 3=Schedule, 4=Group (api.Models.NodeType) - selects which of the fields below are meaningful. 5=Astronomical/6=RuleTriggered never reach this wire shape, see this definition's own remarks."
         },
-        "conditionConfig": {
-          "description": "Shape depends on conditionType - exactly one of the three definitions below.",
-          "oneOf": [
-            {
-              "$ref": "#/definitions/thresholdConditionConfig"
-            },
-            {
-              "$ref": "#/definitions/intervalConditionConfig"
-            },
-            {
-              "$ref": "#/definitions/scheduleConditionConfig"
-            }
-          ]
+        "metric": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Comparison only. 1-13=RAW (a real sensor reading), 14+=DERIVED (computed on-the-fly by AgrumyFirmware's RelayLogic::readMetric, never stored) - api.Models.SensorMetric's numeric values exactly."
         },
         "operator": {
           "type": [
             "integer",
             "null"
           ],
-          "description": "1=AND, 2=OR (api.Models.LogicalOperator) - the operator BEFORE this condition in the array; null for index 0, required for every other index."
-        }
-      }
-    },
-    "thresholdConditionConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Roadmap #21. camelCase serialization of api.Models.ThresholdConditionConfig. Which metric/direction this compares is implicit in the rule's relayFunction (Ventilation=humidity/above, Light=light/below, Heating=temperature/below, WaterPump=waterLevel/below - AgrumyFirmware's ActuatorController::evaluateRule, unchanged from the pre-#21 thresholdRelayFunction switch), not a field here.",
-      "required": [
-        "threshold",
-        "hysteresis"
-      ],
-      "properties": {
-        "threshold": {
-          "type": "number"
+          "description": "Comparison only. 1=GT, 2=LT (both carry the old Threshold condition's dead-zone latch via hysteresis), 3=GTE, 4=LTE, 5=EQ, 6=BETWEEN (all three stateless, no latch) - api.Models.ComparisonOperator."
+        },
+        "value1": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Comparison only."
+        },
+        "value2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Comparison, BETWEEN operator only."
         },
         "hysteresis": {
-          "type": "number",
-          "description": "Dead-zone margin - must not be negative (enforced server-side, DeviceFarmUnitApiController.RuleConditionConfigError)."
-        }
-      }
-    },
-    "intervalConditionConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Roadmap #21. camelCase serialization of api.Models.IntervalConditionConfig - on for intervalLength seconds out of every interval-second period, grid-aligned to epoch (AgrumyFirmware's computeIntervalState).",
-      "required": [
-        "interval",
-        "intervalLength"
-      ],
-      "properties": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Comparison, GT/LT operators only - dead-zone margin, must not be negative (enforced server-side, DeviceFarmUnitApiController.NodeConfigError)."
+        },
         "interval": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Interval only."
         },
         "intervalLength": {
-          "type": "integer",
-          "description": "Must not exceed interval (enforced server-side)."
-        }
-      }
-    },
-    "scheduleConditionConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Roadmap #21. camelCase serialization of api.Models.ScheduleConditionConfig - ONE wall-clock window (unlike the pre-#21 deviceScheduleSlot list, multiple windows for the same function are now multiple Schedule-type rules, OR'd together like any other pair of rules for that function).",
-      "required": [
-        "daysOfWeek",
-        "start",
-        "duration"
-      ],
-      "properties": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Interval only. Must not exceed interval (enforced server-side)."
+        },
         "daysOfWeek": {
-          "type": "integer",
-          "description": "7-bit mask, bit 0 = Sunday .. bit 6 = Saturday (matches C's tm_wday - see AgrumyFirmware's ActuatorController::evaluateRule)."
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Schedule only. 7-bit mask, bit 0 = Sunday .. bit 6 = Saturday (matches C's tm_wday - see AgrumyFirmware's RelayLogic::evaluateNode)."
         },
         "start": {
-          "type": "integer",
-          "description": "Seconds since LOCAL midnight (DeviceConfig.utcOffsetSeconds resolves 'local'), 0-86399."
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Schedule only. Seconds since LOCAL midnight (DeviceConfig.utcOffsetSeconds resolves 'local'), 0-86399."
         },
         "duration": {
-          "type": "integer",
-          "description": "Seconds. start+duration must not exceed 86400 (no crossing local midnight in v1) - enforced server-side, DeviceFarmUnitApiController.RuleConditionConfigError."
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Schedule only. Seconds. start+duration must not exceed 86400 (no crossing local midnight in v1) - enforced server-side, DeviceFarmUnitApiController.NodeConfigError."
+        },
+        "sunriseOffsetMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Astronomical only - never present here, see this definition's own remarks."
+        },
+        "sunsetOffsetMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Astronomical only - never present here, see this definition's own remarks."
+        },
+        "referencedRuleId": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "RuleTriggered only - never present here, see this definition's own remarks."
+        },
+        "groupOperator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Group only. 1=AND, 2=OR (api.Models.LogicalOperator) - folds children strictly left-to-right, never re-associated."
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/conditionNode"
+          },
+          "description": "Group only, empty array otherwise - up to MAX_CHILDREN_PER_GROUP(4) direct children, each recursively any node type including another Group."
         }
       }
     },

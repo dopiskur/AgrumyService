@@ -1,72 +1,92 @@
-using System.Text.Json;
 using api.Devices;
 using api.Models;
 
 namespace Agrumy.Api.Tests;
 
-/// Server-side Notification-action rule evaluation (roadmap #212) - mirrors AgrumyFirmware's RelayLogic.cpp semantics for the same condition types.
+/// Server-side Notification-action rule evaluation (roadmap #396(4)) - mirrors AgrumyFirmware's RelayLogic.cpp semantics for the same node types, over the recursive ConditionNode tree.
 public class RuleConditionEvaluatorTests
 {
-    private static DeviceFarmUnitZoneRule Rule(params RuleCondition[] conditions) => new()
+    private static DeviceFarmUnitZoneRule Rule(ConditionNode root) => new()
     {
         IDDeviceFarmUnitZoneRule = 1,
         TenantID = 1,
         ActionType = ActionType.Notification,
-        SensorMetric = SensorMetric.Temperature,
-        Conditions = conditions,
+        Name = "test",
+        Root = root,
         NotificationSubject = "test",
     };
 
-    private static RuleCondition Threshold(double threshold, double hysteresis, LogicalOperator? op = null) =>
-        new(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(threshold, hysteresis), ConditionConfigJson.Options), op);
+    private static ConditionNode Comparison(ComparisonOperator op, double value1, double? value2 = null, double? hysteresis = null) =>
+        new() { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = op, Value1 = value1, Value2 = value2, Hysteresis = hysteresis };
+
+    private static ConditionNode Group(LogicalOperator op, params ConditionNode[] children) =>
+        new() { Type = NodeType.Group, GroupOperator = op, Children = children };
+
+    private static Func<SensorMetric, double?> Reading(double? value) => _ => value;
 
     [Fact]
-    public void Threshold_ReadingAboveThreshold_TurnsOn()
+    public void GreaterThan_ReadingAboveThreshold_TurnsOn()
     {
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Threshold(30, 2)), wasRuleTrue: false, metricReading: 33, DateTime.UtcNow, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThan, 30, hysteresis: 2)), wasRuleTrue: false, Reading(33), DateTime.UtcNow, 0, _ => false);
         Assert.True(result);
     }
 
     [Fact]
-    public void Threshold_ReadingAtThreshold_StaysOff()
+    public void GreaterThan_ReadingAtThreshold_StaysOff()
     {
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Threshold(30, 2)), wasRuleTrue: false, metricReading: 30, DateTime.UtcNow, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThan, 30, hysteresis: 2)), wasRuleTrue: false, Reading(30), DateTime.UtcNow, 0, _ => false);
         Assert.False(result);
     }
 
     [Fact]
-    public void Threshold_DeadZone_LatchesOnPreviousRuleState()
+    public void GreaterThan_DeadZone_LatchesOnPreviousRuleState()
     {
-        // Notification threshold direction is turnsOnAboveThreshold=true, so the dead zone sits BELOW threshold(30): (threshold-hysteresis, threshold] = (28, 30]. wasRuleTrue is the ONLY state available (no per-condition storage), so it drives the latch here.
-        bool stillOn = RuleConditionEvaluator.EvaluateRule(Rule(Threshold(30, 2)), wasRuleTrue: true, metricReading: 29, DateTime.UtcNow, 0, _ => false);
-        bool staysOff = RuleConditionEvaluator.EvaluateRule(Rule(Threshold(30, 2)), wasRuleTrue: false, metricReading: 29, DateTime.UtcNow, 0, _ => false);
+        // Dead zone sits BELOW threshold(30): (threshold-hysteresis, threshold] = (28, 30]. wasRuleTrue is the ONLY state available (no per-node storage), so it drives the latch here.
+        bool stillOn = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThan, 30, hysteresis: 2)), wasRuleTrue: true, Reading(29), DateTime.UtcNow, 0, _ => false);
+        bool staysOff = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThan, 30, hysteresis: 2)), wasRuleTrue: false, Reading(29), DateTime.UtcNow, 0, _ => false);
         Assert.True(stillOn);
         Assert.False(staysOff);
     }
 
     [Fact]
-    public void Threshold_NoReading_IsFalse()
+    public void Comparison_NoReading_IsFalse()
     {
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Threshold(30, 2)), wasRuleTrue: true, metricReading: null, DateTime.UtcNow, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThan, 30, hysteresis: 2)), wasRuleTrue: true, Reading(null), DateTime.UtcNow, 0, _ => false);
         Assert.False(result);
+    }
+
+    [Fact]
+    public void GreaterThanOrEqual_AtBoundary_IsTrue()
+    {
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(Comparison(ComparisonOperator.GreaterThanOrEqual, 30)), wasRuleTrue: false, Reading(30), DateTime.UtcNow, 0, _ => false);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void Between_Inclusive_BothBoundsMatch()
+    {
+        var node = Comparison(ComparisonOperator.Between, 20, 60);
+        Assert.True(RuleConditionEvaluator.EvaluateRule(Rule(node), false, Reading(20), DateTime.UtcNow, 0, _ => false));
+        Assert.True(RuleConditionEvaluator.EvaluateRule(Rule(node), false, Reading(60), DateTime.UtcNow, 0, _ => false));
+        Assert.False(RuleConditionEvaluator.EvaluateRule(Rule(node), false, Reading(60.01), DateTime.UtcNow, 0, _ => false));
     }
 
     [Fact]
     public void Interval_WithinOnWindow_IsTrue()
     {
-        var condition = new RuleCondition(ConditionType.Interval, JsonSerializer.SerializeToNode(new IntervalConditionConfig(3600, 60), ConditionConfigJson.Options), null);
+        var node = new ConditionNode { Type = NodeType.Interval, Interval = 3600, IntervalLength = 60 };
         // Epoch 0 (1970-01-01T00:00:00Z) is grid-aligned to the start of every interval - position-in-cycle 0, within the first 60s.
         var epochZero = DateTimeOffset.FromUnixTimeSeconds(0).UtcDateTime;
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, epochZero, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), epochZero, 0, _ => false);
         Assert.True(result);
     }
 
     [Fact]
     public void Interval_OutsideOnWindow_IsFalse()
     {
-        var condition = new RuleCondition(ConditionType.Interval, JsonSerializer.SerializeToNode(new IntervalConditionConfig(3600, 60), ConditionConfigJson.Options), null);
+        var node = new ConditionNode { Type = NodeType.Interval, Interval = 3600, IntervalLength = 60 };
         var midCycle = DateTimeOffset.FromUnixTimeSeconds(1800).UtcDateTime; // 30 minutes into a 60-minute cycle, well past the 60s on-window
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, midCycle, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), midCycle, 0, _ => false);
         Assert.False(result);
     }
 
@@ -74,46 +94,55 @@ public class RuleConditionEvaluatorTests
     public void Schedule_WithinWindowOnScheduledDay_IsTrue()
     {
         // 2026-09-06 is a Sunday (bit 0). Window 08:00-09:00 local, checked at 08:30 UTC with 0 offset.
-        var condition = new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(0b1, 8 * 3600, 3600), ConditionConfigJson.Options), null);
+        var node = new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 0b1, Start = 8 * 3600, Duration = 3600 };
         var sundayMorning = new DateTime(2026, 9, 6, 8, 30, 0, DateTimeKind.Utc);
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, sundayMorning, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), sundayMorning, 0, _ => false);
         Assert.True(result);
     }
 
     [Fact]
     public void Schedule_WrongDay_IsFalse()
     {
-        var condition = new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(0b1, 8 * 3600, 3600), ConditionConfigJson.Options), null); // Sunday only
+        var node = new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 0b1, Start = 8 * 3600, Duration = 3600 }; // Sunday only
         var mondayMorning = new DateTime(2026, 9, 7, 8, 30, 0, DateTimeKind.Utc);
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, mondayMorning, 0, _ => false);
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), mondayMorning, 0, _ => false);
         Assert.False(result);
     }
 
     [Fact]
     public void RuleTriggered_ReferencedRuleFiredThisTick_IsTrue()
     {
-        var condition = new RuleCondition(ConditionType.RuleTriggered, JsonSerializer.SerializeToNode(new RuleTriggeredConditionConfig(42), ConditionConfigJson.Options), null);
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, DateTime.UtcNow, 0, id => id == 42);
+        var node = new ConditionNode { Type = NodeType.RuleTriggered, ReferencedRuleId = 42 };
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), DateTime.UtcNow, 0, id => id == 42);
         Assert.True(result);
     }
 
     [Fact]
     public void RuleTriggered_ReferencedRuleDidNotFire_IsFalse()
     {
-        var condition = new RuleCondition(ConditionType.RuleTriggered, JsonSerializer.SerializeToNode(new RuleTriggeredConditionConfig(42), ConditionConfigJson.Options), null);
-        bool result = RuleConditionEvaluator.EvaluateRule(Rule(condition), wasRuleTrue: false, metricReading: null, DateTime.UtcNow, 0, id => id == 99);
+        var node = new ConditionNode { Type = NodeType.RuleTriggered, ReferencedRuleId = 42 };
+        bool result = RuleConditionEvaluator.EvaluateRule(Rule(node), wasRuleTrue: false, Reading(null), DateTime.UtcNow, 0, id => id == 99);
         Assert.False(result);
     }
 
     [Fact]
-    public void Fold_ThreeConditions_StrictLeftToRight_NotOperatorPrecedence()
+    public void Group_ThreeConditions_MixedAndOr_NeedsExplicitNesting()
     {
         // (false AND true) OR true = true - a precedence-aware evaluator (AND binds tighter) would instead compute false AND (true OR true) = false.
-        var rule = Rule(
-            Threshold(1000, 0), // reading 5 -> false
-            Threshold(-1000, 0, LogicalOperator.And), // reading 5 -> true (well above), ANDed with previous false
-            Threshold(-1000, 0, LogicalOperator.Or)); // true, OR'd with the (false AND true) = false result
-        bool result = RuleConditionEvaluator.EvaluateRule(rule, wasRuleTrue: false, metricReading: 5, DateTime.UtcNow, 0, _ => false);
+        // Mixed operators now need an explicit inner group (roadmap #396(4)) - unlike the old flat left-to-right fold where this was implicit.
+        var rule = Rule(Group(LogicalOperator.Or,
+            Group(LogicalOperator.And, Comparison(ComparisonOperator.GreaterThan, 1000), Comparison(ComparisonOperator.GreaterThan, -1000)), // false AND true = false
+            Comparison(ComparisonOperator.GreaterThan, -1000))); // true
+        bool result = RuleConditionEvaluator.EvaluateRule(rule, wasRuleTrue: false, Reading(5), DateTime.UtcNow, 0, _ => false);
         Assert.True(result);
+    }
+
+    [Fact]
+    public void FindFirstComparison_WalksIntoGroup()
+    {
+        var node = Group(LogicalOperator.And, new ConditionNode { Type = NodeType.Interval, Interval = 60, IntervalLength = 10 }, Comparison(ComparisonOperator.Equal, 42));
+        ConditionNode? found = RuleConditionEvaluator.FindFirstComparison(node);
+        Assert.NotNull(found);
+        Assert.Equal(42, found!.Value1);
     }
 }

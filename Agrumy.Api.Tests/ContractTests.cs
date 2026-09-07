@@ -149,23 +149,28 @@ public class ContractTests
         [
             new DeviceFarmUnitZoneRule
             {
-                IDDeviceFarmUnitZoneRule = 1, RelayFunction = RelayFunction.WaterPump,
-                Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(10, 5), ConditionConfigJson.Options), null)],
+                IDDeviceFarmUnitZoneRule = 1, RelayFunction = RelayFunction.WaterPump, Name = "Water pump threshold",
+                Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.WaterLevel, Operator = ComparisonOperator.LessThan, Value1 = 10, Hysteresis = 5 },
             },
             new DeviceFarmUnitZoneRule
             {
-                IDDeviceFarmUnitZoneRule = 2, RelayFunction = RelayFunction.Heating,
-                Conditions = [new RuleCondition(ConditionType.Interval, JsonSerializer.SerializeToNode(new IntervalConditionConfig(3600, 300), ConditionConfigJson.Options), null)],
+                IDDeviceFarmUnitZoneRule = 2, RelayFunction = RelayFunction.Heating, Name = "Heating interval",
+                Root = new ConditionNode { Type = NodeType.Interval, Interval = 3600, IntervalLength = 300 },
             },
             new DeviceFarmUnitZoneRule
             {
-                IDDeviceFarmUnitZoneRule = 3, RelayFunction = RelayFunction.Light,
-                // Two-condition AND group - Mon-Fri 06:00-06:30 AND a threshold, exercising the #212 conditions array (not just the single-condition case).
-                Conditions =
-                [
-                    new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(0b0111110, 21600, 1800), ConditionConfigJson.Options), null),
-                    new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(500, 50), ConditionConfigJson.Options), LogicalOperator.And),
-                ],
+                IDDeviceFarmUnitZoneRule = 3, RelayFunction = RelayFunction.Light, Name = "Light schedule and threshold",
+                // Nested AND group - Mon-Fri 06:00-06:30 AND a threshold, exercising the #396(4) GroupNode shape (not just a single leaf).
+                Root = new ConditionNode
+                {
+                    Type = NodeType.Group,
+                    GroupOperator = LogicalOperator.And,
+                    Children =
+                    [
+                        new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 0b0111110, Start = 21600, Duration = 1800 },
+                        new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Light, Operator = ComparisonOperator.LessThan, Value1 = 500, Hysteresis = 50 },
+                    ],
+                },
             },
         ];
 

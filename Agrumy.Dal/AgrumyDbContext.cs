@@ -194,7 +194,8 @@ namespace api.Dal
                 e.ToTable("deviceFarmUnitZoneRule");
                 e.HasKey(x => x.IDDeviceFarmUnitZoneRule);
                 e.Property(x => x.IDDeviceFarmUnitZoneRule).ValueGeneratedOnAdd();
-                e.Property(x => x.Conditions).IsRequired();
+                e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+                e.Property(x => x.RootConditionJson).IsRequired();
                 e.HasOne<DeviceFarmUnitZoneRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitZoneID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.DeviceFarmID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);

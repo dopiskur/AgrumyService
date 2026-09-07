@@ -1,4 +1,3 @@
-using System.Text.Json;
 using api.Devices;
 using api.Models;
 using api.Utils;
@@ -65,14 +64,13 @@ public class AstronomicalScheduleTests
         IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, 45.8, 16.0, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
 
         DeviceFarmUnitZoneRule rule = Assert.Single(resolved);
-        RuleCondition condition = Assert.Single(rule.Conditions);
-        Assert.Equal(ConditionType.Schedule, condition.ConditionType);
-        var schedule = condition.ConditionConfig!.Deserialize<ScheduleConditionConfig>(ConditionConfigJson.Options)!;
-        Assert.Equal(127, schedule.DaysOfWeek);
+        ConditionNode node = rule.Root!;
+        Assert.Equal(NodeType.Schedule, node.Type);
+        Assert.Equal(127, node.DaysOfWeek);
 
         var (sunrise, sunset) = SolarCalculator.Compute(new DateOnly(2026, 6, 21), 45.8, 16.0, 7200);
-        Assert.Equal(Math.Clamp(sunrise!.Value - 30 * 60, 0, 86399), schedule.Start);
-        Assert.Equal(Math.Clamp(sunset!.Value + 60 * 60, 0, 86400) - schedule.Start, schedule.Duration);
+        Assert.Equal(Math.Clamp(sunrise!.Value - 30 * 60, 0, 86399), node.Start);
+        Assert.Equal(Math.Clamp(sunset!.Value + 60 * 60, 0, 86400) - node.Start, node.Duration);
     }
 
     [Fact]
@@ -93,7 +91,7 @@ public class AstronomicalScheduleTests
         {
             DeviceFarmUnitZoneID = 1,
             RelayFunction = RelayFunction.Light,
-            Conditions = [new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(127, 0, 3600), ConditionConfigJson.Options), null)],
+            Root = new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 127, Start = 0, Duration = 3600 },
         };
 
         IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve([scheduleRule], null, null, new DateOnly(2026, 6, 21), 0);
@@ -105,6 +103,6 @@ public class AstronomicalScheduleTests
     {
         DeviceFarmUnitZoneID = 1,
         RelayFunction = RelayFunction.Light,
-        Conditions = [new RuleCondition(ConditionType.Astronomical, JsonSerializer.SerializeToNode(new AstronomicalConditionConfig(daysOfWeek, sunriseOffset, sunsetOffset), ConditionConfigJson.Options), null)],
+        Root = new ConditionNode { Type = NodeType.Astronomical, DaysOfWeek = daysOfWeek, SunriseOffsetMinutes = sunriseOffset, SunsetOffsetMinutes = sunsetOffset },
     };
 }

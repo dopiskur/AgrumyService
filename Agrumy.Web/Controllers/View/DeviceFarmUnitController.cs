@@ -493,17 +493,12 @@ namespace api.Controllers.View
             }
         }
 
-        /// Builds a DeviceFarmUnitZoneRule from the form input - exactly one of idDeviceFarmUnitZone/idDeviceFarmUnit is non-null for Zone/Unit scope, both null for Global.
+        /// Builds a DeviceFarmUnitZoneRule from the form input - exactly one of idDeviceFarmUnitZone/idDeviceFarmUnit is non-null for Zone/Unit scope, both null for Global. RootConditionJson comes pre-built from wwwroot/js/rule-builder.js (roadmap #396(4)) - must deserialize with ConditionConfigJson.Options, the options-less overload would misread the camelCase JS produced.
         private static DeviceFarmUnitZoneRule BuildRule(RuleFormInput input, int? idDeviceFarmUnitZone, int? idDeviceFarmUnit, int? idDeviceFarm = null)
         {
-            var conditions = new List<RuleCondition>();
-            foreach (RuleConditionInput slot in input.Conditions)
-            {
-                if (ToRuleCondition(slot) is RuleCondition c)
-                {
-                    conditions.Add(c);
-                }
-            }
+            ConditionNode? root = string.IsNullOrWhiteSpace(input.RootConditionJson)
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize<ConditionNode>(input.RootConditionJson, ConditionConfigJson.Options);
             return new DeviceFarmUnitZoneRule
             {
                 DeviceFarmUnitZoneID = idDeviceFarmUnitZone,
@@ -511,31 +506,13 @@ namespace api.Controllers.View
                 DeviceFarmID = idDeviceFarm,
                 ActionType = input.ActionType,
                 RelayFunction = input.ActionType == ActionType.Relay ? input.RelayFunction : null,
-                SensorMetric = input.ActionType == ActionType.Notification ? input.SensorMetric : null,
+                Name = input.Name.Trim(),
+                Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim(),
+                IsSafetyRule = input.IsSafetyRule,
                 NotificationSubject = input.ActionType == ActionType.Notification ? input.NotificationSubject : null,
                 NotificationBody = input.ActionType == ActionType.Notification ? input.NotificationBody : null,
-                Conditions = conditions,
+                Root = root,
             };
-        }
-
-        /// Null return means "this slot is unused" - the API itself rejects an empty resulting Conditions list, so an all-empty form still gets a clear error instead of silently saving nothing.
-        private static RuleCondition? ToRuleCondition(RuleConditionInput input)
-        {
-            if (input.ConditionType is not ConditionType type)
-            {
-                return null;
-            }
-            // Must use ConditionConfigJson.Options here - the options-less JsonSerializer overloads would leak PascalCase onto the wire.
-            System.Text.Json.Nodes.JsonNode? config = type switch
-            {
-                ConditionType.Threshold => System.Text.Json.JsonSerializer.SerializeToNode(new ThresholdConditionConfig(input.Threshold ?? 0, input.Hysteresis ?? 0), ConditionConfigJson.Options),
-                ConditionType.Interval => System.Text.Json.JsonSerializer.SerializeToNode(new IntervalConditionConfig(input.Interval ?? 0, input.IntervalLength ?? 0), ConditionConfigJson.Options),
-                ConditionType.Schedule => System.Text.Json.JsonSerializer.SerializeToNode(new ScheduleConditionConfig(input.DaysOfWeek ?? 0, input.Start ?? 0, input.Duration ?? 0), ConditionConfigJson.Options),
-                ConditionType.Astronomical => System.Text.Json.JsonSerializer.SerializeToNode(new AstronomicalConditionConfig(input.DaysOfWeek ?? 0, input.SunriseOffsetMinutes ?? 0, input.SunsetOffsetMinutes ?? 0), ConditionConfigJson.Options),
-                ConditionType.RuleTriggered => System.Text.Json.JsonSerializer.SerializeToNode(new RuleTriggeredConditionConfig(input.ReferencedRuleId ?? 0), ConditionConfigJson.Options),
-                _ => null,
-            };
-            return new RuleCondition(type, config, input.Operator);
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

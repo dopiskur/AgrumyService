@@ -46,7 +46,7 @@ namespace api.Dal.Entities
         public int? VentilationMaxRunSeconds { get; set; }
     }
 
-    /// See api.Models.DeviceFarmUnitZoneRule - Conditions is a JSON array of RuleCondition, (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
+    /// See api.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree (roadmap #396(4)), (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
     public class DeviceFarmUnitZoneRuleRow
     {
         public int IDDeviceFarmUnitZoneRule { get; set; }
@@ -57,8 +57,10 @@ namespace api.Dal.Entities
         public int? DeviceFarmUnitZoneID { get; set; }
         public int ActionType { get; set; }
         public int? RelayFunction { get; set; }
-        public int? SensorMetric { get; set; }
-        public string Conditions { get; set; } = "[]";
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string RootConditionJson { get; set; } = "null";
+        public bool IsSafetyRule { get; set; }
         public string? NotificationSubject { get; set; }
         public string? NotificationBody { get; set; }
     }

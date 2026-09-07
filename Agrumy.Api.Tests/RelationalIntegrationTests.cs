@@ -1156,14 +1156,16 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.Ventilation,
-            Conditions = [new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(0b0111110, 21600, 1800), ConditionConfigJson.Options), null)],
+            Name = "Morning window",
+            Root = new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 0b0111110, Start = 21600, Duration = 1800 },
         });
         int rule2 = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.Ventilation,
-            Conditions = [new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(0b0111110, 50400, 900), ConditionConfigJson.Options), null)],
+            Name = "Afternoon window",
+            Root = new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 0b0111110, Start = 50400, Duration = 900 },
         });
         Assert.Equal(2, (await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value)).Count);
 
@@ -1171,8 +1173,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         var remaining = Assert.Single(await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value));
         Assert.Equal(rule2, remaining.IDDeviceFarmUnitZoneRule);
-        var config = remaining.Conditions[0].ConditionConfig.Deserialize<ScheduleConditionConfig>(ConditionConfigJson.Options);
-        Assert.Equal(50400, config!.Start);
+        Assert.Equal(50400, remaining.Root!.Start);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1187,21 +1188,23 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.WaterPump,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(10, 5), ConditionConfigJson.Options), null)],
+            Name = "Low water level",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.WaterLevel, Operator = ComparisonOperator.LessThan, Value1 = 10, Hysteresis = 5 },
         });
         await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.WaterPump,
-            Conditions = [new RuleCondition(ConditionType.Interval, JsonSerializer.SerializeToNode(new IntervalConditionConfig(3600, 300), ConditionConfigJson.Options), null)],
+            Name = "Periodic run",
+            Root = new ConditionNode { Type = NodeType.Interval, Interval = 3600, IntervalLength = 300 },
         });
 
         var rules = await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value);
         Assert.Equal(2, rules.Count);
         Assert.All(rules, r => Assert.Equal(RelayFunction.WaterPump, r.RelayFunction));
-        Assert.Contains(rules, r => r.Conditions[0].ConditionType == ConditionType.Threshold);
-        Assert.Contains(rules, r => r.Conditions[0].ConditionType == ConditionType.Interval);
+        Assert.Contains(rules, r => r.Root!.Type == NodeType.Comparison);
+        Assert.Contains(rules, r => r.Root!.Type == NodeType.Interval);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1217,7 +1220,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.Light,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(200, 20), ConditionConfigJson.Options), null)],
+            Name = "Dim below threshold",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Light, Operator = ComparisonOperator.LessThan, Value1 = 200, Hysteresis = 20 },
         });
 
         var rules = await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value);
@@ -1242,7 +1246,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             TenantID = tenantId,
             DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value,
             RelayFunction = RelayFunction.Heating,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(18, 1), ConditionConfigJson.Options), null)],
+            Name = "Cold threshold",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 18, Hysteresis = 1 },
         });
 
         await _repo.DeviceFarmUnitZoneDeleteAsync(zone.IDDeviceFarmUnitZone!.Value);
@@ -1259,18 +1264,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         int zoneRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Light,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(1, 1), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Light, Name = "Zone rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Light, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
         });
         int unitRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, RelayFunction = RelayFunction.Heating,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(1, 1), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, RelayFunction = RelayFunction.Heating, Name = "Unit rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
         });
         int globalRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, RelayFunction = RelayFunction.WaterPump,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(1, 1), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "Global rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.WaterLevel, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
         });
 
         Assert.Equal(zoneRuleId, Assert.Single(await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value)).IDDeviceFarmUnitZoneRule);
@@ -1295,8 +1300,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         int farmRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Ventilation,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(1, 1), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Ventilation, Name = "Farm rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 },
         });
         Assert.Equal(farmRuleId, Assert.Single(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).IDDeviceFarmUnitZoneRule);
 
@@ -1307,32 +1312,50 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task Rule_ConditionsRoundTrip_PreservesAndOrOperatorsInOrder(DbProviderKind provider)
+    public async Task Rule_ConditionTreeRoundTrip_PreservesNestedGroupShape(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         var (_, zone) = await MakeUnitAndZone(tenantId);
 
+        // (Schedule AND Threshold) OR Interval - exercises a nested group, not just a single leaf (roadmap #396(4)).
         int ruleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Ventilation,
-            Conditions =
-            [
-                new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(127, 0, 3600), ConditionConfigJson.Options), null),
-                new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(60, 5), ConditionConfigJson.Options), LogicalOperator.And),
-                new RuleCondition(ConditionType.Interval, JsonSerializer.SerializeToNode(new IntervalConditionConfig(600, 60), ConditionConfigJson.Options), LogicalOperator.Or),
-            ],
+            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Ventilation, Name = "Nested tree",
+            Root = new ConditionNode
+            {
+                Type = NodeType.Group,
+                GroupOperator = LogicalOperator.Or,
+                Children =
+                [
+                    new ConditionNode
+                    {
+                        Type = NodeType.Group,
+                        GroupOperator = LogicalOperator.And,
+                        Children =
+                        [
+                            new ConditionNode { Type = NodeType.Schedule, DaysOfWeek = 127, Start = 0, Duration = 3600 },
+                            new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 60, Hysteresis = 5 },
+                        ],
+                    },
+                    new ConditionNode { Type = NodeType.Interval, Interval = 600, IntervalLength = 60 },
+                ],
+            },
         });
 
         DeviceFarmUnitZoneRule? loaded = await _repo.RuleGetByIdAsync(ruleId);
         Assert.NotNull(loaded);
-        Assert.Equal(3, loaded!.Conditions.Count);
-        Assert.Null(loaded.Conditions[0].Operator);
-        Assert.Equal(LogicalOperator.And, loaded.Conditions[1].Operator);
-        Assert.Equal(LogicalOperator.Or, loaded.Conditions[2].Operator);
-        Assert.Equal(ConditionType.Schedule, loaded.Conditions[0].ConditionType);
-        Assert.Equal(ConditionType.Threshold, loaded.Conditions[1].ConditionType);
-        Assert.Equal(ConditionType.Interval, loaded.Conditions[2].ConditionType);
+        ConditionNode root = loaded!.Root!;
+        Assert.Equal(NodeType.Group, root.Type);
+        Assert.Equal(LogicalOperator.Or, root.GroupOperator);
+        Assert.Equal(2, root.Children.Count);
+        ConditionNode innerGroup = root.Children[0];
+        Assert.Equal(NodeType.Group, innerGroup.Type);
+        Assert.Equal(LogicalOperator.And, innerGroup.GroupOperator);
+        Assert.Equal(NodeType.Schedule, innerGroup.Children[0].Type);
+        Assert.Equal(NodeType.Comparison, innerGroup.Children[1].Type);
+        Assert.Equal(SensorMetric.Humidity, innerGroup.Children[1].Metric);
+        Assert.Equal(NodeType.Interval, root.Children[1].Type);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1345,15 +1368,15 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         int referencedRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmUnitZoneID = zoneA.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, SensorMetric = SensorMetric.Temperature,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(30, 1), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmUnitZoneID = zoneA.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, Name = "Hot alert",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 30, Hysteresis = 1 },
             NotificationSubject = "hot",
         });
         int referencingRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
             // Cross-zone reference (zoneB's rule references zoneA's rule) - explicitly allowed by #212's design.
-            TenantID = tenantId, DeviceFarmUnitZoneID = zoneB.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, SensorMetric = null,
-            Conditions = [new RuleCondition(ConditionType.RuleTriggered, JsonSerializer.SerializeToNode(new RuleTriggeredConditionConfig(referencedRuleId), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmUnitZoneID = zoneB.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, Name = "Chained alert",
+            Root = new ConditionNode { Type = NodeType.RuleTriggered, ReferencedRuleId = referencedRuleId },
             NotificationSubject = "chained",
         });
 
@@ -1372,8 +1395,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (_, zone) = await MakeUnitAndZone(tenantId);
         int ruleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, SensorMetric = SensorMetric.Humidity,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(80, 2), ConditionConfigJson.Options), null)],
+            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, Name = "Humid alert",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 80, Hysteresis = 2 },
             NotificationSubject = "humid",
         });
 

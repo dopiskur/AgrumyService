@@ -1,13 +1,14 @@
-using System.Text.Json;
 using api.Devices;
 using api.Models;
 
 namespace Agrumy.Api.Tests;
 
-/// Zone>Unit>Global precedence (roadmap #212) - a scope's rules for a function/metric fully replace, never merge with, a less specific scope's.
+/// Zone>Unit>Farm>Global precedence (roadmap #212/#384) - a scope's rules for a function (Relay) or name (Notification, #396(4)) fully replace, never merge with, a less specific scope's, UNLESS IsSafetyRule (#396(5)) which always survives regardless of scope.
 public class RuleHierarchyResolverTests
 {
-    private static DeviceFarmUnitZoneRule RelayRule(RelayFunction function, int marker, int? zoneId = null, int? unitId = null, int? farmId = null) => new()
+    private static ConditionNode Leaf() => new() { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 };
+
+    private static DeviceFarmUnitZoneRule RelayRule(RelayFunction function, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, bool isSafetyRule = false) => new()
     {
         IDDeviceFarmUnitZoneRule = marker,
         TenantID = 1,
@@ -16,7 +17,23 @@ public class RuleHierarchyResolverTests
         DeviceFarmID = farmId,
         ActionType = ActionType.Relay,
         RelayFunction = function,
-        Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(1, 1), ConditionConfigJson.Options), null)],
+        Name = "rule " + marker,
+        IsSafetyRule = isSafetyRule,
+        Root = Leaf(),
+    };
+
+    private static DeviceFarmUnitZoneRule NotificationRule(string name, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, bool isSafetyRule = false) => new()
+    {
+        IDDeviceFarmUnitZoneRule = marker,
+        TenantID = 1,
+        DeviceFarmUnitZoneID = zoneId,
+        DeviceFarmUnitID = unitId,
+        DeviceFarmID = farmId,
+        ActionType = ActionType.Notification,
+        Name = name,
+        IsSafetyRule = isSafetyRule,
+        Root = Leaf(),
+        NotificationSubject = "subject",
     };
 
     [Fact]
@@ -96,25 +113,62 @@ public class RuleHierarchyResolverTests
         Assert.Equal(2, result.Count);
     }
 
+    /// Roadmap #396(5) - a global frost-guard survives even though the zone's own rule for the same function wins normal resolution; the old bug this fixes was the zone rule silently erasing it.
     [Fact]
-    public void ResolveNotificationRules_NullMetric_IsItsOwnGroup()
+    public void ResolveRelayRules_GlobalSafetyRule_SurvivesZoneOverride_OrsInAlongside()
     {
-        var zoneRule = new DeviceFarmUnitZoneRule
-        {
-            IDDeviceFarmUnitZoneRule = 1, TenantID = 1, DeviceFarmUnitZoneID = 5, ActionType = ActionType.Notification, SensorMetric = null,
-            Conditions = [new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(127, 0, 60), ConditionConfigJson.Options), null)],
-            NotificationSubject = "reminder",
-        };
-        var globalRule = new DeviceFarmUnitZoneRule
-        {
-            IDDeviceFarmUnitZoneRule = 2, TenantID = 1, ActionType = ActionType.Notification, SensorMetric = SensorMetric.Temperature,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(30, 1), ConditionConfigJson.Options), null)],
-            NotificationSubject = "hot",
-        };
+        var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, zoneId: 5) };
+        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules(zoneRules, [], [], globalRules);
+
+        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
+    }
+
+    [Fact]
+    public void ResolveRelayRules_NonSafetyGlobalRule_StillDroppedByZoneOverride()
+    {
+        var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, zoneId: 5) };
+        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: false) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules(zoneRules, [], [], globalRules);
+
+        Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
+    }
+
+    /// Roadmap #396(4) - Notification rules no longer group by SensorMetric (a rule can span several metrics now); a more specific scope's rule with the SAME Name replaces a less specific one instead.
+    [Fact]
+    public void ResolveNotificationRules_SameName_ZoneOverridesGlobal()
+    {
+        var zoneRule = NotificationRule("Frost Guard", 1, zoneId: 5);
+        var globalRule = NotificationRule("Frost Guard", 2);
 
         var result = RuleHierarchyResolver.ResolveNotificationRules([zoneRule], [], [], [globalRule]);
 
-        // Both survive - null-metric zone rule and Temperature-metric global rule are independent groups, neither shadows the other.
+        Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
+    }
+
+    [Fact]
+    public void ResolveNotificationRules_DifferentNames_AreIndependentGroups()
+    {
+        var zoneRule = NotificationRule("Reminder", 1, zoneId: 5);
+        var globalRule = NotificationRule("Hot Alert", 2);
+
+        var result = RuleHierarchyResolver.ResolveNotificationRules([zoneRule], [], [], [globalRule]);
+
+        // Both survive - different names never shadow each other.
+        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
+    }
+
+    /// Roadmap #396(5) - same safety-rule survival as Relay, for Notification's name-based override.
+    [Fact]
+    public void ResolveNotificationRules_GlobalSafetyRule_SurvivesZoneOverride_WithSameName()
+    {
+        var zoneRule = NotificationRule("Frost Guard", 1, zoneId: 5);
+        var globalRule = NotificationRule("Frost Guard", 2, isSafetyRule: true);
+
+        var result = RuleHierarchyResolver.ResolveNotificationRules([zoneRule], [], [], [globalRule]);
+
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }
 }

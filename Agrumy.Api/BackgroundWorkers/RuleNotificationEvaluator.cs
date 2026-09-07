@@ -14,7 +14,7 @@ namespace api.BackgroundWorkers
     public sealed class RuleNotificationEvaluator(
         ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo, INotificationDispatcher dispatcher)
     {
-        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, double? MetricReading, int UtcOffsetSeconds);
+        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds);
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
@@ -76,8 +76,7 @@ namespace api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, zoneId);
-                        double? reading = rule.SensorMetric is SensorMetric metric && dashboard != null ? ReadMetric(dashboard.Averages, metric) : null;
-                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, reading, utcOffsetSeconds));
+                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds));
                     }
                 }
             }
@@ -100,7 +99,8 @@ namespace api.BackgroundWorkers
                 int before = firedThisTick.Count;
                 foreach (EvalItem item in items)
                 {
-                    bool result = RuleConditionEvaluator.EvaluateRule(item.Rule, item.WasTrue, item.MetricReading, utcNow, item.UtcOffsetSeconds, firedThisTick.Contains);
+                    Func<SensorMetric, double?> readMetric = metric => item.Averages != null ? ReadMetric(item.Averages, metric) : null;
+                    bool result = RuleConditionEvaluator.EvaluateRule(item.Rule, item.WasTrue, readMetric, utcNow, item.UtcOffsetSeconds, firedThisTick.Contains);
                     results[item] = result;
                     if (result)
                     {
@@ -134,6 +134,9 @@ namespace api.BackgroundWorkers
 
             var admins = await userRepo.TenantAdminsGetAsync(item.TenantId);
             var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+            // Best-effort now that a rule can span several metrics (roadmap #396(4)) - {metric}/{value} resolve from the first ComparisonNode found in the tree, not "the" rule's metric (there no longer is a single one).
+            ConditionNode? firstComparison = RuleConditionEvaluator.FindFirstComparison(item.Rule.Root);
+            double? firstValue = firstComparison?.Metric is SensorMetric m && item.Averages != null ? ReadMetric(item.Averages, m) : null;
             if (recipients.Count > 0)
             {
                 await dispatcher.DispatchToRecipientsAsync(
@@ -145,8 +148,8 @@ namespace api.BackgroundWorkers
             }
 
             string? Placeholder(string? template) => template?
-                .Replace("{value}", item.MetricReading?.ToString("0.##") ?? "n/a")
-                .Replace("{metric}", item.Rule.SensorMetric?.ToString() ?? "");
+                .Replace("{value}", firstValue?.ToString("0.##") ?? "n/a")
+                .Replace("{metric}", firstComparison?.Metric?.ToString() ?? "");
         }
 
         private static double? ReadMetric(SensorAverages averages, SensorMetric metric) => metric switch
@@ -155,6 +158,8 @@ namespace api.BackgroundWorkers
             SensorMetric.SoilTemperature => averages.SoilTemperature,
             SensorMetric.Humidity => averages.Humidity,
             SensorMetric.Vpd => averages.Vpd,
+            SensorMetric.DewPoint => averages.DewPoint,
+            SensorMetric.DewPointSpread => averages.DewPointSpread,
             SensorMetric.Moisture => averages.Moisture,
             SensorMetric.Light => averages.Light,
             SensorMetric.Co2 => averages.Co2,

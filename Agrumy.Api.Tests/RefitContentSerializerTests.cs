@@ -19,13 +19,14 @@ public class RefitContentSerializerTests
     }
 
     [Fact]
-    public void DeviceFarmUnitZoneRule_RelayFunctionAndConditionType_SerializeAsNumbers()
+    public void DeviceFarmUnitZoneRule_RelayFunctionAndNodeType_SerializeAsNumbers()
     {
         var rule = new DeviceFarmUnitZoneRule
         {
             DeviceFarmUnitZoneID = 5,
             RelayFunction = RelayFunction.Ventilation,
-            Conditions = [new RuleCondition(ConditionType.Threshold, JsonSerializer.SerializeToNode(new ThresholdConditionConfig(10, 2), ConditionConfigJson.Options), null)],
+            Name = "test",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 10, Hysteresis = 2 },
         };
 
         string wire = SerializeAsWebWould(rule);
@@ -33,7 +34,8 @@ public class RefitContentSerializerTests
         var parsed = JsonSerializer.Deserialize<DeviceFarmUnitZoneRule>(wire, Mvc);
         Assert.NotNull(parsed);
         Assert.Equal(RelayFunction.Ventilation, parsed!.RelayFunction);
-        Assert.Equal(ConditionType.Threshold, parsed.Conditions[0].ConditionType);
+        Assert.Equal(NodeType.Comparison, parsed.Root!.Type);
+        Assert.Equal(SensorMetric.Humidity, parsed.Root.Metric);
     }
 
     [Fact]

@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using api.Commands;
 using api.Dal.Interface;
 using api.Models;
@@ -19,9 +17,6 @@ namespace api.Controllers.API
 
         // Absolute ceiling - must match AgrumyFirmware DeviceModel.h's MAX_RULES, enforced independently of ServerConfig.MaxRulesPerZone in case a row predates that validation.
         private const int HardMaxRulesPerZone = 32;
-
-        // Absolute ceiling - must match AgrumyFirmware DeviceModel.h's MAX_CONDITIONS_PER_RULE; unlike MaxRulesPerZone this is a per-rule structural limit, not an admin-configurable soft cap.
-        private const int HardMaxConditionsPerRule = 8;
 
         #region Farm CRUD
 
@@ -364,7 +359,7 @@ namespace api.Controllers.API
                 return BadRequest($"This scope already has {existingCount} rules, the configured maximum ({effectiveMax}). Remove one before adding another.");
             }
             int idRule = await deviceFarmUnitRepo.RuleAddAsync(rule);
-            await WriteAuditAsync("DeviceFarmUnitZoneRule.Created", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"{scopeLabel}, {rule.ActionType}/{rule.RelayFunction}{rule.SensorMetric}");
+            await WriteAuditAsync("DeviceFarmUnitZoneRule.Created", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"{scopeLabel}, {rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
             return Ok(idRule);
         }
 
@@ -404,7 +399,7 @@ namespace api.Controllers.API
                 return Conflict($"Cannot delete: still referenced by another rule's \"another rule fired\" condition ({names}). Remove that condition first.");
             }
             await deviceFarmUnitRepo.RuleDeleteAsync(idRule.Value);
-            await WriteAuditAsync("DeviceFarmUnitZoneRule.Deleted", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString()!, $"{rule.ActionType}/{rule.RelayFunction}{rule.SensorMetric}");
+            await WriteAuditAsync("DeviceFarmUnitZoneRule.Deleted", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString()!, $"{rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
             return true;
         }
 
@@ -429,136 +424,129 @@ namespace api.Controllers.API
                 : null;
         }
 
-        /// Shape+bound check for the whole rule: ActionType/RelayFunction/SensorMetric consistency, condition-list bounds, per-condition shape, and (DB-dependent, hence async) RuleTriggered's cross-reference validity.
+        // Must match AgrumyFirmware Logic/ConditionTree.h's MAX_NODES_PER_RULE - total node count across the WHOLE tree (leaves+groups), not just top-level conditions. Kept small deliberately (DRAM budget on-device), see that constant's own remarks.
+        private const int HardMaxNodesPerRule = 8;
+        // Must match AgrumyFirmware Logic/ConditionTree.h's MAX_CHILDREN_PER_GROUP.
+        private const int HardMaxChildrenPerGroup = 4;
+
+        /// Shape+bound check for the whole rule: ActionType/RelayFunction/Name consistency, tree-size bounds, per-node shape recursively, and (DB-dependent, hence async) RuleTriggered's cross-reference validity.
         private async Task<string?> RuleShapeErrorAsync(DeviceFarmUnitZoneRule rule)
         {
+            if (string.IsNullOrWhiteSpace(rule.Name))
+            {
+                return "Name is required.";
+            }
             if (rule.ActionType == ActionType.Relay)
             {
                 if (rule.RelayFunction == null) { return "Relay rule: relayFunction is required."; }
-                if (rule.SensorMetric != null) { return "Relay rule: sensorMetric must not be set."; }
             }
             else
             {
-                // sensorMetric is required only when a Threshold condition needs to know which reading to check - a pure Interval/Schedule/RuleTriggered reminder rule has nothing to measure and legitimately leaves it null.
-                if (rule.SensorMetric == null && rule.Conditions.Any(c => c.ConditionType == ConditionType.Threshold))
-                {
-                    return "Notification rule: sensorMetric is required when a condition is Threshold.";
-                }
                 if (rule.RelayFunction != null) { return "Notification rule: relayFunction must not be set."; }
                 if (string.IsNullOrWhiteSpace(rule.NotificationSubject)) { return "Notification rule: subject is required."; }
             }
 
-            if (rule.Conditions.Count == 0)
+            if (rule.Root == null)
             {
                 return "A rule needs at least one condition.";
             }
-            if (rule.Conditions.Count > HardMaxConditionsPerRule)
+            int nodeCount = CountNodes(rule.Root);
+            if (nodeCount > HardMaxNodesPerRule)
             {
-                return $"A rule may have at most {HardMaxConditionsPerRule} conditions.";
+                return $"A rule may have at most {HardMaxNodesPerRule} conditions/groups total.";
             }
-            for (int i = 0; i < rule.Conditions.Count; i++)
+            return await NodeShapeErrorAsync(rule.Root, rule, isRoot: true);
+        }
+
+        private static int CountNodes(ConditionNode node) => 1 + node.Children.Sum(CountNodes);
+
+        /// Recurses into GroupNode.Children - a rule's tree can nest arbitrarily (roadmap #396(4)), so every node (not just top-level) needs the same shape/bound checks a flat condition list used to get once each.
+        private async Task<string?> NodeShapeErrorAsync(ConditionNode node, DeviceFarmUnitZoneRule rule, bool isRoot)
+        {
+            if (node.Type == NodeType.RuleTriggered && rule.ActionType != ActionType.Notification)
             {
-                RuleCondition condition = rule.Conditions[i];
-                bool needsOperator = i > 0;
-                if (needsOperator != (condition.Operator != null))
+                return "\"another rule fired\" is only valid on a Notification-action rule (a Relay rule fires on-device, invisibly to the server).";
+            }
+            if (node.Type == NodeType.Astronomical && rule.ActionType != ActionType.Relay)
+            {
+                return "An astronomical condition is only valid on a Relay-action rule (AstronomicalRuleResolver only runs on the Relay path - api.Devices.RuleConditionEvaluator has no case for it, so a Notification rule would always evaluate this condition as false).";
+            }
+            if (NodeConfigError(node) is string configError)
+            {
+                return configError;
+            }
+            if (node.Type == NodeType.RuleTriggered)
+            {
+                DeviceFarmUnitZoneRule? referenced = node.ReferencedRuleId is int refId ? await deviceFarmUnitRepo.RuleGetByIdAsync(refId) : null;
+                if (referenced == null || referenced.TenantID != rule.TenantID || referenced.ActionType != ActionType.Notification)
                 {
-                    return needsOperator
-                        ? $"Condition {i + 1}: an AND/OR operator is required (every condition after the first)."
-                        : $"Condition {i + 1}: the first condition must not have an operator.";
+                    return "\"another rule fired\" must reference a rule that exists, belongs to the same tenant, and is a Notification-action rule.";
                 }
-                if (condition.ConditionType == ConditionType.RuleTriggered && rule.ActionType != ActionType.Notification)
+            }
+            if (node.Type == NodeType.Group)
+            {
+                if (node.Children.Count == 0)
                 {
-                    return $"Condition {i + 1}: \"another rule fired\" is only valid on a Notification-action rule (a Relay rule fires on-device, invisibly to the server).";
+                    return "A group needs at least one child condition.";
                 }
-                if (condition.ConditionType == ConditionType.Astronomical && rule.ActionType != ActionType.Relay)
+                if (node.Children.Count > HardMaxChildrenPerGroup)
                 {
-                    return $"Condition {i + 1}: an astronomical condition is only valid on a Relay-action rule (AstronomicalRuleResolver only runs on the Relay path - api.Devices.RuleConditionEvaluator has no case for it, so a Notification rule would always evaluate this condition as false).";
+                    return $"A group may have at most {HardMaxChildrenPerGroup} direct children.";
                 }
-                if (RuleConditionConfigError(condition.ConditionType, condition.ConditionConfig) is string conditionError)
+                if (node.GroupOperator == null)
                 {
-                    return $"Condition {i + 1}: {conditionError}";
+                    return "A group needs an AND/OR operator.";
                 }
-                if (condition.ConditionType == ConditionType.RuleTriggered)
+                foreach (ConditionNode child in node.Children)
                 {
-                    var config = condition.ConditionConfig?.Deserialize<RuleTriggeredConditionConfig>(ConditionConfigJson.Options);
-                    DeviceFarmUnitZoneRule? referenced = config == null ? null : await deviceFarmUnitRepo.RuleGetByIdAsync(config.ReferencedRuleId);
-                    if (referenced == null || referenced.TenantID != rule.TenantID || referenced.ActionType != ActionType.Notification)
+                    if (await NodeShapeErrorAsync(child, rule, isRoot: false) is string childError)
                     {
-                        return $"Condition {i + 1}: referenced rule must exist, belong to the same tenant, and be a Notification-action rule.";
+                        return childError;
                     }
                 }
+            }
+            else if (isRoot)
+            {
+                // A non-Group root is fine (a rule with exactly one condition needs no wrapping group) - nothing further to check here.
             }
             return null;
         }
 
-        /// Shape+bound check per ConditionType - the firmware would otherwise silently treat a malformed rule as inert (ConfigParser/evaluateRule), a confusing way to discover a typo; Threshold's own value is deliberately unbounded, only Hysteresis has a universal "must not be negative" rule.
-        private static string? RuleConditionConfigError(ConditionType type, JsonNode? config)
+        /// Shape+bound check per NodeType - the firmware would otherwise silently treat a malformed rule as inert (ConfigParser/evaluateRule), a confusing way to discover a typo; a ComparisonNode's Value1 is deliberately unbounded, only Hysteresis has a universal "must not be negative" rule.
+        private static string? NodeConfigError(ConditionNode node)
         {
-            try
+            switch (node.Type)
             {
-                switch (type)
-                {
-                    case ConditionType.Threshold:
-                        var threshold = config.Deserialize<ThresholdConditionConfig>(ConditionConfigJson.Options)
-                            ?? throw new JsonException("missing threshold config");
-                        if (threshold.Hysteresis < 0)
-                        {
-                            return "hysteresis must not be negative.";
-                        }
-                        return null;
-                    case ConditionType.Interval:
-                        var interval = config.Deserialize<IntervalConditionConfig>(ConditionConfigJson.Options)
-                            ?? throw new JsonException("missing interval config");
-                        if (interval.Interval <= 0)
-                        {
-                            return "interval must be greater than 0.";
-                        }
-                        if (interval.IntervalLength <= 0 || interval.IntervalLength > interval.Interval)
-                        {
-                            return "on-duration must be greater than 0 and not exceed the interval.";
-                        }
-                        return null;
-                    case ConditionType.Schedule:
-                        var schedule = config.Deserialize<ScheduleConditionConfig>(ConditionConfigJson.Options)
-                            ?? throw new JsonException("missing schedule config");
-                        // DaysOfWeek must fit the 7-bit mask AgrumyFirmware's evaluateCondition expects (bit 0 = Sunday .. bit 6 = Saturday); a window crossing local midnight is not supported.
-                        if (schedule.DaysOfWeek < 0 || schedule.DaysOfWeek > 0b1111111)
-                        {
-                            return "days of week must be a value from 0 to 127.";
-                        }
-                        if (schedule.Start < 0 || schedule.Start > 86399)
-                        {
-                            return "start must be between 0 and 86399 seconds since local midnight.";
-                        }
-                        if (schedule.Duration < 1 || schedule.Start + schedule.Duration > 86400)
-                        {
-                            return "duration must be at least 1 second and not cross local midnight (start + duration <= 86400).";
-                        }
-                        return null;
-                    case ConditionType.Astronomical:
-                        var astro = config.Deserialize<AstronomicalConditionConfig>(ConditionConfigJson.Options)
-                            ?? throw new JsonException("missing astronomical config");
-                        if (astro.DaysOfWeek < 0 || astro.DaysOfWeek > 0b1111111)
-                        {
-                            return "days of week must be a value from 0 to 127.";
-                        }
-                        if (astro.SunriseOffsetMinutes < -720 || astro.SunriseOffsetMinutes > 720
-                            || astro.SunsetOffsetMinutes < -720 || astro.SunsetOffsetMinutes > 720)
-                        {
-                            return "offsets must be between -720 and 720 minutes.";
-                        }
-                        return null;
-                    case ConditionType.RuleTriggered:
-                        _ = config.Deserialize<RuleTriggeredConditionConfig>(ConditionConfigJson.Options)
-                            ?? throw new JsonException("missing ruleTriggered config");
-                        return null;
-                    default:
-                        return "unknown condition type.";
-                }
-            }
-            catch (JsonException)
-            {
-                return $"conditionConfig does not match the expected shape for {type}.";
+                case NodeType.Comparison:
+                    if (node.Metric == null) { return "metric is required."; }
+                    if (node.Operator == null) { return "operator is required."; }
+                    if (node.Value1 == null) { return "value is required."; }
+                    if (node.Operator == ComparisonOperator.Between && node.Value2 == null) { return "a second value is required for \"between\"."; }
+                    if (node.Hysteresis is < 0) { return "hysteresis must not be negative."; }
+                    return null;
+                case NodeType.Interval:
+                    if (node.Interval is not int interval || interval <= 0) { return "interval must be greater than 0."; }
+                    if (node.IntervalLength is not int intervalLength || intervalLength <= 0 || intervalLength > interval) { return "on-duration must be greater than 0 and not exceed the interval."; }
+                    return null;
+                case NodeType.Schedule:
+                    if (node.DaysOfWeek is not int scheduleDays || scheduleDays < 0 || scheduleDays > 0b1111111) { return "days of week must be a value from 0 to 127."; }
+                    if (node.Start is not int start || start < 0 || start > 86399) { return "start must be between 0 and 86399 seconds since local midnight."; }
+                    if (node.Duration is not int duration || duration < 1 || start + duration > 86400) { return "duration must be at least 1 second and not cross local midnight (start + duration <= 86400)."; }
+                    return null;
+                case NodeType.Astronomical:
+                    if (node.DaysOfWeek is not int astroDays || astroDays < 0 || astroDays > 0b1111111) { return "days of week must be a value from 0 to 127."; }
+                    if (node.SunriseOffsetMinutes is not int sunriseOffset || sunriseOffset < -720 || sunriseOffset > 720
+                        || node.SunsetOffsetMinutes is not int sunsetOffset || sunsetOffset < -720 || sunsetOffset > 720)
+                    {
+                        return "offsets must be between -720 and 720 minutes.";
+                    }
+                    return null;
+                case NodeType.RuleTriggered:
+                    return node.ReferencedRuleId == null ? "referencedRuleId is required." : null;
+                case NodeType.Group:
+                    return null; // Children/GroupOperator checked by the caller (NodeShapeErrorAsync), not here.
+                default:
+                    return "unknown condition type.";
             }
         }
 

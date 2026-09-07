@@ -21,6 +21,8 @@ namespace api.Dal
         {
             /// Nonlinear formula - averaged per device below, not derived from already-averaged Temperature/Humidity.
             public double? Vpd => VpdCalculator.Compute(Temperature, Humidity);
+            public double? DewPoint => DewPointCalculator.Compute(Temperature, Humidity);
+            public double? DewPointSpread => DewPoint is double dp ? Temperature - dp : null;
         }
 
         /// Event types that make a zone/unit Orange (unless it's already Red).
@@ -270,7 +272,7 @@ namespace api.Dal
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
                 .Where(r => r.DeviceFarmUnitZoneID == idDeviceFarmUnitZone)
-                .OrderBy(r => r.RelayFunction).ThenBy(r => r.SensorMetric).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
@@ -279,7 +281,7 @@ namespace api.Dal
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
                 .Where(r => r.DeviceFarmUnitID == idDeviceFarmUnit)
-                .OrderBy(r => r.RelayFunction).ThenBy(r => r.SensorMetric).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
@@ -288,7 +290,7 @@ namespace api.Dal
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
                 .Where(r => r.DeviceFarmID == idDeviceFarm)
-                .OrderBy(r => r.RelayFunction).ThenBy(r => r.SensorMetric).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
@@ -297,7 +299,7 @@ namespace api.Dal
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
                 .Where(r => r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null)
-                .OrderBy(r => r.RelayFunction).ThenBy(r => r.SensorMetric).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
@@ -327,8 +329,10 @@ namespace api.Dal
                 DeviceFarmUnitZoneID = rule.DeviceFarmUnitZoneID,
                 ActionType = (int)rule.ActionType,
                 RelayFunction = (int?)rule.RelayFunction,
-                SensorMetric = (int?)rule.SensorMetric,
-                Conditions = JsonSerializer.Serialize(rule.Conditions, ConditionConfigJson.Options),
+                Name = rule.Name,
+                Description = rule.Description,
+                RootConditionJson = JsonSerializer.Serialize(rule.Root, ConditionConfigJson.Options),
+                IsSafetyRule = rule.IsSafetyRule,
                 NotificationSubject = rule.NotificationSubject,
                 NotificationBody = rule.NotificationBody,
             };
@@ -367,15 +371,16 @@ namespace api.Dal
             foreach (var row in candidates)
             {
                 DeviceFarmUnitZoneRule dto = ToDtoRule(row);
-                bool references = dto.Conditions.Any(c =>
-                    c.ConditionType == ConditionType.RuleTriggered &&
-                    c.ConditionConfig?.Deserialize<RuleTriggeredConditionConfig>(ConditionConfigJson.Options)?.ReferencedRuleId == ruleId);
-                if (references)
+                if (dto.Root != null && ReferencesRule(dto.Root, ruleId))
                 {
                     result.Add(dto);
                 }
             }
             return result;
+
+            static bool ReferencesRule(ConditionNode node, int ruleId) =>
+                (node.Type == NodeType.RuleTriggered && node.ReferencedRuleId == ruleId)
+                || (node.Type == NodeType.Group && node.Children.Any(c => ReferencesRule(c, ruleId)));
         }
 
         public async Task RuleDeleteAsync(int idRule)
@@ -434,8 +439,10 @@ namespace api.Dal
             DeviceFarmUnitZoneID = r.DeviceFarmUnitZoneID,
             ActionType = (ActionType)r.ActionType,
             RelayFunction = (RelayFunction?)r.RelayFunction,
-            SensorMetric = (SensorMetric?)r.SensorMetric,
-            Conditions = JsonSerializer.Deserialize<List<RuleCondition>>(r.Conditions, ConditionConfigJson.Options) ?? [],
+            Name = r.Name,
+            Description = r.Description,
+            Root = JsonSerializer.Deserialize<ConditionNode>(r.RootConditionJson, ConditionConfigJson.Options),
+            IsSafetyRule = r.IsSafetyRule,
             NotificationSubject = r.NotificationSubject,
             NotificationBody = r.NotificationBody,
         };
@@ -868,6 +875,8 @@ namespace api.Dal
                 SoilTemperature = snapshots.Select(s => s.SoilTemperature).Average(),
                 Humidity = snapshots.Select(s => s.Humidity).Average(),
                 Vpd = snapshots.Select(s => s.Vpd).Average(),
+                DewPoint = snapshots.Select(s => s.DewPoint).Average(),
+                DewPointSpread = snapshots.Select(s => s.DewPointSpread).Average(),
                 Moisture = snapshots.Select(s => s.Moisture).Average(),
                 Light = snapshots.Select(s => s.Light).Average(),
                 Co2 = snapshots.Select(s => s.Co2).Average(),

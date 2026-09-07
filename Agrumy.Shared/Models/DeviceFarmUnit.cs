@@ -78,7 +78,7 @@ namespace api.Models
         public DateTimeOffset? DateChanged { get; set; }
     }
 
-    /// Which measured quantity a Notification-action Threshold condition reads - mirrors SensorAverages' fields (a DeviceFarmUnitZoneRule.RelayFunction implies its metric/direction instead, so Relay-action rules never set this).
+    /// Which measured quantity one ComparisonNode reads - RAW (1-13, a real sensor reading) or DERIVED (14+, computed on-the-fly from raw readings, never a stored column). Explicit per-condition (roadmap #396(4)) - the old model forced every condition in a rule to read the same metric the rule's own RelayFunction implied, making "temp>30 AND humidity<40" structurally inexpressible.
     public enum SensorMetric
     {
         Temperature = 1,
@@ -94,6 +94,10 @@ namespace api.Models
         RainLevel = 11,
         WaterLevel = 12,
         Wind = 13,
+        /// DERIVED (api.Utils.DewPointCalculator, Magnus formula) - Temperature+Humidity.
+        DewPoint = 14,
+        /// DERIVED - Temperature minus DewPoint; a small/shrinking spread is an early condensation/fungal-disease signal, distinct from absolute humidity alone.
+        DewPointSpread = 15,
     }
 
     /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.
@@ -110,28 +114,71 @@ namespace api.Models
         Or = 2,
     }
 
-    /// Which condition a RuleCondition evaluates - see ThresholdConditionConfig/IntervalConditionConfig/ScheduleConditionConfig/AstronomicalConditionConfig/RuleTriggeredConditionConfig for each type's shape.
-    public enum ConditionType
+    /// Which kind of leaf/branch one ConditionNode is - only the fields matching Type are meaningful (flat tagged-union, same wire convention AgrumyFirmware's old Condition struct used, just now recursive via GroupNode.Children).
+    public enum NodeType
     {
-        Threshold = 1,
+        Comparison = 1,
         Interval = 2,
         Schedule = 3,
-        /// Never reaches firmware as-is - api.Devices.AstronomicalRuleResolver compiles it into an effective Schedule rule for today's local date before the config is sent.
-        Astronomical = 4,
-        /// Only valid on a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
-        RuleTriggered = 5,
+        Group = 4,
+        /// Never reaches firmware as-is - api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date before the config is sent.
+        Astronomical = 5,
+        /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
+        RuleTriggered = 6,
     }
 
-    /// A materialized JsonNode's keys are frozen by whatever options built it - an outer JsonSerializer.Serialize(camelCaseOptions) does NOT re-key it, so every RuleCondition.ConditionConfig read/write must use these exact Options or camelCase drifts to PascalCase.
+    /// GT/LT mirror the old Threshold condition's dead-zone latch (Hysteresis); GTE/LTE/Equal/Between are plain stateless comparisons with no latch - they're new, and a dead zone doesn't generalize cleanly to "equals" or "between" anyway.
+    public enum ComparisonOperator
+    {
+        GreaterThan = 1,
+        LessThan = 2,
+        GreaterThanOrEqual = 3,
+        LessThanOrEqual = 4,
+        Equal = 5,
+        /// Inclusive both ends: Value1 &lt;= reading &lt;= Value2.
+        Between = 6,
+    }
+
+    /// Recursive rule-condition tree (roadmap #396(4)) - replaces the old flat Conditions[]+left-to-right-fold entirely (alfa phase, no backward compat). GroupNode.Children recurse arbitrarily, enabling real grouping ("(A AND B) OR (C AND D)"); every other Type is a leaf. A ComparisonNode's Metric is explicit and independent per condition - the old model forced every condition in a Relay rule to read the same metric its RelayFunction implied.
+    public class ConditionNode
+    {
+        public NodeType Type { get; set; }
+
+        // Comparison only.
+        public SensorMetric? Metric { get; set; }
+        public ComparisonOperator? Operator { get; set; }
+        public double? Value1 { get; set; }
+        /// Between only.
+        public double? Value2 { get; set; }
+        public double? Hysteresis { get; set; }
+
+        // Interval only.
+        public int? Interval { get; set; }
+        public int? IntervalLength { get; set; }
+
+        // Schedule: DaysOfWeek+Start+Duration. Astronomical: DaysOfWeek+the two offsets. 7-bit DaysOfWeek mask, bit0=Sunday.
+        public int? DaysOfWeek { get; set; }
+        public int? Start { get; set; }
+        public int? Duration { get; set; }
+        /// Astronomical only - negative extends the window earlier than sunrise/sunset, positive later.
+        public int? SunriseOffsetMinutes { get; set; }
+        public int? SunsetOffsetMinutes { get; set; }
+
+        /// RuleTriggered only - another Notification-action rule (same tenant, any zone/unit) whose own tree folded true this tick.
+        public int? ReferencedRuleId { get; set; }
+
+        // Group only.
+        public LogicalOperator? GroupOperator { get; set; }
+        public IList<ConditionNode> Children { get; set; } = [];
+    }
+
+    /// A materialized JsonNode's keys are frozen by whatever options built it - an outer JsonSerializer.Serialize(camelCaseOptions) does NOT re-key it, so every ConditionNode tree read/write must use these exact Options or camelCase drifts to PascalCase.
     public static class ConditionConfigJson
     {
         public static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);
     }
 
-    /// One entry in a DeviceFarmUnitZoneRule's flat, left-to-right condition list - Operator is the operator BEFORE this condition, null for the first entry, required otherwise.
-    public record RuleCondition(ConditionType ConditionType, System.Text.Json.Nodes.JsonNode? ConditionConfig, LogicalOperator? Operator);
-
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, all three null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction/SensorMetric still OR together; within one rule, Conditions fold left-to-right by their own Operator. A more specific scope's rules for a function/metric fully replace (not merge with) a less specific scope's - Zone &gt; Unit &gt; Farm &gt; Global - resolved server-side (api.Devices.RuleHierarchyResolver) before a Relay rule ever reaches firmware.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, all three null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule (roadmap #396(5)) rules always survive being overridden regardless of scope - see api.Devices.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule
     {
         [HiddenInput(DisplayValue = true)]
@@ -143,28 +190,15 @@ namespace api.Models
         public ActionType ActionType { get; set; } = ActionType.Relay;
         /// Required when ActionType is Relay, null when Notification.
         public RelayFunction? RelayFunction { get; set; }
-        /// Required when ActionType is Notification (and a Threshold condition needs a metric to read), null when Relay.
-        public SensorMetric? SensorMetric { get; set; }
-        public IList<RuleCondition> Conditions { get; set; } = [];
-        /// Notification-action only; supports {zone}/{value}/{metric} placeholders, substituted by RuleNotificationEvaluator.
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public ConditionNode? Root { get; set; }
+        /// Roadmap #396(5) - survives RuleHierarchyResolver's normal scope-override even when a more specific scope has its own rule(s) for the same function/name; ORs in alongside whichever rule "won" (a zone rule can no longer silently erase a global frost-guard).
+        public bool IsSafetyRule { get; set; }
+        /// Notification-action only; supports {zone}/{value}/{metric} placeholders, substituted by RuleNotificationEvaluator ({value}/{metric} resolve from the first ComparisonNode found in the tree, best-effort for a multi-metric rule).
         public string? NotificationSubject { get; set; }
         public string? NotificationBody { get; set; }
     }
-
-    /// Threshold+hysteresis. On a Relay-action rule the metric/direction is implicit in the rule's RelayFunction (see AgrumyFirmware's ActuatorController::evaluateCondition); on a Notification-action rule the direction is always "turns on above threshold" and the metric comes from the rule's SensorMetric instead.
-    public record ThresholdConditionConfig(double Threshold, double Hysteresis);
-
-    /// On for IntervalLength seconds out of every Interval-second period, grid-aligned to epoch - see AgrumyFirmware's computeIntervalState.
-    public record IntervalConditionConfig(int Interval, int IntervalLength);
-
-    /// One wall-clock window - multiple windows for the same function are multiple Schedule rules, OR'd together. DaysOfWeek: 7-bit mask (bit0=Sunday). Start/Duration: seconds since local midnight, must not cross midnight.
-    public record ScheduleConditionConfig(int DaysOfWeek, int Start, int Duration);
-
-    /// On from (today's sunrise + SunriseOffsetMinutes) to (today's sunset + SunsetOffsetMinutes) at ServerConfig.WeatherLocationLat/Lon, on the days in DaysOfWeek (same 7-bit mask as ScheduleConditionConfig) - negative offsets extend the window earlier, positive later, so e.g. (-30, 60) supplements natural daylight by 30 minutes at dawn and 60 at dusk.
-    public record AstronomicalConditionConfig(int DaysOfWeek, int SunriseOffsetMinutes, int SunsetOffsetMinutes);
-
-    /// True while ReferencedRuleId's own Conditions fold is true - only valid inside a Notification-action rule, referencing another Notification-action rule (same tenant, any zone/unit - cross-zone/cross-unit chaining is allowed).
-    public record RuleTriggeredConditionConfig(int ReferencedRuleId);
 
     /// Per-sensor-type average from each device's LATEST reading only, not a historical average (which would skew by poll frequency); null means nothing in scope has reported that type.
     public class SensorAverages
@@ -174,6 +208,10 @@ namespace api.Models
         public double? Humidity { get; set; }
         /// Derived from Temperature+Humidity (api.Utils.VpdCalculator) - null whenever either is, never computed from a stale pairing.
         public double? Vpd { get; set; }
+        /// Derived from Temperature+Humidity (api.Utils.DewPointCalculator, roadmap #396(4)).
+        public double? DewPoint { get; set; }
+        /// Temperature minus DewPoint - a shrinking spread (typically &lt;2-3°C) is an early condensation/fungal-disease signal.
+        public double? DewPointSpread { get; set; }
         public double? Moisture { get; set; }
         public double? Light { get; set; }
         public double? Co2 { get; set; }
