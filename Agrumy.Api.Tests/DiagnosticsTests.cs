@@ -1,6 +1,7 @@
 using api.Dal;
 using api.Dal.Interface;
 using api.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -127,5 +128,20 @@ public class DiagnosticsTests
         MetricsSnapshot snapshot = metrics.GetSnapshot();
 
         Assert.Equal(2, snapshot.Routes.Count);
+    }
+
+    [Fact]
+    public async Task RequestMetricsMiddleware_UnmatchedRoute_RecordsUnderSharedLabel_NotRawPath()
+    {
+        // No RouteEndpoint set on the context - same as a 404 for a path that never matched any route.
+        var metrics = new AgrumyMetrics();
+        var middleware = new RequestMetricsMiddleware(_ => Task.CompletedTask, metrics);
+        var context = new DefaultHttpContext { Request = { Path = "/api/Totally/Random/Probe", Method = "GET" } };
+
+        await middleware.InvokeAsync(context);
+
+        MetricsSnapshot snapshot = metrics.GetSnapshot();
+        Assert.Single(snapshot.Routes, r => r.Route == "unmatched" && r.Method == "GET");
+        Assert.DoesNotContain(snapshot.Routes, r => r.Route == "/api/Totally/Random/Probe");
     }
 }

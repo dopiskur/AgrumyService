@@ -16,7 +16,8 @@ namespace api.Diagnostics
             finally
             {
                 stopwatch.Stop();
-                string route = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? context.Request.Path.Value ?? "unknown";
+                // Raw Request.Path would give a probed/404 request its own metric series per attempted path - unbounded cardinality.
+                string route = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "unmatched";
                 metrics.RecordRequest(route, context.Request.Method, context.Response.StatusCode, stopwatch.Elapsed.TotalMilliseconds);
             }
         }
