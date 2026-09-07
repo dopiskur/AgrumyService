@@ -53,6 +53,17 @@ namespace api.Commands
             return await IssueToTargetsAsync(targets, actionType);
         }
 
+        /// Fans one actionType to every device in the tenant - used by tenant-wide events (e.g. emergency stop) that have no single Zone/Unit/Device target, same dedup/fan-out tail via IssueToTargetsAsync.
+        public async Task<IssueCommandResult> IssueTenantWideCommandAsync(int tenantId, CommandActionType actionType)
+        {
+            IList<Device> targets = await deviceRepo.DevicesGetAsync(tenantId);
+            if (targets.Count == 0)
+            {
+                return new IssueCommandResult(IssueCommandOutcome.TargetNotFound, [], $"Tenant {tenantId} has no devices.");
+            }
+            return await IssueToTargetsAsync(targets, actionType);
+        }
+
         /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else tenant-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
         public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId)
         {

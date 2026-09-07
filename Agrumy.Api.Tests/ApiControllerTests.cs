@@ -58,7 +58,8 @@ public class ApiControllerTests
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new api.Commands.ManualActuateService(_repo.Object));
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object,
-        new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object));
+        new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object),
+        new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId) =>
@@ -1877,6 +1878,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.TenantEmergencyStopSetAsync(5, true)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device>());
 
         var controller = NewTenantController();
         SetCallerRoles(controller, 5, RoleNames.TenantDevice);
@@ -1885,6 +1887,28 @@ public class ApiControllerTests
 
         Assert.IsType<OkResult>(result);
         _repo.Verify(r => r.TenantEmergencyStopSetAsync(5, true), Times.Once);
+    }
+
+    /// Confirms the actual roadmap #395(4) wiring - EmergencyStopActivate must not just write the DB flag, it must nudge every device in the tenant so the flag reaches them before their next scheduled poll.
+    [Fact]
+    public async Task EmergencyStopActivate_NudgesEveryDeviceInTheTenant_NotJustTheDbFlag()
+    {
+        _repo.Setup(r => r.TenantEmergencyStopSetAsync(5, true)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device> { new() { IDDevice = 500 }, new() { IDDevice = 501 } });
+        _repo.Setup(r => r.HasActiveCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _repo.Setup(r => r.HasActiveCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _repo.Setup(r => r.AddCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(1);
+        _repo.Setup(r => r.AddCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(2);
+
+        var controller = NewTenantController();
+        SetCallerRoles(controller, 5, RoleNames.TenantDevice);
+
+        var result = await controller.EmergencyStopActivate();
+
+        Assert.IsType<OkResult>(result);
+        _repo.Verify(r => r.AddCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
+        _repo.Verify(r => r.AddCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
     }
 
     [Fact]
@@ -1905,6 +1929,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.TenantEmergencyStopSetAsync(6, true)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DevicesGetAsync(6)).ReturnsAsync(new List<Device>());
 
         var controller = NewTenantController();
         SetCallerRoles(controller, 0, RoleNames.GlobalAdmin);
@@ -1920,6 +1945,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.TenantEmergencyStopSetAsync(5, false)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device>());
 
         var controller = NewTenantController();
         SetCallerRoles(controller, 5, RoleNames.TenantAdmin);

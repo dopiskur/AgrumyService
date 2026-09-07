@@ -82,6 +82,31 @@ public class CommandQueueServiceTests
 
 
     [Fact]
+    public async Task TenantWide_NoDevices_Returns_TargetNotFound()
+    {
+        _devices.Setup(d => d.DevicesGetAsync(7)).ReturnsAsync(new List<Device>());
+
+        var result = await NewService().IssueTenantWideCommandAsync(7, CommandActionType.ForceConfigSync);
+
+        Assert.Equal(IssueCommandOutcome.TargetNotFound, result.Outcome);
+    }
+
+    [Fact]
+    public async Task TenantWide_FansOut_To_Every_Device_In_The_Tenant()
+    {
+        _devices.Setup(d => d.DevicesGetAsync(7)).ReturnsAsync(new List<Device> { ControllerDevice(500), ControllerDevice(501) });
+        _commands.Setup(c => c.HasActiveCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _commands.Setup(c => c.HasActiveCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _commands.Setup(c => c.AddCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(1);
+        _commands.Setup(c => c.AddCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(2);
+
+        var result = await NewService().IssueTenantWideCommandAsync(7, CommandActionType.ForceConfigSync);
+
+        Assert.Equal(IssueCommandOutcome.Success, result.Outcome);
+        Assert.Equal([1, 2], result.CreatedCommandIds);
+    }
+
+    [Fact]
     public async Task Device_With_Active_Command_Of_Same_ActionType_Is_Deduplicated()
     {
         _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));

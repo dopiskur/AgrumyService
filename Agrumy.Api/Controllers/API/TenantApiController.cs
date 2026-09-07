@@ -1,3 +1,4 @@
+using api.Commands;
 using api.Dal.Interface;
 using api.Migration;
 using api.Models;
@@ -10,7 +11,7 @@ namespace api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management; [Authorize] stays at the wide RoleNames.LegacyAdmin/TenantReaders net (same reasoning as ServerConfigApiController), the precise decision is the inline CallerIsGlobalAdmin/GlobalReader check.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.TenantReaders)]
         [HttpGet("All")]
@@ -100,6 +101,8 @@ namespace api.Controllers.API
             }
             await tenantRepo.TenantEmergencyStopSetAsync(targetTenantId, true);
             await WriteAuditAsync("Tenant.EmergencyStopActivated", targetTenantId, "Tenant", targetTenantId.ToString(), null);
+            // Instant push, not just "wait for next poll" - every other urgent command already gets this via MqttCommandPublisher.
+            await commandQueue.IssueTenantWideCommandAsync(targetTenantId, CommandActionType.ForceConfigSync);
             return Ok();
         }
 
@@ -114,6 +117,7 @@ namespace api.Controllers.API
             }
             await tenantRepo.TenantEmergencyStopSetAsync(targetTenantId, false);
             await WriteAuditAsync("Tenant.EmergencyStopCleared", targetTenantId, "Tenant", targetTenantId.ToString(), null);
+            await commandQueue.IssueTenantWideCommandAsync(targetTenantId, CommandActionType.ForceConfigSync);
             return Ok();
         }
 
