@@ -152,6 +152,10 @@ namespace api.Dal
                 // 512, not the 255 a plaintext broker/SMTP password would need - these columns now store SecretProtector.Protect's ciphertext, same reasoning as TenantWifiConfigRow.Password above.
                 e.Property(x => x.MqttPassword).HasMaxLength(512);
                 e.Property(x => x.EmailPassword).HasMaxLength(512);
+                e.Property(x => x.ArchiveHost).HasMaxLength(255);
+                e.Property(x => x.ArchiveDatabaseName).HasMaxLength(64); // MySQL's own database-identifier limit
+                e.Property(x => x.ArchiveUsername).HasMaxLength(128);
+                e.Property(x => x.ArchivePassword).HasMaxLength(512);
             });
 
             // Unlike DeviceFarmUnit/DeviceFarmUnitZone, Farm has no reserved "0" sentinel row (its optionality on DeviceFarmUnit is expressed via a nullable FK, not a sentinel) - plain AUTO_INCREMENT, no app-side Max+1 dance needed.

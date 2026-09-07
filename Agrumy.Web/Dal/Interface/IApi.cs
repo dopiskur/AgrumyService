@@ -406,6 +406,14 @@ namespace api.Dal.Interface
         [Post("/api/ServerConfig/TestEmail")]
         Task ServerConfigTestEmail(string toEmail);
 
+        /// Tests the UNSAVED form's archive DB credentials before Update ever persists them - see ServerConfigApiController.TestArchiveDatabase.
+        [Post("/api/ServerConfig/TestArchiveDatabase")]
+        Task ServerConfigTestArchiveDatabase([Body] ArchiveDbTestRequest request);
+
+        /// The "Data Archiving" subsection's own self-contained save (test-before-persist when enabling) - see ServerConfigApiController.SaveArchiveSettings.
+        [Post("/api/ServerConfig/ArchiveSettings")]
+        Task ServerConfigSaveArchiveSettings([Body] ArchiveSettingsSaveRequest request);
+
         [Put("/api/ServerConfig")]
         Task ServerConfigUpdate([Body] ServerConfig config);
 

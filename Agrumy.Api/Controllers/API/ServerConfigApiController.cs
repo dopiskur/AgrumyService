@@ -26,6 +26,7 @@ namespace api.Controllers.API
             ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
             config.MqttPassword = null;
             config.EmailPassword = null;
+            config.ArchivePassword = null;
             return Ok(config);
         }
 
@@ -156,6 +157,36 @@ namespace api.Controllers.API
                 return BadRequest("Registration PIN validity must be one of the preset options.");
             }
 
+            // Roadmap #209 - archiving is MariaDB/MySQL only (Postgres/TimescaleDB has its own native tiered storage, #14); enabling it on Postgres would just silently no-op in SensorDataArchiveEvaluator, better to say so now.
+            if (config.ArchiveEnabled)
+            {
+                if (!Enum.IsDefined(config.ArchiveCutoffMode))
+                {
+                    return BadRequest("Unknown archive cutoff mode: " + config.ArchiveCutoffMode);
+                }
+                if (config.ArchiveCutoffMode == ArchiveCutoffMode.CustomRollingDays && config.ArchiveCustomRollingDays is not (90 or 180 or 365))
+                {
+                    return BadRequest("Custom rolling-window cutoff must be one of the preset options (90, 180, or 365 days).");
+                }
+                if (config.ArchiveCutoffMode == ArchiveCutoffMode.CustomDate && config.ArchiveCustomCutoffDate is null)
+                {
+                    return BadRequest("A custom cutoff date is required for that mode.");
+                }
+                if (string.IsNullOrWhiteSpace(config.ArchiveHost) || string.IsNullOrWhiteSpace(config.ArchiveDatabaseName) || string.IsNullOrWhiteSpace(config.ArchiveUsername))
+                {
+                    return BadRequest("Archive DB host, database name, and username are required to enable database archiving.");
+                }
+                if (config.ArchivePort is < 1 or > 65535)
+                {
+                    return BadRequest("Archive DB port must be between 1 and 65535.");
+                }
+                // A stored password already existing means "Change archive database" is editing other fields without re-entering it - anything else means the admin is (re-)configuring archiving from scratch and must have already gone through TestArchiveDatabase with a real password.
+                if (string.IsNullOrEmpty(config.ArchivePassword) && string.IsNullOrEmpty((await serverConfigRepo.ServerConfigGetAsync(1)).ArchivePassword))
+                {
+                    return BadRequest("Archive DB password is required - test the connection first.");
+                }
+            }
+
             config.IDServerConfig = 1; // single global row - the form never chooses this
             await serverConfigRepo.ServerConfigUpdateAsync(config);
             await WriteAuditAsync("ServerConfig.Updated", null, "ServerConfig", "1", null);
@@ -188,6 +219,101 @@ namespace api.Controllers.API
                 new NotificationRecipient(toEmail));
             NotificationResult result = await email.SendAsync(notification);
             return result.Sent ? Ok() : BadRequest(result.Detail ?? "Send failed.");
+        }
+
+        /// Roadmap #209 - tests the UNSAVED form's archive DB credentials before ServerConfigApiController.Update ever persists them, so a bad host/port/password never silently disables archiving later. Password blank means "use whatever's already saved" (see ArchiveDbTestRequest's own remarks).
+        [HttpPost("TestArchiveDatabase")]
+        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        public async Task<ActionResult> TestArchiveDatabase([FromBody] ArchiveDbTestRequest request)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            if (string.IsNullOrWhiteSpace(request.Host) || string.IsNullOrWhiteSpace(request.DatabaseName) || string.IsNullOrWhiteSpace(request.Username))
+            {
+                return BadRequest("Host, database name, and username are required.");
+            }
+            if (request.Port is null or < 1 or > 65535)
+            {
+                return BadRequest("Port must be between 1 and 65535.");
+            }
+
+            string? password = request.Password;
+            if (string.IsNullOrEmpty(password))
+            {
+                password = (await serverConfigRepo.ServerConfigGetAsync(1)).ArchivePassword;
+                if (string.IsNullOrEmpty(password))
+                {
+                    return BadRequest("Password is required - no existing password is saved to fall back on.");
+                }
+            }
+
+            (bool success, string? error) = await ArchiveDbConnectionTester.TestAsync(request.Host, request.Port.Value, request.DatabaseName, request.Username, password);
+            return success ? Ok() : BadRequest(error);
+        }
+
+        /// Roadmap #209 - the "Data Archiving" subsection's own self-contained save (Web's ServerConfigController.SaveArchiveSettings JS button, not the main Server Settings form), independent of every other tab. Tests the connection first when enabling (skipped when Enabled is false - "disable" needs no working credentials, roadmap #209's own explicit design decision), only THEN persists.
+        [HttpPost("ArchiveSettings")]
+        [Authorize(Roles = RoleNames.LegacyAdmin)]
+        public async Task<ActionResult> SaveArchiveSettings([FromBody] ArchiveSettingsSaveRequest request)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+
+            ServerConfig current = await serverConfigRepo.ServerConfigGetAsync(1);
+
+            if (request.Enabled)
+            {
+                if (!Enum.IsDefined(request.CutoffMode))
+                {
+                    return BadRequest("Unknown archive cutoff mode: " + request.CutoffMode);
+                }
+                if (request.CutoffMode == ArchiveCutoffMode.CustomRollingDays && request.CustomRollingDays is not (90 or 180 or 365))
+                {
+                    return BadRequest("Custom rolling-window cutoff must be one of the preset options (90, 180, or 365 days).");
+                }
+                if (request.CutoffMode == ArchiveCutoffMode.CustomDate && request.CustomCutoffDate is null)
+                {
+                    return BadRequest("A custom cutoff date is required for that mode.");
+                }
+                if (string.IsNullOrWhiteSpace(request.Host) || string.IsNullOrWhiteSpace(request.DatabaseName) || string.IsNullOrWhiteSpace(request.Username))
+                {
+                    return BadRequest("Archive DB host, database name, and username are required to enable database archiving.");
+                }
+                if (request.Port is null or < 1 or > 65535)
+                {
+                    return BadRequest("Archive DB port must be between 1 and 65535.");
+                }
+
+                string? password = string.IsNullOrEmpty(request.Password) ? current.ArchivePassword : request.Password;
+                if (string.IsNullOrEmpty(password))
+                {
+                    return BadRequest("Archive DB password is required.");
+                }
+                (bool success, string? error) = await ArchiveDbConnectionTester.TestAsync(request.Host, request.Port.Value, request.DatabaseName, request.Username, password);
+                if (!success)
+                {
+                    return BadRequest(error);
+                }
+            }
+
+            current.ArchiveEnabled = request.Enabled;
+            current.ArchiveCutoffMode = request.CutoffMode;
+            current.ArchiveCustomCutoffDate = request.CustomCutoffDate;
+            current.ArchiveCustomRollingDays = request.CustomRollingDays;
+            current.ArchiveHost = request.Host;
+            current.ArchivePort = request.Port;
+            current.ArchiveDatabaseName = request.DatabaseName;
+            current.ArchiveUsername = request.Username;
+            // Blank means "keep existing" - EfServerConfigRepository.ServerConfigUpdateAsync's own blank-keeps-existing handling applies here exactly as it does for a full ServerConfig save.
+            current.ArchivePassword = request.Password;
+
+            await serverConfigRepo.ServerConfigUpdateAsync(current);
+            await WriteAuditAsync("ServerConfig.ArchiveSettingsUpdated", null, "ServerConfig", "1", null);
+            return Ok();
         }
 
         /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new tenant" field - this exposes only that one flag.

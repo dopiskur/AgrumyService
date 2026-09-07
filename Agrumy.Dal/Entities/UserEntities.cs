@@ -158,5 +158,17 @@ namespace api.Dal.Entities
         public string? EmailFromAddress { get; set; }
         public string EmailFromName { get; set; } = "Agrumy";
         public int DevicePinValidMinutes { get; set; } = 60;
+
+        // See api.Models.ServerConfig's own copies of these for the full explanation.
+        public bool ArchiveEnabled { get; set; }
+        public int ArchiveCutoffMode { get; set; }
+        public DateOnly? ArchiveCustomCutoffDate { get; set; }
+        public int? ArchiveCustomRollingDays { get; set; }
+        public string? ArchiveHost { get; set; }
+        public int? ArchivePort { get; set; } = 3306;
+        public string? ArchiveDatabaseName { get; set; }
+        public string? ArchiveUsername { get; set; }
+        public string? ArchivePassword { get; set; }
+        public DateTimeOffset? ArchiveLastRunAtUtc { get; set; }
     }
 }

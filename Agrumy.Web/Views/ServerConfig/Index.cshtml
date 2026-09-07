@@ -28,6 +28,15 @@
             <input type="hidden" asp-for="EventDedupeMinutes" />
             <input type="hidden" asp-for="ProblemEventAlertsEnabled" />
             <input type="hidden" asp-for="ProblemEventExpiryHours" />
+            @* Data Archiving (roadmap #209) has its own dedicated save action (test-before-persist), never part of this form's own submit - these just carry the last-saved values along so saving any OTHER tab here doesn't reset them, same reasoning as the Firmware/Alerts fields above. *@
+            <input type="hidden" asp-for="ArchiveEnabled" />
+            <input type="hidden" asp-for="ArchiveCutoffMode" />
+            <input type="hidden" asp-for="ArchiveCustomCutoffDate" />
+            <input type="hidden" asp-for="ArchiveCustomRollingDays" />
+            <input type="hidden" asp-for="ArchiveHost" />
+            <input type="hidden" asp-for="ArchivePort" />
+            <input type="hidden" asp-for="ArchiveDatabaseName" />
+            <input type="hidden" asp-for="ArchiveUsername" />
 
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -43,7 +52,7 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-accounts" type="button" role="tab">Accounts</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-retention" type="button" role="tab">Data Retention</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-database" type="button" role="tab">Database</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-weather" type="button" role="tab">Weather</button>
@@ -190,7 +199,17 @@
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-retention" role="tabpanel">
+                <div class="tab-pane fade" id="tab-database" role="tabpanel">
+                    <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#subtab-retention" type="button" role="tab">Data Retention</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#subtab-archiving" type="button" role="tab">Data Archiving</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                    <div class="tab-pane fade show active" id="subtab-retention" role="tabpanel">
                     <p class="text-secondary">
                         Automatic sensor data retention. PostgreSQL/TimescaleDB
                         installs enforce this through a native retention policy (whole chunks
@@ -235,6 +254,96 @@
                         </div>
                     </div>
                     <div id="dataMaintenanceStatus" class="mt-2"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="subtab-archiving" role="tabpanel">
+                        <p class="text-secondary">
+                            Roadmap #209 - MariaDB/MySQL only (PostgreSQL/TimescaleDB installs use
+                            their own native tiered storage instead, see Data Retention). Moves
+                            sensorData rows past the cutoff below to a separate database instead of
+                            deleting them - opt-in, inactive until a connection is successfully
+                            tested and saved. This section saves independently of the page's main
+                            Save button below.
+                        </p>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="archiveEnabledToggle" @(Model.ArchiveEnabled ? "checked" : null) />
+                            <label class="form-check-label" for="archiveEnabledToggle">Enable database archiving</label>
+                        </div>
+
+                        <div id="archiveConfigSection" style="display:@(Model.ArchiveEnabled ? "block" : "none")">
+                            <div class="mb-3" style="max-width:20rem">
+                                <label class="form-label" for="archiveCutoffModeSelect">Archive cutoff mode</label>
+                                <select id="archiveCutoffModeSelect" class="form-select">
+                                    <option value="0" selected="@(Model.ArchiveCutoffMode == ArchiveCutoffMode.Calendar ? "selected" : null)">Calendar (archive two years back every Jan 1)</option>
+                                    <option value="1" selected="@(Model.ArchiveCutoffMode == ArchiveCutoffMode.CustomDate ? "selected" : null)">Custom date</option>
+                                    <option value="2" selected="@(Model.ArchiveCutoffMode == ArchiveCutoffMode.CustomRollingDays ? "selected" : null)">Rolling window (older than N days)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="archiveCustomDateField" style="max-width:16rem; display:@(Model.ArchiveCutoffMode == ArchiveCutoffMode.CustomDate ? "block" : "none")">
+                                <label class="form-label" for="archiveCustomDateInput">Custom cutoff date</label>
+                                <input type="date" id="archiveCustomDateInput" class="form-control" value="@(Model.ArchiveCustomCutoffDate?.ToString("yyyy-MM-dd"))" />
+                                <div class="form-text">Everything before this date (UTC) is archived - a one-time cutoff, not a moving window.</div>
+                            </div>
+                            <div class="mb-3" id="archiveRollingDaysField" style="max-width:16rem; display:@(Model.ArchiveCutoffMode == ArchiveCutoffMode.CustomRollingDays ? "block" : "none")">
+                                <label class="form-label" for="archiveRollingDaysSelect">Archive data older than</label>
+                                <select id="archiveRollingDaysSelect" class="form-select">
+                                    <option value="90" selected="@(Model.ArchiveCustomRollingDays == 90 ? "selected" : null)">90 days</option>
+                                    <option value="180" selected="@(Model.ArchiveCustomRollingDays == 180 ? "selected" : null)">180 days</option>
+                                    <option value="365" selected="@(Model.ArchiveCustomRollingDays == 365 ? "selected" : null)">365 days</option>
+                                </select>
+                            </div>
+
+                            @if (Model.ArchiveLastRunAtUtc is DateTimeOffset archiveLastRun)
+                            {
+                                <p class="text-secondary small">Last archive run: @archiveLastRun.ToString("u")</p>
+                            }
+
+                            <hr />
+
+                            <div id="archiveCredentialsConfigured" style="display:@(!string.IsNullOrEmpty(Model.ArchiveHost) ? "block" : "none")">
+                                <p class="mb-2">
+                                    Archive database: <code>@Model.ArchiveUsername@("@")@Model.ArchiveHost:@Model.ArchivePort/@Model.ArchiveDatabaseName</code>
+                                </p>
+                                <button type="button" id="archiveChangeButton" class="btn btn-outline-secondary btn-sm">Change archive database</button>
+                            </div>
+
+                            <div id="archiveCredentialsForm" style="display:@(string.IsNullOrEmpty(Model.ArchiveHost) ? "block" : "none")">
+                                <div class="row g-2">
+                                    <div class="col-sm-4">
+                                        <label class="form-label" for="archiveHostInput">Host</label>
+                                        <input type="text" id="archiveHostInput" class="form-control" value="@Model.ArchiveHost" />
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <label class="form-label" for="archivePortInput">Port</label>
+                                        <input type="number" id="archivePortInput" class="form-control" value="@(Model.ArchivePort ?? 3306)" />
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label" for="archiveDatabaseNameInput">Database name</label>
+                                        <input type="text" id="archiveDatabaseNameInput" class="form-control" value="@Model.ArchiveDatabaseName" />
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label" for="archiveUsernameInput">Username</label>
+                                        <input type="text" id="archiveUsernameInput" class="form-control" value="@Model.ArchiveUsername" />
+                                    </div>
+                                </div>
+                                <div class="mb-2 mt-2" style="max-width:20rem">
+                                    <label class="form-label" for="archivePasswordInput">Password</label>
+                                    <input type="password" id="archivePasswordInput" class="form-control" autocomplete="new-password" />
+                                    <div class="form-text">Leave blank to keep the currently stored password (only meaningful when editing other fields on an already-configured archive).</div>
+                                </div>
+                                <button type="button" id="archiveTestButton" class="btn btn-outline-secondary btn-sm">Test connection</button>
+                                <button type="button" id="archiveSaveButton" class="btn btn-outline-primary btn-sm">Save</button>
+                                <button type="button" id="archiveCancelButton" class="btn btn-link btn-sm" style="display:@(!string.IsNullOrEmpty(Model.ArchiveHost) ? "inline-block" : "none")">Cancel</button>
+                            </div>
+                            <div id="archiveStatus" class="mt-2"></div>
+                        </div>
+
+                        <div id="archiveDisabledSaveRow" class="mt-2" style="display:@(Model.ArchiveEnabled ? "none" : "block")">
+                            <button type="button" id="archiveSaveDisabledButton" class="btn btn-outline-secondary btn-sm">Save</button>
+                            <div class="form-text">No connection test needed to disable archiving.</div>
+                        </div>
+                    </div>
+                    </div>
                 </div>
 
                 <div class="tab-pane fade" id="tab-weather" role="tabpanel">
@@ -470,4 +579,5 @@
     <script src="~/lib/leaflet/leaflet.js"></script>
     <script src="~/js/weather-location.js"></script>
     <script src="~/js/send-test-email.js"></script>
+    <script src="~/js/archive-settings.js"></script>
 }

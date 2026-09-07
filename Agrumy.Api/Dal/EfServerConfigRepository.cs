@@ -61,6 +61,7 @@ namespace api.Dal
                 EmailUseStartTls = true,
                 EmailFromName = "Agrumy",
                 DevicePinValidMinutes = 60,
+                ArchivePort = 3306,
             };
             db.ServerConfigs.Add(generated);
             await db.SaveChangesAsync();
@@ -131,6 +132,19 @@ namespace api.Dal
             {
                 row.EmailPassword = secretProtector.Protect(config.EmailPassword);
             }
+            row.ArchiveEnabled = config.ArchiveEnabled;
+            row.ArchiveCutoffMode = (int)config.ArchiveCutoffMode;
+            row.ArchiveCustomCutoffDate = config.ArchiveCustomCutoffDate;
+            row.ArchiveCustomRollingDays = config.ArchiveCustomRollingDays;
+            row.ArchiveHost = config.ArchiveHost;
+            row.ArchivePort = config.ArchivePort;
+            row.ArchiveDatabaseName = config.ArchiveDatabaseName;
+            row.ArchiveUsername = config.ArchiveUsername;
+            // Same "blank keeps existing" handling as MqttPassword/EmailPassword above - ServerConfigApiController.Update only reaches here after TestArchiveConnection has already succeeded with whatever password (new or, if blank, the existing one) it was given.
+            if (!string.IsNullOrEmpty(config.ArchivePassword))
+            {
+                row.ArchivePassword = secretProtector.Protect(config.ArchivePassword);
+            }
             await db.SaveChangesAsync();
 
             // Re-applied on every save so Postgres/TimescaleDB retention updates immediately - a no-op on MariaDB/MySQL, which reads this row fresh on its own daily tick.
@@ -197,6 +211,18 @@ namespace api.Dal
                 return;
             }
             row.FirmwareLastRefreshedAtUtc = checkedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
+        /// The only writer of ArchiveLastRunAtUtc, called exclusively by SensorDataArchiveEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        public async Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig = 1)
+        {
+            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
+            if (row == null)
+            {
+                return;
+            }
+            row.ArchiveLastRunAtUtc = ranAtUtc;
             await db.SaveChangesAsync();
         }
 
@@ -291,6 +317,17 @@ namespace api.Dal
             EmailPassword = secretProtector.Unprotect(r.EmailPassword),
             // An older row has 0 here, which is not a usable duration - same 0-means-unset fallback as GatewayWaitWindowSeconds.
             DevicePinValidMinutes = r.DevicePinValidMinutes == 0 ? 60 : r.DevicePinValidMinutes,
+            ArchiveEnabled = r.ArchiveEnabled,
+            ArchiveCutoffMode = (ArchiveCutoffMode)r.ArchiveCutoffMode,
+            ArchiveCustomCutoffDate = r.ArchiveCustomCutoffDate,
+            ArchiveCustomRollingDays = r.ArchiveCustomRollingDays,
+            ArchiveHost = r.ArchiveHost,
+            ArchivePort = r.ArchivePort is null or 0 ? 3306 : r.ArchivePort,
+            ArchiveDatabaseName = r.ArchiveDatabaseName,
+            ArchiveUsername = r.ArchiveUsername,
+            // Real value, decrypted - SensorDataArchiveEvaluator needs it to actually connect. The API/edit-form response redacts this at the controller boundary (ServerConfigApiController.Get), same as MqttPassword/EmailPassword above.
+            ArchivePassword = secretProtector.Unprotect(r.ArchivePassword),
+            ArchiveLastRunAtUtc = r.ArchiveLastRunAtUtc,
         };
     }
 }

@@ -50,7 +50,9 @@ namespace api.Controllers.View
                                                         ? nameof(ServerConfig.EmailHost)
                                                         : ex.Body.Contains("PIN validity", StringComparison.OrdinalIgnoreCase)
                                                             ? nameof(ServerConfig.DevicePinValidMinutes)
-                                                            : nameof(ServerConfig.FirmwareSource);
+                                                            : ex.Body.Contains("archive", StringComparison.OrdinalIgnoreCase)
+                                                                ? nameof(ServerConfig.ArchiveEnabled)
+                                                                : nameof(ServerConfig.FirmwareSource);
                 ModelState.AddModelError(field, ex.Body);
                 return View(serverConfig);
             }
@@ -67,6 +69,38 @@ namespace api.Controllers.View
             try
             {
                 await api.ServerConfigTestEmail(toEmail);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        /// Tests the CURRENTLY TYPED (unsaved) archive DB fields, opposite of TestEmail above - see ServerConfigApiController.TestArchiveDatabase.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> TestArchiveDatabase([FromBody] ArchiveDbTestRequest request)
+        {
+            try
+            {
+                await api.ServerConfigTestArchiveDatabase(request);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        /// Saves the whole "Data Archiving" subsection independently of this page's main Save button - see ServerConfigApiController.SaveArchiveSettings.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SaveArchiveSettings([FromBody] ArchiveSettingsSaveRequest request)
+        {
+            try
+            {
+                await api.ServerConfigSaveArchiveSettings(request);
                 return Ok();
             }
             catch (ApiException ex)

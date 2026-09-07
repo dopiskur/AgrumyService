@@ -17,6 +17,9 @@ namespace api.Dal.Interface
         /// Narrow writer for FirmwareCatalogRefreshEvaluator's last-run timestamp, same isolation reasoning as ServerConfigWeatherStateSetAsync.
         Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig);
 
+        /// Narrow writer for SensorDataArchiveEvaluator's last-run timestamp (roadmap #209), same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig);
+
         /// PostgreSQL/TimescaleDB side of sensorData retention (MariaDB's equivalent is SensorDataRetentionBackgroundService's daily purge) - re-applied on every ServerConfig save plus once at startup by ISystemRepository.EnsureSchemaAsync.
         Task ApplyRetentionPolicyAsync(int? retentionDays);
     }

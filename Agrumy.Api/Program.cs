@@ -155,6 +155,10 @@ builder.Services.AddHostedService<RuleNotificationBackgroundService>();
 builder.Services.AddScoped<SensorDataRetentionEvaluator>();
 builder.Services.AddHostedService<SensorDataRetentionBackgroundService>();
 
+// Roadmap #209: MariaDB/MySQL-only archive to a separate admin-configured database, opt-in, no-op unless ServerConfig.ArchiveEnabled - moves rows instead of deleting them, an alternative to (not a replacement for) the retention purge above.
+builder.Services.AddScoped<SensorDataArchiveEvaluator>();
+builder.Services.AddHostedService<SensorDataArchiveBackgroundService>();
+
 builder.Services.AddScoped<DeviceCommandRetentionEvaluator>();
 builder.Services.AddHostedService<DeviceCommandRetentionBackgroundService>();
 

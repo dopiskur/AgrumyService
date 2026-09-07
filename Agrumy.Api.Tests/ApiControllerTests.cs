@@ -2030,15 +2030,16 @@ public class ApiControllerTests
     }
 
 
-    /// Write-only, roadmap #395(5) - the repo returns the real (decrypted) Mqtt/Email passwords so internal senders can authenticate, but this GET must never echo either one back to the edit form.
+    /// Write-only, roadmap #395(5) - the repo returns the real (decrypted) Mqtt/Email passwords so internal senders can authenticate, but this GET must never echo either one back to the edit form. Roadmap #209's ArchivePassword joins the same redaction.
     [Fact]
-    public async Task ServerConfigGet_NeverReturnsMqttOrEmailPassword()
+    public async Task ServerConfigGet_NeverReturnsMqttOrEmailOrArchivePassword()
     {
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig
         {
             IDServerConfig = 1,
             MqttPassword = "broker-secret",
             EmailPassword = "smtp-secret",
+            ArchivePassword = "archive-secret",
         });
 
         var controller = NewServerConfigController();
@@ -2049,6 +2050,7 @@ public class ApiControllerTests
         var config = Assert.IsType<ServerConfig>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Null(config.MqttPassword);
         Assert.Null(config.EmailPassword);
+        Assert.Null(config.ArchivePassword);
     }
 
     [Fact]
@@ -2074,6 +2076,57 @@ public class ApiControllerTests
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
+
+    /// Roadmap #209 - enabling archiving without host/database/username set must be rejected before any write.
+    [Fact]
+    public async Task ServerConfigUpdate_ArchiveEnabledWithoutHost_Returns400_AndNeverWrites()
+    {
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.Update(new ServerConfig { ArchiveEnabled = true });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
+    }
+
+    [Fact]
+    public async Task ServerConfigUpdate_ArchiveEnabledCustomRollingDaysNotPreset_Returns400()
+    {
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.Update(new ServerConfig
+        {
+            ArchiveEnabled = true,
+            ArchiveCutoffMode = ArchiveCutoffMode.CustomRollingDays,
+            ArchiveCustomRollingDays = 30,
+            ArchiveHost = "archive.example.com",
+            ArchiveDatabaseName = "archive",
+            ArchiveUsername = "archiver",
+            ArchivePassword = "secret",
+        });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task ServerConfigUpdate_ArchiveDisabled_SkipsAllArchiveValidation()
+    {
+        ServerConfig? saved = null;
+        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
+             .Callback<ServerConfig>(c => saved = c)
+             .Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        // ArchiveEnabled left false/default - host/database/username all blank must not block an otherwise-valid save.
+        var result = await controller.Update(new ServerConfig());
+
+        Assert.IsType<OkResult>(result);
+        Assert.False(saved!.ArchiveEnabled);
+    }
 
     [Fact]
     public async Task ServerConfigUpdate_SensorDataRetentionDaysNegative_Returns400_AndNeverWrites()
@@ -2232,6 +2285,73 @@ public class ApiControllerTests
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("email channel disabled or missing Host/FromAddress", badRequest.Value);
+    }
+
+    /// Roadmap #209 - these only cover the validation short-circuits (missing fields, bad port) that return before ArchiveDbConnectionTester ever attempts a real network connection; the connection itself is untestable here, same status as MqttCommandPublisherTests' own network call.
+    [Fact]
+    public async Task TestArchiveDatabase_MissingHost_Returns400_NeverAttemptsConnection()
+    {
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestArchiveDatabase(new ArchiveDbTestRequest { DatabaseName = "archive", Username = "archiver", Port = 3306 });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TestArchiveDatabase_PortOutOfRange_Returns400()
+    {
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestArchiveDatabase(new ArchiveDbTestRequest { Host = "archive.example.com", DatabaseName = "archive", Username = "archiver", Port = 70000 });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TestArchiveDatabase_NoPasswordAndNoneStored_Returns400_NeverAttemptsConnection()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestArchiveDatabase(new ArchiveDbTestRequest { Host = "archive.example.com", DatabaseName = "archive", Username = "archiver", Port = 3306 });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task SaveArchiveSettings_Disabling_PersistsWithoutTestingConnection()
+    {
+        ServerConfig? saved = null;
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { ArchiveEnabled = true, ArchiveHost = "old.example.com" });
+        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
+             .Callback<ServerConfig>(c => saved = c)
+             .Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        // Deliberately no Host/Username/Password - disabling must not require them, and must never attempt a connection (no network call possible in this test).
+        var result = await controller.SaveArchiveSettings(new ArchiveSettingsSaveRequest { Enabled = false });
+
+        Assert.IsType<OkResult>(result);
+        Assert.False(saved!.ArchiveEnabled);
+    }
+
+    [Fact]
+    public async Task SaveArchiveSettings_EnablingWithoutHost_Returns400_NeverWrites()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.SaveArchiveSettings(new ArchiveSettingsSaveRequest { Enabled = true });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving nothing was written before the field check rejected the request.
     }
 
     [Fact]

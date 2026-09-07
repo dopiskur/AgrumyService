@@ -18,6 +18,9 @@ namespace api.Dal
         public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigFirmwareRefreshStateSetAsync(checkedAtUtc, idServerConfig);
 
+        public Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig = 1) =>
+            serverConfigRepository.ServerConfigArchiveRunStateSetAsync(ranAtUtc, idServerConfig);
+
         public Task ApplyRetentionPolicyAsync(int? retentionDays) => serverConfigRepository.ApplyRetentionPolicyAsync(retentionDays);
     }
 }

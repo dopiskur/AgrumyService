@@ -165,11 +165,79 @@ namespace api.Models
         // A leaked/screen-shotted PIN (or a leaked DeviceCommand.Payload, see DeviceCommandApiController.GetCommand) is valid for this long - fixed preset {5,15,60,120,360,720,1440}, clamped by ServerConfigApiController.Update, not free-text.
         [Display(Name = "Registration PIN validity (minutes)")]
         public int DevicePinValidMinutes { get; set; } = 60;
+
+        // Roadmap #209 - MariaDB/MySQL only (Postgres/TimescaleDB uses its own native tiered storage instead, #14); opt-in, moves sensorData rows past the cutoff to a separate archive database instead of deleting them (SensorDataArchiveEvaluator). Inactive until an admin sets and successfully tests archive credentials.
+        [Display(Name = "Enable database archiving")]
+        public bool ArchiveEnabled { get; set; }
+
+        [Display(Name = "Archive cutoff mode")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+        public ArchiveCutoffMode ArchiveCutoffMode { get; set; }
+
+        /// CustomDate mode only - rows with DateCreated before this (UTC midnight) are archived.
+        [Display(Name = "Custom cutoff date")]
+        public DateOnly? ArchiveCustomCutoffDate { get; set; }
+
+        /// CustomRollingDays mode only - fixed preset {90,180,365}, clamped by ServerConfigApiController.Update.
+        [Display(Name = "Archive data older than (days)")]
+        public int? ArchiveCustomRollingDays { get; set; }
+
+        [Display(Name = "Archive DB host")]
+        public string? ArchiveHost { get; set; }
+        [Display(Name = "Archive DB port")]
+        public int? ArchivePort { get; set; } = 3306;
+        [Display(Name = "Archive database name")]
+        public string? ArchiveDatabaseName { get; set; }
+        [Display(Name = "Archive DB username")]
+        public string? ArchiveUsername { get; set; }
+        // Never round-tripped back into the edit form - same "blank keeps existing" convention as MqttPassword/EmailPassword above.
+        [Display(Name = "Archive DB password")]
+        public string? ArchivePassword { get; set; }
+
+        // Written only by SensorDataArchiveEvaluator, read-only on Server Settings - same isolation reasoning as WeatherCheckedAtUtc/FirmwareLastRefreshedAtUtc.
+        [Display(Name = "Archive last ran")]
+        public DateTimeOffset? ArchiveLastRunAtUtc { get; set; }
+    }
+
+    /// ServerConfig.ArchiveCutoffMode - which rows SensorDataArchiveEvaluator moves out of the active database on its next run.
+    public enum ArchiveCutoffMode
+    {
+        /// Yearly: on/after Jan 1, everything from two calendar years back (and older) is archived - e.g. on 2027-01-01, 2025 and earlier moves, 2026+ stays active.
+        Calendar = 0,
+        /// Everything strictly before ArchiveCustomCutoffDate moves, a one-time cutoff rather than a moving window.
+        CustomDate = 1,
+        /// Everything older than ArchiveCustomRollingDays moves, re-evaluated (and so effectively continuous) on every run.
+        CustomRollingDays = 2,
     }
 
     /// The only ServerConfig field a pre-login, unauthenticated page may see - Register uses it to decide whether to show "create a new tenant" without needing the admin-only /api/ServerConfig.
     public class PublicServerConfig
     {
         public bool AllowSelfServiceTenantCreation { get; set; }
+    }
+
+    /// Body of POST /api/ServerConfig/TestArchiveDatabase (roadmap #209) - tests connectivity BEFORE Update ever saves these as the real archive credentials. Password blank means "use whatever's already saved" (the "Change archive database" flow editing host/port/etc without re-entering an unchanged password), same convention ServerConfigApiController.Update itself uses.
+    public class ArchiveDbTestRequest
+    {
+        public string? Host { get; set; }
+        public int? Port { get; set; }
+        public string? DatabaseName { get; set; }
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+    }
+
+    /// Body of POST /api/ServerConfig/ArchiveSettings (roadmap #209) - the "Data Archiving" subsection's own self-contained save, independent of the main Server Settings form/button: tests the connection first when Enabled (skipped when disabling - see ServerConfigApiController.SaveArchiveSettings), then persists only these archive-specific fields, leaving the rest of ServerConfig untouched.
+    public class ArchiveSettingsSaveRequest
+    {
+        public bool Enabled { get; set; }
+        public ArchiveCutoffMode CutoffMode { get; set; }
+        public DateOnly? CustomCutoffDate { get; set; }
+        public int? CustomRollingDays { get; set; }
+        public string? Host { get; set; }
+        public int? Port { get; set; }
+        public string? DatabaseName { get; set; }
+        public string? Username { get; set; }
+        // Blank means "keep whatever's already saved" - same convention as ArchiveDbTestRequest.Password.
+        public string? Password { get; set; }
     }
 }
