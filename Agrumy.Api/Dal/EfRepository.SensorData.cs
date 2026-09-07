@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using api.Dal.Interface;
 using api.Models;
 
@@ -7,8 +6,8 @@ namespace api.Dal
     /// ISensorDataRepository members - forwarded to the standalone EfSensorDataRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository
     {
-        public Task SensorDataPushAsync(JsonArray jsonArray, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID) =>
-            sensorDataRepository.SensorDataPushAsync(jsonArray, deviceID, tenantID, deviceFarmUnitID, deviceFarmUnitZoneID);
+        public Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID) =>
+            sensorDataRepository.SensorDataPushAsync(readings, deviceID, tenantID, deviceFarmUnitID, deviceFarmUnitZoneID);
 
         public Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY, int? buildReport) =>
             sensorDataRepository.SensorDataGetAsync(tenantID, deviceID, timeRange, timeMDMY, buildReport);

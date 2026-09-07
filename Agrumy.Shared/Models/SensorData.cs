@@ -1,8 +1,51 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using api.Json;
 
 namespace api.Models
 {
-    
+    /// One item of the JSON array body for POST /api/SensorData - see contracts/device-api/sensordata.request.schema.json. DeviceID/TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID are present on the wire but always ignored (identity comes from the authenticated device, see SensorDataController.Post); every measurement accepts a JSON number OR a numeric string, since legacy pre-#326 firmware still sends strings.
+    public class SensorDataPushReading
+    {
+        public int? DeviceID { get; set; }
+        public int? TenantID { get; set; }
+        public int? DeviceFarmUnitID { get; set; }
+        public int? DeviceFarmUnitZoneID { get; set; }
+
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Battery { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? Temperature { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? SoilTemperature { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? Humidity { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Moisture { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Light { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Co2 { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Tvoc { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? Barometer { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? LiquidPH { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? RainLevel { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? WaterLevel { get; set; }
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? Wind { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? Ec { get; set; }
+        [JsonConverter(typeof(LenientDoubleConverter))]
+        public double? Weight { get; set; }
+        // Device-side timestamp string (device.getDateTime()'s "yyyy-MM-dd HH:mm:ss", assumed UTC) - kept as a raw string here, parsed by EfSensorDataRepository the same way it always was.
+        public string? DateCreated { get; set; }
+    }
+
     public class SensorData
     {
         public int? TenantID { get; set; }

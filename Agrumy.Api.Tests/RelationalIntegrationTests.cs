@@ -1743,7 +1743,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         var d = await MakeDevice(t, tenantId);
-        await _repo.SensorDataPushAsync(new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject { ["temperature"] = 21.0 }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 21.0 }],
             d.IDDevice!.Value, tenantId, null, null);
 
         await _repo.VirtualDeviceRegisterAsync(d.IDDevice!.Value);
@@ -1810,25 +1810,28 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(fleet.Single(f => f.IDDevice == virt.IDDevice).IsVirtual);
     }
 
+    // The wire-format string-vs-number coercion itself is exercised at the JSON boundary now (ContractTests.SensorDataRequest_*_MatchesSchemaAndBinds) - this covers the repository/DB side: a batch of already-bound readings persists correctly and a missing DateCreated falls back to UtcNow.
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task SensorDataPush_Parses_String_Measurements_And_Fills_Missing_Date(DbProviderKind provider)
+    public async Task SensorDataPush_PersistsBatch_And_Fills_Missing_Date(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         var d = await MakeDevice(t, tenantId);
 
-        var payload = new JsonArray(
-            new JsonObject
+        var payload = new List<SensorDataPushReading>
+        {
+            new()
             {
-                ["deviceID"] = d.IDDevice, ["tenantID"] = tenantId, ["deviceFarmUnitID"] = 0, ["deviceFarmUnitZoneID"] = 0,
-                ["temperature"] = "26.13", ["humidity"] = "47.5", ["co2"] = "408", ["battery"] = null,
-                ["dateCreated"] = "2026-08-29 09:50:00",
+                DeviceID = d.IDDevice, TenantID = tenantId, DeviceFarmUnitID = 0, DeviceFarmUnitZoneID = 0,
+                Temperature = 26.13, Humidity = 47.5, Co2 = 408, Battery = null,
+                DateCreated = "2026-08-29 09:50:00",
             },
-            new JsonObject
+            new()
             {
-                ["deviceID"] = d.IDDevice, ["tenantID"] = tenantId, ["deviceFarmUnitID"] = 0, ["deviceFarmUnitZoneID"] = 0,
-                ["temperature"] = "27.0", ["co2"] = "410",
-            });
+                DeviceID = d.IDDevice, TenantID = tenantId, DeviceFarmUnitID = 0, DeviceFarmUnitZoneID = 0,
+                Temperature = 27.0, Co2 = 410,
+            },
+        };
 
         await _repo.SensorDataPushAsync(payload, d.IDDevice!.Value, tenantId, 0, 0);
 
@@ -1849,15 +1852,17 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (tenantId, _, _) = await MakeUser(t);
         var d = await MakeDevice(t, tenantId);
 
-        var payload = new JsonArray(
-            new JsonObject
+        var payload = new List<SensorDataPushReading>
+        {
+            new()
             {
-                ["deviceID"] = d.IDDevice!.Value + 999_999,
-                ["tenantID"] = tenantId + 999_999,
-                ["deviceFarmUnitID"] = 7,
-                ["deviceFarmUnitZoneID"] = 9,
-                ["temperature"] = "21.5",
-            });
+                DeviceID = d.IDDevice!.Value + 999_999,
+                TenantID = tenantId + 999_999,
+                DeviceFarmUnitID = 7,
+                DeviceFarmUnitZoneID = 9,
+                Temperature = 21.5,
+            },
+        };
 
         await _repo.SensorDataPushAsync(payload, d.IDDevice!.Value, tenantId, 0, 0);
 
@@ -2014,15 +2019,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         DateTime now = DateTime.UtcNow;
         string older = now.AddSeconds(-30).ToString("yyyy-MM-dd HH:mm:ss");
         string newer = now.AddSeconds(-10).ToString("yyyy-MM-dd HH:mm:ss");
-        await _repo.SensorDataPushAsync(new JsonArray(
-            new JsonObject { ["temperature"] = "10.0", ["dateCreated"] = older }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 10.0, DateCreated = older }],
             d1.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
-        await _repo.SensorDataPushAsync(new JsonArray(
-            new JsonObject { ["temperature"] = "20.0", ["dateCreated"] = newer }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 20.0, DateCreated = newer }],
             d1.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
         // d2: reports humidity only - never sent a temperature, must not drag the temperature average down.
-        await _repo.SensorDataPushAsync(new JsonArray(
-            new JsonObject { ["humidity"] = "50.0", ["dateCreated"] = newer }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Humidity = 50.0, DateCreated = newer }],
             d2.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
 
         var unitDashboard = Assert.Single(await _repo.DeviceFarmUnitDashboardGetAsync(tenantId), u => u.IDDeviceFarmUnit == unit.IDDeviceFarmUnit);
@@ -2271,7 +2273,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
 
-        await _repo.SensorDataPushAsync(new JsonArray(new JsonObject { ["temperature"] = "22.5" }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 22.5 }],
             d.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
 
         var zoneDetail = await _repo.DeviceFarmUnitZoneDashboardGetAsync(zone.IDDeviceFarmUnitZone!.Value);
@@ -2289,7 +2291,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.SensorDataPushAsync(new JsonArray(new JsonObject { ["temperature"] = "22.5" }),
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 22.5 }],
             d.IDDevice!.Value, tenantId, unit.IDDeviceFarmUnit, zone.IDDeviceFarmUnitZone);
 
         var forAlert = await _repo.DeviceFarmUnitZoneDashboardGetAsync(zone.IDDeviceFarmUnitZone!.Value);

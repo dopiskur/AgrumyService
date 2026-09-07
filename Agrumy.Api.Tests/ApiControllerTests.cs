@@ -2789,13 +2789,13 @@ public class ApiControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         controller.HttpContext.Items[DeviceAuth.ApiIdItemKey] = "api-guid";
 
-        var jsonArray = new JsonArray();
+        var readings = new List<SensorDataPushReading>();
         for (int i = 0; i < 1001; i++)
         {
-            jsonArray.Add(new JsonObject());
+            readings.Add(new SensorDataPushReading());
         }
 
-        var result = await controller.Post(jsonArray);
+        var result = await controller.Post(readings);
 
         Assert.Equal(400, Assert.IsType<BadRequestObjectResult>(result.Result).StatusCode);
     }
@@ -2809,19 +2809,19 @@ public class ApiControllerTests
 
         _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid"))
              .ReturnsAsync(new Device { IDDevice = 500, TenantID = 3, ConfigVersion = 66 });
-        _repo.Setup(r => r.SensorDataPushAsync(It.IsAny<JsonArray>(), 500, 3, It.IsAny<int?>(), It.IsAny<int?>()))
+        _repo.Setup(r => r.SensorDataPushAsync(It.IsAny<IReadOnlyList<SensorDataPushReading>>(), 500, 3, It.IsAny<int?>(), It.IsAny<int?>()))
              .Returns(Task.CompletedTask);
 
-        var jsonArray = new JsonArray();
+        var readings = new List<SensorDataPushReading>();
         for (int i = 0; i < 1000; i++)
         {
-            jsonArray.Add(new JsonObject());
+            readings.Add(new SensorDataPushReading());
         }
 
-        var result = await controller.Post(jsonArray);
+        var result = await controller.Post(readings);
 
         Assert.IsType<OkObjectResult>(result.Result);
-        _repo.Verify(r => r.SensorDataPushAsync(It.IsAny<JsonArray>(), 500, 3, It.IsAny<int?>(), It.IsAny<int?>()), Times.Once);
+        _repo.Verify(r => r.SensorDataPushAsync(It.IsAny<IReadOnlyList<SensorDataPushReading>>(), 500, 3, It.IsAny<int?>(), It.IsAny<int?>()), Times.Once);
     }
 
     [Fact]

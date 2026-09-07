@@ -1,13 +1,12 @@
 using api.Models;
-using System.Text.Json.Nodes;
 
 namespace api.Dal.Interface
 {
     /// Telemetry facet of the data layer.
     public interface ISensorDataRepository
     {
-        /// Persists a telemetry batch - deviceID/tenantID/deviceFarmUnitID/deviceFarmUnitZoneID come from the authenticated identity and are applied to every row; matching keys inside the JSON itself are ignored.
-        Task SensorDataPushAsync(JsonArray jsonArray, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID);
+        /// Persists a telemetry batch - deviceID/tenantID/deviceFarmUnitID/deviceFarmUnitZoneID come from the authenticated identity and are applied to every row; matching fields on each reading itself are ignored.
+        Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID);
         Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY, int? buildReport);
 
         /// Same JSON shape as SensorDataGetAsync, but time-bucket averaged across every device in the zone/unit instead of one device's own raw readings.

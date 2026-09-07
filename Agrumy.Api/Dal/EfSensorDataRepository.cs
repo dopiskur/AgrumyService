@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json.Nodes;
 using api.Dal.Entities;
 using api.Dal.Interface;
 using api.Models;
@@ -8,51 +7,41 @@ using Npgsql;
 
 namespace api.Dal
 {
-    /// ISensorDataRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet. Includes the JSON value coercion helpers the telemetry push uses (firmware sends measurements as strings or null).
+    /// ISensorDataRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet.
     internal sealed class EfSensorDataRepository(AgrumyDbContext db) : ISensorDataRepository
     {
-        public async Task SensorDataPushAsync(JsonArray jsonArray, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID)
+        public async Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID)
         {
-            var rows = new List<SensorDataRow>();
-            foreach (var node in jsonArray)
-            {
-                if (node is not JsonObject o)
-                {
-                    continue;
-                }
-
-                DateTime? dc = ReadDateTime(o, "dateCreated");
-                rows.Add(new SensorDataRow
-                {
-                    // Identity is server-authoritative - the matching keys in the JSON payload are deliberately ignored.
-                    DeviceID = deviceID,
-                    TenantID = tenantID,
-                    DeviceFarmUnitID = deviceFarmUnitID,
-                    DeviceFarmUnitZoneID = deviceFarmUnitZoneID,
-                    Battery = ReadInt(o, "battery"),
-                    Temperature = ReadDouble(o, "temperature"),
-                    SoilTemperature = ReadDouble(o, "soilTemperature"),
-                    Humidity = ReadDouble(o, "humidity"),
-                    Moisture = ReadInt(o, "moisture"),
-                    Light = ReadInt(o, "light"),
-                    Co2 = ReadInt(o, "co2"),
-                    Tvoc = ReadInt(o, "tvoc"),
-                    Barometer = ReadDouble(o, "barometer"),
-                    LiquidPH = ReadDouble(o, "liquidPH"),
-                    RainLevel = ReadInt(o, "rainLevel"),
-                    WaterLevel = ReadInt(o, "waterLevel"),
-                    Wind = ReadInt(o, "wind"),
-                    Ec = ReadDouble(o, "ec"),
-                    Weight = ReadDouble(o, "weight"),
-                    // A missing/blank timestamp becomes "now" (UTC - device timestamps are UTC).
-                    DateCreated = dc ?? DateTime.UtcNow,
-                });
-            }
-
-            if (rows.Count == 0)
+            if (readings.Count == 0)
             {
                 return;
             }
+
+            var rows = readings.Select(r => new SensorDataRow
+            {
+                // Identity is server-authoritative - the matching fields on each reading are deliberately ignored.
+                DeviceID = deviceID,
+                TenantID = tenantID,
+                DeviceFarmUnitID = deviceFarmUnitID,
+                DeviceFarmUnitZoneID = deviceFarmUnitZoneID,
+                Battery = r.Battery,
+                Temperature = r.Temperature,
+                SoilTemperature = r.SoilTemperature,
+                Humidity = r.Humidity,
+                Moisture = r.Moisture,
+                Light = r.Light,
+                Co2 = r.Co2,
+                Tvoc = r.Tvoc,
+                Barometer = r.Barometer,
+                LiquidPH = r.LiquidPH,
+                RainLevel = r.RainLevel,
+                WaterLevel = r.WaterLevel,
+                Wind = r.Wind,
+                Ec = r.Ec,
+                Weight = r.Weight,
+                // A missing/unparseable/blank timestamp becomes "now" (UTC - device timestamps are UTC).
+                DateCreated = ReadDateTime(r.DateCreated) ?? DateTime.UtcNow,
+            });
 
             db.SensorData.AddRange(rows);
             await db.SaveChangesAsync();
@@ -396,25 +385,6 @@ namespace api.Dal
             return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * fraction;
         }
 
-        // ---- JSON value coercion (firmware sends measurements as strings or null) --------
-
-        private static int? ReadInt(JsonObject o, string key)
-        {
-            if (!o.TryGetPropertyValue(key, out var n) || n is not JsonValue v)
-            {
-                return null;
-            }
-            if (v.TryGetValue(out int i)) return i;
-            if (v.TryGetValue(out long l)) return (int)l;
-            if (v.TryGetValue(out double d)) return (int)d;
-            if (v.TryGetValue(out string? s) && !string.IsNullOrWhiteSpace(s))
-            {
-                if (int.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var si)) return si;
-                if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var sd)) return (int)sd;
-            }
-            return null;
-        }
-
         public async Task<IList<SensorData>> SensorDataExportGetAsync(int tenantID, DateTime? sinceUtc)
         {
             // Dirty reads are fine for an export snapshot - avoids InnoDB gap-locking a live device's concurrent SensorDataPushAsync inserts on what can be a huge table (Postgres treats this as ReadCommitted regardless, MVCC readers never block writers there anyway).
@@ -478,31 +448,8 @@ namespace api.Dal
             await db.SaveChangesAsync();
         }
 
-        private static double? ReadDouble(JsonObject o, string key)
-        {
-            if (!o.TryGetPropertyValue(key, out var n) || n is not JsonValue v)
-            {
-                return null;
-            }
-            if (v.TryGetValue(out double d)) return d;
-            if (v.TryGetValue(out string? s) && !string.IsNullOrWhiteSpace(s)
-                && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var sd)) return sd;
-            return null;
-        }
-
-        private static DateTime? ReadDateTime(JsonObject o, string key)
-        {
-            if (!o.TryGetPropertyValue(key, out var n) || n is not JsonValue v)
-            {
-                return null;
-            }
-            if (v.TryGetValue(out DateTime dt)) return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-            // AssumeUniversal: a bare "yyyy-MM-dd HH:mm:ss" (no Z/offset, the device's own format) is UTC, not the host's local zone - the implicit DateTime->DateTimeOffset conversion on SensorDataRow.DateCreated otherwise reinterprets Kind=Unspecified as local time.
-            if (v.TryGetValue(out string? s) && DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var sd))
-            {
-                return sd;
-            }
-            return null;
-        }
+        // AssumeUniversal: a bare "yyyy-MM-dd HH:mm:ss" (no Z/offset, the device's own format) is UTC, not the host's local zone - the implicit DateTime->DateTimeOffset conversion on SensorDataRow.DateCreated otherwise reinterprets Kind=Unspecified as local time.
+        private static DateTime? ReadDateTime(string? s) =>
+            DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dt) ? dt : null;
     }
 }

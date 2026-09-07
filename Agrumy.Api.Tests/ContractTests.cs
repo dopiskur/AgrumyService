@@ -242,7 +242,7 @@ public class ContractTests
 
     // Pre-#326 firmware (String+atof SensorData) - still accepted since not every device in the field is on the new firmware yet.
     [Fact]
-    public void SensorDataRequest_LegacyStringShapedPayload_MatchesSchema()
+    public void SensorDataRequest_LegacyStringShapedPayload_MatchesSchemaAndBinds()
     {
         const string payload =
             """
@@ -258,11 +258,20 @@ public class ContractTests
             """;
 
         AssertValid("sensordata.request.schema.json", payload);
+
+        var bound = Assert.Single(JsonSerializer.Deserialize<List<SensorDataPushReading>>(payload, Mvc)!);
+        Assert.Equal(26.13, bound.Temperature);
+        Assert.Null(bound.SoilTemperature);
+        Assert.Equal(47.5, bound.Humidity);
+        Assert.Equal(2, bound.Light);
+        Assert.Equal(408, bound.Co2);
+        Assert.Equal(100727.82, bound.Barometer);
+        Assert.Equal("2026-08-29 09:50:00", bound.DateCreated);
     }
 
     // Roadmap #326: SensorData moved from Arduino String+atof to double/NaN, so a real reading now serializes as a JSON number instead of a numeric string.
     [Fact]
-    public void SensorDataRequest_FirmwareShapedPayload_MatchesSchema()
+    public void SensorDataRequest_FirmwareShapedPayload_MatchesSchemaAndBinds()
     {
         const string payload =
             """
@@ -278,6 +287,15 @@ public class ContractTests
             """;
 
         AssertValid("sensordata.request.schema.json", payload);
+
+        var bound = Assert.Single(JsonSerializer.Deserialize<List<SensorDataPushReading>>(payload, Mvc)!);
+        Assert.Equal(26.13, bound.Temperature);
+        Assert.Null(bound.SoilTemperature);
+        Assert.Equal(47.5, bound.Humidity);
+        Assert.Equal(2, bound.Light);
+        Assert.Equal(408, bound.Co2);
+        Assert.Equal(100727.82, bound.Barometer);
+        Assert.Equal("2026-08-29 09:50:00", bound.DateCreated);
     }
 
     // Real C# serialization of the push DTO, not a hand-written literal - catches a casing/shape drift the compiler would happily accept.

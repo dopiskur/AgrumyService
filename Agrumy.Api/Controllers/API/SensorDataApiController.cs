@@ -4,7 +4,6 @@ using api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Text.Json.Nodes;
 
 namespace api.Controllers.API
 {
@@ -40,11 +39,11 @@ namespace api.Controllers.API
         [HttpPost]
         [EnableRateLimiting("device-data")]
         [Authorize(Policy = DeviceAuth.SessionPolicy)]
-        public async Task<ActionResult<int?>> Post([FromBody] JsonArray jsonArray)
+        public async Task<ActionResult<int?>> Post([FromBody] List<SensorDataPushReading> readings)
         {
-            if (jsonArray.Count > MaxSensorDataBatchSize)
+            if (readings.Count > MaxSensorDataBatchSize)
             {
-                return BadRequest($"Batch too large: {jsonArray.Count} readings, max {MaxSensorDataBatchSize} per request.");
+                return BadRequest($"Batch too large: {readings.Count} readings, max {MaxSensorDataBatchSize} per request.");
             }
 
             string apiId = HttpContext.DeviceApiId()!;
@@ -56,7 +55,7 @@ namespace api.Controllers.API
                 return Unauthorized();
             }
 
-            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID ?? 0,
+            await sensorDataRepo.SensorDataPushAsync(readings, device.IDDevice!.Value, device.TenantID ?? 0,
                 device.DeviceFarmUnitID, device.DeviceFarmUnitZoneID);
 
             return Ok(device.ConfigVersion);

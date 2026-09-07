@@ -169,10 +169,10 @@ namespace api.Controllers.API
         /// Same steps as SensorDataController.Post.
         private async Task<GatewayBatchEntryResult> RunSensorDataAsync(Device device, JsonElement payload)
         {
-            JsonArray jsonArray = JsonNode.Parse(payload.GetRawText()) as JsonArray
+            List<SensorDataPushReading> readings = payload.Deserialize<List<SensorDataPushReading>>()
                 ?? throw new JsonException("SensorData payload must be a JSON array.");
 
-            await sensorDataRepo.SensorDataPushAsync(jsonArray, device.IDDevice!.Value, device.TenantID ?? 0,
+            await sensorDataRepo.SensorDataPushAsync(readings, device.IDDevice!.Value, device.TenantID ?? 0,
                 device.DeviceFarmUnitID, device.DeviceFarmUnitZoneID);
 
             return new GatewayBatchEntryResult { Success = true, StatusCode = 200 };

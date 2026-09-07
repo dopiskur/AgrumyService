@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/dopiskur/AgrumyService/contracts/device-api/sensordata.request.schema.json",
   "title": "SensorData - request  (firmware -> POST /api/SensorData)",
-  "description": "Body built by SensorController::buildSensorDataPayload(): a JSON ARRAY of readings. The firmware buffers unsent readings and flushes them together, so the array has one or more items. Each measurement field is sent as a JSON NUMBER since roadmap #326 (SensorData moved from Arduino String to double/NaN), null when that sensor produced no value this cycle - a STRING is still accepted for a device running pre-#326 firmware still in the field (ReadInt/ReadDouble in EfRepository.SensorData.cs parse either). The API forwards the array unchanged to the SensorDataPush stored procedure (JSON_TABLE). There is no response schema - the endpoint returns the caller's cached ConfigVersion as a bare value. Credentials travel as HTTP HEADERS: 'apiId' and 'Authorization' (apiAuth token).",
+  "description": "Body built by SensorController::buildSensorDataPayload(): a JSON ARRAY of readings, bound to List<SensorDataPushReading> (api.Models). The firmware buffers unsent readings and flushes them together, so the array has one or more items. Each measurement field is sent as a JSON NUMBER, null when that sensor produced no value this cycle - a STRING is still accepted for a device running pre-#326 firmware still in the field (LenientDoubleConverter/LenientIntConverter parse either). There is no response schema - the endpoint returns the caller's cached ConfigVersion as a bare value. Credentials travel as HTTP HEADERS: 'apiId' and 'Authorization' (apiAuth token).",
   "type": "array",
   "minItems": 1,
   "items": {
