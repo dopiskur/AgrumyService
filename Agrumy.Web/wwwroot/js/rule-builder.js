@@ -8,7 +8,7 @@
     // one of them to the actual INT code api.Models' enums serialize as (System.Text.Json default,
     // no JsonStringEnumConverter on ConditionConfigJson.Options) before it ever reaches the hidden
     // field/server. Mirror api.Models.NodeType/ComparisonOperator/LogicalOperator/SensorMetric exactly.
-    const NODE_TYPE_CODES = { comparison: 1, interval: 2, schedule: 3, group: 4, astronomical: 5, ruleTriggered: 6 };
+    const NODE_TYPE_CODES = { comparison: 1, interval: 2, schedule: 3, group: 4, astronomical: 5, ruleTriggered: 6, rateOfChange: 7, difDisruption: 8 };
     const COMPARISON_OP_CODES = { greaterThan: 1, lessThan: 2, greaterThanOrEqual: 3, lessThanOrEqual: 4, equal: 5, between: 6 };
     const GROUP_OP_CODES = { and: 1, or: 2 };
 
@@ -18,6 +18,8 @@
         ['schedule', 'Schedule'],
         ['astronomical', 'Astronomical (sunrise/sunset)'],
         ['ruleTriggered', 'Another rule fired'],
+        ['rateOfChange', 'Rate of change (vs N hours ago)'],
+        ['difDisruption', 'DIF disruption (night vs day temperature)'],
         ['group', 'Group (AND/OR of several conditions)'],
     ];
 
@@ -54,7 +56,7 @@
 
         allowedTypes() {
             return NODE_TYPES.filter(([value]) => {
-                if (value === 'ruleTriggered') return this.isNotification;
+                if (value === 'ruleTriggered' || value === 'rateOfChange' || value === 'difDisruption') return this.isNotification;
                 if (value === 'astronomical') return !this.isNotification;
                 return true;
             });
@@ -137,6 +139,21 @@
                 case 'ruleTriggered': {
                     const select = this.select('rt-referencedRuleId', this.referenceableRules.map(r => [String(r.id), r.name]));
                     body.append(this.row('Rule', select));
+                    break;
+                }
+                case 'rateOfChange': {
+                    const metricSelect = this.select('rt-metric', this.metrics.map(m => [String(m.value), m.label]));
+                    body.append(
+                        this.row('Metric', metricSelect),
+                        this.row('Hours ago to compare against', this.numberInput('rt-windowHours', 'e.g. 3')),
+                        this.row('Fires when the change reaches at least', this.numberInput('rt-changeThreshold', 'e.g. 5')));
+                    break;
+                }
+                case 'difDisruption': {
+                    body.append(
+                        this.row('Night window (hours, ending now)', this.numberInput('rt-nightWindowHours', 'e.g. 4')),
+                        this.row('Day window (hours, right before the night window)', this.numberInput('rt-dayWindowHours', 'e.g. 8')),
+                        this.row('Fires when day-avg minus night-avg drops below', this.numberInput('rt-minDifDegrees', 'e.g. 5')));
                     break;
                 }
                 case 'group': {
@@ -239,6 +256,10 @@
                     const v = body.querySelector('.rt-referencedRuleId')?.value;
                     return { type: NODE_TYPE_CODES.ruleTriggered, referencedRuleId: v ? Number(v) : null };
                 }
+                case 'rateOfChange':
+                    return { type: NODE_TYPE_CODES.rateOfChange, metric: num('.rt-metric'), windowHours: num('.rt-windowHours'), changeThreshold: num('.rt-changeThreshold') };
+                case 'difDisruption':
+                    return { type: NODE_TYPE_CODES.difDisruption, nightWindowHours: num('.rt-nightWindowHours'), dayWindowHours: num('.rt-dayWindowHours'), minDifDegrees: num('.rt-minDifDegrees') };
                 case 'group': {
                     const children = Array.from(body.querySelectorAll(':scope > .rt-children > .rt-node')).map(c => this.serializeNode(c));
                     const groupOpKey = body.querySelector('.rt-groupOperator')?.value;

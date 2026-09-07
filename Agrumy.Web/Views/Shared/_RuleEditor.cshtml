@@ -39,6 +39,8 @@
             api.Models.NodeType.Schedule => ScheduleText(node.DaysOfWeek, node.Start, node.Duration),
             api.Models.NodeType.Astronomical => $"sunrise {node.SunriseOffsetMinutes:+#;-#;0}min / sunset {node.SunsetOffsetMinutes:+#;-#;0}min",
             api.Models.NodeType.RuleTriggered => $"rule #{node.ReferencedRuleId} fired",
+            api.Models.NodeType.RateOfChange => $"{node.Metric} changes by &gt;={node.ChangeThreshold:0.##} vs {node.WindowHours}h ago",
+            api.Models.NodeType.DifDisruption => $"day-night dif &lt; {node.MinDifDegrees:0.##}&deg; (night {node.NightWindowHours}h vs day {node.DayWindowHours}h before it)",
             api.Models.NodeType.Group => "(" + string.Join($" {node.GroupOperator} ", node.Children.Select(SummarizeTree)) + ")",
             _ => "?",
         };

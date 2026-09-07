@@ -471,6 +471,10 @@ namespace api.Controllers.API
             {
                 return "An astronomical condition is only valid on a Relay-action rule (AstronomicalRuleResolver only runs on the Relay path - api.Devices.RuleConditionEvaluator has no case for it, so a Notification rule would always evaluate this condition as false).";
             }
+            if ((node.Type == NodeType.RateOfChange || node.Type == NodeType.DifDisruption) && rule.ActionType != ActionType.Notification)
+            {
+                return "A rate-of-change/DIF condition is only valid on a Notification-action rule (roadmap #398) - it reads SensorTrend history the device never receives, so a Relay rule would always evaluate this condition as false.";
+            }
             if (NodeConfigError(node) is string configError)
             {
                 return configError;
@@ -543,6 +547,17 @@ namespace api.Controllers.API
                     return null;
                 case NodeType.RuleTriggered:
                     return node.ReferencedRuleId == null ? "referencedRuleId is required." : null;
+                case NodeType.RateOfChange:
+                    if (node.Metric == null) { return "metric is required."; }
+                    if (node.WindowHours is not int rocWindow || rocWindow < 1 || rocWindow >= SensorTrend.HourBuckets) { return $"windowHours must be between 1 and {SensorTrend.HourBuckets - 1}."; }
+                    if (node.ChangeThreshold is not double rocThreshold || rocThreshold < 0) { return "changeThreshold is required and must not be negative."; }
+                    return null;
+                case NodeType.DifDisruption:
+                    if (node.NightWindowHours is not int nightHours || nightHours < 1) { return "nightWindowHours must be at least 1."; }
+                    if (node.DayWindowHours is not int dayHours || dayHours < 1) { return "dayWindowHours must be at least 1."; }
+                    if (nightHours + dayHours > SensorTrend.HourBuckets) { return $"nightWindowHours + dayWindowHours must not exceed {SensorTrend.HourBuckets}."; }
+                    if (node.MinDifDegrees == null) { return "minDifDegrees is required."; }
+                    return null;
                 case NodeType.Group:
                     return null; // Children/GroupOperator checked by the caller (NodeShapeErrorAsync), not here.
                 default:

@@ -14,7 +14,7 @@ namespace api.BackgroundWorkers
     public sealed class RuleNotificationEvaluator(
         ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo, INotificationDispatcher dispatcher)
     {
-        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds);
+        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend);
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
@@ -76,7 +76,7 @@ namespace api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, zoneId);
-                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds));
+                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend));
                     }
                 }
             }
@@ -100,7 +100,7 @@ namespace api.BackgroundWorkers
                 foreach (EvalItem item in items)
                 {
                     Func<SensorMetric, double?> readMetric = metric => item.Averages != null ? ReadMetric(item.Averages, metric) : null;
-                    bool result = RuleConditionEvaluator.EvaluateRule(item.Rule, item.WasTrue, readMetric, utcNow, item.UtcOffsetSeconds, firedThisTick.Contains);
+                    bool result = RuleConditionEvaluator.EvaluateRule(item.Rule, item.WasTrue, readMetric, utcNow, item.UtcOffsetSeconds, firedThisTick.Contains, item.Trend);
                     results[item] = result;
                     if (result)
                     {

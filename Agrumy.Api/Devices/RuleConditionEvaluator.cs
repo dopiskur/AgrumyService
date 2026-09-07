@@ -1,3 +1,4 @@
+using System.Linq;
 using api.Models;
 
 namespace api.Devices
@@ -16,11 +17,11 @@ namespace api.Devices
         /// with more than one GT/LT node (each shares the whole rule's latch rather than its own), traded
         /// for not needing a per-node state table.
         public static bool EvaluateRule(DeviceFarmUnitZoneRule rule, bool wasRuleTrue, Func<SensorMetric, double?> readMetric,
-            DateTime utcNow, int utcOffsetSeconds, Func<int, bool> referencedRuleFiredThisTick) =>
-            rule.Root != null && EvaluateNode(rule.Root, wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick);
+            DateTime utcNow, int utcOffsetSeconds, Func<int, bool> referencedRuleFiredThisTick, SensorTrend? trend = null) =>
+            rule.Root != null && EvaluateNode(rule.Root, wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick, trend);
 
         public static bool EvaluateNode(ConditionNode node, bool wasRuleTrue, Func<SensorMetric, double?> readMetric,
-            DateTime utcNow, int utcOffsetSeconds, Func<int, bool> referencedRuleFiredThisTick)
+            DateTime utcNow, int utcOffsetSeconds, Func<int, bool> referencedRuleFiredThisTick, SensorTrend? trend = null)
         {
             switch (node.Type)
             {
@@ -62,16 +63,40 @@ namespace api.Devices
                 }
                 case NodeType.RuleTriggered:
                     return node.ReferencedRuleId is int referencedRuleId && referencedRuleFiredThisTick(referencedRuleId);
+                case NodeType.RateOfChange:
+                {
+                    // Only meaningful server-side (roadmap #398(1)) - validation restricts this to Notification rules, so trend is always non-null by the time it matters; a null trend (Relay/simulated path) just evaluates false, same fail-closed shape as a missing reading elsewhere in this switch.
+                    if (trend == null || node.Metric is not SensorMetric metric || node.WindowHours is not int windowHours
+                        || windowHours is < 1 or >= SensorTrend.HourBuckets || node.ChangeThreshold is not double changeThreshold)
+                    {
+                        return false;
+                    }
+                    double? current = readMetric(metric);
+                    double? past = TrendBucket(trend, metric, SensorTrend.HourBuckets - 1 - windowHours);
+                    return current is double c && !double.IsNaN(c) && past is double p && Math.Abs(c - p) >= changeThreshold;
+                }
+                case NodeType.DifDisruption:
+                {
+                    // Roadmap #398(3) - "day" and "night" here are just the two windows relative to now, not calendar/sunrise-aligned; always Temperature, no per-node Metric.
+                    if (trend == null || node.NightWindowHours is not int nightHours || node.DayWindowHours is not int dayHours
+                        || nightHours < 1 || dayHours < 1 || nightHours + dayHours > SensorTrend.HourBuckets || node.MinDifDegrees is not double minDif)
+                    {
+                        return false;
+                    }
+                    double? nightAvg = TrendBucketAverage(trend.Temperature, SensorTrend.HourBuckets - nightHours, SensorTrend.HourBuckets - 1);
+                    double? dayAvg = TrendBucketAverage(trend.Temperature, SensorTrend.HourBuckets - nightHours - dayHours, SensorTrend.HourBuckets - nightHours - 1);
+                    return nightAvg is double n && dayAvg is double d && (d - n) < minDif;
+                }
                 case NodeType.Group:
                 {
                     if (node.Children.Count == 0)
                     {
                         return false;
                     }
-                    bool result = EvaluateNode(node.Children[0], wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick);
+                    bool result = EvaluateNode(node.Children[0], wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick, trend);
                     for (int i = 1; i < node.Children.Count; i++)
                     {
-                        bool next = EvaluateNode(node.Children[i], wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick);
+                        bool next = EvaluateNode(node.Children[i], wasRuleTrue, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick, trend);
                         result = node.GroupOperator == LogicalOperator.And ? (result && next) : (result || next);
                     }
                     return result;
@@ -81,6 +106,33 @@ namespace api.Devices
                     // Astronomical never reaches evaluation as-is - AstronomicalRuleResolver compiles every occurrence into a Schedule node before a rule is evaluated (Relay path) or would need the same treatment on the Notification path (not currently resolved there - see DeviceFarmUnitApiController's validation, which rejects Astronomical on a Notification rule).
                     return false;
             }
+        }
+
+        private static double? TrendBucket(SensorTrend trend, SensorMetric metric, int bucketIndex) => metric switch
+        {
+            SensorMetric.Temperature => trend.Temperature[bucketIndex],
+            SensorMetric.SoilTemperature => trend.SoilTemperature[bucketIndex],
+            SensorMetric.Humidity => trend.Humidity[bucketIndex],
+            SensorMetric.Vpd => trend.Vpd[bucketIndex],
+            SensorMetric.DewPoint => trend.DewPoint[bucketIndex],
+            SensorMetric.DewPointSpread => trend.DewPointSpread[bucketIndex],
+            SensorMetric.Moisture => trend.Moisture[bucketIndex],
+            SensorMetric.Light => trend.Light[bucketIndex],
+            SensorMetric.Co2 => trend.Co2[bucketIndex],
+            SensorMetric.Tvoc => trend.Tvoc[bucketIndex],
+            SensorMetric.Barometer => trend.Barometer[bucketIndex],
+            SensorMetric.LiquidPH => trend.LiquidPH[bucketIndex],
+            SensorMetric.RainLevel => trend.RainLevel[bucketIndex],
+            SensorMetric.WaterLevel => trend.WaterLevel[bucketIndex],
+            SensorMetric.Wind => trend.Wind[bucketIndex],
+            _ => null,
+        };
+
+        /// Plain mean of the inclusive [fromBucket, toBucket] range, ignoring null buckets; null if every bucket in range is null (not enough history yet).
+        private static double? TrendBucketAverage(double?[] buckets, int fromBucket, int toBucket)
+        {
+            var values = buckets.Skip(fromBucket).Take(toBucket - fromBucket + 1).Where(v => v != null).Select(v => v!.Value).ToList();
+            return values.Count > 0 ? values.Average() : null;
         }
 
         // ---- Pure math, mirrors AgrumyFirmware's RelayLogic.cpp exactly. ---------------------------------

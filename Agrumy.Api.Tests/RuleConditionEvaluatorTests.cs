@@ -137,6 +137,74 @@ public class RuleConditionEvaluatorTests
         Assert.True(result);
     }
 
+    private static SensorTrend TrendWithTemperature(params double?[] hourlyValues)
+    {
+        var trend = new SensorTrend();
+        for (int i = 0; i < hourlyValues.Length && i < SensorTrend.HourBuckets; i++)
+        {
+            trend.Temperature[SensorTrend.HourBuckets - hourlyValues.Length + i] = hourlyValues[i];
+        }
+        return trend;
+    }
+
+    [Fact]
+    public void RateOfChange_CurrentFarFromPastBucket_IsTrue()
+    {
+        var node = new ConditionNode { Type = NodeType.RateOfChange, Metric = SensorMetric.Temperature, WindowHours = 3, ChangeThreshold = 5 };
+        // Current hour is bucket 23; 3 hours ago is bucket 20 (HourBuckets-1-WindowHours).
+        var trend = new SensorTrend();
+        trend.Temperature[20] = 20;
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(30), DateTime.UtcNow, 0, _ => false, trend);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void RateOfChange_CurrentCloseToPastBucket_IsFalse()
+    {
+        var node = new ConditionNode { Type = NodeType.RateOfChange, Metric = SensorMetric.Temperature, WindowHours = 3, ChangeThreshold = 5 };
+        var trend = new SensorTrend();
+        trend.Temperature[20] = 20;
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(23), DateTime.UtcNow, 0, _ => false, trend);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void RateOfChange_NoTrend_IsFalse()
+    {
+        var node = new ConditionNode { Type = NodeType.RateOfChange, Metric = SensorMetric.Temperature, WindowHours = 3, ChangeThreshold = 5 };
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(30), DateTime.UtcNow, 0, _ => false, trend: null);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void RateOfChange_PastBucketMissing_IsFalse()
+    {
+        var node = new ConditionNode { Type = NodeType.RateOfChange, Metric = SensorMetric.Temperature, WindowHours = 3, ChangeThreshold = 5 };
+        var trend = new SensorTrend(); // every bucket null - no history yet
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(30), DateTime.UtcNow, 0, _ => false, trend);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void DifDisruption_NightCloseToDay_IsTrue()
+    {
+        var node = new ConditionNode { Type = NodeType.DifDisruption, NightWindowHours = 4, DayWindowHours = 4, MinDifDegrees = 5 };
+        // Day window (buckets 16-19) averages 25, night window (buckets 20-23) averages 24 - dif of 1 is well under the required 5.
+        SensorTrend trend = TrendWithTemperature([25, 25, 25, 25, 24, 24, 24, 24]);
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(null), DateTime.UtcNow, 0, _ => false, trend);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void DifDisruption_NightProperlyCoolerThanDay_IsFalse()
+    {
+        var node = new ConditionNode { Type = NodeType.DifDisruption, NightWindowHours = 4, DayWindowHours = 4, MinDifDegrees = 5 };
+        // Day averages 28, night averages 18 - dif of 10 clears the required 5, so the night cooled fine.
+        SensorTrend trend = TrendWithTemperature([28, 28, 28, 28, 18, 18, 18, 18]);
+        bool result = RuleConditionEvaluator.EvaluateNode(node, wasRuleTrue: false, Reading(null), DateTime.UtcNow, 0, _ => false, trend);
+        Assert.False(result);
+    }
+
     [Fact]
     public void FindFirstComparison_WalksIntoGroup()
     {

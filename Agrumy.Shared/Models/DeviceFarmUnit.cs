@@ -125,6 +125,10 @@ namespace api.Models
         Astronomical = 5,
         /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
         RuleTriggered = 6,
+        /// Roadmap #398(1) - only valid inside a Notification-action rule; compares a live reading against api.Models.SensorTrend's hourly history, which only the server (not firmware) has.
+        RateOfChange = 7,
+        /// Roadmap #398(3) - only valid inside a Notification-action rule, same SensorTrend dependency as RateOfChange; always reads Temperature, no Metric field.
+        DifDisruption = 8,
     }
 
     /// GT/LT mirror the old Threshold condition's dead-zone latch (Hysteresis); GTE/LTE/Equal/Between are plain stateless comparisons with no latch - they're new, and a dead zone doesn't generalize cleanly to "equals" or "between" anyway.
@@ -170,6 +174,15 @@ namespace api.Models
         // Group only.
         public LogicalOperator? GroupOperator { get; set; }
         public IList<ConditionNode> Children { get; set; } = [];
+
+        /// RateOfChange only - compares the live reading against the SensorTrend bucket WindowHours ago (1-23); fires when the absolute difference reaches ChangeThreshold.
+        public int? WindowHours { get; set; }
+        public double? ChangeThreshold { get; set; }
+
+        // DifDisruption only - fires when (day average - night average) drops below MinDifDegrees, i.e. the night didn't cool enough relative to the day before it. Both windows are relative to "now", not calendar/sunrise-aligned; NightWindowHours+DayWindowHours must not exceed SensorTrend.HourBuckets.
+        public int? NightWindowHours { get; set; }
+        public int? DayWindowHours { get; set; }
+        public double? MinDifDegrees { get; set; }
     }
 
     /// A materialized JsonNode's keys are frozen by whatever options built it - an outer JsonSerializer.Serialize(camelCaseOptions) does NOT re-key it, so every ConditionNode tree read/write must use these exact Options or camelCase drifts to PascalCase.
@@ -243,6 +256,9 @@ namespace api.Models
         public double?[] SoilTemperature { get; set; } = new double?[HourBuckets];
         public double?[] Humidity { get; set; } = new double?[HourBuckets];
         public double?[] Vpd { get; set; } = new double?[HourBuckets];
+        /// Derived from Temperature+Humidity (api.Utils.DewPointCalculator) - added for roadmap #398(1)'s RateOfChange node, so every SensorMetric (not just the raw ones) has a bucketed history to compare against.
+        public double?[] DewPoint { get; set; } = new double?[HourBuckets];
+        public double?[] DewPointSpread { get; set; } = new double?[HourBuckets];
         public double?[] Moisture { get; set; } = new double?[HourBuckets];
         public double?[] Light { get; set; } = new double?[HourBuckets];
         public double?[] Co2 { get; set; } = new double?[HourBuckets];

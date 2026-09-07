@@ -786,6 +786,8 @@ namespace api.Dal
                 trend.SoilTemperature[bucket.Key] = rowsInBucket.Select(r => r.SoilTemperature).Average();
                 trend.Humidity[bucket.Key] = rowsInBucket.Select(r => r.Humidity).Average();
                 trend.Vpd[bucket.Key] = rowsInBucket.Select(r => VpdCalculator.Compute(r.Temperature, r.Humidity)).Average();
+                trend.DewPoint[bucket.Key] = rowsInBucket.Select(r => DewPointCalculator.Compute(r.Temperature, r.Humidity)).Average();
+                trend.DewPointSpread[bucket.Key] = rowsInBucket.Select(r => r.Temperature - DewPointCalculator.Compute(r.Temperature, r.Humidity)).Average();
                 trend.Moisture[bucket.Key] = rowsInBucket.Select(r => r.Moisture).Average();
                 trend.Light[bucket.Key] = rowsInBucket.Select(r => r.Light).Average();
                 trend.Co2[bucket.Key] = rowsInBucket.Select(r => r.Co2).Average();
@@ -843,6 +845,8 @@ namespace api.Dal
                 trend.SoilTemperature[group.Key.Bucket] = rowsInBucket.Select(r => r.SoilTemperature).Average();
                 trend.Humidity[group.Key.Bucket] = rowsInBucket.Select(r => r.Humidity).Average();
                 trend.Vpd[group.Key.Bucket] = rowsInBucket.Select(r => VpdCalculator.Compute(r.Temperature, r.Humidity)).Average();
+                trend.DewPoint[group.Key.Bucket] = rowsInBucket.Select(r => DewPointCalculator.Compute(r.Temperature, r.Humidity)).Average();
+                trend.DewPointSpread[group.Key.Bucket] = rowsInBucket.Select(r => r.Temperature - DewPointCalculator.Compute(r.Temperature, r.Humidity)).Average();
                 trend.Moisture[group.Key.Bucket] = rowsInBucket.Select(r => r.Moisture).Average();
                 trend.Light[group.Key.Bucket] = rowsInBucket.Select(r => r.Light).Average();
                 trend.Co2[group.Key.Bucket] = rowsInBucket.Select(r => r.Co2).Average();

@@ -639,7 +639,7 @@
     "conditionNode": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Roadmap #396(4). camelCase serialization of api.Models.ConditionNode - a flat tagged-union, recursive only via the group/children case; only the fields matching type are meaningful, the rest are null. Astronomical(5)/RuleTriggered(6) never reach this wire shape - Astronomical is resolved into an effective Schedule node server-side (api.Devices.AstronomicalRuleResolver) before a rule ever reaches a device, and RuleTriggered only ever appears inside a Notification-action rule, which is never sent to a device at all (only Relay-action rules are).",
+      "description": "Roadmap #396(4). camelCase serialization of api.Models.ConditionNode - a flat tagged-union, recursive only via the group/children case; only the fields matching type are meaningful, the rest are null. Astronomical(5)/RuleTriggered(6)/RateOfChange(7)/DifDisruption(8) never reach this wire shape - Astronomical is resolved into an effective Schedule node server-side (api.Devices.AstronomicalRuleResolver) before a rule ever reaches a device, and the other three only ever appear inside a Notification-action rule, which is never sent to a device at all (only Relay-action rules are).",
       "required": [
         "type",
         "metric",
@@ -656,7 +656,12 @@
         "sunsetOffsetMinutes",
         "referencedRuleId",
         "groupOperator",
-        "children"
+        "children",
+        "windowHours",
+        "changeThreshold",
+        "nightWindowHours",
+        "dayWindowHours",
+        "minDifDegrees"
       ],
       "properties": {
         "type": {
@@ -768,6 +773,41 @@
             "$ref": "#/definitions/conditionNode"
           },
           "description": "Group only, empty array otherwise - up to MAX_CHILDREN_PER_GROUP(4) direct children, each recursively any node type including another Group."
+        },
+        "windowHours": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "RateOfChange only - never present here, see this definition's own remarks."
+        },
+        "changeThreshold": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "RateOfChange only - never present here, see this definition's own remarks."
+        },
+        "nightWindowHours": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "DifDisruption only - never present here, see this definition's own remarks."
+        },
+        "dayWindowHours": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "DifDisruption only - never present here, see this definition's own remarks."
+        },
+        "minDifDegrees": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "DifDisruption only - never present here, see this definition's own remarks."
         }
       }
     },
