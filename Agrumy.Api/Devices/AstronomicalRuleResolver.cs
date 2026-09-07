@@ -7,7 +7,8 @@ namespace api.Devices
     /// Compiles every Astronomical condition inside a rule's Conditions list into an effective Schedule condition for today's local date so the firmware only ever has to understand ConditionType.Schedule; a rule with a condition that can't be resolved today (no location set, polar day/night, or a zero/negative window) is dropped entirely rather than sent with a broken link in its AND/OR chain, leaving the function's other rules intact.
     public static class AstronomicalRuleResolver
     {
-        public static IList<DeviceFarmUnitZoneRule> Resolve(IList<DeviceFarmUnitZoneRule> rules, ServerConfig serverConfig, DateOnly localDate, int utcOffsetSeconds)
+        // lat/lon: the resolved location for this rule's tenant (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same per-tenant-then-server-wide cascade as ScheduleTimeZone/#290), not a bare ServerConfig - a rule's own tenant may sit at a different physical site than the server-wide default (roadmap #396(6)).
+        public static IList<DeviceFarmUnitZoneRule> Resolve(IList<DeviceFarmUnitZoneRule> rules, double? lat, double? lon, DateOnly localDate, int utcOffsetSeconds)
         {
             var result = new List<DeviceFarmUnitZoneRule>(rules.Count);
             foreach (DeviceFarmUnitZoneRule rule in rules)
@@ -17,7 +18,7 @@ namespace api.Devices
                     result.Add(rule);
                     continue;
                 }
-                if (ResolveOne(rule, serverConfig, localDate, utcOffsetSeconds) is DeviceFarmUnitZoneRule resolved)
+                if (ResolveOne(rule, lat, lon, localDate, utcOffsetSeconds) is DeviceFarmUnitZoneRule resolved)
                 {
                     result.Add(resolved);
                 }
@@ -25,7 +26,7 @@ namespace api.Devices
             return result;
         }
 
-        private static DeviceFarmUnitZoneRule? ResolveOne(DeviceFarmUnitZoneRule rule, ServerConfig serverConfig, DateOnly localDate, int utcOffsetSeconds)
+        private static DeviceFarmUnitZoneRule? ResolveOne(DeviceFarmUnitZoneRule rule, double? lat, double? lon, DateOnly localDate, int utcOffsetSeconds)
         {
             var resolvedConditions = new List<RuleCondition>(rule.Conditions.Count);
             foreach (RuleCondition condition in rule.Conditions)
@@ -35,7 +36,7 @@ namespace api.Devices
                     resolvedConditions.Add(condition);
                     continue;
                 }
-                if (ResolveCondition(condition, serverConfig, localDate, utcOffsetSeconds) is not RuleCondition resolvedCondition)
+                if (ResolveCondition(condition, lat, lon, localDate, utcOffsetSeconds) is not RuleCondition resolvedCondition)
                 {
                     return null;
                 }
@@ -57,9 +58,9 @@ namespace api.Devices
             };
         }
 
-        private static RuleCondition? ResolveCondition(RuleCondition condition, ServerConfig serverConfig, DateOnly localDate, int utcOffsetSeconds)
+        private static RuleCondition? ResolveCondition(RuleCondition condition, double? lat, double? lon, DateOnly localDate, int utcOffsetSeconds)
         {
-            if (serverConfig.WeatherLocationLat is not double lat || serverConfig.WeatherLocationLon is not double lon)
+            if (lat is not double latValue || lon is not double lonValue)
             {
                 return null;
             }
@@ -68,7 +69,7 @@ namespace api.Devices
             {
                 return null;
             }
-            (int? sunrise, int? sunset) = SolarCalculator.Compute(localDate, lat, lon, utcOffsetSeconds);
+            (int? sunrise, int? sunset) = SolarCalculator.Compute(localDate, latValue, lonValue, utcOffsetSeconds);
             if (sunrise is not int sunriseSeconds || sunset is not int sunsetSeconds)
             {
                 return null;

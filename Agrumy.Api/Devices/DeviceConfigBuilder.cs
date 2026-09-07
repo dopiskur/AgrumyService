@@ -97,7 +97,10 @@ namespace api.Devices
                     IList<DeviceFarmUnitZoneRule> globalRules = await repo.RulesGetForTenantGlobalAsync(device.TenantID);
                     IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(zoneRules, unitRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
-                    controller.Rules = AstronomicalRuleResolver.Resolve(rules, serverConfig, localDate, utcOffsetSeconds);
+                    // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
+                    double? lat = tenant?.Latitude ?? serverConfig.WeatherLocationLat;
+                    double? lon = tenant?.Longitude ?? serverConfig.WeatherLocationLon;
+                    controller.Rules = AstronomicalRuleResolver.Resolve(rules, lat, lon, localDate, utcOffsetSeconds);
                     DeviceFarmUnitZone? zone = await repo.DeviceFarmUnitZoneGetByIdAsync(idZone);
                     controller.WaterPumpMaxRunSeconds = zone?.WaterPumpMaxRunSeconds;
                     controller.WaterPumpCooldownSeconds = zone?.WaterPumpCooldownSeconds;

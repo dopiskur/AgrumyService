@@ -51,9 +51,8 @@ public class AstronomicalScheduleTests
     public void Resolve_NoLocationConfigured_DropsRule()
     {
         var rules = new List<DeviceFarmUnitZoneRule> { AstroRule(daysOfWeek: 127, sunriseOffset: 0, sunsetOffset: 0) };
-        var serverConfig = new ServerConfig();
 
-        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, serverConfig, new DateOnly(2026, 6, 21), utcOffsetSeconds: 0);
+        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, null, null, new DateOnly(2026, 6, 21), utcOffsetSeconds: 0);
 
         Assert.Empty(resolved);
     }
@@ -62,9 +61,8 @@ public class AstronomicalScheduleTests
     public void Resolve_WithLocation_CompilesToScheduleWindowSpanningSunriseToSunset()
     {
         var rules = new List<DeviceFarmUnitZoneRule> { AstroRule(daysOfWeek: 127, sunriseOffset: -30, sunsetOffset: 60) };
-        var serverConfig = new ServerConfig { WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 };
 
-        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, serverConfig, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
+        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, 45.8, 16.0, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
 
         DeviceFarmUnitZoneRule rule = Assert.Single(resolved);
         RuleCondition condition = Assert.Single(rule.Conditions);
@@ -82,9 +80,8 @@ public class AstronomicalScheduleTests
     {
         // Sunrise offset pushed past the sunset offset on the same day leaves nothing "on".
         var rules = new List<DeviceFarmUnitZoneRule> { AstroRule(daysOfWeek: 127, sunriseOffset: 700, sunsetOffset: -700) };
-        var serverConfig = new ServerConfig { WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 };
 
-        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, serverConfig, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
+        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve(rules, 45.8, 16.0, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
 
         Assert.Empty(resolved);
     }
@@ -99,7 +96,7 @@ public class AstronomicalScheduleTests
             Conditions = [new RuleCondition(ConditionType.Schedule, JsonSerializer.SerializeToNode(new ScheduleConditionConfig(127, 0, 3600), ConditionConfigJson.Options), null)],
         };
 
-        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve([scheduleRule], new ServerConfig(), new DateOnly(2026, 6, 21), 0);
+        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve([scheduleRule], null, null, new DateOnly(2026, 6, 21), 0);
 
         Assert.Same(scheduleRule, Assert.Single(resolved));
     }

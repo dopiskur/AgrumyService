@@ -7,6 +7,8 @@ namespace api.Dal.Entities
         public int IDTenant { get; set; }
         public string TenantName { get; set; } = "";
         public string? ScheduleTimeZone { get; set; } // See api.Models.Tenant.ScheduleTimeZone.
+        public double? Latitude { get; set; } // See api.Models.Tenant.Latitude.
+        public double? Longitude { get; set; } // See api.Models.Tenant.Longitude.
         public bool EmergencyStopActive { get; set; } // See api.Models.Tenant.EmergencyStopActive.
         public DateTimeOffset? DateCreated { get; set; }
     }

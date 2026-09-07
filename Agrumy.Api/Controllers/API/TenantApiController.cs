@@ -83,6 +83,20 @@ namespace api.Controllers.API
                 tenant.ScheduleTimeZone = null;
             }
 
+            // Same pairing/range checks as ServerConfigApiController.Update's WeatherLocationLat/Lon (roadmap #396(6)) - one set without the other silently degrades AstronomicalRuleResolver back to the server-wide fallback instead of failing at save time.
+            if (tenant.Latitude.HasValue != tenant.Longitude.HasValue)
+            {
+                return BadRequest("Latitude and Longitude must be set together, or both left blank.");
+            }
+            if (tenant.Latitude is < -90 or > 90)
+            {
+                return BadRequest("Latitude must be between -90 and 90.");
+            }
+            if (tenant.Longitude is < -180 or > 180)
+            {
+                return BadRequest("Longitude must be between -180 and 180.");
+            }
+
             await tenantRepo.TenantUpdateAsync(tenant);
             return Ok();
         }

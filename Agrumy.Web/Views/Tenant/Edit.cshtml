@@ -23,7 +23,7 @@
                 <span asp-validation-for="TenantName" class="text-danger"></span>
             </div>
 
-            <div class="mb-0" style="max-width:24rem">
+            <div class="mb-3" style="max-width:24rem">
                 <label asp-for="ScheduleTimeZone" class="form-label"></label>
                 <select asp-for="ScheduleTimeZone" asp-items="(IEnumerable<SelectListItem>)ViewBag.TimeZones" class="form-select"></select>
                 <span asp-validation-for="ScheduleTimeZone" class="text-danger"></span>
@@ -31,6 +31,24 @@
                     Local wall-clock zone this tenant's schedule-mode relay windows (Device &rarr;
                     Controller &rarr; Schedules) are evaluated against. Not set = windows evaluate as
                     UTC.
+                </div>
+            </div>
+
+            <div class="mb-0 row" style="max-width:24rem">
+                <div class="col">
+                    <label asp-for="Latitude" class="form-label"></label>
+                    <input asp-for="Latitude" type="number" step="any" min="-90" max="90" class="form-control" />
+                    <span asp-validation-for="Latitude" class="text-danger"></span>
+                </div>
+                <div class="col">
+                    <label asp-for="Longitude" class="form-label"></label>
+                    <input asp-for="Longitude" type="number" step="any" min="-180" max="180" class="form-control" />
+                    <span asp-validation-for="Longitude" class="text-danger"></span>
+                </div>
+                <div class="form-text">
+                    This tenant's own site location for astronomical (sunrise/sunset) schedule
+                    conditions. Leave both blank to use the server-wide default (Server Settings &rarr;
+                    Weather).
                 </div>
             </div>
 
