@@ -10,7 +10,7 @@ namespace api.Controllers.API
 {
     /// Server-wide settings, admin-only; there is exactly one row (id 1), auto-created on first read.
     [Route("api/ServerConfig")]
-    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, api.Diagnostics.IServerHealthService serverHealthService) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // These are SERVER-WIDE settings, so Global admin only.
 
@@ -314,6 +314,18 @@ namespace api.Controllers.API
             await serverConfigRepo.ServerConfigUpdateAsync(current);
             await WriteAuditAsync("ServerConfig.ArchiveSettingsUpdated", null, "ServerConfig", "1", null);
             return Ok();
+        }
+
+        /// Roadmap #419 - passive Server Health card, polled by the Web page on an interval (Agrumy.Web's ServerConfigController.Health -> live-refresh.js), not an on-demand test button like TestEmail/TestArchiveDatabase above. Only lists a dependency currently enabled/configured in ServerConfig - see ServerHealthService.
+        [HttpGet("Health")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult<IReadOnlyList<ServerHealthEntry>>> GetHealth()
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            return Ok(await serverHealthService.GetStatusesAsync());
         }
 
         /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new tenant" field - this exposes only that one flag.

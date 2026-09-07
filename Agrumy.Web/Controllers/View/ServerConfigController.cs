@@ -10,12 +10,33 @@ namespace api.Controllers.View
     [Authorize(Roles = RoleNames.GlobalAdmin)]
     public class ServerConfigController(IApi api) : Controller
     {
-        public async Task<ActionResult> Index() => View(await api.ServerConfigGet());
+        public async Task<ActionResult> Index()
+        {
+            await PopulateHealthAsync();
+            return View(await api.ServerConfigGet());
+        }
+
+        /// Roadmap #419 - the "Server Health" tab's live-refresh.js poll target (Agrumy.Web's own passive proxy, not an on-demand test button).
+        public async Task<ActionResult> Health() => PartialView("_ServerHealth", await api.ServerConfigGetHealth());
+
+        private async Task PopulateHealthAsync()
+        {
+            // Best-effort - a health-check hiccup must never block the Server Settings page itself from loading/saving.
+            try
+            {
+                ViewBag.ServerHealth = await api.ServerConfigGetHealth();
+            }
+            catch (ApiException)
+            {
+                ViewBag.ServerHealth = Array.Empty<ServerHealthEntry>();
+            }
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Index(ServerConfig serverConfig)
         {
+            await PopulateHealthAsync();
             if (!ModelState.IsValid)
             {
                 return View(serverConfig);

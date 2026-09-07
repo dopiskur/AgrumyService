@@ -449,6 +449,10 @@ namespace api.Dal.Interface
         [Get("/api/ServerConfig")]
         Task<ServerConfig> ServerConfigGet();
 
+        /// Roadmap #419 - Server Health card, polled on an interval by Agrumy.Web's ServerConfigController.Health (live-refresh.js), not an on-demand button - see ServerConfigApiController.GetHealth.
+        [Get("/api/ServerConfig/Health")]
+        Task<IReadOnlyList<ServerHealthEntry>> ServerConfigGetHealth();
+
         /// Sends through the SAVED Email settings, not the unsaved form - see ServerConfigApiController.TestEmail.
         [Post("/api/ServerConfig/TestEmail")]
         Task ServerConfigTestEmail(string toEmail);

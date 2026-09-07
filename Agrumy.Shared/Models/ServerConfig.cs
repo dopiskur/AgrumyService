@@ -235,6 +235,9 @@ namespace api.Models
         public string? Password { get; set; }
     }
 
+    /// One row of GET /api/ServerConfig/Health (roadmap #419) - Status mirrors Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.ToString() ("Healthy"/"Degraded"/"Unhealthy"), kept as a plain string here so Agrumy.Web/Agrumy.Shared don't need a reference to that package just to deserialize it.
+    public sealed record ServerHealthEntry(string Name, string Status, string? Description, double DurationMs);
+
     /// Body of POST /api/ServerConfig/ArchiveSettings (roadmap #209) - the "Data Archiving" subsection's own self-contained save, independent of the main Server Settings form/button: tests the connection first when Enabled (skipped when disabling - see ServerConfigApiController.SaveArchiveSettings), then persists only these archive-specific fields, leaving the rest of ServerConfig untouched.
     public class ArchiveSettingsSaveRequest
     {

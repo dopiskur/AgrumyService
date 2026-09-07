@@ -7,6 +7,7 @@ using api.BackgroundWorkers;
 using api.Commands;
 using api.Controllers.API;
 using api.Dal.Interface;
+using api.Diagnostics;
 using api.Models;
 using api.Notifications;
 using api.Security;
@@ -1691,7 +1692,7 @@ public class ApiControllerTests
     }
 
 
-    private ServerConfigApiController NewServerConfigController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object, []);
+    private ServerConfigApiController NewServerConfigController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>());
     private SensorDataController NewSensorDataController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object);
 
     [Fact]
@@ -2287,7 +2288,7 @@ public class ApiControllerTests
         var email = new Mock<INotificationChannel>(MockBehavior.Strict);
         email.SetupGet(c => c.Name).Returns("email");
         email.Setup(c => c.SendAsync(It.IsAny<Notification>(), default)).ReturnsAsync(NotificationResult.Ok("sent"));
-        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object]);
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>());
         SetCaller(controller, "admin", 0);
 
         var result = await controller.TestEmail("grower@example.com");
@@ -2302,7 +2303,7 @@ public class ApiControllerTests
         var email = new Mock<INotificationChannel>(MockBehavior.Strict);
         email.SetupGet(c => c.Name).Returns("email");
         email.Setup(c => c.SendAsync(It.IsAny<Notification>(), default)).ReturnsAsync(NotificationResult.Skipped("email channel disabled or missing Host/FromAddress"));
-        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object]);
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>());
         SetCaller(controller, "admin", 0);
 
         var result = await controller.TestEmail("grower@example.com");

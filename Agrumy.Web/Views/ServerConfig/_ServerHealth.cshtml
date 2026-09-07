@@ -1,0 +1,51 @@
+@using api.Models
+@model IReadOnlyList<ServerHealthEntry>
+
+@{
+    // Roadmap #419 - passive, auto-refreshing (live-refresh.js polls ServerConfigController.Health every 30s); only lists a dependency currently enabled/configured in ServerConfig, see ServerHealthService.
+    string Label(string name) => name switch
+    {
+        "database" => "Database",
+        "redis" => "Redis cache",
+        "mqtt" => "MQTT broker",
+        "email" => "SMTP / Email",
+        "firmwareSource" => "Firmware source",
+        "weather" => "Weather API",
+        "gateway" => "Gateway / LoRaWAN",
+        _ => name,
+    };
+
+    string BadgeClass(string status) => status switch
+    {
+        "Healthy" => "text-bg-success",
+        "Degraded" => "text-bg-warning",
+        _ => "text-bg-danger",
+    };
+}
+
+@if (Model is null)
+{
+    <p class="text-secondary">Loading&hellip;</p>
+}
+else if (Model.Count == 0)
+{
+    <p class="text-secondary">No external dependencies are currently enabled - nothing to check.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (ServerHealthEntry entry in Model)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <strong>@Label(entry.Name)</strong>
+                    @if (!string.IsNullOrWhiteSpace(entry.Description))
+                    {
+                        <span class="text-secondary ms-2">@entry.Description</span>
+                    }
+                </span>
+                <span class="badge @BadgeClass(entry.Status) rounded-pill">@entry.Status</span>
+            </li>
+        }
+    </ul>
+}

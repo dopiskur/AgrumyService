@@ -6,6 +6,9 @@ namespace api.Commands
     public interface IMqttConnectionManager
     {
         Task PublishAsync(string brokerHost, int brokerPort, string? username, string? password, MqttApplicationMessage message, CancellationToken ct = default);
+
+        /// Health-check use only (roadmap #419) - opens/reuses the connection without publishing anything.
+        Task<bool> TestConnectionAsync(string brokerHost, int brokerPort, string? username, string? password, CancellationToken ct = default);
     }
 
     /// One persistent MQTT connection reused across every publish, instead of MqttCommandPublisher's old per-call connect/disconnect - a broker round trip (TCP, plus TLS handshake when using it) costs far more than the publish itself, and command pushes can be frequent under real load. Singleton, so PublishAsync serializes connect/reconnect through a semaphore - concurrent callers must never race to open multiple sockets on the same client.
@@ -48,6 +51,46 @@ namespace api.Commands
                 }
 
                 await client.PublishAsync(message, ct);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        /// Duplicates PublishAsync's own connect/reconnect logic rather than sharing it, so a health-check change can never alter the command-push path's locking behavior.
+        public async Task<bool> TestConnectionAsync(string brokerHost, int brokerPort, string? username, string? password, CancellationToken ct = default)
+        {
+            string fingerprint = $"{brokerHost}:{brokerPort}:{username}";
+
+            await gate.WaitAsync(ct);
+            try
+            {
+                bool wasConnected = client.IsConnected;
+                if (!wasConnected || connectedFingerprint != fingerprint)
+                {
+                    if (wasConnected)
+                    {
+                        await client.DisconnectAsync(cancellationToken: ct);
+                    }
+
+                    var optionsBuilder = new MqttClientOptionsBuilder()
+                        .WithTcpServer(brokerHost, brokerPort)
+                        .WithCleanSession();
+                    if (brokerPort == 8883)
+                    {
+                        optionsBuilder = optionsBuilder.WithTlsOptions(o => o.UseTls());
+                    }
+                    if (!string.IsNullOrEmpty(username))
+                    {
+                        optionsBuilder = optionsBuilder.WithCredentials(username, password);
+                    }
+
+                    await client.ConnectAsync(optionsBuilder.Build(), ct);
+                    connectedFingerprint = fingerprint;
+                }
+
+                return client.IsConnected;
             }
             finally
             {

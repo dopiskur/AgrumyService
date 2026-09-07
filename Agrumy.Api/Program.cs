@@ -222,6 +222,18 @@ builder.Services
     .AddCheck<DatabaseHealthCheck>("database")
     .AddCheck<CacheHealthCheck>("cache");
 
+// AddCheck<T>() above resolves T through IHealthCheck's own ActivatorUtilities factory, which doesn't need T registered in DI - ServerHealthService injects these two directly as plain constructor params, which DOES need an explicit registration.
+builder.Services.AddTransient<DatabaseHealthCheck>();
+builder.Services.AddTransient<CacheHealthCheck>();
+
+// Not registered through AddHealthChecks() - these back the admin-only Server Health card (roadmap #419), not the public /api/health liveness probe, and ServerHealthService decides per-request which of them are even relevant (only currently-enabled integrations).
+builder.Services.AddTransient<MqttHealthCheck>();
+builder.Services.AddTransient<EmailHealthCheck>();
+builder.Services.AddTransient<FirmwareSourceHealthCheck>();
+builder.Services.AddTransient<WeatherHealthCheck>();
+builder.Services.AddTransient<GatewayHealthCheck>();
+builder.Services.AddScoped<IServerHealthService, ServerHealthService>();
+
 // Listens on the same "Agrumy.Api" Meter the JSON /metrics endpoint already reads, so Prometheus/Grafana get the identical counters with no separate instrumentation.
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
