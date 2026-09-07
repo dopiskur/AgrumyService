@@ -12,8 +12,21 @@
     };
 }
 
+@{
+    // Roadmap #412 (d) - the Farm segment only appears once a tenant has a second farm (same threshold as Farms.cshtml/the dashboard grouping).
+    bool multipleFarms = Model.Farms.Count > 1;
+    var unitFarm = multipleFarms ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.Unit.DeviceFarmID) : null;
+}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        @if (multipleFarms)
+        {
+            <li class="breadcrumb-item"><a asp-action="Farms">Farms</a></li>
+            @if (unitFarm != null)
+            {
+                <li class="breadcrumb-item">@unitFarm.DeviceFarmName</li>
+            }
+        }
         <li class="breadcrumb-item"><a asp-action="Index">Units</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Unit.DeviceFarmUnitName</li>
     </ol>

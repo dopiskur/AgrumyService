@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace api.Dal
 {
-    /// IUserRepository, extracted out of the EfRepository god class (roadmap #246) - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and RevokeUserTokensAsync needs IRefreshTokenRepository, both already-extracted leaf facets.
-    internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IRefreshTokenRepository refreshTokenRepository) : IUserRepository
+    /// IUserRepository, extracted out of the EfRepository god class (roadmap #246) - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (roadmap #412 (c), same tenant-create branch), RevokeUserTokensAsync needs IRefreshTokenRepository - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
+    internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository) : IUserRepository
     {
         public async Task UserAddAsync(User user, UserSecret userSecret)
         {
@@ -35,7 +35,12 @@ namespace api.Dal
         {
             await using var transaction = await db.Database.BeginTransactionAsync();
 
+            bool isNewTenant = existingTenantId is null;
             user.TenantID = existingTenantId ?? await tenantRepository.TenantAddAsync(newTenantName!);
+            if (isNewTenant)
+            {
+                await deviceFarmUnitRepository.EnsureFirstFarmAsync(user.TenantID.Value);
+            }
             await UserAddAsync(user, userSecret);
 
             // UserAddAsync doesn't return the new IDUser - re-fetch by the just-inserted unique email.

@@ -1,4 +1,4 @@
-@model IList<api.Models.DeviceFarmUnitDashboard>
+@model api.ViewModels.GroupedUnitCubesViewModel
 @{
     ViewData["Title"] = "Dashboard";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
@@ -23,7 +23,7 @@
             For a flat, fast-triage list of every device instead, see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
         </p>
         <div class="row" id="unitCubes">
-            <partial name="_UnitCubes" model="Model" />
+            <partial name="_UnitCubesGrouped" model="Model" />
         </div>
     </div>
 </div>

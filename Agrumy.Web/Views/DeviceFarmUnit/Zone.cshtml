@@ -15,10 +15,23 @@
     };
 }
 
+@{
+    // Roadmap #412 (d) - same threshold as Zones.cshtml/Farms.cshtml.
+    bool multipleFarms = Model.Farms.Count > 1;
+    var unitFarm = multipleFarms ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.UnitFarmID) : null;
+}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
+        @if (multipleFarms)
+        {
+            <li class="breadcrumb-item"><a asp-action="Farms">Farms</a></li>
+            @if (unitFarm != null)
+            {
+                <li class="breadcrumb-item">@unitFarm.DeviceFarmName</li>
+            }
+        }
         <li class="breadcrumb-item"><a asp-action="Index">Units</a></li>
-        <li class="breadcrumb-item"><a asp-action="Zones" asp-route-idDeviceFarmUnit="@zone.IDDeviceFarmUnit">Zones</a></li>
+        <li class="breadcrumb-item"><a asp-action="Zones" asp-route-idDeviceFarmUnit="@zone.IDDeviceFarmUnit">@Model.UnitName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@zone.DeviceFarmUnitZoneName</li>
     </ol>
 </nav>

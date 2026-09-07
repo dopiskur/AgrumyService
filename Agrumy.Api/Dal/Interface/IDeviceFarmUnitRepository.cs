@@ -26,6 +26,9 @@ namespace api.Dal.Interface
 
         Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm);
 
+        /// Roadmap #412 (c) - no-op if the tenant already has any farm.
+        Task EnsureFirstFarmAsync(int tenantId);
+
         Task DeviceFarmUpdateAsync(DeviceFarm farm);
 
         /// Roadmap #408 - soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.

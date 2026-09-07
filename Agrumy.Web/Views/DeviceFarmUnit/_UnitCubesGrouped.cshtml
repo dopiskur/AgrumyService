@@ -1,0 +1,32 @@
+@model api.ViewModels.GroupedUnitCubesViewModel
+@{
+    // Roadmap #412 (4) - while there's only one farm it stays invisible (same rule as Farms.cshtml), units render flat exactly as before. A second farm existing is what turns this into Farm > Unit grouping.
+    bool multipleFarms = Model.Farms.Count > 1;
+}
+@if (!multipleFarms || Model.Units.Count == 0)
+{
+    <partial name="_UnitCubes" model="Model.Units" />
+}
+else
+{
+    @foreach (var farm in Model.Farms)
+    {
+        var unitsInFarm = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
+        if (unitsInFarm.Count == 0)
+        {
+            continue;
+        }
+        <div class="col-12 mt-2 mb-1">
+            <h5 class="text-secondary"><i class="bi bi-map"></i> @farm.DeviceFarmName</h5>
+        </div>
+        <partial name="_UnitCubes" model="unitsInFarm" />
+    }
+    var unassigned = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
+    @if (unassigned.Count > 0)
+    {
+        <div class="col-12 mt-2 mb-1">
+            <h5 class="text-secondary">Unassigned</h5>
+        </div>
+        <partial name="_UnitCubes" model="unassigned" />
+    }
+}

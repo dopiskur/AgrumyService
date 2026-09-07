@@ -124,14 +124,15 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
+        var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository);
 
         return new EfRepository(db, NullLogger<EfRepository>.Instance,
             new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db),
             new EfDiscoveryRepository(db), tenantRepository, new EfGatewayRepository(db), serverConfigRepository,
             new EfCommandRepository(db), new EfFirmwareRepository(db),
-            new EfUserRepository(db, tenantRepository, refreshTokenRepository), deviceRepository,
+            new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository), deviceRepository,
             new EfSimulationRepository(db, deviceRepository),
-            new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository),
+            deviceFarmUnitRepository,
             new EfSensorDataRepository(db));
     }
 
@@ -1306,6 +1307,58 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(zoneRuleId, Assert.Single(await _repo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value)).IDDeviceFarmUnitZoneRule);
         Assert.Equal(unitRuleId, Assert.Single(await _repo.RulesGetForUnitAsync(unit.IDDeviceFarmUnit!.Value)).IDDeviceFarmUnitZoneRule);
         Assert.Equal(globalRuleId, Assert.Single(await _repo.RulesGetForTenantGlobalAsync(tenantId)).IDDeviceFarmUnitZoneRule);
+    }
+
+    // Roadmap #412 (c) - the freshly-created farm scoops up a unit that already existed unassigned.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task EnsureFirstFarm_NoExistingFarm_CreatesOneAndSweepsUnassignedUnits(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (unit, _) = await MakeUnitAndZone(tenantId);
+        Assert.Null((await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
+
+        await _repo.EnsureFirstFarmAsync(tenantId);
+
+        var farms = await _repo.DeviceFarmsGetAsync(tenantId);
+        DeviceFarm farm = Assert.Single(farms);
+        Assert.Equal("First farm", farm.DeviceFarmName);
+        Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
+    }
+
+    // Roadmap #412 (c) - idempotent: a tenant that already has a farm (of any name) is left alone.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task EnsureFirstFarm_TenantAlreadyHasFarm_IsNoOp(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        DeviceFarm existing = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Farm_" + U() });
+
+        await _repo.EnsureFirstFarmAsync(tenantId);
+
+        var farms = await _repo.DeviceFarmsGetAsync(tenantId);
+        DeviceFarm farm = Assert.Single(farms);
+        Assert.Equal(existing.IDDeviceFarm, farm.IDDeviceFarm);
+        Assert.NotEqual("First farm", farm.DeviceFarmName);
+    }
+
+    // Roadmap #412 (c) - a brand-new self-service tenant registration gets a "First farm" for free, via the same isNewTenant branch as TenantApiController.TenantAdd.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task RegisterUserAsync_NewTenant_GetsFirstFarm(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        string tag = U();
+        var user = new User { Email = tag + "@ex.com", Username = "u_" + tag, FirstName = "F", LastName = "L" };
+
+        int idUser = await _repo.RegisterUserAsync(user, new UserSecret { PwdHash = "h", PwdSalt = "s" },
+            existingTenantId: null, newTenantName: "T_" + tag,
+            activationTokenHash: "hash_" + tag, activationTokenExpiresAtUtc: DateTime.UtcNow.AddHours(1), startingRoles: [RoleNames.TenantAdmin]);
+
+        User? registered = await _repo.UserGetAsync(null, user.Email, null);
+        Assert.NotNull(registered);
+        Assert.Equal(idUser, registered!.IDUser);
+        var farms = await _repo.DeviceFarmsGetAsync(registered.TenantID);
+        Assert.Equal("First farm", Assert.Single(farms).DeviceFarmName);
     }
 
     // Roadmap #384 - Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).

@@ -11,7 +11,7 @@ namespace api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet("All")]
@@ -48,7 +48,9 @@ namespace api.Controllers.API
             {
                 return BadRequest("Tenant name is required.");
             }
-            return Ok(await tenantRepo.TenantAddAsync(tenant.TenantName.Trim()));
+            int idTenant = await tenantRepo.TenantAddAsync(tenant.TenantName.Trim());
+            await deviceFarmUnitRepo.EnsureFirstFarmAsync(idTenant); // Roadmap #412 (c) - same as the self-service registration path.
+            return Ok(idTenant);
         }
 
         [Authorize(Roles = RoleNames.GlobalAdmin)]

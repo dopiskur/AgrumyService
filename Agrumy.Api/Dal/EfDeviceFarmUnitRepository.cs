@@ -62,6 +62,24 @@ namespace api.Dal
             return ToDtoFarm(row);
         }
 
+        /// Roadmap #412 (c) - idempotent, safe to call from every tenant-creation path (registration, admin-created, import). A real "First farm" row lands in the DB immediately (not deferred to whenever an admin first visits Farms.cshtml) - the UI hides its name while it's still the tenant's only farm, matching Farms.cshtml's own multipleFarms check. Any unit the tenant already has, sitting unassigned, joins it too, so a pre-existing single-farm tenant doesn't suddenly see its units listed as "unassigned" once the invisible farm underneath them appears.
+        public async Task EnsureFirstFarmAsync(int tenantId)
+        {
+            bool hasFarm = await db.DeviceFarms.AsNoTracking().AnyAsync(f => f.TenantID == tenantId);
+            if (hasFarm)
+            {
+                return;
+            }
+
+            var farm = new DeviceFarmRow { TenantID = tenantId, DeviceFarmName = "First farm" };
+            db.DeviceFarms.Add(farm);
+            await db.SaveChangesAsync();
+
+            await db.DeviceFarmUnits
+                .Where(u => u.TenantID == tenantId && u.DeviceFarmID == null && u.IDDeviceFarmUnit != 0)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.DeviceFarmID, farm.IDDeviceFarm));
+        }
+
         public async Task DeviceFarmUpdateAsync(DeviceFarm farm)
         {
             var row = await db.DeviceFarms.FirstOrDefaultAsync(f => f.IDDeviceFarm == farm.IDDeviceFarm);
@@ -655,6 +673,7 @@ namespace api.Dal
                 {
                     IDDeviceFarmUnit = u.IDDeviceFarmUnit,
                     DeviceFarmUnitName = u.DeviceFarmUnitName,
+                    DeviceFarmID = u.DeviceFarmID,
                     ZoneCount = zoneIds.Count,
                     DeviceCount = scoped.Count,
                     Averages = Average(scoped),

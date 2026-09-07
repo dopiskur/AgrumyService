@@ -308,6 +308,8 @@ namespace api.Models
     {
         public int IDDeviceFarmUnit { get; set; }
         public string? DeviceFarmUnitName { get; set; }
+        // Roadmap #412 (4) - null means unassigned; only used to group units by farm on the dashboard once a tenant has a second farm.
+        public int? DeviceFarmID { get; set; }
         public int ZoneCount { get; set; }
         public int DeviceCount { get; set; }
         public SensorAverages Averages { get; set; } = new();

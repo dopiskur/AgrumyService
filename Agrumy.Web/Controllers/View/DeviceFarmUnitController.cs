@@ -11,7 +11,14 @@ namespace api.Controllers.View
     [Authorize]
     public class DeviceFarmUnitController(IApi api) : Controller
     {
-        public async Task<ActionResult> Index() => View(await api.DeviceFarmUnitDashboardGet());
+        public async Task<ActionResult> Index() => View(await BuildGroupedUnitCubesAsync());
+
+        // Roadmap #412 (4) - shared by the full page and its 10s-polled fragment (IndexCubes below) so a live update never reverts the farm grouping.
+        private async Task<GroupedUnitCubesViewModel> BuildGroupedUnitCubesAsync() => new()
+        {
+            Units = await api.DeviceFarmUnitDashboardGet(),
+            Farms = await api.DeviceFarmsGet(),
+        };
 
         // ---- Farm (roadmap #384) --------------------------------------
 
@@ -107,7 +114,7 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(RecycleBin));
         }
 
-        public async Task<ActionResult> IndexCubes() => PartialView("_UnitCubes", await api.DeviceFarmUnitDashboardGet());
+        public async Task<ActionResult> IndexCubes() => PartialView("_UnitCubesGrouped", await BuildGroupedUnitCubesAsync());
 
         public async Task<ActionResult> Zones(int idDeviceFarmUnit)
         {
@@ -121,6 +128,7 @@ namespace api.Controllers.View
             return View(new UnitZonesViewModel
             {
                 Unit = await api.DeviceFarmUnitGet(idDeviceFarmUnit),
+                Farms = await api.DeviceFarmsGet(),
                 Zones = zones,
                 DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone,
                 // Last 24h, hourly buckets - same window _ZoneDetails' sparkline trend already uses.
@@ -229,6 +237,9 @@ namespace api.Controllers.View
                 manualOverrides = await api.DeviceFarmUnitZoneManualActuateStatus(idDeviceFarmUnitZone);
             }
 
+            // Roadmap #412 (d) - breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
+            DeviceFarmUnit unit = await api.DeviceFarmUnitGet(dashboard.IDDeviceFarmUnit);
+
             return new ZoneViewModel
             {
                 Dashboard = dashboard,
@@ -239,6 +250,9 @@ namespace api.Controllers.View
                 ManualOverrides = manualOverrides,
                 DiscoveredDevices = await api.DiscoveryResultsGet(null, idDeviceFarmUnitZone),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
+                UnitName = unit.DeviceFarmUnitName,
+                UnitFarmID = unit.DeviceFarmID,
+                Farms = await api.DeviceFarmsGet(),
             };
         }
 

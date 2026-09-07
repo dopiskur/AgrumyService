@@ -30,6 +30,7 @@ public class TenantImportServiceTests
         };
 
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(5);
+        _repo.Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
         _repo.SetupSequence(r => r.UserGetAsync(null, "boss@source.local", null))
              .ReturnsAsync((User?)null)
              .ReturnsAsync(new User { IDUser = 42, Email = "boss@source.local" });
@@ -56,6 +57,7 @@ public class TenantImportServiceTests
         };
 
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(5);
+        _repo.Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
         _repo.SetupSequence(r => r.UserGetAsync(null, "member@source.local", null))
              .ReturnsAsync((User?)null)
              .ReturnsAsync(new User { IDUser = 43, Email = "member@source.local" });

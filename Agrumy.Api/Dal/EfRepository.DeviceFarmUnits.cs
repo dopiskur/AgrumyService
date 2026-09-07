@@ -12,6 +12,8 @@ namespace api.Dal
 
         public Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm) => deviceFarmUnitRepository.DeviceFarmAddAsync(farm);
 
+        public Task EnsureFirstFarmAsync(int tenantId) => deviceFarmUnitRepository.EnsureFirstFarmAsync(tenantId);
+
         public Task DeviceFarmUpdateAsync(DeviceFarm farm) => deviceFarmUnitRepository.DeviceFarmUpdateAsync(farm);
 
         public Task DeviceFarmDeleteAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmDeleteAsync(idDeviceFarm);

@@ -58,7 +58,7 @@ public class ApiControllerTests
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new api.Commands.ManualActuateService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
-    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object,
+    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new api.Migration.TenantExportService(_repo.Object), new api.Migration.TenantImportService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
