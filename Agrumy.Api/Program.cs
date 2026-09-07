@@ -201,13 +201,12 @@ builder.Services.AddScoped<FirmwareCatalogService>();
 builder.Services.AddScoped<FirmwareCatalogRefreshEvaluator>();
 builder.Services.AddHostedService<FirmwareCatalogRefreshBackgroundService>();
 
-// BaseAddress is the server's OWN public address - the virtual-device runner calls itself over the real wire protocol, same as a real device would target ServicePoint. Falls back to the documented local dev default when WebView:ApiService isn't configured.
+// BaseAddress is the server's OWN bound address (the same "Urls" config key Kestrel itself binds to), NOT the public WebView:ApiService URL (roadmap #396(10)) - routing a virtual device's self-loopback traffic out through the public internet just to call itself back is wasteful, depends on this server's own public hostname being reachable from itself, and would even count against its own public-facing rate limiters (#396(9)). Falls back to the documented local dev default if "Urls" is somehow unset.
 builder.Services.AddHttpClient(VirtualDeviceRunnerBackgroundService.HttpClientName, (sp, client) =>
 {
-    string apiService = sp.GetRequiredService<IOptions<AgrumySettings>>().Value.ApiService is { Length: > 0 } configured
-        ? configured
-        : "http://localhost:5000";
-    client.BaseAddress = new Uri(apiService.Contains("://") ? apiService : $"https://{apiService}");
+    string urls = sp.GetRequiredService<IConfiguration>()["Urls"] ?? "http://localhost:5000";
+    string firstUrl = urls.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "http://localhost:5000";
+    client.BaseAddress = new Uri(firstUrl);
 });
 builder.Services.AddSingleton<api.Simulation.SimulatedSensorGenerator>();
 builder.Services.AddHostedService<VirtualDeviceRunnerBackgroundService>();
