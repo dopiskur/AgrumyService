@@ -8,10 +8,10 @@ using Microsoft.Extensions.Options;
 namespace api.Gateway.LoRaPrivate
 {
     /// GatewayProfile.LoRaPrivateProtocol - reads AgrumySerialFrame uplinks from a locally-attached
-    /// ESP32+SX126x radio-frontend board (RadioLib raw PHY, not LoRaWAN/ChirpStack), forwards each
-    /// through the same /api/Gateway/Batch path Profile A and ChirpStackUplinkService use, and writes
-    /// the batch result back as a downlink frame - mirrors ChirpStackUplinkService's shape with the
-    /// transport swapped (serial port instead of MQTT, a 16-bit node address instead of a DevEUI).
+    /// ESP32+SX126x radio-frontend board (RadioLib raw PHY, not LoRaWAN/ChirpStack) and forwards each,
+    /// still encrypted, through /api/Gateway/RelayUplink (same path LoRaGatewayRelayController.cpp's
+    /// WiFi-direct profile uses - this gateway never holds the decryption key, see ProcessUplinkAsync),
+    /// writing the result back as a downlink frame.
     public sealed partial class LoRaPrivateProtocolUplinkService(
         AgrumyServiceClient client, IOptions<GatewayOptions> options, ILogger<LoRaPrivateProtocolUplinkService> logger)
         : BackgroundService
@@ -37,9 +37,6 @@ namespace api.Gateway.LoRaPrivate
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Uplink from unmapped node address {Address} - dropped.")]
         private static partial void LogUnmappedAddress(ILogger logger, ushort address);
-
-        [LoggerMessage(Level = LogLevel.Warning, Message = "Uplink from node {Address} had an unrecognized envelope type {Type} - dropped.")]
-        private static partial void LogUnrecognizedEnvelope(ILogger logger, ushort address, string? type);
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -153,44 +150,21 @@ namespace api.Gateway.LoRaPrivate
             }
         }
 
+        /// Roadmap #395 finding 3 - uplink.Payload is now AES-256-GCM ciphertext (Logic/CommandReplayLogic-style counter+tag, see api.LoRa.LoRaPrivatePayloadCrypto), not plaintext JSON. This gateway never holds the decryption key - it forwards the still-encrypted bytes to RelayUplink exactly as LoRaGatewayRelayController.cpp's WiFi-direct path already does, and AgrumyService is the only place that ever decrypts. The local mappingByAddress check stays as a cheap pre-filter (skip a network round trip for noise on an unmapped address); it no longer needs DeviceApiKey for anything, only confirms the address is worth forwarding at all.
         private async Task ProcessUplinkAsync(AgrumySerialFrame.DecodedUplink uplink)
         {
-            if (!mappingByAddress.TryGetValue(uplink.SourceAddress, out GatewayDeviceMapping? mapping))
+            if (!mappingByAddress.ContainsKey(uplink.SourceAddress))
             {
                 LogUnmappedAddress(logger, uplink.SourceAddress);
                 return;
             }
 
-            using JsonDocument envelope = JsonDocument.Parse(uplink.Payload);
-            string? entryTypeTag = envelope.RootElement.TryGetProperty("t", out var tEl) ? tEl.GetString() : null;
-            GatewayEntryType? entryType = entryTypeTag switch
+            var request = new GatewayRelayUplinkRequest
             {
-                "config" => GatewayEntryType.Config,
-                "sensor" => GatewayEntryType.SensorData,
-                "event" => GatewayEntryType.Event,
-                "ack" => GatewayEntryType.CommandAck,
-                _ => null,
+                SourceAddress = uplink.SourceAddress,
+                Payload = Convert.ToBase64String(uplink.Payload),
             };
-            if (entryType is null)
-            {
-                LogUnrecognizedEnvelope(logger, uplink.SourceAddress, entryTypeTag);
-                return;
-            }
-
-            // Same reasoning as ChirpStackUplinkService: SensorData needs an array payload, the firmware nests readings under "d".
-            JsonElement payload = entryType == GatewayEntryType.SensorData && envelope.RootElement.TryGetProperty("d", out var sensorArray)
-                ? sensorArray.Clone()
-                : envelope.RootElement.Clone();
-
-            var entry = new GatewayBatchEntry
-            {
-                DeviceApiId = mapping.DeviceApiId,
-                DeviceApiKey = mapping.DeviceApiKey,
-                Type = entryType.Value,
-                Payload = payload,
-            };
-            GatewayBatchResponse response = await client.BatchAsync(new GatewayBatchRequest { Entries = [entry] }, CancellationToken.None);
-            GatewayBatchEntryResult? result = response.Results.FirstOrDefault();
+            GatewayBatchEntryResult result = await client.RelayUplinkAsync(request, CancellationToken.None);
 
             await SendDownlinkAsync(uplink.SourceAddress, result);
         }

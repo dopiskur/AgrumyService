@@ -84,7 +84,7 @@ namespace api.Models
     public class GatewayRelayUplinkRequest
     {
         public ushort SourceAddress { get; set; }
-        /// The frame's decoded payload text - a JSON envelope like {"t":"sensor","d":[...]} exactly as the sensor node built it (Logic/LoRaPayloadLogic), untouched by the relaying gateway.
+        /// Base64 of the frame's raw encrypted payload bytes (api.LoRa.LoRaPrivatePayloadCrypto's wire format: counter + AES-256-GCM ciphertext + tag) - untouched by the relaying gateway, which never holds the decryption key. GatewayApiController.RelayUplink decrypts this into the {"t":"sensor","d":[...]} JSON envelope the sensor node actually built (Logic/LoRaPayloadLogic).
         public string Payload { get; set; } = "";
     }
 }

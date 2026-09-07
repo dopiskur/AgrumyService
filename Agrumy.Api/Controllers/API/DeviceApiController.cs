@@ -293,6 +293,20 @@ namespace api.Controllers.API
             return result.Outcome == IssueCommandOutcome.Success ? Ok() : Conflict(result.Message);
         }
 
+        /// Roadmap #395 finding 3 - generates a fresh AES-256 key for this device's LoRa private-protocol uplinks and returns it once, write-only from then on (same convention as TenantWifiConfig.Password/ServerConfig's Mqtt/EmailPassword). The admin copies it into the node's own loraPrivateRegistration.json during provisioning; the node has no other way to learn it. Rotating a device already in the field re-provisions it from scratch - its old uplinks stay undecryptable, which is the point of rotation.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("LoRaPrivateKey/Generate")]
+        public async Task<ActionResult<string>> LoRaPrivateKeyGenerate(int idDevice)
+        {
+            var (device, error) = await EnsureOwnedDeviceAsync(
+                () => deviceRepo.DeviceGetByIdAsync(idDevice), "Device", forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await deviceRepo.DeviceLoRaPrivateKeyGenerateAsync(device!.IDDevice!.Value));
+        }
+
         /// GlobalAdmin-only (stricter than the DeviceManagers bar the other actions on this controller use) since this wipes the device and requires physical/captive-portal re-provisioning - the flag rides to the device via a normal config poll AND, since that path is exactly what a broken apiKey would block, via HardResetPending below.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost("HardReset")]

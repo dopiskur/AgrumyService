@@ -44,6 +44,11 @@ namespace api.Models
         public string? ApiId { get; set; }
         [JsonIgnore]
         public string? ApiKey { get; set; }
+        // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - same "never serialized out" treatment as ApiKey; DeviceApiController.LoRaPrivateKeyGenerate is the only place the raw value is ever returned, once, at generation time.
+        [JsonIgnore]
+        public string? LoRaPrivateKeyHex { get; set; }
+        [JsonIgnore]
+        public long? LoRaLastUplinkCounter { get; set; }
         public string? ServicePoint { get; set; }
 
         public string? ServiceType {  get; set; }

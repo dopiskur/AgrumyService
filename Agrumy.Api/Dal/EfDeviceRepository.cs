@@ -4,6 +4,7 @@ using api.Firmware;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace api.Dal
 {
@@ -203,6 +204,20 @@ namespace api.Dal
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.Reset, pending));
 
+        public async Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID)
+        {
+            string hex = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            await db.Devices.Where(d => d.IDDevice == deviceID)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.LoRaPrivateKeyHex, hex)
+                    .SetProperty(d => d.LoRaLastUplinkCounter, (long?)null));
+            return hex;
+        }
+
+        public Task DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) =>
+            db.Devices.Where(d => d.IDDevice == deviceID)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LoRaLastUplinkCounter, counter));
+
         /// internal, not private - EfGatewayRepository and EfRepository.DeviceFarmUnits.cs (not yet extracted) also map DeviceRow to Device.
         internal static Device ToDto(DeviceRow d) => new()
         {
@@ -219,6 +234,8 @@ namespace api.Dal
             ManualDeviceTypeID = d.ManualDeviceTypeID,
             ApiId = d.ApiId,
             ApiKey = d.ApiKey,
+            LoRaPrivateKeyHex = d.LoRaPrivateKeyHex,
+            LoRaLastUplinkCounter = d.LoRaLastUplinkCounter,
             ServicePoint = d.ServicePoint,
             ServicePublicKey = d.ServicePublicKey,
             SleepSeconds = d.SleepSeconds,

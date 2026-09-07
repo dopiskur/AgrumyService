@@ -4,6 +4,7 @@ using api.Commands;
 using api.Dal.Interface;
 using api.Devices;
 using api.Firmware;
+using api.LoRa;
 using api.Models;
 using api.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -211,11 +212,38 @@ namespace api.Controllers.API
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 404, Error = "Mapped device no longer exists." });
             }
+            if (string.IsNullOrEmpty(device.LoRaPrivateKeyHex))
+            {
+                return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Device has no LoRa private-protocol key provisioned." });
+            }
+
+            byte[] key;
+            byte[] wirePayload;
+            try
+            {
+                key = Convert.FromHexString(device.LoRaPrivateKeyHex);
+                wirePayload = Convert.FromBase64String(request.Payload);
+            }
+            catch (FormatException ex)
+            {
+                return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = "Malformed payload: " + ex.Message });
+            }
+
+            (string? plaintext, ulong counter) = LoRaPrivatePayloadCrypto.Decrypt(key, wirePayload);
+            if (plaintext is null)
+            {
+                return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Decryption failed - wrong key, or the payload was corrupted or tampered with." });
+            }
+            if (device.LoRaLastUplinkCounter is long lastCounter && (long)counter <= lastCounter)
+            {
+                return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 409, Error = "Replayed or out-of-order uplink." });
+            }
+            await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter);
 
             JsonNode? envelope;
             try
             {
-                envelope = JsonNode.Parse(request.Payload);
+                envelope = JsonNode.Parse(plaintext);
             }
             catch (JsonException ex)
             {

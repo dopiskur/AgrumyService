@@ -299,6 +299,7 @@ namespace api.Dal
                 e.Property(x => x.FirmwareTargetVersion).HasMaxLength(20); // same cap as deviceFirmware.Version
                 e.Property(x => x.ApiId).HasMaxLength(128).IsRequired();
                 e.Property(x => x.ApiKey).HasMaxLength(128).IsRequired();
+                e.Property(x => x.LoRaPrivateKeyHex).HasMaxLength(64); // AES-256 key, hex-encoded (32 raw bytes)
                 e.Property(x => x.ServicePoint).HasMaxLength(200);
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.Property(x => x.DateModified).HasDefaultValueSql("CURRENT_TIMESTAMP");

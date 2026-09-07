@@ -261,6 +261,11 @@ namespace api.Dal.Entities
         public int? GatewayProfile { get; set; }
 
         public DateTime? LastFullConfigSentAt { get; set; } // See api.Models.Device.LastFullConfigSentAt.
+
+        // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
+        public string? LoRaPrivateKeyHex { get; set; }
+        // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.
+        public long? LoRaLastUplinkCounter { get; set; }
     }
 
     /// One LoRaWAN end-device's DevEUI mapped to the Agrumy device (ApiId/ApiKey) a LoRaGateway acts on behalf of for that DevEUI's uplinks.

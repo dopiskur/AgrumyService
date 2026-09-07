@@ -79,6 +79,12 @@ namespace api.Dal.Interface
         /// Sets/clears the admin-triggered hard-reset flag - carried to the device via a normal authenticated config poll (DeviceConfigBuilder) AND, since that path may be exactly what's broken, via DeviceApiController.HardResetPending's apiId-only lookup.
         Task DeviceHardResetSetAsync(int deviceID, bool pending);
 
+        /// Generates a new random AES-256 key for LoRa private-protocol uplink encryption (roadmap #395 finding 3), stores it, resets LoRaLastUplinkCounter to null (a fresh key restarts replay tracking), and returns the raw hex - the ONLY time it's ever returned, the admin must copy it into the node's own provisioning now.
+        Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID);
+
+        /// Persists the highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink's replay check compares against this on the next uplink.
+        Task DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter);
+
         /// Fleet status for every device in the tenant, or everywhere when tenantID is null (caller must check CallerReadsDevicesGlobally first) - Online comes from DeviceFleetStatus.ComputeOnline.
         Task<IList<DeviceFleetStatus>> DeviceFleetGetAsync(int? tenantID);
 

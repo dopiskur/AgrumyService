@@ -68,6 +68,28 @@ namespace api.Gateway
                 ?? new GatewayBatchResponse();
         }
 
+        /// Roadmap #395 finding 3 - LoRaPrivateProtocolUplinkService forwards the still-encrypted uplink bytes here instead of decrypting locally (same "gateway holds no permanent per-device secret" principle as GatewayDeviceToken); AgrumyService is the only place that ever sees the plaintext or the key. Same apiId/apiKey auth as Batch.
+        public async Task<GatewayBatchEntryResult> RelayUplinkAsync(GatewayRelayUplinkRequest request, CancellationToken ct)
+        {
+            GatewayRegistrationState reg = registration.Current;
+            if (!reg.IsComplete)
+            {
+                throw new InvalidOperationException("Gateway is not registered yet.");
+            }
+
+            using var message = new HttpRequestMessage(HttpMethod.Post, "/api/Gateway/RelayUplink")
+            {
+                Content = JsonContent.Create(request),
+            };
+            message.Headers.Add("apiId", reg.ApiId);
+            message.Headers.Add("apiKey", reg.ApiKey);
+
+            HttpResponseMessage response = await http.SendAsync(message, ct);
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<GatewayBatchEntryResult>(ct))
+                ?? new GatewayBatchEntryResult { Success = false, StatusCode = 502, Error = "Empty response from AgrumyService." };
+        }
+
         /// This gateway's own DevEUI->device mapping (Profile B) - GET /api/Gateway/DeviceMapping, same apiId/apiKey auth as Batch.
         public async Task<IList<GatewayDeviceMapping>> GetDeviceMappingAsync(CancellationToken ct)
         {

@@ -1,4 +1,7 @@
+using System.Buffers.Binary;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using api.Commands;
 using api.Controllers.API;
@@ -46,6 +49,26 @@ public class GatewayApiControllerTests
     }
 
     private static JsonElement EmptyPayload() => JsonDocument.Parse("{}").RootElement;
+
+    /// Mirrors AgrumyFirmware's LoRaPrivateController wire format (see LoRaPrivatePayloadCryptoTests.Encrypt) - base64, since that's what GatewayRelayUplinkRequest.Payload carries.
+    private static string EncryptForWire(byte[] key, ulong counter, string plaintext)
+    {
+        byte[] nonce = new byte[12];
+        BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), counter);
+        byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
+        byte[] ciphertext = new byte[plaintextBytes.Length];
+        byte[] tag = new byte[16];
+        using var gcm = new AesGcm(key, 16);
+        gcm.Encrypt(nonce, plaintextBytes, ciphertext, tag);
+
+        byte[] wire = new byte[8 + ciphertext.Length + 16];
+        BinaryPrimitives.WriteUInt64BigEndian(wire.AsSpan(0, 8), counter);
+        ciphertext.CopyTo(wire, 8);
+        tag.CopyTo(wire, 8 + ciphertext.Length);
+        return Convert.ToBase64String(wire);
+    }
+
+    private static readonly byte[] TestLoRaKey = Convert.FromHexString("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F");
 
     [Fact]
     public async Task Batch_DeviceInDifferentTenant_RejectsEntryWithoutForwarding()
@@ -194,19 +217,20 @@ public class GatewayApiControllerTests
     public async Task RelayUplink_LoRaGatewayEnabledDevice_NotIsGateway_IsAuthorized()
     {
         var gateway = new Device { IDDevice = 1, ApiId = "node1", IsGateway = false, LoRaGatewayEnabled = true, TenantID = 1 };
-        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
         _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
         _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
             [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
         _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        _repo.Setup(r => r.DeviceLoRaUplinkCounterSetAsync(2, 1)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.EventDevicePushAsync(2, 1, DeviceEventType.NoInternet, "relayed")).ReturnsAsync(true);
 
         var controller = NewController("node1");
         var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
         {
             SourceAddress = 42,
-            Payload = "{\"t\":\"event\",\"EventType\":\"NoInternet\",\"Message\":\"relayed\"}",
+            Payload = EncryptForWire(TestLoRaKey, 1, "{\"t\":\"event\",\"EventType\":\"NoInternet\",\"Message\":\"relayed\"}"),
         });
 
         var result = Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value);
@@ -223,10 +247,72 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(new List<GatewayDeviceMapping>());
 
         var controller = NewController("node1");
-        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest { SourceAddress = 99, Payload = "{\"t\":\"event\"}" });
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest { SourceAddress = 99, Payload = "irrelevant" });
 
         // Strict mock: an un-set-up DeviceGetByIdAsync/dispatch call would throw, proving nothing was forwarded for an unmapped address.
         Assert.Equal(404, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
+    }
+
+    [Fact]
+    public async Task RelayUplink_DeviceHasNoLoRaKeyProvisioned_Returns401_NeverDispatches()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1 }; // LoRaPrivateKeyHex left null - not yet provisioned
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest { SourceAddress = 42, Payload = "irrelevant" });
+
+        // Strict mock: an un-set-up DeviceLoRaUplinkCounterSetAsync/dispatch call would throw, proving nothing further ran.
+        Assert.Equal(401, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
+    }
+
+    [Fact]
+    public async Task RelayUplink_WrongKey_FailsAuthTagCheck_Returns401()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        byte[] wrongKey = new byte[32]; // all zeros - guaranteed different from TestLoRaKey
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWire(wrongKey, 1, "{\"t\":\"event\"}"),
+        });
+
+        Assert.Equal(401, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
+    }
+
+    [Fact]
+    public async Task RelayUplink_ReplayedCounter_Returns409_NeverDispatches()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey), LoRaLastUplinkCounter = 5 };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWire(TestLoRaKey, 5, "{\"t\":\"event\"}"), // counter == last seen, not higher
+        });
+
+        // Strict mock: an un-set-up DeviceLoRaUplinkCounterSetAsync/dispatch call would throw, proving the replay was rejected before either ran.
+        Assert.Equal(409, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
     }
 
     [Fact]

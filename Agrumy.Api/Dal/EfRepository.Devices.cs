@@ -29,5 +29,9 @@ namespace api.Dal
         public Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc) => deviceRepository.DeviceMarkConfigSentAsync(deviceID, sentAtUtc);
 
         public Task DeviceHardResetSetAsync(int deviceID, bool pending) => deviceRepository.DeviceHardResetSetAsync(deviceID, pending);
+
+        public Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID) => deviceRepository.DeviceLoRaPrivateKeyGenerateAsync(deviceID);
+
+        public Task DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) => deviceRepository.DeviceLoRaUplinkCounterSetAsync(deviceID, counter);
     }
 }
