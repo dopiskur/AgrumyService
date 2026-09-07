@@ -315,6 +315,11 @@ namespace api.Controllers.API
         [HttpGet("HardResetPending")]
         public async Task<ActionResult<bool>> HardResetPending(string apiId)
         {
+            // Unauthenticated by design (see remarks above) - over plain HTTP a MITM on the same network can already spoof/replace this response wholesale, and a single spoofed "true" here triggers an irreversible factory wipe. Never confirm the flag outside HTTPS rather than trying to sign a body that would still need a secret this endpoint deliberately doesn't require.
+            if (!Request.IsHttps)
+            {
+                return false;
+            }
             Device? device = await deviceRepo.DeviceGetByApiIdAsync(apiId);
             if (device?.IDDevice is not int idDevice || device.Reset != true)
             {

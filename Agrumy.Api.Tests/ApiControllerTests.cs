@@ -1767,6 +1767,10 @@ public class ApiControllerTests
         // Strict mock: DeviceHardResetSetAsync was never set up - a call to it here would throw.
     }
 
+    /// Every HardResetPending test needs an explicit scheme - Request.IsHttps defaults to false on a bare DefaultHttpContext, same as a real plain-HTTP request would.
+    private static void SetRequestScheme(ControllerBase controller, string scheme) =>
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Request = { Scheme = scheme } } };
+
     /// #357: the device-poll side - reachable with apiId alone (no apiKey/session), which is the whole point. Self-clears the moment it reports true.
     [Fact]
     public async Task HardResetPending_FlagSet_ReturnsTrue_AndClearsIt()
@@ -1775,6 +1779,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceHardResetSetAsync(8, false)).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
+        SetRequestScheme(controller, "https");
         var result = await controller.HardResetPending("device-api-id");
 
         Assert.True(result.Value);
@@ -1787,6 +1792,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceGetByApiIdAsync("device-api-id")).ReturnsAsync(new Device { IDDevice = 8, Reset = false });
 
         var controller = NewDeviceController();
+        SetRequestScheme(controller, "https");
         var result = await controller.HardResetPending("device-api-id");
 
         Assert.False(result.Value);
@@ -1800,9 +1806,22 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceGetByApiIdAsync("no-such-id")).ReturnsAsync((Device?)null);
 
         var controller = NewDeviceController();
+        SetRequestScheme(controller, "https");
         var result = await controller.HardResetPending("no-such-id");
 
         Assert.False(result.Value);
+    }
+
+    /// Roadmap #395 finding (2): plain HTTP has no integrity protection, so a MITM could otherwise spoof this response wholesale and trigger a factory wipe - never confirm the flag outside HTTPS, even when it's genuinely set.
+    [Fact]
+    public async Task HardResetPending_PlainHttp_ReturnsFalse_EvenWhenFlagIsSet()
+    {
+        var controller = NewDeviceController();
+        SetRequestScheme(controller, "http");
+        var result = await controller.HardResetPending("device-api-id");
+
+        Assert.False(result.Value);
+        // Strict mock: DeviceGetByApiIdAsync/DeviceHardResetSetAsync were never set up - the plain-HTTP gate must short-circuit before either is reached.
     }
 
 
