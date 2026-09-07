@@ -86,7 +86,9 @@ namespace api.Migration
                 {
                     map[oldId] = newId;
                 }
-                await repo.UserRolesSetAsync(newId, eu.Roles);
+                // Global-* roles are a server-level concept, not portable across a tenant export/import boundary - never let an imported user land on this server as a Global admin/reader/etc.
+                var importableRoles = eu.Roles.Where(r => !r.StartsWith("Global", StringComparison.Ordinal)).ToList();
+                await repo.UserRolesSetAsync(newId, importableRoles);
                 result.UsersImported++;
             }
             return map;
