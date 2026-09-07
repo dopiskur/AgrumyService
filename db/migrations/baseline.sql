@@ -13,6 +13,11 @@
 -- here. The live invent.hr database itself was left untouched - this omission only affects this
 -- file.
 --
+-- `deviceConfigBaseboard` IS reproduced below (real rows still live on invent.hr) even though
+-- AgrumyDbContext's EF model doesn't map it - this file mirrors the actual database, not the EF
+-- model; the EF-generated InitialBeta migration (Agrumy.Api.Migrations.MySql/Postgres) is the one
+-- that omits it, since EF only manages what's in the model.
+--
 -- Apply to an empty database: `SOURCE baseline.sql;` (or via a MySQL/MariaDB client with the
 -- target schema selected). Safe only against an EMPTY database - this is a from-scratch CREATE,
 -- not an idempotent patch like the old migration files.
@@ -340,7 +345,10 @@ CREATE TABLE `deviceFarmUnitZoneRule` (
   KEY `ix_deviceFarmUnitZoneRule_zone` (`DeviceFarmUnitZoneID`),
   KEY `ix_deviceFarmUnitZoneRule_unit` (`DeviceFarmUnitID`),
   KEY `ix_deviceFarmUnitZoneRule_tenant` (`TenantID`),
-  KEY `ix_deviceFarmUnitZoneRule_farm` (`DeviceFarmID`)
+  KEY `ix_deviceFarmUnitZoneRule_farm` (`DeviceFarmID`),
+  CONSTRAINT `FK_deviceFarmUnitZoneRule_deviceFarmUnitZone_DeviceFarmUnitZone~` FOREIGN KEY (`DeviceFarmUnitZoneID`) REFERENCES `deviceFarmUnitZone` (`IDDeviceFarmUnitZone`),
+  CONSTRAINT `FK_deviceFarmUnitZoneRule_deviceFarmUnit_DeviceFarmUnitID` FOREIGN KEY (`DeviceFarmUnitID`) REFERENCES `deviceFarmUnit` (`IDDeviceFarmUnit`),
+  CONSTRAINT `FK_deviceFarmUnitZoneRule_deviceFarm_DeviceFarmID` FOREIGN KEY (`DeviceFarmID`) REFERENCES `deviceFarm` (`IDDeviceFarm`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `deviceFirmware` (
@@ -523,7 +531,10 @@ CREATE TABLE `ruleNotificationState` (
   `WasTrue` tinyint(1) NOT NULL DEFAULT 0,
   `LastFiredAtUtc` datetime DEFAULT NULL,
   PRIMARY KEY (`IDRuleNotificationState`),
-  UNIQUE KEY `ux_ruleNotificationState_rule_zone` (`RuleID`,`DeviceFarmUnitZoneID`)
+  UNIQUE KEY `ux_ruleNotificationState_rule_zone` (`RuleID`,`DeviceFarmUnitZoneID`),
+  KEY `FK_ruleNotificationState_deviceFarmUnitZone_DeviceFarmUnitZoneID` (`DeviceFarmUnitZoneID`),
+  CONSTRAINT `FK_ruleNotificationState_deviceFarmUnitZoneRule_RuleID` FOREIGN KEY (`RuleID`) REFERENCES `deviceFarmUnitZoneRule` (`IDDeviceFarmUnitZoneRule`),
+  CONSTRAINT `FK_ruleNotificationState_deviceFarmUnitZone_DeviceFarmUnitZoneID` FOREIGN KEY (`DeviceFarmUnitZoneID`) REFERENCES `deviceFarmUnitZone` (`IDDeviceFarmUnitZone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sensorData` (

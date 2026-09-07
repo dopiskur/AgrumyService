@@ -16,4 +16,12 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AnalysisMode>Default</AnalysisMode>
   </PropertyGroup>
+
+  <!-- EF-generated migration files hit the same CA1861 noise as test code above (MigrationBuilder
+       calls take array-literal arguments by design) - not hand-written, not worth holding to this
+       rule. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Agrumy.Api.Migrations.MySql' OR '$(MSBuildProjectName)' == 'Agrumy.Api.Migrations.Postgres'">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AnalysisMode>Default</AnalysisMode>
+  </PropertyGroup>
 </Project>
