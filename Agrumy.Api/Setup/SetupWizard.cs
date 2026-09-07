@@ -82,9 +82,12 @@ namespace api.Setup
                 {
                     return Results.Content(RenderForm(FreshToken(), "Unrecognized database type - pick one of the two options."), "text/html", statusCode: 400);
                 }
-                string connectionString = providerKind == DbProviderKind.Postgres
-                    ? $"Host={host};Port={port};Database={database};Username={username};Password={password}"
-                    : $"server={host};port={port};database={database};user id={username};password={password};SslMode=Preferred;";
+                if (!int.TryParse(port, out int portNumber) || portNumber is <= 0 or > 65535)
+                {
+                    return Results.Content(RenderForm(FreshToken(), "Port must be a number between 1 and 65535."), "text/html", statusCode: 400);
+                }
+
+                string connectionString = BuildConnectionString(providerKind, host, portNumber, database, username, password);
 
                 bool canConnect;
                 try
@@ -109,6 +112,12 @@ namespace api.Setup
                 return Results.Content(RenderRestarting(), "text/html");
             });
         }
+
+        /// A raw interpolated string would let a password containing ';' or '=' break parsing or inject extra connection-string parameters - the provider's own builder escapes each field correctly instead.
+        internal static string BuildConnectionString(DbProviderKind providerKind, string host, int port, string database, string username, string password) =>
+            providerKind == DbProviderKind.Postgres
+                ? new Npgsql.NpgsqlConnectionStringBuilder { Host = host, Port = port, Database = database, Username = username, Password = password }.ConnectionString
+                : new MySqlConnector.MySqlConnectionStringBuilder { Server = host, Port = (uint)port, Database = database, UserID = username, Password = password, SslMode = MySqlConnector.MySqlSslMode.Preferred }.ConnectionString;
 
         /// Atomic write (temp file + rename) so a crash mid-write never leaves a half-written appsettings.json; merges into whatever already exists (JWT keys etc.) rather than replacing it, tolerating a missing file.
         private static async Task WriteConnectionStringAsync(string contentRootPath, DbProviderKind provider, string connectionString)
