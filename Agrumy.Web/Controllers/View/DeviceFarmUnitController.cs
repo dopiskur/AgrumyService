@@ -219,12 +219,12 @@ namespace api.Controllers.View
             }
 
             bool hasController = dashboard.Devices.Any(d => d.DeviceControllerEnabled == true);
-            DeviceFarmUnitZone? zone = null;
+            // Roadmap #238 - fetched unconditionally now: a sensor-only zone still has dashboard widgets to configure, even with no automation section to show below them.
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             IList<DeviceFarmUnitZoneRule> rules = [];
             IList<DeviceManualOverride> manualOverrides = [];
             if (hasController)
             {
-                zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
                 rules = await api.DeviceFarmUnitZoneRulesGet(idDeviceFarmUnitZone);
                 manualOverrides = await api.DeviceFarmUnitZoneManualActuateStatus(idDeviceFarmUnitZone);
             }
@@ -389,6 +389,55 @@ namespace api.Controllers.View
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             zone.DeviceFarmUnitZoneName = deviceFarmUnitZoneName;
             await api.DeviceFarmUnitZoneUpdate(zone);
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        // ---- Dashboard widgets (roadmap #238) - fetch-then-patch the whole list, same pattern as ZoneRename above. ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetAdd(int idDeviceFarmUnitZone, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, string? label)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            zone.DashboardWidgets.Add(new DashboardWidget { Type = type, Metric = metric, RelayFunction = relayFunction, Label = label });
+            try
+            {
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetRemove(int idDeviceFarmUnitZone, int index)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            if (index >= 0 && index < zone.DashboardWidgets.Count)
+            {
+                zone.DashboardWidgets.RemoveAt(index);
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetMove(int idDeviceFarmUnitZone, int index, bool up)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            int target = up ? index - 1 : index + 1;
+            if (index >= 0 && index < zone.DashboardWidgets.Count && target >= 0 && target < zone.DashboardWidgets.Count)
+            {
+                (zone.DashboardWidgets[index], zone.DashboardWidgets[target]) = (zone.DashboardWidgets[target], zone.DashboardWidgets[index]);
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 

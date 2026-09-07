@@ -40,6 +40,8 @@ namespace api.Dal
 
         public Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone) => deviceFarmUnitRepository.DeviceFarmUnitZoneUpdateAsync(zone);
 
+        public Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets) => deviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
+
         public Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone);
 
         public Task DeviceFarmUnitZoneDeleteAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDeleteAsync(idDeviceFarmUnitZone);

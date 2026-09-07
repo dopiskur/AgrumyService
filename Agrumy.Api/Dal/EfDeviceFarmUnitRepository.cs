@@ -1118,6 +1118,21 @@ namespace api.Dal
             WaterPumpMinLevel = z.WaterPumpMinLevel,
             HeatingMaxRunSeconds = z.HeatingMaxRunSeconds,
             VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
+            DashboardWidgets = string.IsNullOrEmpty(z.DashboardWidgetsJson)
+                ? []
+                : JsonSerializer.Deserialize<List<DashboardWidget>>(z.DashboardWidgetsJson, ConditionConfigJson.Options) ?? [],
         };
+
+        /// Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdateAsync (no ConfigVersion bump - a display-only layout never reaches the device).
+        public async Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets)
+        {
+            var row = await db.DeviceFarmUnitZones.FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
+            if (row == null)
+            {
+                return;
+            }
+            row.DashboardWidgetsJson = JsonSerializer.Serialize(widgets, ConditionConfigJson.Options);
+            await db.SaveChangesAsync();
+        }
     }
 }

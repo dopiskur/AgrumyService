@@ -86,4 +86,58 @@ public class DeviceFarmUnitApiControllerTests
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }
+
+    // Roadmap #238 - dashboard widget list validation/ownership on the save endpoint.
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_ForeignTenant_Returns403_NeverSaves()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 99 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, [new DashboardWidget { Type = DashboardWidgetType.Text, Label = "Hi" }]);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        // MockBehavior.Strict: DeviceFarmUnitZoneWidgetsSetAsync has no setup, proving nothing was saved for a foreign tenant's zone.
+    }
+
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_TextWidgetWithNoLabel_Returns400()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, [new DashboardWidget { Type = DashboardWidgetType.Text, Label = "  " }]);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_TooMany_Returns400()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+        var widgets = Enumerable.Range(0, 21).Select(_ => new DashboardWidget { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature }).ToList();
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, widgets);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_Valid_SavesAndAudits()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        var widgets = new List<DashboardWidget> { new() { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature } };
+        _repo.Setup(r => r.DeviceFarmUnitZoneWidgetsSetAsync(7, widgets)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, widgets);
+
+        Assert.True(result.Value);
+    }
 }

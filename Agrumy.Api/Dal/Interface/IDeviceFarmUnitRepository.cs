@@ -67,6 +67,9 @@ namespace api.Dal.Interface
 
         Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone);
 
+        /// Roadmap #238 - replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
+        Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets);
+
         /// Unassigns every device currently in this Zone (via DeviceUnassignFromZoneAsync), then deletes the Zone row - a no-op if the id doesn't exist.
         Task DeviceFarmUnitZoneDeleteAsync(int idDeviceFarmUnitZone);
 

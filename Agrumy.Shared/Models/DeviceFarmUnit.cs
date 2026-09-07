@@ -53,6 +53,26 @@ namespace api.Models
         // Roadmap #219 - generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
+
+        // Roadmap #238 - admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
+        public List<DashboardWidget> DashboardWidgets { get; set; } = [];
+    }
+
+    public enum DashboardWidgetType
+    {
+        SensorValue = 1,
+        SensorTrend = 2,
+        RelayStatus = 3,
+        Text = 4,
+    }
+
+    /// One tile on a Zone's customizable dashboard (roadmap #238) - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name).
+    public class DashboardWidget
+    {
+        public DashboardWidgetType Type { get; set; }
+        public SensorMetric? Metric { get; set; }
+        public RelayFunction? RelayFunction { get; set; }
+        public string? Label { get; set; }
     }
 
     /// Relay function a DeviceFarmUnitZoneRule targets, same numeric convention as deviceTypeRelay seed rows; kept as a plain int on the wire (not this enum) so firmware can parse it as a number without JsonStringEnumConverter.

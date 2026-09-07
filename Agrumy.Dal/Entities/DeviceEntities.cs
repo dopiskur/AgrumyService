@@ -56,6 +56,9 @@ namespace api.Dal.Entities
         // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
+
+        // See api.Models.DeviceFarmUnitZone.DashboardWidgets (roadmap #238) - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
+        public string? DashboardWidgetsJson { get; set; }
     }
 
     /// See api.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree (roadmap #396(4)), (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.

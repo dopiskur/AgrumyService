@@ -245,6 +245,32 @@ namespace api.Controllers.API
             return true;
         }
 
+        // Roadmap #238 - a Text widget's own Label carries its content, so it's the one type that's never optional; every other type's Label just overrides an auto-generated title.
+        private const int MaxWidgetsPerZone = 20;
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Zone/{idDeviceFarmUnitZone}/Widgets")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitZoneWidgetsSet(int idDeviceFarmUnitZone, [FromBody] List<DashboardWidget> widgets)
+        {
+            var (existing, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (widgets.Count > MaxWidgetsPerZone)
+            {
+                return BadRequest($"At most {MaxWidgetsPerZone} widgets per zone.");
+            }
+            if (widgets.Any(w => w.Type == DashboardWidgetType.Text && string.IsNullOrWhiteSpace(w.Label)))
+            {
+                return BadRequest("A text widget needs a label.");
+            }
+
+            await deviceFarmUnitRepo.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
+            await WriteAuditAsync("DeviceFarmUnitZone.WidgetsUpdated", existing!.TenantID, "DeviceFarmUnitZone", idDeviceFarmUnitZone.ToString(), $"{widgets.Count} widget(s)");
+            return true;
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Zone")]
         public async Task<ActionResult<bool>> DeviceFarmUnitZoneDelete(int? idDeviceFarmUnitZone)

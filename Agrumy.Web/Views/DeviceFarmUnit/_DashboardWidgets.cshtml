@@ -1,0 +1,139 @@
+@using api.Utils
+@model api.ViewModels.DashboardWidgetsViewModel
+@{
+    int idZone = Model.Zone.IDDeviceFarmUnitZone!.Value;
+    var widgets = Model.Zone.DashboardWidgets;
+}
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Dashboard widgets</h3></div>
+    <div class="card-body">
+        @if (!widgets.Any())
+        {
+            <p class="text-secondary fst-italic">No custom widgets configured for this zone yet.</p>
+        }
+        else
+        {
+            <div class="row g-3 mb-3">
+                @for (int i = 0; i < widgets.Count; i++)
+                {
+                    var w = widgets[i];
+                    string title = !string.IsNullOrWhiteSpace(w.Label) ? w.Label
+                        : w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend ? SensorMetricAccessor.Label(w.Metric ?? default)
+                        : w.Type == DashboardWidgetType.RelayStatus ? w.RelayFunction?.ToString() ?? ""
+                        : "";
+                    <div class="col-6 col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="text-secondary small text-truncate">@title</div>
+                                @switch (w.Type)
+                                {
+                                    case DashboardWidgetType.SensorValue:
+                                        {
+                                            double? value = SensorMetricAccessor.Average(Model.Dashboard.Averages, w.Metric ?? default);
+                                            <div class="fs-4">@(value?.ToString("0.#") ?? "-")</div>
+                                            break;
+                                        }
+                                    case DashboardWidgetType.SensorTrend:
+                                        {
+                                            double?[] trend = SensorMetricAccessor.Trend(Model.Dashboard.Trend, w.Metric ?? default);
+                                            string points = SparklineHelper.BuildPoints(trend, 100, 30);
+                                            <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:2.5rem">
+                                                @if (!string.IsNullOrEmpty(points))
+                                                {
+                                                    <polyline points="@points" fill="none" stroke="currentColor" stroke-width="2" />
+                                                }
+                                            </svg>
+                                            break;
+                                        }
+                                    case DashboardWidgetType.RelayStatus:
+                                        {
+                                            bool isOn = Model.Fleet.Any(f => f.RelayStates?.Any(r => r.RelayFunction == w.RelayFunction && r.IsOn) == true);
+                                            <span class="badge @(isOn ? "bg-success" : "bg-secondary")">@(isOn ? "ON" : "OFF")</span>
+                                            break;
+                                        }
+                                    case DashboardWidgetType.Text:
+                                        <div class="fs-6">@w.Label</div>
+                                        break;
+                                }
+                            </div>
+                            @if (Model.CanManage)
+                            {
+                                <div class="card-footer d-flex justify-content-between p-1">
+                                    <div class="btn-group btn-group-sm">
+                                        <form asp-action="WidgetMove" method="post">
+                                            <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                            <input type="hidden" name="index" value="@i" />
+                                            <input type="hidden" name="up" value="true" />
+                                            <button type="submit" class="btn btn-outline-secondary" title="Move left" @(i == 0 ? "disabled" : null)><i class="bi bi-arrow-left"></i></button>
+                                        </form>
+                                        <form asp-action="WidgetMove" method="post">
+                                            <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                            <input type="hidden" name="index" value="@i" />
+                                            <input type="hidden" name="up" value="false" />
+                                            <button type="submit" class="btn btn-outline-secondary" title="Move right" @(i == widgets.Count - 1 ? "disabled" : null)><i class="bi bi-arrow-right"></i></button>
+                                        </form>
+                                    </div>
+                                    <form asp-action="WidgetRemove" method="post">
+                                        <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                        <input type="hidden" name="index" value="@i" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-x"></i></button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (Model.CanManage)
+        {
+            <form asp-action="WidgetAdd" method="post" class="row g-2 align-items-end" id="widgetAddForm">
+                <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                <div class="col-auto">
+                    <label class="form-label">Widget type</label>
+                    <select name="type" id="widgetTypeSelect" class="form-select form-select-sm">
+                        <option value="@((int)DashboardWidgetType.SensorValue)">Sensor value</option>
+                        <option value="@((int)DashboardWidgetType.SensorTrend)">Sensor trend (24h)</option>
+                        <option value="@((int)DashboardWidgetType.RelayStatus)">Relay status</option>
+                        <option value="@((int)DashboardWidgetType.Text)">Text</option>
+                    </select>
+                </div>
+                <div class="col-auto" id="widgetMetricField">
+                    <label class="form-label">Metric</label>
+                    <select name="metric" class="form-select form-select-sm">
+                        @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
+                        {
+                            <option value="@((int)m)">@SensorMetricAccessor.Label(m)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto" id="widgetRelayField" style="display:none">
+                    <label class="form-label">Relay function</label>
+                    <select name="relayFunction" class="form-select form-select-sm">
+                        @foreach (RelayFunction rf in Enum.GetValues<RelayFunction>())
+                        {
+                            <option value="@((int)rf)">@rf</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Label (optional)</label>
+                    <input type="text" name="label" class="form-control form-control-sm" maxlength="60" />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add widget</button>
+                </div>
+            </form>
+            <script nonce="@Context.CspNonce()">
+                document.getElementById('widgetTypeSelect')?.addEventListener('change', function () {
+                    var isText = this.value === '@((int)DashboardWidgetType.Text)';
+                    var isRelay = this.value === '@((int)DashboardWidgetType.RelayStatus)';
+                    document.getElementById('widgetMetricField').style.display = (isText || isRelay) ? 'none' : '';
+                    document.getElementById('widgetRelayField').style.display = isRelay ? '' : 'none';
+                });
+            </script>
+        }
+    </div>
+</div>

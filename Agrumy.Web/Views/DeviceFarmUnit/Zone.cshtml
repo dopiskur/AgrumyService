@@ -102,6 +102,9 @@
     </div>
 </div>
 
+@* Roadmap #238 - widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. *@
+<partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Zone = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.Fleet, CanManage = hasAnyRole(RoleNames.DeviceManagers) }" />
+
 @* Outside #zoneDetails on purpose - edited via full-page form posts, not polled/replaced by live-refresh. *@
 @if (hasController)
 {

@@ -237,6 +237,10 @@ namespace api.Dal.Interface
         [Get("/api/DeviceFarmUnit/ZoneById")]
         Task<DeviceFarmUnitZone> DeviceFarmUnitZoneGetById(int? idDeviceFarmUnitZone);
 
+        // Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdate above.
+        [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets")]
+        Task DeviceFarmUnitZoneWidgetsSet(int idDeviceFarmUnitZone, [Body] List<DashboardWidget> widgets);
+
         // ---- Rules (Zone/Unit/Global scope, roadmap #212) ------
 
         [Get("/api/DeviceFarmUnit/Zone/Rule")]

@@ -1128,6 +1128,31 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(120, overridden.WaterPumpCooldownSeconds);
     }
 
+    // Roadmap #238 - the widget list round-trips through the real JSON column, and saves independently of the zone's other fields (no ConfigVersion bump, no interference with WaterPump limits set moments earlier).
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZone_DashboardWidgets_DefaultEmpty_ThenRoundTrips(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+
+        Assert.Empty(zone.DashboardWidgets);
+
+        var widgets = new List<DashboardWidget>
+        {
+            new() { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature },
+            new() { Type = DashboardWidgetType.RelayStatus, RelayFunction = RelayFunction.WaterPump, Label = "Pump" },
+            new() { Type = DashboardWidgetType.Text, Label = "Greenhouse 2" },
+        };
+        await _repo.DeviceFarmUnitZoneWidgetsSetAsync(zone.IDDeviceFarmUnitZone!.Value, widgets);
+
+        var reloaded = await _repo.DeviceFarmUnitZoneGetByIdAsync(zone.IDDeviceFarmUnitZone);
+        Assert.Equal(3, reloaded!.DashboardWidgets.Count);
+        Assert.Equal(SensorMetric.Temperature, reloaded.DashboardWidgets[0].Metric);
+        Assert.Equal(RelayFunction.WaterPump, reloaded.DashboardWidgets[1].RelayFunction);
+        Assert.Equal("Greenhouse 2", reloaded.DashboardWidgets[2].Label);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitZone_SkipWaterPumpWhenRainPredicted_DefaultsFalse_ThenOverridable(DbProviderKind provider)
     {
