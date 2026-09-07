@@ -12,7 +12,8 @@ namespace api.BackgroundWorkers
     /// rule's OR-across-rules/AND-OR-within-a-rule fold happens on-device, this is the server-side
     /// equivalent for the action type firmware has no way to perform itself.
     public sealed class RuleNotificationEvaluator(
-        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo, INotificationDispatcher dispatcher)
+        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo,
+        INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo)
     {
         private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend);
 
@@ -40,6 +41,13 @@ namespace api.BackgroundWorkers
         {
             int utcOffsetSeconds = TimeZoneHelper.GetUtcOffsetSeconds(DateTime.UtcNow, tenant.ScheduleTimeZone);
             DateTime utcNow = DateTime.UtcNow;
+
+            // Roadmap #398(2) - lets a Notification rule use a real sunrise/sunset window (e.g. "CO2 low" only during daytime) instead of a fixed Schedule approximation; same cascade/resolver DeviceConfigBuilder already uses for Relay rules (roadmap #396(6)), a rule that can't resolve today (no location set) is dropped, not sent through with a broken node.
+            ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
+            double? lat = tenant.Latitude ?? serverConfig.WeatherLocationLat;
+            double? lon = tenant.Longitude ?? serverConfig.WeatherLocationLon;
+            DateOnly localDate = DateOnly.FromDateTime(utcNow.AddSeconds(utcOffsetSeconds));
+            notificationRules = AstronomicalRuleResolver.Resolve(notificationRules, lat, lon, localDate, utcOffsetSeconds);
 
             var items = new List<EvalItem>();
             foreach (DeviceFarmUnit unit in await unitRepo.DeviceFarmUnitsGetAsync(tenantId))

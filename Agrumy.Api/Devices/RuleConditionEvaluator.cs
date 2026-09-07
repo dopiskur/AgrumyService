@@ -103,7 +103,7 @@ namespace api.Devices
                 }
                 case NodeType.Astronomical:
                 default:
-                    // Astronomical never reaches evaluation as-is - AstronomicalRuleResolver compiles every occurrence into a Schedule node before a rule is evaluated (Relay path) or would need the same treatment on the Notification path (not currently resolved there - see DeviceFarmUnitApiController's validation, which rejects Astronomical on a Notification rule).
+                    // Astronomical never reaches evaluation as-is on either path (roadmap #398(2) extended AstronomicalRuleResolver.Resolve to Notification rules too, not just Relay) - it's always compiled into an effective Schedule node first.
                     return false;
             }
         }

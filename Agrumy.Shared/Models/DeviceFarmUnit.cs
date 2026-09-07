@@ -121,7 +121,7 @@ namespace api.Models
         Interval = 2,
         Schedule = 3,
         Group = 4,
-        /// Never reaches firmware as-is - api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date before the config is sent.
+        /// Never reaches evaluation as-is on either action path - api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date first (Relay: before the device config is sent; Notification: roadmap #398(2), resolved server-side each tick).
         Astronomical = 5,
         /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
         RuleTriggered = 6,

@@ -56,8 +56,8 @@
 
         allowedTypes() {
             return NODE_TYPES.filter(([value]) => {
+                // Roadmap #398(2) - astronomical is now valid on both action types (AstronomicalRuleResolver runs on both paths), ruleTriggered/rateOfChange/difDisruption stay Notification-only.
                 if (value === 'ruleTriggered' || value === 'rateOfChange' || value === 'difDisruption') return this.isNotification;
-                if (value === 'astronomical') return !this.isNotification;
                 return true;
             });
         }

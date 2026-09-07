@@ -85,6 +85,22 @@ public class AstronomicalScheduleTests
     }
 
     [Fact]
+    public void Resolve_NotificationActionRule_CompilesJustLikeRelay()
+    {
+        // Roadmap #398(2) - the resolver was always ActionType-agnostic, DeviceFarmUnitApiController's validation was the only thing blocking Astronomical on a Notification rule.
+        var rule = AstroRule(daysOfWeek: 127, sunriseOffset: 0, sunsetOffset: 0);
+        rule.ActionType = ActionType.Notification;
+        rule.RelayFunction = null;
+        rule.NotificationSubject = "CO2 low";
+
+        IList<DeviceFarmUnitZoneRule> resolved = AstronomicalRuleResolver.Resolve([rule], 45.8, 16.0, new DateOnly(2026, 6, 21), utcOffsetSeconds: 7200);
+
+        DeviceFarmUnitZoneRule resolvedRule = Assert.Single(resolved);
+        Assert.Equal(ActionType.Notification, resolvedRule.ActionType);
+        Assert.Equal(NodeType.Schedule, resolvedRule.Root!.Type);
+    }
+
+    [Fact]
     public void Resolve_NonAstronomicalRule_PassesThroughUnchanged()
     {
         var scheduleRule = new DeviceFarmUnitZoneRule

@@ -467,10 +467,6 @@ namespace api.Controllers.API
             {
                 return "\"another rule fired\" is only valid on a Notification-action rule (a Relay rule fires on-device, invisibly to the server).";
             }
-            if (node.Type == NodeType.Astronomical && rule.ActionType != ActionType.Relay)
-            {
-                return "An astronomical condition is only valid on a Relay-action rule (AstronomicalRuleResolver only runs on the Relay path - api.Devices.RuleConditionEvaluator has no case for it, so a Notification rule would always evaluate this condition as false).";
-            }
             if ((node.Type == NodeType.RateOfChange || node.Type == NodeType.DifDisruption) && rule.ActionType != ActionType.Notification)
             {
                 return "A rate-of-change/DIF condition is only valid on a Notification-action rule (roadmap #398) - it reads SensorTrend history the device never receives, so a Relay rule would always evaluate this condition as false.";
