@@ -10,6 +10,7 @@ namespace api.Notifications
     public sealed class EmailNotificationChannel(IRepository repo, ILogger<EmailNotificationChannel> logger) : INotificationChannel
     {
         public string Name => "email";
+        public bool PerRecipient => true;
 
         private static bool IsConfigured(ServerConfig config) =>
             config.EmailEnabled

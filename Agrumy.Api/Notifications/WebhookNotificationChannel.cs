@@ -22,6 +22,7 @@ namespace api.Notifications
         }
 
         public string Name => "webhook";
+        public bool PerRecipient => false;
 
         private bool IsConfigured =>
             _options.Enabled

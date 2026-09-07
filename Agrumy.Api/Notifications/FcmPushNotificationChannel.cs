@@ -18,6 +18,7 @@ namespace api.Notifications
         }
 
         public string Name => "push-fcm";
+        public bool PerRecipient => true;
 
         private bool IsConfigured =>
             _options.Enabled

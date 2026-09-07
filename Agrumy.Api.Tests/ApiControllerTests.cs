@@ -1406,9 +1406,10 @@ public class ApiControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Contains("administrator has been notified", (string)ok.Value!);
         await RunOneQueuedJobAsync();
-        _notifications.Verify(n => n.DispatchAsync(
-            It.Is<Notification>(msg => msg.Recipient.Email == "admin@acme.local"),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(n => n.DispatchToRecipientsAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
+            It.Is<IReadOnlyList<NotificationRecipient>>(r => r.Count == 1 && r[0].Email == "admin@acme.local"),
+            It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
         // Strict mock: no UserUpdateAsync setup needed - the approval branch never enables the account itself.
     }
 

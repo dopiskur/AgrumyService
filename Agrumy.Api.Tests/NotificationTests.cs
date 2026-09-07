@@ -162,6 +162,7 @@ public class NotificationTests
     private sealed class ThrowingChannel : INotificationChannel
     {
         public string Name => "throwing";
+        public bool PerRecipient => true;
         public Task<bool> IsConfiguredAsync(CancellationToken ct = default) => Task.FromResult(true);
         public Task<NotificationResult> SendAsync(Notification notification, CancellationToken ct = default) =>
             throw new InvalidOperationException("boom");

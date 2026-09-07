@@ -68,19 +68,19 @@ public class OfflineAlertEvaluatorTests
                   new() { IDUser = 2, Email = "admin2@example.com" },
                   new() { IDUser = 3, Email = null }, // no email - must be skipped, not throw
               });
-        _dispatcher.Setup(n => n.DispatchAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
+        _dispatcher.Setup(n => n.DispatchToRecipientsAsync(
+                       It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
+                       It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                    .ReturnsAsync(new List<ChannelOutcome>());
         _devices.Setup(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _dispatcher.Verify(n => n.DispatchAsync(
-            It.Is<Notification>(x => x.Recipient.Email == "admin1@example.com" && x.Subject.Contains("Greenhouse Sensor")),
-            It.IsAny<CancellationToken>()), Times.Once);
-        _dispatcher.Verify(n => n.DispatchAsync(
-            It.Is<Notification>(x => x.Recipient.Email == "admin2@example.com"),
-            It.IsAny<CancellationToken>()), Times.Once);
-        _dispatcher.Verify(n => n.DispatchAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _dispatcher.Verify(n => n.DispatchToRecipientsAsync(
+            It.Is<string>(s => s.Contains("Greenhouse Sensor")), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
+            It.Is<IReadOnlyList<NotificationRecipient>>(r =>
+                r.Count == 2 && r.Any(x => x.Email == "admin1@example.com") && r.Any(x => x.Email == "admin2@example.com")),
+            It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
         _devices.Verify(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
     }
 

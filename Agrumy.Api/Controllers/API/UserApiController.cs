@@ -183,10 +183,10 @@ namespace api.Controllers.API
                 IUserRepository jobUserRepo = services.GetRequiredService<IUserRepository>();
                 INotificationDispatcher jobNotifications = services.GetRequiredService<INotificationDispatcher>();
                 IList<User> admins = await jobUserRepo.TenantAdminsGetAsync(tenantId);
-                foreach (User admin in admins)
+                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                if (recipients.Count > 0)
                 {
-                    if (string.IsNullOrWhiteSpace(admin.Email)) { continue; }
-                    await jobNotifications.DispatchAsync(new Notification("New user awaiting approval", subject, new NotificationRecipient(Email: admin.Email)), ct);
+                    await jobNotifications.DispatchToRecipientsAsync("New user awaiting approval", subject, NotificationSeverity.Warning, recipients, ct: ct);
                 }
             });
         }

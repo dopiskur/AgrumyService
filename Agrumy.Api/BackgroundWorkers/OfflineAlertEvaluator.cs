@@ -46,18 +46,15 @@ namespace api.BackgroundWorkers
                     $"No contact since {d.LastSeenAt:u}");
 
                 var admins = await userRepo.TenantAdminsGetAsync(d.TenantID);
-                foreach (var admin in admins)
+                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                if (recipients.Count > 0)
                 {
-                    if (string.IsNullOrWhiteSpace(admin.Email))
-                    {
-                        continue;
-                    }
-                    var notification = new Notification(
-                        Subject: $"Agrumy: {deviceLabel} is offline",
-                        Body: $"{deviceLabel} has not reported in since {d.LastSeenAt:u} UTC.",
-                        Recipient: new NotificationRecipient(Email: admin.Email),
-                        Severity: NotificationSeverity.Warning);
-                    await dispatcher.DispatchAsync(notification, ct);
+                    await dispatcher.DispatchToRecipientsAsync(
+                        $"Agrumy: {deviceLabel} is offline",
+                        $"{deviceLabel} has not reported in since {d.LastSeenAt:u} UTC.",
+                        NotificationSeverity.Warning,
+                        recipients,
+                        ct: ct);
                 }
 
                 await deviceRepo.DeviceOfflineNotifiedSetAsync(d.IDDevice, utcNow);

@@ -51,18 +51,15 @@ namespace api.BackgroundWorkers
                 string zoneLabel = string.IsNullOrWhiteSpace(z.DeviceFarmUnitZoneName) ? $"Zone {z.IDDeviceFarmUnitZone}" : z.DeviceFarmUnitZoneName;
 
                 var admins = await userRepo.TenantAdminsGetAsync(z.TenantID);
-                foreach (var admin in admins)
+                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                if (recipients.Count > 0)
                 {
-                    if (string.IsNullOrWhiteSpace(admin.Email))
-                    {
-                        continue;
-                    }
-                    var notification = new Notification(
-                        Subject: $"Agrumy: {zoneLabel} tank needs a refill ({fill:0.#}%)",
-                        Body: $"{zoneLabel}'s tank is at {fill:0.#}%, at or below the configured threshold of {threshold:0.#}%.",
-                        Recipient: new NotificationRecipient(Email: admin.Email),
-                        Severity: NotificationSeverity.Warning);
-                    await dispatcher.DispatchAsync(notification, ct);
+                    await dispatcher.DispatchToRecipientsAsync(
+                        $"Agrumy: {zoneLabel} tank needs a refill ({fill:0.#}%)",
+                        $"{zoneLabel}'s tank is at {fill:0.#}%, at or below the configured threshold of {threshold:0.#}%.",
+                        NotificationSeverity.Warning,
+                        recipients,
+                        ct: ct);
                 }
 
                 await deviceFarmUnitRepo.TankRefillNotifiedSetAsync(z.IDDeviceFarmUnitZone, DateTime.UtcNow);

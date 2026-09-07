@@ -133,18 +133,15 @@ namespace api.BackgroundWorkers
             }
 
             var admins = await userRepo.TenantAdminsGetAsync(item.TenantId);
-            foreach (User admin in admins)
+            var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+            if (recipients.Count > 0)
             {
-                if (string.IsNullOrWhiteSpace(admin.Email))
-                {
-                    continue;
-                }
-                var notification = new Notification(
-                    Subject: Placeholder(item.Rule.NotificationSubject) ?? "Agrumy alert",
-                    Body: Placeholder(item.Rule.NotificationBody) ?? string.Empty,
-                    Recipient: new NotificationRecipient(Email: admin.Email),
-                    Severity: NotificationSeverity.Warning);
-                await dispatcher.DispatchAsync(notification, ct);
+                await dispatcher.DispatchToRecipientsAsync(
+                    Placeholder(item.Rule.NotificationSubject) ?? "Agrumy alert",
+                    Placeholder(item.Rule.NotificationBody) ?? string.Empty,
+                    NotificationSeverity.Warning,
+                    recipients,
+                    ct: ct);
             }
 
             string? Placeholder(string? template) => template?

@@ -53,18 +53,15 @@ namespace api.BackgroundWorkers
                     $"Battery at {battery}% (threshold {threshold:0.#}%)");
 
                 var admins = await userRepo.TenantAdminsGetAsync(d.TenantID);
-                foreach (var admin in admins)
+                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                if (recipients.Count > 0)
                 {
-                    if (string.IsNullOrWhiteSpace(admin.Email))
-                    {
-                        continue;
-                    }
-                    var notification = new Notification(
-                        Subject: $"Agrumy: {deviceLabel} battery is low ({battery}%)",
-                        Body: $"{deviceLabel} last reported {battery}% battery, at or below the configured threshold of {threshold:0.#}%.",
-                        Recipient: new NotificationRecipient(Email: admin.Email),
-                        Severity: NotificationSeverity.Warning);
-                    await dispatcher.DispatchAsync(notification, ct);
+                    await dispatcher.DispatchToRecipientsAsync(
+                        $"Agrumy: {deviceLabel} battery is low ({battery}%)",
+                        $"{deviceLabel} last reported {battery}% battery, at or below the configured threshold of {threshold:0.#}%.",
+                        NotificationSeverity.Warning,
+                        recipients,
+                        ct: ct);
                 }
 
                 await deviceRepo.DeviceLowBatteryNotifiedSetAsync(d.IDDevice, DateTime.UtcNow);

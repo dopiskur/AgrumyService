@@ -98,19 +98,19 @@ public class TankRefillAlertEvaluatorTests
                   new() { IDUser = 2, Email = "admin2@example.com" },
                   new() { IDUser = 3, Email = null }, // no email - must be skipped, not throw
               });
-        _dispatcher.Setup(n => n.DispatchAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
+        _dispatcher.Setup(n => n.DispatchToRecipientsAsync(
+                       It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
+                       It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                    .ReturnsAsync(new List<ChannelOutcome>());
         _deviceFarmUnits.Setup(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _dispatcher.Verify(n => n.DispatchAsync(
-            It.Is<Notification>(x => x.Recipient.Email == "admin1@example.com" && x.Subject.Contains("Zone A")),
-            It.IsAny<CancellationToken>()), Times.Once);
-        _dispatcher.Verify(n => n.DispatchAsync(
-            It.Is<Notification>(x => x.Recipient.Email == "admin2@example.com"),
-            It.IsAny<CancellationToken>()), Times.Once);
-        _dispatcher.Verify(n => n.DispatchAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _dispatcher.Verify(n => n.DispatchToRecipientsAsync(
+            It.Is<string>(s => s.Contains("Zone A")), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
+            It.Is<IReadOnlyList<NotificationRecipient>>(r =>
+                r.Count == 2 && r.Any(x => x.Email == "admin1@example.com") && r.Any(x => x.Email == "admin2@example.com")),
+            It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
         _deviceFarmUnits.Verify(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
     }
 
