@@ -3,7 +3,7 @@ namespace api.Dal.Entities
     public class AuditLogRow
     {
         public int IDAuditLog { get; set; }
-        public DateTime TimestampUtc { get; set; }
+        public DateTimeOffset TimestampUtc { get; set; }
         public int? TenantID { get; set; }
         public int? ActorUserID { get; set; }
         public string? ActorEmail { get; set; }

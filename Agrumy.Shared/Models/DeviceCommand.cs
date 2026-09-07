@@ -41,9 +41,9 @@ namespace api.Models
         public int DeviceID { get; set; }
         public CommandActionType ActionType { get; set; }
         public CommandStatus Status { get; set; }
-        public DateTime IssuedAt { get; set; }
-        public DateTime ExpiresAt { get; set; }
-        public DateTime? ExecutedAt { get; set; }
+        public DateTimeOffset IssuedAt { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
+        public DateTimeOffset? ExecutedAt { get; set; }
         // Only ProvisionDevice sets this - see api.Models.DiscoveryProvisionPayload.
         public string? Payload { get; set; }
     }
@@ -53,7 +53,7 @@ namespace api.Models
     {
         public int IDDeviceCommand { get; set; }
         public CommandActionType ActionType { get; set; }
-        public DateTime ExpiresAt { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
         public string? Payload { get; set; }
     }
 

@@ -20,8 +20,8 @@ namespace api.Devices
             {
                 return false;
             }
-            return device.LastFullConfigSentAt is not DateTime last
-                || (DateTime.UtcNow - last).TotalHours >= serverConfig.ConfigHeartbeatHours;
+            return device.LastFullConfigSentAt is not DateTimeOffset last
+                || (DateTimeOffset.UtcNow - last).TotalHours >= serverConfig.ConfigHeartbeatHours;
         }
 
         public async Task<DeviceConfig> BuildAsync(Device device, PendingCommand? pendingCommand, string? board)
@@ -113,7 +113,7 @@ namespace api.Devices
                     {
                         RelayFunction = o.RelayFunction,
                         Mode = o.Mode,
-                        ExpiresAtEpoch = ((DateTimeOffset)DateTime.SpecifyKind(o.ExpiresAtUtc, DateTimeKind.Utc)).ToUnixTimeSeconds(),
+                        ExpiresAtEpoch = o.ExpiresAtUtc.ToUnixTimeSeconds(),
                         TargetMetric = o.TargetMetric,
                         TargetThreshold = o.TargetThreshold,
                         TargetHysteresis = o.TargetHysteresis,

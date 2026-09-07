@@ -75,11 +75,11 @@ namespace api.Models
         public bool? Enabled { get; set; } = false;
 
 
-        public DateTime? DateCreated { get; set; }
-        public DateTime? DateModified { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+        public DateTimeOffset? DateModified { get; set; }
 
         // Written only when GetConfig/RunConfigAsync actually sends a full DeviceConfig body - drives the ConfigHeartbeatHours periodic resend (see DeviceConfigBuilder.NeedsRefreshAsync); never exposed via DeviceDto, purely internal bookkeeping.
-        public DateTime? LastFullConfigSentAt { get; set; }
+        public DateTimeOffset? LastFullConfigSentAt { get; set; }
     }
 
     /// The only shape of a device that ever crosses the HTTP boundary in either direction (GET responses, PUT /api/Device body) - identical to Device minus ApiId/ApiKey, which stay internal to EfRepository/DeviceConfigBuilder no matter what future fields get added here.
@@ -116,8 +116,8 @@ namespace api.Models
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; }
         public bool? Enabled { get; set; } = false;
-        public DateTime? DateCreated { get; set; }
-        public DateTime? DateModified { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+        public DateTimeOffset? DateModified { get; set; }
     }
 
     /// The Web Edit form's ONLY binding target - deliberately carries just what EfRepository.DeviceUpdateAsync's own whitelist actually writes, so MacAddress/TenantID/IsGateway/GatewayProfile/ApiId/ApiKey/ConfigVersion have no property for an over-posted form value to land on, by construction rather than by remembering to filter them out downstream.
@@ -344,7 +344,7 @@ namespace api.Models
         public string? DeviceName { get; set; }
         public bool? Enabled { get; set; }
         public int? SleepSeconds { get; set; }
-        public DateTime? LastSeenAt { get; set; }
+        public DateTimeOffset? LastSeenAt { get; set; }
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
@@ -374,9 +374,9 @@ namespace api.Models
         public const int OfflineGraceSeconds = 90;
 
         /// Whether a device last seen at lastSeenAt (UTC) counts as online at utcNow, given its poll interval - static and time-injected so it's unit-testable without a repository.
-        public static bool ComputeOnline(DateTime? lastSeenAt, int? sleepSeconds, DateTime utcNow)
+        public static bool ComputeOnline(DateTimeOffset? lastSeenAt, int? sleepSeconds, DateTimeOffset utcNow)
         {
-            if (lastSeenAt is not DateTime seen)
+            if (lastSeenAt is not DateTimeOffset seen)
             {
                 return false;
             }
@@ -489,9 +489,9 @@ namespace api.Models
         public int TenantID { get; set; }
         public RelayFunction RelayFunction { get; set; }
         public ManualOverrideMode Mode { get; set; }
-        public DateTime StartedAtUtc { get; set; }
+        public DateTimeOffset StartedAtUtc { get; set; }
         /// Hard safety cap regardless of Mode - computed at start time from the zone's own HeatingMaxRunSeconds/VentilationMaxRunSeconds/WaterPumpMaxRunSeconds for RelayFunction.
-        public DateTime ExpiresAtUtc { get; set; }
+        public DateTimeOffset ExpiresAtUtc { get; set; }
         /// Target mode only - Temperature/Humidity/Moisture (roadmap #219's allowed subset), null for Duration.
         public SensorMetric? TargetMetric { get; set; }
         public double? TargetThreshold { get; set; }

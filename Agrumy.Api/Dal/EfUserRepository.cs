@@ -300,7 +300,7 @@ namespace api.Dal
             {
                 return false;
             }
-            if (row.ActivationLastSentAt is DateTime lastSent && lastSent > DateTime.UtcNow.AddMinutes(-cooldownMinutes))
+            if (row.ActivationLastSentAt is DateTimeOffset lastSent && lastSent > DateTime.UtcNow.AddMinutes(-cooldownMinutes))
             {
                 return false; // still in cooldown
             }

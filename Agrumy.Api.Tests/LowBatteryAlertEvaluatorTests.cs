@@ -94,7 +94,7 @@ public class LowBatteryAlertEvaluatorTests
                        It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
                        It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                    .ReturnsAsync(new List<ChannelOutcome>());
-        _devices.Setup(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _devices.Setup(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
@@ -103,7 +103,7 @@ public class LowBatteryAlertEvaluatorTests
             It.Is<IReadOnlyList<NotificationRecipient>>(r =>
                 r.Count == 2 && r.Any(x => x.Email == "admin1@example.com") && r.Any(x => x.Email == "admin2@example.com")),
             It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
-        _devices.Verify(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
+        _devices.Verify(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 
     [Fact]
@@ -125,10 +125,10 @@ public class LowBatteryAlertEvaluatorTests
 
         _devices.Setup(d => d.EventDevicePushAsync(1, 7, DeviceEventType.LowBattery, It.IsAny<string>())).ReturnsAsync(true);
         _users.Setup(u => u.TenantAdminsGetAsync(7)).ReturnsAsync(new List<User>());
-        _devices.Setup(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _devices.Setup(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _devices.Verify(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
+        _devices.Verify(d => d.DeviceLowBatteryNotifiedSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 }

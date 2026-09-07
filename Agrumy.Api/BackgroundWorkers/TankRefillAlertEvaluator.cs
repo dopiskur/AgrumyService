@@ -62,7 +62,7 @@ namespace api.BackgroundWorkers
                         ct: ct);
                 }
 
-                await deviceFarmUnitRepo.TankRefillNotifiedSetAsync(z.IDDeviceFarmUnitZone, DateTime.UtcNow);
+                await deviceFarmUnitRepo.TankRefillNotifiedSetAsync(z.IDDeviceFarmUnitZone, DateTimeOffset.UtcNow);
             }
         }
     }

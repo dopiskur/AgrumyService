@@ -8,8 +8,8 @@ namespace api.Dal.Interface
         int TenantID,
         string? DeviceName,
         int? SleepSeconds,
-        DateTime? LastSeenAt,
-        DateTime? OfflineNotifiedAt);
+        DateTimeOffset? LastSeenAt,
+        DateTimeOffset? OfflineNotifiedAt);
 
     /// The minimal shape LowBatteryAlertEvaluator needs - Battery is the latest telemetry reading (not the heartbeat, see DeviceFleetStatus), null when never reported.
     public sealed record LowBatteryAlertCandidate(
@@ -17,7 +17,7 @@ namespace api.Dal.Interface
         int TenantID,
         string? DeviceName,
         int? Battery,
-        DateTime? LowBatteryNotifiedAt);
+        DateTimeOffset? LowBatteryNotifiedAt);
 
     /// Device facet of the data layer: device CRUD, sensor/controller configs, firmware (OTA), the fixed type lists, and device events.
     public interface IDeviceRepository
@@ -111,7 +111,7 @@ namespace api.Dal.Interface
         Task<IList<OfflineAlertCandidate>> OfflineAlertCandidatesGetAsync();
 
         /// Sets (or clears, notifiedAt: null) OfflineNotifiedAt on one device's diagnostic row.
-        Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTime? notifiedAt);
+        Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt);
 
         // Low-battery alert background worker
 
@@ -119,7 +119,7 @@ namespace api.Dal.Interface
         Task<IList<LowBatteryAlertCandidate>> LowBatteryAlertCandidatesGetAsync();
 
         /// Sets (or clears, notifiedAt: null) LowBatteryNotifiedAt on one device's diagnostic row.
-        Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTime? notifiedAt);
+        Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt);
 
         // Simulation Mode (per-metric overrides on an existing physical device)
 

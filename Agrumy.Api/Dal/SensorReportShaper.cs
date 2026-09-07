@@ -44,9 +44,9 @@ namespace api.Dal
         }
 
         /// Truncates a timestamp to the bucket boundary for the given range mode.
-        private static DateTime BucketKey(DateTime? dt, int timeMDMY)
+        private static DateTime BucketKey(DateTimeOffset? dt, int timeMDMY)
         {
-            DateTime d = dt ?? DateTime.MinValue;
+            DateTime d = dt?.UtcDateTime ?? DateTime.MinValue;
             return timeMDMY switch
             {
                 0 => new DateTime(d.Year, d.Month, d.Day, d.Hour, d.Minute, 0),

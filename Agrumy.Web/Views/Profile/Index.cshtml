@@ -58,7 +58,7 @@
                 {
                     <p class="mb-2">No active PIN. Generate one right before registering a new device.</p>
                 }
-                else if (Model.DevicePinExpires is DateTime expired && expired < DateTime.UtcNow)
+                else if (Model.DevicePinExpires is DateTimeOffset expired && expired < DateTimeOffset.UtcNow)
                 {
                     <p class="mb-2">Your PIN has expired. Generate a new one to register a device.</p>
                 }
@@ -66,7 +66,7 @@
                 {
                     <p class="mb-1">Enter this PIN on the device's setup portal:</p>
                     <p class="mb-2"><code class="fs-4">@Model.DevicePin</code></p>
-                    @if (Model.DevicePinExpires is DateTime expires)
+                    @if (Model.DevicePinExpires is DateTimeOffset expires)
                     {
                         <p class="text-muted mb-2">Valid until @expires.ToString("yyyy-MM-dd HH:mm") UTC - reusable for as many devices as you register in that window.</p>
                     }

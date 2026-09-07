@@ -6,8 +6,8 @@ namespace api.Models
     public class RefreshTokenInfo
     {
         public int UserID { get; set; }
-        public DateTime ExpiresAt { get; set; }
-        public DateTime? RevokedAt { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
+        public DateTimeOffset? RevokedAt { get; set; }
     }
 
     public class RefreshTokenRequest

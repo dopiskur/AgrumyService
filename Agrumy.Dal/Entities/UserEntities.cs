@@ -8,7 +8,7 @@ namespace api.Dal.Entities
         public string TenantName { get; set; } = "";
         public string? ScheduleTimeZone { get; set; } // See api.Models.Tenant.ScheduleTimeZone.
         public bool EmergencyStopActive { get; set; } // See api.Models.Tenant.EmergencyStopActive.
-        public DateTime? DateCreated { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
     }
 
     /// See api.Models.TenantWifiConfig.
@@ -18,7 +18,7 @@ namespace api.Dal.Entities
         public int TenantID { get; set; }
         public string Ssid { get; set; } = "";
         public string Password { get; set; } = "";
-        public DateTime? DateCreated { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
     }
 
     public class UserRoleScopeRow
@@ -52,25 +52,25 @@ namespace api.Dal.Entities
         public string? BootstrapSecretHash { get; set; } // One-time bootstrap setup secret, set only on the seed row and cleared on success.
         public string? BootstrapSecretSalt { get; set; }
         public string? DevicePin { get; set; } // 6-char generated code; null = never issued or explicitly cleared.
-        public DateTime? DevicePinExpires { get; set; }
+        public DateTimeOffset? DevicePinExpires { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Phone { get; set; }
         public bool? Enabled { get; set; }
-        public DateTime? DateCreated { get; set; }
-        public DateTime? DateModified { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+        public DateTimeOffset? DateModified { get; set; }
 
         public bool EmailVerified { get; set; } // Independent gate on top of Enabled, proving email ownership.
         public string? ActivationTokenHash { get; set; }
-        public DateTime? ActivationTokenExpiresAt { get; set; }
+        public DateTimeOffset? ActivationTokenExpiresAt { get; set; }
 
-        public DateTime? ActivationLastSentAt { get; set; } // Resend-cooldown bookkeeping only, never surfaced on the public User DTO.
+        public DateTimeOffset? ActivationLastSentAt { get; set; } // Resend-cooldown bookkeeping only, never surfaced on the public User DTO.
 
         public string? TimeZone { get; set; } // IANA zone id, not a raw UTC offset, so TimeZoneInfo resolves it correctly across DST; null = presented as UTC (see api.Utils.TimeZoneHelper).
 
         public bool MustChangePassword { get; set; } // See api.Models.User.MustChangePassword.
 
-        public DateTime? TokensValidAfterUtc { get; set; } // See api.Models.User.TokensValidAfterUtc.
+        public DateTimeOffset? TokensValidAfterUtc { get; set; } // See api.Models.User.TokensValidAfterUtc.
     }
 
     /// One issued JWT refresh token - single-use, a rotation marks the row revoked and points ReplacedByTokenHash at its successor so a reused token is detectable; only the hash is stored.
@@ -79,9 +79,9 @@ namespace api.Dal.Entities
         public int IDRefreshToken { get; set; }
         public int UserID { get; set; }
         public string TokenHash { get; set; } = "";
-        public DateTime ExpiresAt { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? RevokedAt { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? RevokedAt { get; set; }
         public string? ReplacedByTokenHash { get; set; }
     }
 
@@ -114,7 +114,7 @@ namespace api.Dal.Entities
         public string? FirmwareGitHubRepository { get; set; }
         public string? FirmwareCustomRepositoryUrl { get; set; }
         public int? FirmwareRefreshIntervalHours { get; set; }
-        public DateTime? FirmwareLastRefreshedAtUtc { get; set; }
+        public DateTimeOffset? FirmwareLastRefreshedAtUtc { get; set; }
         public int? SensorDataRetentionDays { get; set; }
 
         // See api.Models.ServerConfig's own copies of these for the full explanation.
@@ -123,7 +123,7 @@ namespace api.Dal.Entities
         public int? WeatherPollIntervalMinutes { get; set; }
         public double? WeatherRainSkipThreshold { get; set; }
         public bool WeatherRainPredicted { get; set; }
-        public DateTime? WeatherCheckedAtUtc { get; set; }
+        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
         // See api.Models.ServerConfig's own copies of these for the full explanation.
         public bool GatewayEnabled { get; set; }

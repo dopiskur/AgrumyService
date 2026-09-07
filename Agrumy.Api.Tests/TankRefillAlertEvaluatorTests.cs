@@ -102,7 +102,7 @@ public class TankRefillAlertEvaluatorTests
                        It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
                        It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                    .ReturnsAsync(new List<ChannelOutcome>());
-        _deviceFarmUnits.Setup(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _deviceFarmUnits.Setup(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
@@ -111,7 +111,7 @@ public class TankRefillAlertEvaluatorTests
             It.Is<IReadOnlyList<NotificationRecipient>>(r =>
                 r.Count == 2 && r.Any(x => x.Email == "admin1@example.com") && r.Any(x => x.Email == "admin2@example.com")),
             It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
-        _deviceFarmUnits.Verify(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
+        _deviceFarmUnits.Verify(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 
     [Fact]
@@ -132,10 +132,10 @@ public class TankRefillAlertEvaluatorTests
         SetupCandidates(Candidate(tenantId: 7, waterLevel: 20, tankRefillNotifiedAt: null));
 
         _users.Setup(u => u.TenantAdminsGetAsync(7)).ReturnsAsync(new List<User>());
-        _deviceFarmUnits.Setup(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _deviceFarmUnits.Setup(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _deviceFarmUnits.Verify(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
+        _deviceFarmUnits.Verify(d => d.TankRefillNotifiedSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 }

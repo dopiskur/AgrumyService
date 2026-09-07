@@ -71,11 +71,11 @@ public class WeatherEvaluatorTests
         });
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(10.0);
-        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTime>(), 1)).Returns(Task.CompletedTask);
+        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTimeOffset>(), 1)).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTime>(), 1), Times.Once);
+        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTimeOffset>(), 1), Times.Once);
     }
 
     [Fact]
@@ -91,11 +91,11 @@ public class WeatherEvaluatorTests
         });
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(50.0); // exactly at threshold - counts as predicted, same >= convention as LowBatteryAlertEvaluator's threshold check
-        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(true, It.IsAny<DateTime>(), 1)).Returns(Task.CompletedTask);
+        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(true, It.IsAny<DateTimeOffset>(), 1)).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(true, It.IsAny<DateTime>(), 1), Times.Once);
+        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(true, It.IsAny<DateTimeOffset>(), 1), Times.Once);
     }
 
     [Fact]
@@ -111,11 +111,11 @@ public class WeatherEvaluatorTests
         });
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(49.9);
-        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTime>(), 1)).Returns(Task.CompletedTask);
+        _serverConfig.Setup(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTimeOffset>(), 1)).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTime>(), 1), Times.Once);
+        _serverConfig.Verify(s => s.ServerConfigWeatherStateSetAsync(false, It.IsAny<DateTimeOffset>(), 1), Times.Once);
     }
 
     [Fact]

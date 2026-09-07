@@ -27,7 +27,7 @@ namespace api.BackgroundWorkers
 
             // WeatherBackgroundService ticks on a fixed 1-minute cadence and re-reads the current value here every tick, so an admin's edit takes effect without a restart.
             int pollMinutes = Math.Max(1, config.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes);
-            if (config.WeatherCheckedAtUtc is DateTime lastChecked && DateTime.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
+            if (config.WeatherCheckedAtUtc is DateTimeOffset lastChecked && DateTimeOffset.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
             {
                 return; // not due yet
             }
@@ -44,7 +44,7 @@ namespace api.BackgroundWorkers
             {
                 logger.LogInformation("Weather check: max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", pop, threshold, rainPredicted);
             }
-            await serverConfigRepo.ServerConfigWeatherStateSetAsync(rainPredicted, DateTime.UtcNow, 1);
+            await serverConfigRepo.ServerConfigWeatherStateSetAsync(rainPredicted, DateTimeOffset.UtcNow, 1);
         }
     }
 }

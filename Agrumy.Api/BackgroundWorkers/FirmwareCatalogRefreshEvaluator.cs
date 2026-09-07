@@ -21,7 +21,7 @@ namespace api.BackgroundWorkers
             }
 
             // FirmwareCatalogRefreshBackgroundService ticks every minute and re-reads this live value, so an admin's edit takes effect without a restart.
-            if (config.FirmwareLastRefreshedAtUtc is DateTime lastRefreshed && DateTime.UtcNow - lastRefreshed < TimeSpan.FromHours(intervalHours))
+            if (config.FirmwareLastRefreshedAtUtc is DateTimeOffset lastRefreshed && DateTimeOffset.UtcNow - lastRefreshed < TimeSpan.FromHours(intervalHours))
             {
                 return; // not due yet
             }
@@ -37,7 +37,7 @@ namespace api.BackgroundWorkers
             {
                 logger.LogInformation("Firmware catalog auto-refresh: added {Added}, removed {Removed}, skipped {Skipped}.", result.Added, result.Removed, result.Skipped);
             }
-            await serverConfigRepo.ServerConfigFirmwareRefreshStateSetAsync(DateTime.UtcNow, 1);
+            await serverConfigRepo.ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset.UtcNow, 1);
         }
     }
 }

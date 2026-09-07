@@ -13,7 +13,7 @@ namespace api.ViewModels
 
         // Display-only; a new PIN is issued via the page's "Generate new PIN" post, never typed in by hand.
         public string? DevicePin { get; set; }
-        public DateTime? DevicePinExpires { get; set; }
+        public DateTimeOffset? DevicePinExpires { get; set; }
     }
 
     public class ChangePasswordViewModel

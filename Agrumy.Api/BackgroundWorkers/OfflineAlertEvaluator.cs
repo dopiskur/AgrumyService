@@ -9,7 +9,7 @@ namespace api.BackgroundWorkers
     {
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
-            DateTime utcNow = DateTime.UtcNow;
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
             var candidates = await deviceRepo.OfflineAlertCandidatesGetAsync();
 
             foreach (var d in candidates)

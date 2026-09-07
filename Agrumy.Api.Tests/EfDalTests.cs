@@ -16,7 +16,9 @@ public class SensorReportShaperTests
     {
         DeviceID = 1,
         TenantID = 0,
-        DateCreated = DateTime.Parse(dateCreated),
+        // AssumeUniversal: these bare strings represent UTC instants - without it, DateTime.Parse's Kind=Unspecified result gets silently reinterpreted as the test host's local time by the implicit conversion to DateTimeOffset.
+        DateCreated = DateTime.Parse(dateCreated, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal),
         Co2 = co2,
         Temperature = temp,
     };

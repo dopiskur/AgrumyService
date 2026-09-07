@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 namespace api.Security
 {
     /// Just the field this check actually needs - deliberately not the full User (PwdHash/PwdSalt have no business sitting in the cache backing store for this).
-    internal sealed record CachedRevocationState(DateTime? TokensValidAfterUtc);
+    internal sealed record CachedRevocationState(DateTimeOffset? TokensValidAfterUtc);
 
     /// AddJwtBearer's OnTokenValidated hook - rejects a structurally valid, unexpired token if the caller's password changed or account was disabled after it was issued. See api.Security.TokenRevocationCheck for the actual decision.
     public static class TokenRevocationValidator
@@ -38,7 +38,7 @@ namespace api.Security
                 await cache.SetAsync(cacheKey, state, CacheTtl);
             }
 
-            if (TokenRevocationCheck.IsRevoked(jwt.IssuedAt, state.TokensValidAfterUtc))
+            if (TokenRevocationCheck.IsRevoked(DateTime.SpecifyKind(jwt.IssuedAt, DateTimeKind.Utc), state.TokensValidAfterUtc))
             {
                 context.Fail("Token revoked - password changed or account disabled.");
             }

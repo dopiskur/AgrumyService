@@ -22,7 +22,7 @@ namespace api.Models
         public int ScanningDeviceID { get; set; }
         public string? ScanningDeviceName { get; set; }
         public int TenantID { get; set; }
-        public DateTime DateReported { get; set; }
+        public DateTimeOffset DateReported { get; set; }
     }
 
     /// Body of POST /api/Discovery/Register - WifiConfigId/Ssid/WifiPassword/SaveWifiForLater are needed depending on how many TenantWifiConfig rows the tenant already has, per DiscoveryApiController.Register's branching (see DiscoveryRegisterOutcome for how the caller learns which one applies).

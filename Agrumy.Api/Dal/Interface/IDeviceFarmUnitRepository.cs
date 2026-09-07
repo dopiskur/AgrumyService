@@ -11,7 +11,7 @@ namespace api.Dal.Interface
         int? WaterLevelRawEmpty,
         int? WaterLevelRawFull,
         double? TankCapacityLiters,
-        DateTime? TankRefillNotifiedAt);
+        DateTimeOffset? TankRefillNotifiedAt);
 
     /// Unit/Zone facet of the data layer: CRUD, device assignment, and the hierarchical dashboard aggregation - split out from IDeviceRepository as its own sizeable domain.
     public interface IDeviceFarmUnitRepository
@@ -141,7 +141,7 @@ namespace api.Dal.Interface
         /// Every real, tank-calibrated zone (TankCapacityLiters + both raw calibration points set) across every tenant, with its latest averaged WaterLevel reading.
         Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync();
 
-        Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTime? notifiedAt);
+        Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt);
 
         // ---- Manual actuate (roadmap #219) --------------------------
 

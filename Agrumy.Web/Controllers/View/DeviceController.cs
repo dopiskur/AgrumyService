@@ -93,9 +93,10 @@ namespace api.Controllers.View
             string? timeZone = User.GetTimeZone();
             foreach (var d in fleet)
             {
-                if (d.LastSeenAt is DateTime utc)
+                if (d.LastSeenAt is DateTimeOffset utc)
                 {
-                    d.LastSeenAt = TimeZoneHelper.ToUserLocalTime(utc, timeZone);
+                    // TimeZoneHelper returns a local wall-clock DateTime for display; re-wrapped with Offset=0 only so it fits this DTO's DateTimeOffset field, not because it's really UTC.
+                    d.LastSeenAt = new DateTimeOffset(TimeZoneHelper.ToUserLocalTime(utc.UtcDateTime, timeZone), TimeSpan.Zero);
                 }
             }
             ViewBag.DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone;
@@ -107,7 +108,7 @@ namespace api.Controllers.View
         {
             User self = await api.UserGetSelf();
             bool stillValid = !string.IsNullOrEmpty(self.DevicePin) &&
-                self.DevicePinExpires is DateTime expires && expires > DateTime.UtcNow;
+                self.DevicePinExpires is DateTimeOffset expires && expires > DateTimeOffset.UtcNow;
 
             return View(stillValid
                 ? new AddDeviceViewModel { DevicePin = self.DevicePin, ExpiresAt = self.DevicePinExpires }
@@ -292,9 +293,9 @@ namespace api.Controllers.View
             string? timeZone = User.GetTimeZone();
             foreach (var e in events ?? [])
             {
-                if (e.CreatedAt is DateTime utc)
+                if (e.CreatedAt is DateTimeOffset utc)
                 {
-                    e.CreatedAt = TimeZoneHelper.ToUserLocalTime(utc, timeZone);
+                    e.CreatedAt = new DateTimeOffset(TimeZoneHelper.ToUserLocalTime(utc.UtcDateTime, timeZone), TimeSpan.Zero);
                 }
             }
             ViewBag.DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone;

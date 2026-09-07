@@ -14,14 +14,14 @@ namespace api.Models
         public string? DevicePin { get; set; } = AuthenticationProvider.GetPin();
 
         // Multi-use within the validity window - not consumed by a successful device registration; null means generate a new one first.
-        public DateTime? DevicePinExpires { get; set; } = DateTime.UtcNow.AddHours(AuthenticationProvider.PinValidHours);
+        public DateTimeOffset? DevicePinExpires { get; set; } = DateTimeOffset.UtcNow.AddHours(AuthenticationProvider.PinValidHours);
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Phone { get; set; }
 
         public bool? Enabled { get; set; } // MySQL TINYINT(1) is needed for boolean
-        public DateTime? DateCreated { get; set; }
-        public DateTime? DateModified { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+        public DateTimeOffset? DateModified { get; set; }
 
         public bool? EmailVerified { get; set; }
 
@@ -32,7 +32,7 @@ namespace api.Models
         public bool MustChangePassword { get; set; }
 
         // Written only by EfRepository.RevokeUserTokensAsync (password change, Enabled->false) - an access token whose iat predates this is rejected even though it hasn't naturally expired yet.
-        public DateTime? TokensValidAfterUtc { get; set; }
+        public DateTimeOffset? TokensValidAfterUtc { get; set; }
     }
 
     public class UserSecret
@@ -163,7 +163,7 @@ namespace api.Models
     public class DevicePinResult
     {
         public string? DevicePin { get; set; }
-        public DateTime? ExpiresAt { get; set; }
+        public DateTimeOffset? ExpiresAt { get; set; }
     }
 
     /// Deliberately the same shape as <see cref="UserLogin"/>'s Login field (email or username) - a user who forgot which one they registered with shouldn't have to guess.

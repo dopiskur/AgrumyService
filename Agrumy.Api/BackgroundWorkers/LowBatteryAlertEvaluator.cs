@@ -64,7 +64,7 @@ namespace api.BackgroundWorkers
                         ct: ct);
                 }
 
-                await deviceRepo.DeviceLowBatteryNotifiedSetAsync(d.IDDevice, DateTime.UtcNow);
+                await deviceRepo.DeviceLowBatteryNotifiedSetAsync(d.IDDevice, DateTimeOffset.UtcNow);
             }
         }
     }

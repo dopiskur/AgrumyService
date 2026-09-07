@@ -72,7 +72,7 @@ public class OfflineAlertEvaluatorTests
                        It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
                        It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                    .ReturnsAsync(new List<ChannelOutcome>());
-        _devices.Setup(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _devices.Setup(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
@@ -81,7 +81,7 @@ public class OfflineAlertEvaluatorTests
             It.Is<IReadOnlyList<NotificationRecipient>>(r =>
                 r.Count == 2 && r.Any(x => x.Email == "admin1@example.com") && r.Any(x => x.Email == "admin2@example.com")),
             It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
-        _devices.Verify(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTime>()), Times.Once);
+        _devices.Verify(d => d.DeviceOfflineNotifiedSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 
     [Fact]

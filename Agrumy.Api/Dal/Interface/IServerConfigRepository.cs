@@ -12,10 +12,10 @@ namespace api.Dal.Interface
         Task ServerConfigReloadFromAppSettingsAsync(int idServerConfig);
 
         /// Narrow writer for WeatherEvaluator's computed result, kept separate from ServerConfigUpdateAsync so a concurrent settings save can't race it.
-        Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTime checkedAtUtc, int idServerConfig);
+        Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig);
 
         /// Narrow writer for FirmwareCatalogRefreshEvaluator's last-run timestamp, same isolation reasoning as ServerConfigWeatherStateSetAsync.
-        Task ServerConfigFirmwareRefreshStateSetAsync(DateTime checkedAtUtc, int idServerConfig);
+        Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig);
 
         /// PostgreSQL/TimescaleDB side of sensorData retention (MariaDB's equivalent is SensorDataRetentionBackgroundService's daily purge) - re-applied on every ServerConfig save plus once at startup by ISystemRepository.EnsureSchemaAsync.
         Task ApplyRetentionPolicyAsync(int? retentionDays);

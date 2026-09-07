@@ -47,7 +47,7 @@ namespace api.Models
         public int? DeviceID { get; set; }
         public string? EventType { get; set; }
         public string? Message { get; set; }
-        public DateTime? CreatedAt { get; set; }
-        public DateTime? AcknowledgedAt { get; set; }
+        public DateTimeOffset? CreatedAt { get; set; }
+        public DateTimeOffset? AcknowledgedAt { get; set; }
     }
 }

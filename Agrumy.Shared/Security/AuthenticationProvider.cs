@@ -52,10 +52,10 @@ namespace api.Security
         }
 
         /// A null expiry is treated as invalid, never as valid-forever; comparison is case-insensitive (free-text captive-portal field) and fixed-time (same reason as VerifyHash).
-        public static bool VerifyPin(string? storedPin, DateTime? expiresAtUtc, string? providedPin)
+        public static bool VerifyPin(string? storedPin, DateTimeOffset? expiresAtUtc, string? providedPin)
         {
             if (string.IsNullOrWhiteSpace(storedPin) || string.IsNullOrWhiteSpace(providedPin) ||
-                expiresAtUtc is null || expiresAtUtc < DateTime.UtcNow)
+                expiresAtUtc is null || expiresAtUtc < DateTimeOffset.UtcNow)
             {
                 return false;
             }

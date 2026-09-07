@@ -18,7 +18,7 @@
                 @(active.Mode == ManualOverrideMode.Duration ? "Duration" : $"Target: {active.TargetMetric} {active.TargetThreshold:0.#} (±{active.TargetHysteresis:0.#})")
             </span>
             <span class="text-secondary small ms-1">
-                until @TimeZoneHelper.ToUserLocalTime(active.ExpiresAtUtc, Model.DisplayTimeZone).ToString("HH:mm") @Model.DisplayTimeZone
+                until @TimeZoneHelper.ToUserLocalTime(active.ExpiresAtUtc.UtcDateTime, Model.DisplayTimeZone).ToString("HH:mm") @Model.DisplayTimeZone
                 @(active.Mode == ManualOverrideMode.Target ? "(safety cutoff, may finish sooner once the target is reached)" : "")
             </span>
         </div>

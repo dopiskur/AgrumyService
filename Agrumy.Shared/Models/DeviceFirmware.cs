@@ -29,8 +29,8 @@ namespace api.Models
         /// Lower-case hex SHA-256, when known.
         public string? Sha256 { get; set; }
 
-        public DateTime? PublishedAt { get; set; }
-        public DateTime? DateAdded { get; set; }
+        public DateTimeOffset? PublishedAt { get; set; }
+        public DateTimeOffset? DateAdded { get; set; }
 
         /// File name for the merged full-flash image (bootloader+partition+app), used by the blank-chip web installer; null if no such sibling was published for this row.
         public string? FullImageFileName { get; set; }

@@ -6,7 +6,7 @@ namespace api.Models
     public class AuditLogEntry
     {
         public int IDAuditLog { get; set; }
-        public DateTime TimestampUtc { get; set; }
+        public DateTimeOffset TimestampUtc { get; set; }
 
         /// Null for a cross-tenant action taken by a Global admin.
         public int? TenantID { get; set; }

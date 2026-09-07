@@ -648,8 +648,8 @@ namespace api.Dal
         /// Latest telemetry per device - EF can't translate a whole-row correlated subquery, so this pulls the latest SensorData id per device via portable scalar subqueries, then batch-fetches the rows.
         private async Task<List<UnitZoneDeviceSnapshot>> GetDeviceSnapshotsAsync(IQueryable<DeviceRow> devices, int problemEventExpiryHours, bool problemEventAlertsEnabled)
         {
-            DateTime utcNow = DateTime.UtcNow;
-            DateTime problemEventCutoff = utcNow.AddHours(-problemEventExpiryHours);
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+            DateTimeOffset problemEventCutoff = utcNow.AddHours(-problemEventExpiryHours);
 
             var deviceLatestIds = await devices
                 .Select(d => new
@@ -684,7 +684,7 @@ namespace api.Dal
                 SensorDataRow? s = d.LatestSensorDataId != null && latestById.TryGetValue(d.LatestSensorDataId.Value, out var row) ? row : null;
                 // Same window ComputeOnline uses to decide online/offline - a reading outside it is from a dead/unreachable sensor and must not silently count toward the zone/unit average or feed RuleNotificationEvaluator (which reads this same Averages value).
                 double maxReadingAgeSeconds = (d.SleepSeconds ?? 60) * DeviceFleetStatus.OfflineMissedPolls + DeviceFleetStatus.OfflineGraceSeconds;
-                if (s?.DateCreated is DateTime readingAt && (utcNow - readingAt).TotalSeconds > maxReadingAgeSeconds)
+                if (s?.DateCreated is DateTimeOffset readingAt && (utcNow - readingAt).TotalSeconds > maxReadingAgeSeconds)
                 {
                     s = null;
                 }
@@ -699,7 +699,7 @@ namespace api.Dal
         }
 
         /// Carries JOIN projection fields - lets the alert list group by unit/zone without a second round trip to look either up from DeviceID.
-        private sealed record UnitZoneProblemAlertRow(int? DeviceFarmUnitID, int? DeviceFarmUnitZoneID, int IDEventDevice, int DeviceID, string? DeviceName, int EventID, DateTime? Date, string? Message);
+        private sealed record UnitZoneProblemAlertRow(int? DeviceFarmUnitID, int? DeviceFarmUnitZoneID, int IDEventDevice, int DeviceID, string? DeviceName, int EventID, DateTimeOffset? Date, string? Message);
 
         /// Every un-acknowledged problem event still inside the expiry window - same predicate as GetDeviceSnapshotsAsync's HasRecentProblemEvent, but returns the actual rows so the dashboard can show what triggered Orange.
         private async Task<List<UnitZoneProblemAlertRow>> GetProblemAlertsAsync(IQueryable<DeviceRow> devices, int problemEventExpiryHours, bool problemEventAlertsEnabled)
@@ -709,7 +709,7 @@ namespace api.Dal
                 return [];
             }
 
-            DateTime cutoff = DateTime.UtcNow.AddHours(-problemEventExpiryHours);
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddHours(-problemEventExpiryHours);
             // OrderByDescending must run before the final Select - EF cannot translate ordering by a member of a record it just constructed inside the join's own result selector.
             var rows = await devices
                 .Join(
@@ -754,8 +754,8 @@ namespace api.Dal
                 return trend;
             }
 
-            DateTime utcNow = DateTime.UtcNow;
-            DateTime cutoff = utcNow.AddHours(-SensorTrend.HourBuckets);
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+            DateTimeOffset cutoff = utcNow.AddHours(-SensorTrend.HourBuckets);
 
             var rows = await db.SensorData.AsNoTracking()
                 .Where(s => s.DeviceFarmUnitZoneID != null && zoneIds.Contains(s.DeviceFarmUnitZoneID.Value) && s.DateCreated >= cutoff)
@@ -809,8 +809,8 @@ namespace api.Dal
                 return result;
             }
 
-            DateTime utcNow = DateTime.UtcNow;
-            DateTime cutoff = utcNow.AddHours(-SensorTrend.HourBuckets);
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+            DateTimeOffset cutoff = utcNow.AddHours(-SensorTrend.HourBuckets);
             var zoneIdList = keyByZoneId.Keys.ToList();
 
             var rows = await db.SensorData.AsNoTracking()
@@ -850,7 +850,7 @@ namespace api.Dal
         }
 
         /// 0 = the bucket ending 24h ago, 23 = the current hour - a timestamp outside the 24h window (or, defensively, in the future) falls outside [0, HourBuckets), which the caller filters out.
-        private static int HourBucketIndex(DateTime dateCreated, DateTime utcNow) =>
+        private static int HourBucketIndex(DateTimeOffset dateCreated, DateTimeOffset utcNow) =>
             SensorTrend.HourBuckets - 1 - (int)Math.Floor((utcNow - dateCreated).TotalHours);
 
         /// Per-sensor-type average across snapshots - LINQ's nullable Average() already ignores nulls and returns null (not an exception) for an all-null source, exactly "no device reported this type". zone is only passed at Zone granularity - a Unit rollup passes null since it may span zones with different (or no) tank calibration, and TankFillPercent/VolumeLiters stay null there.
@@ -912,7 +912,7 @@ namespace api.Dal
             return result;
         }
 
-        public async Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTime? notifiedAt)
+        public async Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt)
         {
             await db.DeviceFarmUnitZones.Where(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone)
                 .ExecuteUpdateAsync(s => s.SetProperty(z => z.TankRefillNotifiedAt, notifiedAt));
@@ -948,7 +948,7 @@ namespace api.Dal
 
         public async Task<IList<DeviceManualOverride>> ManualOverridesActiveForDeviceAsync(int deviceId)
         {
-            DateTime utcNow = DateTime.UtcNow;
+            DateTimeOffset utcNow = DateTimeOffset.UtcNow;
             var rows = await db.DeviceManualOverrides.AsNoTracking()
                 .Where(o => o.DeviceID == deviceId && o.ExpiresAtUtc > utcNow)
                 .ToListAsync();

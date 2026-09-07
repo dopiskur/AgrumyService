@@ -23,10 +23,10 @@ namespace api.Dal
 
         public Task<IList<OfflineAlertCandidate>> OfflineAlertCandidatesGetAsync() => deviceRepository.OfflineAlertCandidatesGetAsync();
 
-        public Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTime? notifiedAt) => deviceRepository.DeviceOfflineNotifiedSetAsync(deviceID, notifiedAt);
+        public Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt) => deviceRepository.DeviceOfflineNotifiedSetAsync(deviceID, notifiedAt);
 
         public Task<IList<LowBatteryAlertCandidate>> LowBatteryAlertCandidatesGetAsync() => deviceRepository.LowBatteryAlertCandidatesGetAsync();
 
-        public Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTime? notifiedAt) => deviceRepository.DeviceLowBatteryNotifiedSetAsync(deviceID, notifiedAt);
+        public Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt) => deviceRepository.DeviceLowBatteryNotifiedSetAsync(deviceID, notifiedAt);
     }
 }

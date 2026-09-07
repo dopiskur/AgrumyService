@@ -68,7 +68,7 @@ public class MqttCommandPublisherTests
     {
         string canonical = MqttCommandPublisher.CanonicalString(SampleCommandNode());
 
-        Assert.Equal($"7|{(int)CommandActionType.Reboot}|2026-09-06T12:00:00Z|abc", canonical);
+        Assert.Equal($"7|{(int)CommandActionType.Reboot}|2026-09-06T12:00:00+00:00|abc", canonical);
     }
 
     [Fact]

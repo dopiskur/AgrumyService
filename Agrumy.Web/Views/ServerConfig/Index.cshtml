@@ -281,7 +281,7 @@
                     <hr />
                     <p class="mb-0">
                         <strong>Current forecast:</strong>
-                        @if (Model.WeatherCheckedAtUtc is DateTime checkedAt)
+                        @if (Model.WeatherCheckedAtUtc is DateTimeOffset checkedAt)
                         {
                             <span class="badge @(Model.WeatherRainPredicted ? "text-bg-info" : "text-bg-secondary")">
                                 @(Model.WeatherRainPredicted ? "Rain predicted" : "No rain predicted")

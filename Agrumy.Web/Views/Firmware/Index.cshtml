@@ -109,7 +109,7 @@
                     <div class="col-md-1">
                         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
                     </div>
-                    @if (Model.Config.FirmwareLastRefreshedAtUtc is DateTime lastRefreshed)
+                    @if (Model.Config.FirmwareLastRefreshedAtUtc is DateTimeOffset lastRefreshed)
                     {
                         <div class="col-12">
                             <span class="text-secondary small">Catalog last auto-refreshed: @lastRefreshed.ToString("yyyy-MM-dd HH:mm") UTC</span>

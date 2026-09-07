@@ -67,7 +67,7 @@ namespace api.Models
     {
         public RelayFunction RelayFunction { get; set; }
         public bool IsOn { get; set; }
-        public DateTime? DateCreated { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
     }
 
     /// Current on/off state for one RelayFunction on one device - GET /api/ControllerData's shape, and what DeviceFleetStatus.RelayStates carries.
@@ -75,7 +75,7 @@ namespace api.Models
     {
         public RelayFunction RelayFunction { get; set; }
         public bool IsOn { get; set; }
-        public DateTime? DateChanged { get; set; }
+        public DateTimeOffset? DateChanged { get; set; }
     }
 
     /// Which measured quantity a Notification-action Threshold condition reads - mirrors SensorAverages' fields (a DeviceFarmUnitZoneRule.RelayFunction implies its metric/direction instead, so Relay-action rules never set this).
@@ -223,7 +223,7 @@ namespace api.Models
         public int DeviceID { get; set; }
         public string? DeviceName { get; set; }
         public string? EventType { get; set; }
-        public DateTime? Date { get; set; }
+        public DateTimeOffset? Date { get; set; }
         public string? Message { get; set; }
     }
 

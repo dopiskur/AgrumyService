@@ -53,7 +53,7 @@ namespace api.Models
     public class FirmwareManifest
     {
         public int SchemaVersion { get; set; } = 1;
-        public DateTime? GeneratedAt { get; set; }
+        public DateTimeOffset? GeneratedAt { get; set; }
         /// Free-text provenance, e.g. "github:dopiskur/AgrumyFirmware" or "local:api.agrumy.com".
         public string? Source { get; set; }
         public List<FirmwareManifestRelease> Releases { get; set; } = [];
@@ -62,7 +62,7 @@ namespace api.Models
     public class FirmwareManifestRelease
     {
         public string? Version { get; set; }
-        public DateTime? PublishedAt { get; set; }
+        public DateTimeOffset? PublishedAt { get; set; }
         public List<FirmwareManifestFile> Files { get; set; } = [];
     }
 

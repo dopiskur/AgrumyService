@@ -23,7 +23,7 @@ namespace api.Models
         public int? RainLevel { get; set; }
         public int? WaterLevel { get; set; }
         public double? Wind { get; set; }
-        public DateTime DateCreated { get; set; }
+        public DateTimeOffset DateCreated { get; set; }
 
 
     }
@@ -49,7 +49,7 @@ namespace api.Models
         public int? IDSensorDataReport { get; set; }
         public int? DeviceID { get; set; }
         public string? ReportName { get; set; }
-        public DateTime? DateGenerated { get; set; }
+        public DateTimeOffset? DateGenerated { get; set; }
 
         public string? SensorData { get; set; }
 

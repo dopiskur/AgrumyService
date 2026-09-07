@@ -69,7 +69,7 @@ namespace api.Models
 
         // Written only by FirmwareCatalogRefreshEvaluator (ServerConfigFirmwareRefreshStateSetAsync), same reasoning as WeatherCheckedAtUtc, so a stale admin form post can't clobber it.
         [Display(Name = "Catalog last auto-refreshed")]
-        public DateTime? FirmwareLastRefreshedAtUtc { get; set; }
+        public DateTimeOffset? FirmwareLastRefreshedAtUtc { get; set; }
 
         // Days of sensorData history to auto-purge - Postgres/TimescaleDB via add_retention_policy, MariaDB/MySQL via SensorDataRetentionBackgroundService's daily purge; null/0 disables it.
         [Display(Name = "Sensor data retention (days)")]
@@ -93,7 +93,7 @@ namespace api.Models
         [Display(Name = "Rain predicted")]
         public bool WeatherRainPredicted { get; set; }
         [Display(Name = "Forecast last checked")]
-        public DateTime? WeatherCheckedAtUtc { get; set; }
+        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
         // Gates the Gateway Devices admin page (_Layout.cshtml, same pattern as TenantManagementEnabled) and whether GatewayApiController accepts Batch calls at all.
         [Display(Name = "Enable Agrumy.Gateway support")]

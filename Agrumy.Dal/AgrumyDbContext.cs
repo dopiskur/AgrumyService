@@ -1,5 +1,6 @@
 using api.Dal.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace api.Dal
 {
@@ -7,6 +8,12 @@ namespace api.Dal
     public class AgrumyDbContext : DbContext
     {
         public AgrumyDbContext(DbContextOptions<AgrumyDbContext> options) : base(options) { }
+
+        /// Npgsql materializes timestamptz back into DateTimeOffset using the CLIENT machine's local timezone, not the DB session's (confirmed empirically: SessionTimeZoneInterceptor pins the session to UTC, yet a value written with Offset=0 still read back with the host OS's own offset) - forcing every DateTimeOffset through ToUniversalTime() on both sides makes every stored value provably Offset=0 regardless of host OS timezone, on both providers.
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcDateTimeOffsetConverter>();
+        }
 
         public DbSet<TenantRow> Tenants => Set<TenantRow>();
         public DbSet<TenantWifiConfigRow> TenantWifiConfigs => Set<TenantWifiConfigRow>();

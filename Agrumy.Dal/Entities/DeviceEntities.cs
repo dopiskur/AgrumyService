@@ -38,7 +38,7 @@ namespace api.Dal.Entities
         public double? TankCapacityLiters { get; set; }
         public int? WaterLevelRawEmpty { get; set; }
         public int? WaterLevelRawFull { get; set; }
-        public DateTime? TankRefillNotifiedAt { get; set; }
+        public DateTimeOffset? TankRefillNotifiedAt { get; set; }
         public double? WaterPumpMinLevel { get; set; }
 
         // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
@@ -70,7 +70,7 @@ namespace api.Dal.Entities
         public int RuleID { get; set; }
         public int DeviceFarmUnitZoneID { get; set; }
         public bool WasTrue { get; set; }
-        public DateTime? LastFiredAtUtc { get; set; }
+        public DateTimeOffset? LastFiredAtUtc { get; set; }
     }
 
     public class DeviceRoleRow
@@ -218,7 +218,7 @@ namespace api.Dal.Entities
     public class DeviceVirtualRow
     {
         public int DeviceID { get; set; }
-        public DateTime DateCreated { get; set; }
+        public DateTimeOffset DateCreated { get; set; }
     }
 
     public class DeviceRow
@@ -254,13 +254,13 @@ namespace api.Dal.Entities
         public string? FirmwareTargetVersion { get; set; } // See api.Models.Device.FirmwareTargetVersion.
         public int? ConfigVersion { get; set; }
         public int CommandVersion { get; set; } // See api.Models.DeviceConfig.CommandVersion.
-        public DateTime? DateCreated { get; set; }
-        public DateTime? DateModified { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+        public DateTimeOffset? DateModified { get; set; }
 
         public bool IsGateway { get; set; }
         public int? GatewayProfile { get; set; }
 
-        public DateTime? LastFullConfigSentAt { get; set; } // See api.Models.Device.LastFullConfigSentAt.
+        public DateTimeOffset? LastFullConfigSentAt { get; set; } // See api.Models.Device.LastFullConfigSentAt.
 
         // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
@@ -275,7 +275,7 @@ namespace api.Dal.Entities
         public int IDGatewayDevice { get; set; }
         public string DevEUI { get; set; } = "";
         public int IDDevice { get; set; }
-        public DateTime? DateCreated { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
     }
 
     /// One scanning device's sighting of one nearby Agrumy_ AP during a discovery scan - raw reports, not yet deduplicated/best-picked (that lives in the repository query layer).
@@ -285,7 +285,7 @@ namespace api.Dal.Entities
         public int ScanningDeviceID { get; set; }
         public string DiscoveredApMac { get; set; } = "";
         public int? Rssi { get; set; }
-        public DateTime DateReported { get; set; }
+        public DateTimeOffset DateReported { get; set; }
     }
 
     /// One discrete, one-shot device action - see api.Models.CommandStatus for why Acknowledged is a real, persisted state.
@@ -295,9 +295,9 @@ namespace api.Dal.Entities
         public int DeviceID { get; set; }
         public int ActionType { get; set; }
         public int Status { get; set; }
-        public DateTime IssuedAt { get; set; }
-        public DateTime ExpiresAt { get; set; }
-        public DateTime? ExecutedAt { get; set; }
+        public DateTimeOffset IssuedAt { get; set; }
+        public DateTimeOffset ExpiresAt { get; set; }
+        public DateTimeOffset? ExecutedAt { get; set; }
         public int? ActiveKey { get; set; } // Mirrors ActionType while active, NULL once terminal; backs the unique (DeviceID, ActiveKey) index IssueCommandAsync's dedup relies on.
         public string? Payload { get; set; }
     }
@@ -310,8 +310,8 @@ namespace api.Dal.Entities
         public int TenantID { get; set; }
         public int RelayFunction { get; set; }
         public int Mode { get; set; }
-        public DateTime StartedAtUtc { get; set; }
-        public DateTime ExpiresAtUtc { get; set; }
+        public DateTimeOffset StartedAtUtc { get; set; }
+        public DateTimeOffset ExpiresAtUtc { get; set; }
         public int? TargetMetric { get; set; }
         public double? TargetThreshold { get; set; }
         public double? TargetHysteresis { get; set; }
@@ -322,12 +322,12 @@ namespace api.Dal.Entities
     {
         public int DeviceID { get; set; }
         public int? TenantID { get; set; }
-        public DateTime? LastSeenAt { get; set; }
+        public DateTimeOffset? LastSeenAt { get; set; }
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
-        public DateTime? OfflineNotifiedAt { get; set; } // When OfflineAlertBackgroundService last notified admins about the device's current offline streak; one notification per streak, not per tick.
-        public DateTime? LowBatteryNotifiedAt { get; set; } // Same dedup-by-streak rule as OfflineNotifiedAt, but for LowBatteryAlertEvaluator.
+        public DateTimeOffset? OfflineNotifiedAt { get; set; } // When OfflineAlertBackgroundService last notified admins about the device's current offline streak; one notification per streak, not per tick.
+        public DateTimeOffset? LowBatteryNotifiedAt { get; set; } // Same dedup-by-streak rule as OfflineNotifiedAt, but for LowBatteryAlertEvaluator.
         public string? FirmwareVersion { get; set; }
         public string? Board { get; set; } // See api.Models.DeviceConfigPoll.Board.
         // Real FK to deviceType.IDDeviceType, resolved from the firmware-reported Kit string (api.Models.DeviceConfigPoll.Kit) by DeviceDiagnosticUpsertAsync - the wire protocol still carries a string, only storage is numeric.
@@ -355,8 +355,8 @@ namespace api.Dal.Entities
         public string? FileName { get; set; }
         public long? SizeBytes { get; set; }
         public string? Sha256 { get; set; }
-        public DateTime? PublishedAt { get; set; }
-        public DateTime? DateAdded { get; set; }
+        public DateTimeOffset? PublishedAt { get; set; }
+        public DateTimeOffset? DateAdded { get; set; }
 
         // See api.Models.DeviceFirmware's own copy of these for the full explanation.
         public string? FullImageFileName { get; set; }

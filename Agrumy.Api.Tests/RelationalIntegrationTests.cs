@@ -1433,7 +1433,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(153212, row.FreeHeapBytes);
         Assert.Equal("0.1.2", row.FirmwareVersion);
 
-        DateTime firstSeen = row.LastSeenAt!.Value;
+        DateTimeOffset firstSeen = row.LastSeenAt!.Value;
         await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
         row = Assert.Single(await _repo.DeviceFleetGetAsync(tenantId), f => f.IDDevice == d.IDDevice);
         Assert.True(row.LastSeenAt >= firstSeen);
@@ -1692,7 +1692,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var rows = await db.SensorData.Where(r => r.DeviceID == d.IDDevice).OrderBy(r => r.IDSensorData).ToListAsync();
         Assert.Equal(2, rows.Count);
         Assert.Equal(26.13, rows[0].Temperature);
-        Assert.Equal(new DateTime(2026, 8, 29, 9, 50, 0), rows[0].DateCreated);
+        Assert.Equal(new DateTime(2026, 8, 29, 9, 50, 0, DateTimeKind.Utc), rows[0].DateCreated);
         Assert.NotNull(rows[1].DateCreated);
         // UtcNow, matching the push endpoint's UTC fallback - local Now would be ahead of it.
         Assert.True(rows[1].DateCreated > DateTime.UtcNow.AddMinutes(-5));
@@ -2334,7 +2334,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
 
         DateTime n = DateTime.UtcNow;
-        var utcStamp = new DateTime(n.Year, n.Month, n.Day, n.Hour, n.Minute, 30);
+        var utcStamp = new DateTime(n.Year, n.Month, n.Day, n.Hour, n.Minute, 30, DateTimeKind.Utc);
         await using (var db = _fx.NewContext(t))
         {
             db.SensorData.Add(new SensorDataRow { DeviceID = d.IDDevice!.Value, TenantID = tenantId, Co2 = 400, Temperature = 20, DateCreated = utcStamp });

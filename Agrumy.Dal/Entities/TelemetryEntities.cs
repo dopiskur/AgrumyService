@@ -20,7 +20,7 @@ namespace api.Dal.Entities
         public int? RainLevel { get; set; }
         public int? WaterLevel { get; set; }
         public int? Wind { get; set; }
-        public DateTime? DateCreated { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
     }
 
     /// Current on/off state per (DeviceID, RelayFunction) - one row per pair, upserted on every real state change, not an append-only log. Same table/logic for a real device (physical relay) and a simulated one (calculated), the difference is only where the IsOn decision comes from.
@@ -31,7 +31,7 @@ namespace api.Dal.Entities
         public int TenantID { get; set; }
         public int RelayFunction { get; set; }
         public bool IsOn { get; set; }
-        public DateTime? DateChanged { get; set; }
+        public DateTimeOffset? DateChanged { get; set; }
     }
 
     public class SensorDataReportRow
@@ -39,7 +39,7 @@ namespace api.Dal.Entities
         public int IDSensorDataReport { get; set; }
         public int? DeviceID { get; set; }
         public string? ReportName { get; set; }
-        public DateTime? DateGenerated { get; set; }
+        public DateTimeOffset? DateGenerated { get; set; }
         public string? SensorData { get; set; }
     }
 
@@ -56,9 +56,9 @@ namespace api.Dal.Entities
         public int DeviceID { get; set; }
         public int TenantID { get; set; } // Stamped from the authenticated device's identity at push time, never from a client-supplied value.
         public int EventID { get; set; }
-        public DateTime? Date { get; set; }
+        public DateTimeOffset? Date { get; set; }
         public string? Message { get; set; }
-        public DateTime? AcknowledgedAt { get; set; } // Set once an admin dismisses this alert, stopping it counting toward Unit/Zone Orange status even inside the expiry window.
+        public DateTimeOffset? AcknowledgedAt { get; set; } // Set once an admin dismisses this alert, stopping it counting toward Unit/Zone Orange status even inside the expiry window.
     }
 
     public class EventServiceRow
@@ -66,7 +66,7 @@ namespace api.Dal.Entities
         public int IDEventService { get; set; }
         public int ServiceID { get; set; } // FKs to DeviceTypeServiceRow, the existing HTTP/HTTPS/MQTT catalog - this table has no live writer yet, but the naming already matches that catalog.
         public int EventID { get; set; }
-        public DateTime? Date { get; set; }
+        public DateTimeOffset? Date { get; set; }
         public string? Message { get; set; }
     }
 }

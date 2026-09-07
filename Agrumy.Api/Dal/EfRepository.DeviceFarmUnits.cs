@@ -85,7 +85,7 @@ namespace api.Dal
 
         public Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync() => deviceFarmUnitRepository.TankRefillAlertCandidatesGetAsync();
 
-        public Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTime? notifiedAt) => deviceFarmUnitRepository.TankRefillNotifiedSetAsync(idDeviceFarmUnitZone, notifiedAt);
+        public Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt) => deviceFarmUnitRepository.TankRefillNotifiedSetAsync(idDeviceFarmUnitZone, notifiedAt);
 
         public Task ManualOverrideStartAsync(DeviceManualOverride manualOverride) => deviceFarmUnitRepository.ManualOverrideStartAsync(manualOverride);
 

@@ -672,7 +672,7 @@ namespace api.Firmware
         // ---- remote readers ------------------------------------------------------------------
 
         /// FullImage* fields are the paired blank-chip image for this same Board+Version, when the remote source published one - null when it didn't.
-        internal sealed record RemoteFile(string Board, string Version, string FileName, string Url, long? SizeBytes, string? Sha256, DateTime? PublishedAt,
+        internal sealed record RemoteFile(string Board, string Version, string FileName, string Url, long? SizeBytes, string? Sha256, DateTimeOffset? PublishedAt,
             string? FullImageFileName = null, string? FullImageUrl = null, long? FullImageSizeBytes = null, string? FullImageSha256 = null);
 
         private sealed record GitHubRelease(

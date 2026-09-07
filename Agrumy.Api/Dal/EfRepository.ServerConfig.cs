@@ -12,10 +12,10 @@ namespace api.Dal
 
         public Task ServerConfigReloadFromAppSettingsAsync(int idServerConfig = 1) => serverConfigRepository.ServerConfigReloadFromAppSettingsAsync(idServerConfig);
 
-        public Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTime checkedAtUtc, int idServerConfig = 1) =>
+        public Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigWeatherStateSetAsync(rainPredicted, checkedAtUtc, idServerConfig);
 
-        public Task ServerConfigFirmwareRefreshStateSetAsync(DateTime checkedAtUtc, int idServerConfig = 1) =>
+        public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigFirmwareRefreshStateSetAsync(checkedAtUtc, idServerConfig);
 
         public Task ApplyRetentionPolicyAsync(int? retentionDays) => serverConfigRepository.ApplyRetentionPolicyAsync(retentionDays);

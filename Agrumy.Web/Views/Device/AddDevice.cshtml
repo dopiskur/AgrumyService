@@ -11,7 +11,7 @@
     <div class="card-body">
         <p class="mb-1">Enter this PIN during setup on the new Agrumy device's captive portal:</p>
         <p class="mb-2"><code class="fs-3">@Model.DevicePin</code></p>
-        @if (Model.ExpiresAt is DateTime expires)
+        @if (Model.ExpiresAt is DateTimeOffset expires)
         {
             <p class="text-muted mb-3">
                 Valid until @expires.ToString("yyyy-MM-dd HH:mm") UTC - reusable for as many devices

@@ -144,9 +144,9 @@ namespace api.Controllers.View
             string? timeZone = User.GetTimeZone();
             foreach (var d in fleet)
             {
-                if (d.LastSeenAt is DateTime utc)
+                if (d.LastSeenAt is DateTimeOffset utc)
                 {
-                    d.LastSeenAt = TimeZoneHelper.ToUserLocalTime(utc, timeZone);
+                    d.LastSeenAt = new DateTimeOffset(TimeZoneHelper.ToUserLocalTime(utc.UtcDateTime, timeZone), TimeSpan.Zero);
                 }
             }
 

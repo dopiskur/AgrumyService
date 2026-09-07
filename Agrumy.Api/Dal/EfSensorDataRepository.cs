@@ -224,7 +224,7 @@ namespace api.Dal
                 }
 
                 List<SensorDataRow> replacements = rows
-                    .GroupBy(r => BucketStart(r.DateCreated!.Value))
+                    .GroupBy(r => BucketStart(r.DateCreated!.Value.UtcDateTime))
                     .Select(bucket => BuildOptimizedRow(deviceId, bucket.Key, bucket.ToList()))
                     .ToList();
 
@@ -456,8 +456,9 @@ namespace api.Dal
             {
                 return null;
             }
-            if (v.TryGetValue(out DateTime dt)) return dt;
-            if (v.TryGetValue(out string? s) && DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var sd))
+            if (v.TryGetValue(out DateTime dt)) return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            // AssumeUniversal: a bare "yyyy-MM-dd HH:mm:ss" (no Z/offset, the device's own format) is UTC, not the host's local zone - the implicit DateTime->DateTimeOffset conversion on SensorDataRow.DateCreated otherwise reinterprets Kind=Unspecified as local time.
+            if (v.TryGetValue(out string? s) && DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var sd))
             {
                 return sd;
             }

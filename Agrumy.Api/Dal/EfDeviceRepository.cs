@@ -742,7 +742,7 @@ namespace api.Dal
                 .ToListAsync();
         }
 
-        public async Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTime? notifiedAt)
+        public async Task DeviceOfflineNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt)
         {
             // A device with no diagnostic row has never polled, so it can't have just transitioned to offline - nothing to set.
             await db.DeviceDiagnostics
@@ -770,7 +770,7 @@ namespace api.Dal
                 .ToListAsync();
         }
 
-        public async Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTime? notifiedAt)
+        public async Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt)
         {
             // Same "nothing to set for a device that has never polled" rule as DeviceOfflineNotifiedSetAsync.
             await db.DeviceDiagnostics

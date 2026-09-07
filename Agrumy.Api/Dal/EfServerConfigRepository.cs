@@ -176,7 +176,7 @@ namespace api.Dal
         }
 
         /// The only writer of WeatherRainPredicted/WeatherCheckedAtUtc, called exclusively by WeatherEvaluator - narrower than ServerConfigUpdateAsync so the admin form can't race a fresher reading back to stale.
-        public async Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTime checkedAtUtc, int idServerConfig = 1)
+        public async Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig = 1)
         {
             var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
             if (row == null)
@@ -189,7 +189,7 @@ namespace api.Dal
         }
 
         /// The only writer of FirmwareLastRefreshedAtUtc, called exclusively by FirmwareCatalogRefreshEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
-        public async Task ServerConfigFirmwareRefreshStateSetAsync(DateTime checkedAtUtc, int idServerConfig = 1)
+        public async Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig = 1)
         {
             var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
             if (row == null)
