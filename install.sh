@@ -254,8 +254,8 @@ download_and_install_app() {
 }
 
 write_appsettings_api() {
-  # $1 = install dir, $2 = jwt secret, $3 = issuer domain, $4 = service user
-  local dir="$1" jwt="$2" issuer="$3" service_user="$4"
+  # $1 = install dir, $2 = jwt secret, $3 = issuer domain, $4 = dataprotection key path, $5 = service user
+  local dir="$1" jwt="$2" issuer="$3" key_path="$4" service_user="$5"
   if [ -f "${dir}/appsettings.json" ]; then
     log "appsettings.json already exists for Agrumy.Api - keeping it (re-run does not overwrite secrets)."
     return
@@ -266,6 +266,7 @@ write_appsettings_api() {
 {
   "Urls": "http://localhost:5000",
   "JWT": { "SecureKey": "${jwt}", "Issuer": "${issuer}", "Audience": "agrumy-api" },
+  "DataProtection": { "KeyPath": "${key_path}" },
   "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
   "AllowedHosts": "*"
 }
@@ -298,13 +299,13 @@ JSON
 }
 
 install_systemd_unit() {
-  # $1 = template name (e.g. agrumy-api.service.template), $2 = install dir, $3 = service user
-  local template="$1" install_dir="$2" service_user="$3"
+  # $1 = template name (e.g. agrumy-api.service.template), $2 = install dir, $3 = service user, $4 = dataprotection keys dir
+  local template="$1" install_dir="$2" service_user="$3" keys_dir="$4"
   local unit_name="${template%.template}"
   local tmp
   tmp="$(mktemp)"
   fetch "deploy/${template}" "$tmp"
-  sed -e "s|{{INSTALL_DIR}}|${install_dir}|g" -e "s|{{SERVICE_USER}}|${service_user}|g" "$tmp" \
+  sed -e "s|{{INSTALL_DIR}}|${install_dir}|g" -e "s|{{SERVICE_USER}}|${service_user}|g" -e "s|{{KEYS_DIR}}|${keys_dir}|g" "$tmp" \
     | as_root tee "/etc/systemd/system/${unit_name}" > /dev/null
   rm -f "$tmp"
 }
@@ -506,11 +507,11 @@ install_baremetal() {
 
   local jwt_secret
   jwt_secret="$(random_secret)"
-  write_appsettings_api "$api_dir" "$jwt_secret" "$issuer" "$SERVICE_USER"
+  write_appsettings_api "$api_dir" "$jwt_secret" "$issuer" "$keys_dir" "$SERVICE_USER"
   write_appsettings_web "$web_dir" "$jwt_secret" "$issuer" "$api_url" "$keys_dir" "$SERVICE_USER"
 
-  install_systemd_unit "agrumy-api.service.template" "$api_dir" "$SERVICE_USER"
-  install_systemd_unit "agrumy-web.service.template" "$web_dir" "$SERVICE_USER"
+  install_systemd_unit "agrumy-api.service.template" "$api_dir" "$SERVICE_USER" "$keys_dir"
+  install_systemd_unit "agrumy-web.service.template" "$web_dir" "$SERVICE_USER" "$keys_dir"
   as_root systemctl daemon-reload
   as_root systemctl enable --now agrumy-api.service
   as_root systemctl enable --now agrumy-web.service

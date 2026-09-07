@@ -11,5 +11,12 @@ Restart=always
 RestartSec=5
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
+# Same hardening as agrumy-api.service.template - see its comment for why each directive is here.
+ProtectSystem=strict
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths={{INSTALL_DIR}} {{KEYS_DIR}}
+ReadOnlyPaths={{INSTALL_DIR}}/Agrumy.Web
+
 [Install]
 WantedBy=multi-user.target

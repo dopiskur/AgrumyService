@@ -14,5 +14,15 @@ Restart=always
 RestartSec=5
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
+# Whole filesystem read-only except what's listed below; PrivateTmp so the self-contained single-file
+# binary can still extract itself at startup. ReadWritePaths must include INSTALL_DIR (SetupWizard
+# writes ConnectionStrings into appsettings.json there on first boot) and KEYS_DIR (DataProtection),
+# but ReadOnlyPaths carves the binary itself back out - a compromised process can't overwrite it.
+ProtectSystem=strict
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths={{INSTALL_DIR}} {{KEYS_DIR}}
+ReadOnlyPaths={{INSTALL_DIR}}/Agrumy.Api
+
 [Install]
 WantedBy=multi-user.target
