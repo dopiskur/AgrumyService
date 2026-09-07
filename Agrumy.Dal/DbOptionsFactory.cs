@@ -14,7 +14,6 @@ namespace api.Dal
             switch (provider)
             {
                 case DbProviderKind.Postgres:
-                    // NpgsqlCompat's module initializer already opted into legacy timestamp behaviour (DateTime -> `timestamp without time zone`).
                     builder.UseNpgsql(connectionString, o => o.MigrationsAssembly(PostgresMigrationsAssembly));
                     builder.AddInterceptors(new SessionTimeZoneInterceptor("SET TIME ZONE 'UTC';"));
                     break;

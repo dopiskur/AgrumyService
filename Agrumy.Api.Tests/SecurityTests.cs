@@ -5,6 +5,7 @@ using System.Text;
 using api;
 using api.Security;
 using api.Utils;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Agrumy.Api.Tests;
@@ -298,7 +299,7 @@ public class FieldValidatorTests
 public class SecretProtectorTests
 {
     private static ISecretProtector NewProtector() =>
-        new SecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
+        new SecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), Microsoft.Extensions.Logging.Abstractions.NullLogger<SecretProtector>.Instance);
 
     [Fact]
     public void Protect_Then_Unprotect_RoundTrips()
@@ -334,8 +335,8 @@ public class SecretProtectorTests
     {
         // Same purpose string, different instance - simulates a fresh process reading a previously-written value, not just round-tripping within one object.
         var provider = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider();
-        string? stored = new SecretProtector(provider).Protect("hunter2");
+        string? stored = new SecretProtector(provider, NullLogger<SecretProtector>.Instance).Protect("hunter2");
 
-        Assert.Equal("hunter2", new SecretProtector(provider).Unprotect(stored));
+        Assert.Equal("hunter2", new SecretProtector(provider, NullLogger<SecretProtector>.Instance).Unprotect(stored));
     }
 }

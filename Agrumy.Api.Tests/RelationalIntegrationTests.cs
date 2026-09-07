@@ -119,7 +119,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     private static EfRepository BuildRepository(AgrumyDbContext db)
     {
         var settingsOptions = Options.Create(new AgrumySettings());
-        var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider());
+        var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider(), NullLogger<SecretProtector>.Instance);
         var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector);
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
