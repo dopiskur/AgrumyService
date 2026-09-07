@@ -54,7 +54,7 @@ namespace api.Security
         /// GlobalAdminOrReader plus the legacy alias, so an account the multi-role migration missed still reaches the inline check instead of being locked out at the pipeline gate.
         public const string TenantReaders = LegacyAdmin + "," + GlobalAdminOrReader;
 
-        /// May read server metrics (/metrics, /metrics/prometheus) - RequireRole takes individual names, not a comma-joined [Authorize] string.
+        /// May read server metrics (/api/metrics, /api/metrics/prometheus) - RequireRole takes individual names, not a comma-joined [Authorize] string.
         public static readonly string[] MetricsReaders = { GlobalAdmin, GlobalDataReader, TenantDataReader };
 
         /// May view/edit a device's Simulation Mode overrides - tenant scoping still applies inline, same rule as DeviceManagers.

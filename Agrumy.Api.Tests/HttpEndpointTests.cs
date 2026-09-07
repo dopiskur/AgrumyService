@@ -65,7 +65,7 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
     {
         using HttpClient client = _factory.CreateClient();
 
-        HttpResponseMessage response = await client.GetAsync("/health");
+        HttpResponseMessage response = await client.GetAsync("/api/health");
 
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);

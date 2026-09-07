@@ -70,7 +70,7 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 10

@@ -387,14 +387,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Unauthenticated on purpose: restart/deploy probes and external uptime monitors need to reach this without a JWT; it exposes only up/down + which dependency, nothing sensitive.
-app.MapHealthChecks("/health", new HealthCheckOptions { ResponseWriter = HealthCheckResponseWriter.WriteResponse });
+// Under /api/ (roadmap #396(11)) - #387's path-based nginx/Apache templates route everything else to Agrumy.Web, so a root-level /health or /metrics would have been silently misrouted to the wrong service under that deploy mode. Unauthenticated on purpose: restart/deploy probes and external uptime monitors need to reach this without a JWT; it exposes only up/down + which dependency, nothing sensitive.
+app.MapHealthChecks("/api/health", new HealthCheckOptions { ResponseWriter = HealthCheckResponseWriter.WriteResponse });
 
-app.MapGet("/metrics", (AgrumyMetrics metrics) => Results.Json(metrics.GetSnapshot()))
+app.MapGet("/api/metrics", (AgrumyMetrics metrics) => Results.Json(metrics.GetSnapshot()))
     .RequireAuthorization(policy => policy.RequireRole(RoleNames.MetricsReaders));
 
 // Same JWT policy as the JSON endpoint above; point Prometheus's scrape config at this path with that bearer token (no separate secret to manage).
-app.MapPrometheusScrapingEndpoint("/metrics/prometheus")
+app.MapPrometheusScrapingEndpoint("/api/metrics/prometheus")
     .RequireAuthorization(policy => policy.RequireRole(RoleNames.MetricsReaders));
 
 // Run the DB check at startup, not lazily on first request, so a bad connection string shows in deploy logs; Startup:FailFastOnDbCheck controls stop-vs-warn.
