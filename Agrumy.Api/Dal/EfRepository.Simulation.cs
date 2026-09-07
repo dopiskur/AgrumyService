@@ -1,3 +1,5 @@
+using api.Models;
+
 namespace api.Dal
 {
     /// ISimulationRepository members - forwarded to the standalone EfSimulationRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
@@ -10,5 +12,21 @@ namespace api.Dal
         public Task<IList<int>> VirtualDeviceIdsGetAsync(int? tenantID) => simulationRepository.VirtualDeviceIdsGetAsync(tenantID);
 
         public Task VirtualDeviceDeleteAsync(int deviceID, int tenantID) => simulationRepository.VirtualDeviceDeleteAsync(deviceID, tenantID);
+
+        public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session) => simulationRepository.SimulationSessionAddAsync(session);
+
+        public Task<IList<SimulationSession>> SimulationSessionsGetAsync(int? tenantID) => simulationRepository.SimulationSessionsGetAsync(tenantID);
+
+        public Task<SimulationSession?> SimulationSessionGetByIdAsync(int idSimulationSession) => simulationRepository.SimulationSessionGetByIdAsync(idSimulationSession);
+
+        public Task SimulationSessionStopAsync(int idSimulationSession) => simulationRepository.SimulationSessionStopAsync(idSimulationSession);
+
+        public Task<bool> SimulationSessionDeviceAddAsync(int idSimulationSession, int deviceID) => simulationRepository.SimulationSessionDeviceAddAsync(idSimulationSession, deviceID);
+
+        public Task SimulationSessionDeviceRemoveAsync(int idSimulationSession, int deviceID) => simulationRepository.SimulationSessionDeviceRemoveAsync(idSimulationSession, deviceID);
+
+        public Task<int?> DeviceActiveSimulationSessionIdGetAsync(int deviceID) => simulationRepository.DeviceActiveSimulationSessionIdGetAsync(deviceID);
+
+        public Task<IList<SimulationSession>> SimulationSessionsExpiredButActiveGetAsync(DateTimeOffset nowUtc) => simulationRepository.SimulationSessionsExpiredButActiveGetAsync(nowUtc);
     }
 }

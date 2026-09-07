@@ -221,6 +221,24 @@ namespace api.Dal.Entities
         public DateTimeOffset DateCreated { get; set; }
     }
 
+    /// Roadmap #403 - the "Add Simulation" container/entry-point a device (physical or virtual) is added TO, replacing the old per-device toggle mental model. ExpiresAtUtc is StartedAtUtc plus an admin-chosen duration, hard-capped at 48h; StoppedAtUtc null means still running, set either by an explicit early stop or by SimulationSessionExpiryEvaluator once ExpiresAtUtc passes.
+    public class SimulationSessionRow
+    {
+        public int IDSimulationSession { get; set; }
+        public int TenantID { get; set; }
+        public string? Name { get; set; }
+        public DateTimeOffset StartedAtUtc { get; set; }
+        public DateTimeOffset ExpiresAtUtc { get; set; }
+        public DateTimeOffset? StoppedAtUtc { get; set; }
+    }
+
+    /// One device's membership in one SimulationSessionRow - a physical device's actual override values still live in DeviceSimulationRow (this just tracks which session "owns" turning that override on/off and when); a virtual device's presence here is what VirtualDeviceRunnerBackgroundService now checks before driving it at all.
+    public class SimulationSessionDeviceRow
+    {
+        public int IDSimulationSession { get; set; }
+        public int DeviceID { get; set; }
+    }
+
     public class DeviceRow
     {
         public int IDDevice { get; set; }

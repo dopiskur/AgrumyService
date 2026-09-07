@@ -364,10 +364,12 @@ namespace api.Controllers.View
             return RedirectToAction(nameof(Details), new { idDevice = deviceView.Device!.IDDevice });
         }
 
+        /// Roadmap #403 - reached only from a simulation session's own Details page now (Device Details no longer links here directly), idSimulationSession just carries the "where to go back to" context through the round trip.
         [Authorize(Roles = RoleNames.SimulationManagers)]
-        public async Task<ActionResult> Simulation(int? idDevice)
+        public async Task<ActionResult> Simulation(int? idDevice, int? idSimulationSession)
         {
             var device = await api.DeviceGet(idDevice);
+            ViewBag.IdSimulationSession = idSimulationSession;
             return View(new DeviceView
             {
                 Device = device,
@@ -378,11 +380,13 @@ namespace api.Controllers.View
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Simulation(DeviceView deviceView)
+        public async Task<ActionResult> Simulation(DeviceView deviceView, int? idSimulationSession)
         {
             int idDevice = deviceView.Device!.IDDevice!.Value;
             await api.DeviceSimulationSet(idDevice, deviceView.DeviceSimulation!);
-            return RedirectToAction(nameof(Details), new { idDevice });
+            return idSimulationSession is int sessionId
+                ? RedirectToAction("Details", "Simulation", new { idSimulationSession = sessionId })
+                : RedirectToAction(nameof(Details), new { idDevice });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

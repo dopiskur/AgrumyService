@@ -159,6 +159,10 @@ builder.Services.AddHostedService<SensorDataRetentionBackgroundService>();
 builder.Services.AddScoped<SensorDataArchiveEvaluator>();
 builder.Services.AddHostedService<SensorDataArchiveBackgroundService>();
 
+// Roadmap #403's hard 48h simulation-session safety cutoff.
+builder.Services.AddScoped<SimulationSessionExpiryEvaluator>();
+builder.Services.AddHostedService<SimulationSessionExpiryBackgroundService>();
+
 builder.Services.AddScoped<DeviceCommandRetentionEvaluator>();
 builder.Services.AddHostedService<DeviceCommandRetentionBackgroundService>();
 

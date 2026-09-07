@@ -1,0 +1,96 @@
+@model api.Models.SimulationSession
+@using api.Models
+
+@{
+    ViewData["Title"] = Model.Name;
+    bool ended = Model.StoppedAtUtc != null || Model.ExpiresAtUtc <= DateTimeOffset.UtcNow;
+    var fleet = (IList<DeviceFleetStatus>)ViewBag.Fleet;
+    var memberIds = Model.Devices.Select(d => d.IDDevice).ToHashSet();
+    var candidates = fleet.Where(f => !memberIds.Contains(f.IDDevice)).ToList();
+}
+
+<h1>@Model.Name</h1>
+<p class="text-muted">
+    Started @Model.StartedAtUtc.ToString("u"), expires @Model.ExpiresAtUtc.ToString("u")
+    @if (Model.StoppedAtUtc != null)
+    {
+        <text>- stopped @Model.StoppedAtUtc.Value.ToString("u")</text>
+    }
+</p>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+@if (!ended)
+{
+    <form asp-action="Stop" method="post" class="mb-3" onsubmit="return confirm('Stop this simulation now? Every member device returns to its real readings immediately.');">
+        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+        <button type="submit" class="btn btn-outline-danger">Stop simulation</button>
+    </form>
+}
+else
+{
+    <div class="alert alert-secondary">This simulation has ended - devices can no longer be added or removed.</div>
+}
+
+<h4>Devices in this simulation</h4>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var device in Model.Devices)
+        {
+            <tr>
+                <td><a asp-controller="Device" asp-action="Details" asp-route-idDevice="@device.IDDevice">@device.DeviceName</a></td>
+                <td>
+                    <a asp-controller="Device" asp-action="Simulation" asp-route-idDevice="@device.IDDevice" asp-route-idSimulationSession="@Model.IDSimulationSession" class="btn btn-outline-primary btn-sm">Configure overrides</a>
+                    @if (!ended)
+                    {
+                        <form asp-action="RemoveDevice" method="post" class="d-inline">
+                            <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                            <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        @if (Model.Devices.Count == 0)
+        {
+            <tr><td colspan="2" class="text-muted">No devices yet.</td></tr>
+        }
+    </tbody>
+</table>
+
+@if (!ended)
+{
+    <h4>Add a device</h4>
+    <form asp-action="AddDevice" method="post" class="row g-2 align-items-end mb-3">
+        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+        <div class="col-auto">
+            <select name="idDevice" class="form-select" required>
+                <option value="">Choose an existing device...</option>
+                @foreach (var candidate in candidates)
+                {
+                    <option value="@candidate.IDDevice">@candidate.DeviceName</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Add to simulation</button>
+        </div>
+    </form>
+
+    <form asp-action="CreateVirtualDevice" method="post">
+        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+        <button type="submit" class="btn btn-outline-primary">Create new virtual device and add it</button>
+    </form>
+}
+
+<a asp-action="Index" class="btn btn-link mt-3">Back to simulations</a>

@@ -115,6 +115,26 @@ namespace api.Dal.Interface
         [Put("/api/Device/Simulation/{idDevice}")]
         Task DeviceSimulationSet(int idDevice, [Body] DeviceSimulation value);
 
+        // ---- Simulation sessions (roadmap #403) ----------------------------
+
+        [Post("/api/Simulation/Session")]
+        Task<SimulationSession> SimulationSessionCreate([Body] SimulationSessionCreateRequest request);
+
+        [Get("/api/Simulation/Session")]
+        Task<IList<SimulationSession>> SimulationSessionList();
+
+        [Get("/api/Simulation/Session/{idSimulationSession}")]
+        Task<SimulationSession> SimulationSessionGet(int idSimulationSession);
+
+        [Post("/api/Simulation/Session/{idSimulationSession}/Stop")]
+        Task SimulationSessionStop(int idSimulationSession);
+
+        [Post("/api/Simulation/Session/{idSimulationSession}/Device/{idDevice}")]
+        Task SimulationSessionDeviceAdd(int idSimulationSession, int idDevice);
+
+        [Delete("/api/Simulation/Session/{idSimulationSession}/Device/{idDevice}")]
+        Task SimulationSessionDeviceRemove(int idSimulationSession, int idDevice);
+
         [Get("/api/Device/TypeService")]
         Task<IEnumerable<DeviceTypeService>> DeviceTypeServiceGet();
 

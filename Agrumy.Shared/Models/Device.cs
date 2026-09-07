@@ -442,6 +442,26 @@ namespace api.Models
         public int? Wind { get; set; }
     }
 
+    /// Roadmap #403 - the "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.
+    public class SimulationSession
+    {
+        public int? IDSimulationSession { get; set; }
+        public int? TenantID { get; set; }
+        public string? Name { get; set; }
+        public DateTimeOffset StartedAtUtc { get; set; }
+        public DateTimeOffset ExpiresAtUtc { get; set; }
+        public DateTimeOffset? StoppedAtUtc { get; set; }
+        /// Populated only on the single-session detail fetch, not the list - same "list is cheap, detail is not" convention as most other list/detail pairs in this codebase.
+        public IList<DeviceDto> Devices { get; set; } = [];
+    }
+
+    /// Body of POST /api/Simulation/Session - DurationMinutes is clamped 1-2880 (48h, roadmap #403's hard cap) server-side, whether it came from a preset or the free-text custom field.
+    public class SimulationSessionCreateRequest
+    {
+        public string? Name { get; set; }
+        public int DurationMinutes { get; set; }
+    }
+
     /// Slider bounds for the Simulation Mode Web UI - reasonable ranges, not hard physical limits, mostly a first-pass judgment call; Co2's 401-8000 matches the existing outlier guard in EfRepository.SensorData.cs.
     public static class SimulationMetricRange
     {

@@ -43,6 +43,8 @@ namespace api.Dal
         public DbSet<DeviceDiagnosticRow> DeviceDiagnostics => Set<DeviceDiagnosticRow>();
         public DbSet<DeviceSimulationRow> DeviceSimulations => Set<DeviceSimulationRow>();
         public DbSet<DeviceVirtualRow> DeviceVirtuals => Set<DeviceVirtualRow>();
+        public DbSet<SimulationSessionRow> SimulationSessions => Set<SimulationSessionRow>();
+        public DbSet<SimulationSessionDeviceRow> SimulationSessionDevices => Set<SimulationSessionDeviceRow>();
         public DbSet<DeviceCommandRow> DeviceCommands => Set<DeviceCommandRow>();
         public DbSet<DeviceManualOverrideRow> DeviceManualOverrides => Set<DeviceManualOverrideRow>();
         public DbSet<GatewayDeviceMappingRow> GatewayDeviceMappings => Set<GatewayDeviceMappingRow>();
@@ -395,6 +397,22 @@ namespace api.Dal
                 e.HasKey(x => x.DeviceID);
                 e.Property(x => x.DeviceID).ValueGeneratedNever(); // 1:1 with device, same PK-is-the-FK shape as DeviceDiagnosticRow/DeviceSimulationRow.
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<SimulationSessionRow>(e =>
+            {
+                e.ToTable("simulationSession");
+                e.HasKey(x => x.IDSimulationSession);
+                e.Property(x => x.IDSimulationSession).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<SimulationSessionDeviceRow>(e =>
+            {
+                e.ToTable("simulationSessionDevice");
+                e.HasKey(x => new { x.IDSimulationSession, x.DeviceID });
+                e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.IDSimulationSession).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
             });
 
