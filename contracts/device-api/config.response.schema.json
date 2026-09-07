@@ -395,6 +395,9 @@
         "rules",
         "waterPumpMaxRunSeconds",
         "waterPumpCooldownSeconds",
+        "waterPumpMinLevel",
+        "waterLevelRawEmpty",
+        "waterLevelRawFull",
         "relayEnabled",
         "relays",
         "skipWaterPumpForRain",
@@ -427,6 +430,27 @@
             "null"
           ],
           "description": "Roadmap #21/#36. Minimum OFF time (seconds) before the next WaterPump attempt is allowed, same enforcement point as waterPumpMaxRunSeconds. Copied from the assigned zone. 0/null disables it."
+        },
+        "waterPumpMinLevel": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Roadmap #393. Dry-run protection - blocks WaterPump (Interval/Schedule/Manual included, not just Threshold) below this fill percent, evaluated device-side against waterLevelRawEmpty/waterLevelRawFull (AgrumyFirmware's RelayLogic::waterPumpBlockedByLowTank). Copied from the assigned zone. <=0/null, or waterLevelRawEmpty==waterLevelRawFull, disables it."
+        },
+        "waterLevelRawEmpty": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Roadmap #234/#393. Raw sensorData.WaterLevel reading when the tank is empty - same calibration api.Utils.TankCalculator uses server-side, sent here so waterPumpMinLevel can be evaluated on-device."
+        },
+        "waterLevelRawFull": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Roadmap #234/#393. Raw sensorData.WaterLevel reading when the tank is full - see waterLevelRawEmpty."
         },
         "relayEnabled": {
           "type": [

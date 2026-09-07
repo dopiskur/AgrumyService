@@ -351,12 +351,13 @@ namespace api.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> TankCalibrationUpdate(int idDeviceFarmUnitZone, double? tankCapacityLiters, int? waterLevelRawEmpty, int? waterLevelRawFull)
+        public async Task<ActionResult> TankCalibrationUpdate(int idDeviceFarmUnitZone, double? tankCapacityLiters, int? waterLevelRawEmpty, int? waterLevelRawFull, double? waterPumpMinLevel)
         {
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             zone.TankCapacityLiters = tankCapacityLiters;
             zone.WaterLevelRawEmpty = waterLevelRawEmpty;
             zone.WaterLevelRawFull = waterLevelRawFull;
+            zone.WaterPumpMinLevel = waterPumpMinLevel;
             try
             {
                 await api.DeviceFarmUnitZoneUpdate(zone);

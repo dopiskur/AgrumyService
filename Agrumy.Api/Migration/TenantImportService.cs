@@ -129,6 +129,7 @@ namespace api.Migration
                     TankCapacityLiters = z.TankCapacityLiters,
                     WaterLevelRawEmpty = z.WaterLevelRawEmpty,
                     WaterLevelRawFull = z.WaterLevelRawFull,
+                    WaterPumpMinLevel = z.WaterPumpMinLevel,
                     HeatingMaxRunSeconds = z.HeatingMaxRunSeconds,
                     VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
                 });

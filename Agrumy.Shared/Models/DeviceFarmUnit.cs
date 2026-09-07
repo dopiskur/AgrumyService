@@ -45,6 +45,9 @@ namespace api.Models
         /// Raw sensorData.WaterLevel reading when the tank is full.
         public int? WaterLevelRawFull { get; set; }
 
+        // Dry-run protection - blocks WaterPump (device-side, covers Interval/Schedule/Manual too, not just Threshold) below this fill percent. Null/<=0, or WaterLevelRawEmpty==WaterLevelRawFull (no tank calibration), disables it - a Water Valve zone with no tank sensor to protect.
+        public double? WaterPumpMinLevel { get; set; }
+
         // Roadmap #219 - generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }

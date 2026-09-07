@@ -101,6 +101,9 @@ namespace api.Devices
                     DeviceFarmUnitZone? zone = await repo.DeviceFarmUnitZoneGetByIdAsync(idZone);
                     controller.WaterPumpMaxRunSeconds = zone?.WaterPumpMaxRunSeconds;
                     controller.WaterPumpCooldownSeconds = zone?.WaterPumpCooldownSeconds;
+                    controller.WaterPumpMinLevel = zone?.WaterPumpMinLevel;
+                    controller.WaterLevelRawEmpty = zone?.WaterLevelRawEmpty;
+                    controller.WaterLevelRawFull = zone?.WaterLevelRawFull;
                     // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks.
                     controller.SkipWaterPumpForRain = zone?.SkipWaterPumpWhenRainPredicted == true && serverConfig.WeatherRainPredicted;
 

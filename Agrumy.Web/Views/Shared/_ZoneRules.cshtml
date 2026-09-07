@@ -113,7 +113,16 @@
                 <label class="form-label small mb-0">Raw reading when full</label>
                 <input type="number" name="waterLevelRawFull" class="form-control form-control-sm" style="width:10rem" value="@Model.Zone.WaterLevelRawFull" />
             </div>
+            <div>
+                <label class="form-label small mb-0">WaterPump min level (%)</label>
+                <input type="number" min="0" max="100" step="any" name="waterPumpMinLevel" class="form-control form-control-sm" style="width:10rem" value="@Model.Zone.WaterPumpMinLevel" />
+            </div>
             <button type="submit" class="btn btn-sm btn-primary">Save</button>
         </form>
+        <p class="text-secondary small mt-1">
+            WaterPump min level blocks the pump (Interval/Schedule/Manual included, not just Threshold)
+            below this fill percent - dry-run protection. Needs the three calibration fields above set
+            first; blank/0 leaves WaterPump unprotected, same as a Water Valve with no tank sensor.
+        </p>
     </div>
 </div>

@@ -39,6 +39,7 @@ namespace api.Dal.Entities
         public int? WaterLevelRawEmpty { get; set; }
         public int? WaterLevelRawFull { get; set; }
         public DateTime? TankRefillNotifiedAt { get; set; }
+        public double? WaterPumpMinLevel { get; set; }
 
         // See api.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
         public int? HeatingMaxRunSeconds { get; set; }

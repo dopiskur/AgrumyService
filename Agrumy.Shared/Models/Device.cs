@@ -522,6 +522,11 @@ namespace api.Models
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }
 
+        // Dry-run protection - the zone's own WaterPumpMinLevel plus tank calibration, sent as-is so the device can compute fill percent itself; see DeviceFarmUnitZone.WaterPumpMinLevel's remarks.
+        public double? WaterPumpMinLevel { get; set; }
+        public int? WaterLevelRawEmpty { get; set; }
+        public int? WaterLevelRawFull { get; set; }
+
         // Final AND-NOT veto over WaterPump (BuildDeviceConfigAsync, from SkipWaterPumpWhenRainPredicted && WeatherRainPredicted) - not a Rule, since OR-combined rules can only add a run reason, never suppress one.
         public bool SkipWaterPumpForRain { get; set; }
 

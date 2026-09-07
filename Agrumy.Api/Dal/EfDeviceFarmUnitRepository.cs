@@ -196,6 +196,7 @@ namespace api.Dal
                     TankCapacityLiters = zone.TankCapacityLiters,
                     WaterLevelRawEmpty = zone.WaterLevelRawEmpty,
                     WaterLevelRawFull = zone.WaterLevelRawFull,
+                    WaterPumpMinLevel = zone.WaterPumpMinLevel,
                     // Same reasoning as Tank* above - no server-wide default, always taken from the caller.
                     HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds,
                     VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds,
@@ -228,6 +229,7 @@ namespace api.Dal
             row.TankCapacityLiters = zone.TankCapacityLiters;
             row.WaterLevelRawEmpty = zone.WaterLevelRawEmpty;
             row.WaterLevelRawFull = zone.WaterLevelRawFull;
+            row.WaterPumpMinLevel = zone.WaterPumpMinLevel;
             row.HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds;
             row.VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds;
             await db.SaveChangesAsync();
@@ -994,6 +996,7 @@ namespace api.Dal
             TankCapacityLiters = z.TankCapacityLiters,
             WaterLevelRawEmpty = z.WaterLevelRawEmpty,
             WaterLevelRawFull = z.WaterLevelRawFull,
+            WaterPumpMinLevel = z.WaterPumpMinLevel,
             HeatingMaxRunSeconds = z.HeatingMaxRunSeconds,
             VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
         };
