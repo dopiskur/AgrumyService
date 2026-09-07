@@ -315,6 +315,31 @@ public class GatewayApiControllerTests
         Assert.Equal(409, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
     }
 
+    /// Roadmap #396(9) - the outer [EnableRateLimiting("device-data")] is keyed by the GATEWAY's IP, shared by every leaf relayed through it; this per-leaf ceiling is a separate guard so one noisy node can't starve its siblings.
+    [Fact]
+    public async Task RelayUplink_LeafAtItsOwnPerLeafRateLimit_Returns429_NeverDecrypts()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        _cache.Setup(c => c.GetAsync<GatewayApiController.RelayRateCounter>("relay-rate:2"))
+            .ReturnsAsync(new GatewayApiController.RelayRateCounter { WindowStart = DateTimeOffset.UtcNow, Count = 20 });
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWire(TestLoRaKey, 1, "{\"t\":\"event\"}"),
+        });
+
+        // Strict mock: no DeviceLoRaUplinkCounterSetAsync/dispatch setup, proving this leaf's request never reached decryption.
+        Assert.Equal(429, Assert.IsType<ObjectResult>(response.Result).StatusCode);
+    }
+
     [Fact]
     public async Task RelayUplink_DeviceNeitherGatewayNorLoRaGatewayEnabled_Returns403()
     {

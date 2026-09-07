@@ -42,6 +42,37 @@ namespace api.Controllers.API
             return (gateway, null);
         }
 
+        // Same 1-minute window as the "device-data" IP limiter, ~1/3 of its 60/min ceiling per leaf - generous for a single node's own telemetry cadence, but nowhere near enough for one bad node to starve every other leaf sharing the gateway's IP budget.
+        private const int RelayPerLeafPermitLimit = 20;
+        private static readonly TimeSpan RelayPerLeafWindow = TimeSpan.FromMinutes(1);
+
+        // Internal, not private, so GatewayApiControllerTests can construct a mocked cache entry directly.
+        internal sealed class RelayRateCounter
+        {
+            public DateTimeOffset WindowStart { get; set; }
+            public int Count { get; set; }
+        }
+
+        /// True and increments if idDevice (the RESOLVED leaf, not the gateway) is still under its own per-minute relay ceiling - best-effort (read-modify-write, not atomic), acceptable for a noisy-neighbor guard rather than a hard security boundary.
+        private async Task<bool> IsLeafWithinRateLimitAsync(int idDevice)
+        {
+            string key = $"relay-rate:{idDevice}";
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            RelayRateCounter? counter = await Cache.GetAsync<RelayRateCounter>(key);
+            if (counter is null || now - counter.WindowStart >= RelayPerLeafWindow)
+            {
+                await Cache.SetAsync(key, new RelayRateCounter { WindowStart = now, Count = 1 }, RelayPerLeafWindow);
+                return true;
+            }
+            if (counter.Count >= RelayPerLeafPermitLimit)
+            {
+                return false;
+            }
+            counter.Count++;
+            await Cache.SetAsync(key, counter, RelayPerLeafWindow - (now - counter.WindowStart));
+            return true;
+        }
+
         // 500 gives generous headroom for either a small LoRa aggregation batch or a larger WiFi-repeater one, while still bounding a malformed/hostile batch's server-side work.
         private const int MaxBatchEntries = 500;
 
@@ -211,6 +242,11 @@ namespace api.Controllers.API
             if (device is null)
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 404, Error = "Mapped device no longer exists." });
+            }
+            // [EnableRateLimiting("device-data")] above is keyed by caller IP - the GATEWAY's IP, shared by every leaf node relayed through it (roadmap #396(9)). One noisy/faulty leaf must not exhaust that shared budget for its siblings, so each resolved leaf device gets its own separate ceiling on top.
+            if (!await IsLeafWithinRateLimitAsync(idDevice))
+            {
+                return StatusCode(429, $"Node {request.SourceAddress} (device {idDevice}) is relaying too fast - rate limited independently of this gateway's own budget.");
             }
             if (string.IsNullOrEmpty(device.LoRaPrivateKeyHex))
             {
