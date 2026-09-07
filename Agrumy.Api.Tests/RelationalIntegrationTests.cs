@@ -1795,6 +1795,21 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(status.RelayStates!.Single(r => r.RelayFunction == RelayFunction.WaterPump).IsOn);
     }
 
+    // Roadmap #421 - a virtual device has no real WiFi/poll cycle, so the Fleet page must flag it distinctly instead of showing a misleading Online/Offline.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFleetGet_FlagsVirtualDevices(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var real = await MakeDevice(t, tenantId);
+        var virt = await MakeDevice(t, tenantId);
+        await _repo.VirtualDeviceRegisterAsync(virt.IDDevice!.Value);
+
+        IList<DeviceFleetStatus> fleet = await _repo.DeviceFleetGetAsync(tenantId);
+        Assert.False(fleet.Single(f => f.IDDevice == real.IDDevice).IsVirtual);
+        Assert.True(fleet.Single(f => f.IDDevice == virt.IDDevice).IsVirtual);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task SensorDataPush_Parses_String_Measurements_And_Fills_Missing_Date(DbProviderKind provider)
     {

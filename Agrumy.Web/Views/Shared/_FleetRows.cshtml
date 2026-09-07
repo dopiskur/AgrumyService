@@ -41,7 +41,11 @@
             <td>@(item.DeviceFarmUnitZoneName ?? "-")</td>
         }
         <td>
-            @if (item.Online)
+            @if (item.IsVirtual)
+            {
+                <span class="badge text-bg-primary" title="Simulated device - no real WiFi/poll cycle, always considered running">Virtual</span>
+            }
+            else if (item.Online)
             {
                 <span class="badge text-bg-success">Online</span>
             }

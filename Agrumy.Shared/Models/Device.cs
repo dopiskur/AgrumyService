@@ -363,6 +363,8 @@ namespace api.Models
         public string? FirmwareTargetVersion { get; set; }
         public int? Battery { get; set; }
         public bool Online { get; set; }
+        // Roadmap #421 - a virtual (simulated) device has no real WiFi/poll cycle for Online to mean anything; the Web UI shows a distinct "Virtual" badge instead of Online/Offline for these.
+        public bool IsVirtual { get; set; }
         // Commercial board last reported in the heartbeat; empty = generic chip-target, null = never reported.
         public string? Kit { get; set; }
         // True when the device has real relay hardware - admin set DeviceRole to Sensor+Controller, or Kit maps to a deviceTypeKit board with relays; drives the Web UI's Controller tab.

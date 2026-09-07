@@ -667,6 +667,10 @@ namespace api.Dal
 
             // One bulk read of every relay state for devices in this result set, grouped in memory - same reasoning as kitCapability above (a handful of rows per device, not worth a per-device round trip).
             var deviceIds = rows.Select(r => r.Device.IDDevice).ToList();
+            HashSet<int> virtualDeviceIds = (await db.DeviceVirtuals.AsNoTracking()
+                .Where(v => deviceIds.Contains(v.DeviceID))
+                .Select(v => v.DeviceID)
+                .ToListAsync()).ToHashSet();
             Dictionary<int, List<ControllerDataStatus>> relayStates = (await db.ControllerData.AsNoTracking()
                 .Where(c => deviceIds.Contains(c.DeviceID))
                 .ToListAsync())
@@ -711,6 +715,7 @@ namespace api.Dal
                     FirmwareTargetVersion = r.Device.FirmwareTargetVersion,
                     Battery = r.Battery,
                     Online = DeviceFleetStatus.ComputeOnline(r.Diag?.LastSeenAt, r.Device.SleepSeconds, utcNow),
+                    IsVirtual = virtualDeviceIds.Contains(r.Device.IDDevice),
                     DeviceFarmUnitID = r.Device.DeviceFarmUnitID,
                     DeviceFarmUnitZoneID = r.Device.DeviceFarmUnitZoneID,
                     DeviceFarmUnitName = r.Device.DeviceFarmUnitID is int uid ? unitNames.GetValueOrDefault(uid) : null,
