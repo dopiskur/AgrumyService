@@ -38,6 +38,6 @@ namespace api.Dal
 
         public Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID) => deviceRepository.DeviceLoRaPrivateKeyGenerateAsync(deviceID);
 
-        public Task DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) => deviceRepository.DeviceLoRaUplinkCounterSetAsync(deviceID, counter);
+        public Task<bool> DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) => deviceRepository.DeviceLoRaUplinkCounterSetAsync(deviceID, counter);
     }
 }

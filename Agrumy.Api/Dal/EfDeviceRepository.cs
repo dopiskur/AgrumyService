@@ -240,9 +240,13 @@ namespace api.Dal
             return hex;
         }
 
-        public Task DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) =>
-            db.Devices.Where(d => d.IDDevice == deviceID)
+        public async Task<bool> DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter)
+        {
+            int rows = await db.Devices
+                .Where(d => d.IDDevice == deviceID && (d.LoRaLastUplinkCounter == null || d.LoRaLastUplinkCounter < counter))
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LoRaLastUplinkCounter, counter));
+            return rows > 0;
+        }
 
         /// internal, not private - EfGatewayRepository and EfRepository.DeviceFarmUnits.cs (not yet extracted) also map DeviceRow to Device.
         internal static Device ToDto(DeviceRow d) => new()

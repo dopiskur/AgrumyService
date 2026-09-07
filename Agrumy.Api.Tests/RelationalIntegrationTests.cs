@@ -1764,6 +1764,21 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await db.DeviceVirtuals.AnyAsync(v => v.DeviceID == d.IDDevice));
     }
 
+    // A separate read+compare+write let two concurrent RelayUplink calls both pass the check before either wrote - the WHERE clause below IS the check now, so only the first of any two same-or-lower-counter writes can ever succeed.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaUplinkCounterSet_GuardsAgainstReplayAtomically(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        Assert.True(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 5));
+        // Same counter again (the replayed frame) and a lower one both lose against the value just written.
+        Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 5));
+        Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 3));
+        Assert.True(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 6));
+    }
+
     // DeviceFleetGetAsync must surface ControllerData without a per-device round trip - see BuildFleetStatusesAsync's relayStates dictionary.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFleetGet_IncludesRelayStates(DbProviderKind provider)

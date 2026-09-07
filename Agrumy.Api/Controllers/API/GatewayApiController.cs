@@ -270,11 +270,11 @@ namespace api.Controllers.API
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Decryption failed - wrong key, or the payload was corrupted or tampered with." });
             }
-            if (device.LoRaLastUplinkCounter is long lastCounter && (long)counter <= lastCounter)
+            // Atomic check-and-advance - the WHERE clause inside this call IS the replay check, so two concurrent RelayUplink calls for the same device can never both pass (unlike a separate read-then-compare-then-write, which had exactly that race).
+            if (!await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter))
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 409, Error = "Replayed or out-of-order uplink." });
             }
-            await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter);
 
             JsonNode? envelope;
             try

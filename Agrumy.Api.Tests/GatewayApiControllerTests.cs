@@ -223,7 +223,7 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
             [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
         _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
-        _repo.Setup(r => r.DeviceLoRaUplinkCounterSetAsync(2, 1)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DeviceLoRaUplinkCounterSetAsync(2, 1)).ReturnsAsync(true);
         _repo.Setup(r => r.EventDevicePushAsync(2, 1, DeviceEventType.NoInternet, "relayed")).ReturnsAsync(true);
 
         var controller = NewController("node1");
@@ -303,6 +303,8 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
             [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
         _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        // The atomic guarded UPDATE is what rejects the replay now (its own WHERE clause is the check) - false means "another/earlier call already advanced past this counter".
+        _repo.Setup(r => r.DeviceLoRaUplinkCounterSetAsync(2, 5)).ReturnsAsync(false);
 
         var controller = NewController("node1");
         var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
@@ -311,7 +313,7 @@ public class GatewayApiControllerTests
             Payload = EncryptForWire(TestLoRaKey, 5, "{\"t\":\"event\"}"), // counter == last seen, not higher
         });
 
-        // Strict mock: an un-set-up DeviceLoRaUplinkCounterSetAsync/dispatch call would throw, proving the replay was rejected before either ran.
+        // Strict mock: no dispatch setup, proving nothing was forwarded once the guarded update reported a replay.
         Assert.Equal(409, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
     }
 
