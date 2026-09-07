@@ -39,9 +39,22 @@ namespace api.Controllers.View
                     CsvField(entry.Details)));
             }
 
-            return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"audit-log-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
+            byte[] bom = Encoding.UTF8.GetPreamble();
+            byte[] body = Encoding.UTF8.GetBytes(csv.ToString());
+            return File([.. bom, .. body], "text/csv", $"audit-log-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
         }
 
-        private static string CsvField(string? value) => $"\"{(value ?? "").Replace("\"", "\"\"")}\"";
+        private static readonly char[] FormulaTriggers = ['=', '+', '-', '@'];
+
+        /// A leading apostrophe stops Excel/Sheets from treating the cell as a formula (CSV injection) without changing the visible value.
+        private static string CsvField(string? value)
+        {
+            string v = value ?? "";
+            if (v.Length > 0 && FormulaTriggers.Contains(v[0]))
+            {
+                v = "'" + v;
+            }
+            return $"\"{v.Replace("\"", "\"\"")}\"";
+        }
     }
 }
