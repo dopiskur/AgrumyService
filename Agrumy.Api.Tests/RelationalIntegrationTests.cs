@@ -33,7 +33,7 @@ public sealed class RelationalIntegrationFixture
         if (string.IsNullOrWhiteSpace(conn)) return;
 
         using var db = new AgrumyDbContext(DbOptionsFactory.Build(provider, conn));
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
 
         if (!db.UserRoles.Any(r => r.RoleName == RoleNames.TenantReader))
         {
@@ -325,7 +325,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             : "SELECT TABLE_NAME AS Value FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()";
         var tables = await db.Database.SqlQueryRaw<string>(sql).ToListAsync();
 
-        foreach (var name in new[] { "tenant", "user", "userGroup", "userRole", "userRoleScope",
+        foreach (var name in new[] { "tenant", "user", "userRole", "userRoleScope",
             "device", "deviceFarmUnit", "deviceFarmUnitZone", "deviceType", "deviceTypeService",
             "deviceTypeRelay", "deviceTypeSensor", "deviceConfigSensor", "deviceConfigController",
             "deviceFirmware", "deviceDiagnostic", "sensorData", "sensorDataReport", "eventDevice",
@@ -1096,10 +1096,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.DeviceConfigSensorUpdateAsync(a.IDDevice, new DeviceConfigSensor
         {
             IDDeviceConfigSensor = b.DeviceConfigSensorID, // tampered: points at B's row
-            SensorTemp = 7,
+            SensorTemp = 1, // must be a real deviceTypeSensor catalog id - FK-enforced
         });
-        Assert.Equal(7, (await _repo.DeviceConfigSensorGetAsync(a.DeviceConfigSensorID))!.SensorTemp);
-        Assert.NotEqual(7, (await _repo.DeviceConfigSensorGetAsync(b.DeviceConfigSensorID))!.SensorTemp);
+        Assert.Equal(1, (await _repo.DeviceConfigSensorGetAsync(a.DeviceConfigSensorID))!.SensorTemp);
+        Assert.NotEqual(1, (await _repo.DeviceConfigSensorGetAsync(b.DeviceConfigSensorID))!.SensorTemp);
 
         await _repo.DeviceConfigControllerUpdateAsync(a.IDDevice, new DeviceConfigController
         {

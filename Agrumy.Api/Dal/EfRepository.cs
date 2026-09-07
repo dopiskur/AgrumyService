@@ -21,7 +21,8 @@ namespace api.Dal
 
         public async Task EnsureSchemaAsync()
         {
-            await db.Database.EnsureCreatedAsync();
+            // Roadmap #247 - a brand-new DB gets every migration from empty; invent.hr's __EFMigrationsHistory was seeded with InitialBeta as already-applied (its schema already matched), so this is a no-op there until a real future migration ships.
+            await db.Database.MigrateAsync();
 
             await EnsureTimescaleHypertableAsync();
 
