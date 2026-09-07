@@ -102,4 +102,37 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.TooManyRequests, sixth);
     }
+
+    [Fact]
+    public async Task PrometheusMetrics_NoToken_Returns401()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/api/metrics/prometheus");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PrometheusMetrics_TokenWithoutRequiredRole_Returns403()
+    {
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", _factory.TokenFor(RoleNames.TenantReader));
+
+        HttpResponseMessage response = await client.GetAsync("/api/metrics/prometheus");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PrometheusMetrics_WithMetricsReaderRole_ReturnsTextExposition()
+    {
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", _factory.TokenFor(RoleNames.GlobalAdmin));
+
+        HttpResponseMessage response = await client.GetAsync("/api/metrics/prometheus");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.StartsWith("text/plain", response.Content.Headers.ContentType?.MediaType);
+    }
 }
