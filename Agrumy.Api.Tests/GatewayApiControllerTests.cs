@@ -90,6 +90,53 @@ public class GatewayApiControllerTests
         Assert.Equal(200, result.StatusCode);
     }
 
+    /// Roadmap #395 finding (7): a GatewayDeviceToken (what GET /api/Gateway/DeviceMapping now hands out instead of a device's real ApiKey) must be accepted by Batch alongside the device's genuine ApiKey.
+    [Fact]
+    public async Task Batch_ValidGatewayDeviceToken_Forwards()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "gateway1", IsGateway = true, TenantID = 1 };
+        var device = new Device { IDDevice = 2, ApiId = "dev1", ApiKey = "realKey", TenantID = 1 };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("gateway1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("dev1")).ReturnsAsync(device);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GetCommandByIdAsync(5)).ReturnsAsync((DeviceCommand?)null);
+
+        string token = GatewayDeviceToken.Issue("dev1", "realKey");
+        var payload = JsonDocument.Parse("{\"CommandId\":5}").RootElement;
+        var controller = NewController("gateway1");
+        var response = await controller.Batch(new GatewayBatchRequest
+        {
+            Entries = [new GatewayBatchEntry { DeviceApiId = "dev1", DeviceApiKey = token, Type = GatewayEntryType.CommandAck, Payload = payload }]
+        });
+
+        var result = Assert.Single(Assert.IsType<GatewayBatchResponse>(Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(response.Result).Value).Results);
+        Assert.True(result.Success);
+        Assert.Equal(200, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Batch_TokenSignedForAnotherDevice_RejectsEntryWithoutForwarding()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "gateway1", IsGateway = true, TenantID = 1 };
+        var device = new Device { IDDevice = 2, ApiId = "dev1", ApiKey = "realKey", TenantID = 1 };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("gateway1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("dev1")).ReturnsAsync(device);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+
+        // Minted for a different device's ApiId/ApiKey - must not verify against dev1's.
+        string token = GatewayDeviceToken.Issue("dev2", "someOtherKey");
+        var controller = NewController("gateway1");
+        var response = await controller.Batch(new GatewayBatchRequest
+        {
+            Entries = [new GatewayBatchEntry { DeviceApiId = "dev1", DeviceApiKey = token, Type = GatewayEntryType.Event, Payload = EmptyPayload() }]
+        });
+
+        var result = Assert.Single(Assert.IsType<GatewayBatchResponse>(Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(response.Result).Value).Results);
+        Assert.False(result.Success);
+        Assert.Equal(401, result.StatusCode);
+        // Strict mock: an un-set-up EventDevicePushAsync call would throw, proving the entry was never forwarded.
+    }
+
     [Fact]
     public async Task DeviceMappingAdd_CallerFromDifferentTenantThanGateway_Returns403_NeverCallsRepo()
     {

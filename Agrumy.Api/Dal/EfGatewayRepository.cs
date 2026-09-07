@@ -1,6 +1,7 @@
 using api.Dal.Entities;
 using api.Dal.Interface;
 using api.Models;
+using api.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Dal
@@ -18,8 +19,19 @@ namespace api.Dal
         public async Task<IList<GatewayDeviceMapping>> GatewayDeviceMappingsGetAsync(int idGatewayDevice) =>
             await MappingsQuery(idGatewayDevice, includeSecrets: false).ToListAsync();
 
-        public async Task<IList<GatewayDeviceMapping>> GatewayDeviceMappingsWithSecretsGetAsync(int idGatewayDevice) =>
-            await MappingsQuery(idGatewayDevice, includeSecrets: true).ToListAsync();
+        public async Task<IList<GatewayDeviceMapping>> GatewayDeviceMappingsWithSecretsGetAsync(int idGatewayDevice)
+        {
+            List<GatewayDeviceMapping> rows = await MappingsQuery(idGatewayDevice, includeSecrets: true).ToListAsync();
+            // Swap the raw ApiKey the query above just fetched for a short-lived scoped token before it leaves this method - a compromised gateway then leaks only a time-boxed proof, not every mapped device's permanent credential.
+            foreach (GatewayDeviceMapping row in rows)
+            {
+                if (row.DeviceApiId is string apiId && row.DeviceApiKey is string apiKey)
+                {
+                    row.DeviceApiKey = GatewayDeviceToken.Issue(apiId, apiKey);
+                }
+            }
+            return rows;
+        }
 
         private IQueryable<GatewayDeviceMapping> MappingsQuery(int idGatewayDevice, bool includeSecrets) =>
             from m in db.GatewayDeviceMappings.AsNoTracking()

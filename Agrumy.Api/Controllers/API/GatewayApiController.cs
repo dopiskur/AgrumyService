@@ -79,7 +79,10 @@ namespace api.Controllers.API
         private async Task<GatewayBatchEntryResult> RunEntryAsync(GatewayBatchEntry entry, int gatewayTenantId)
         {
             Device? device = await deviceRepo.DeviceGetByApiIdAsync(entry.DeviceApiId);
-            if (device is null || !DeviceAuth.ConstantTimeEquals(entry.DeviceApiKey, device.ApiKey))
+            // Either the device's own real ApiKey (WiFiRepeater profile - the device built this entry itself, forwarded verbatim) or a GatewayDeviceToken minted for this gateway (LoRaGateway/LoRaPrivateProtocol profiles - see EfGatewayRepository.GatewayDeviceMappingsWithSecretsGetAsync).
+            bool authorized = device?.ApiId is string apiId && device.ApiKey is string apiKey
+                && (DeviceAuth.ConstantTimeEquals(entry.DeviceApiKey, apiKey) || GatewayDeviceToken.Verify(entry.DeviceApiKey, apiId, apiKey));
+            if (device is null || !authorized)
             {
                 return new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Unknown device or apiKey mismatch." };
             }
