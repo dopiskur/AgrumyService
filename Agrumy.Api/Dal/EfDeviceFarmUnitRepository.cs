@@ -17,7 +17,8 @@ namespace api.Dal
         private sealed record UnitZoneDeviceSnapshot(
             int? DeviceFarmUnitID, int? DeviceFarmUnitZoneID, bool Enabled, bool Online, bool HasRecentProblemEvent,
             double? Temperature, double? SoilTemperature, double? Humidity, int? Moisture, int? Light,
-            int? Co2, int? Tvoc, double? Barometer, double? LiquidPH, int? RainLevel, int? WaterLevel, double? Wind)
+            int? Co2, int? Tvoc, double? Barometer, double? LiquidPH, int? RainLevel, int? WaterLevel, double? Wind,
+            double? Ec, double? Weight)
         {
             /// Nonlinear formula - averaged per device below, not derived from already-averaged Temperature/Humidity.
             public double? Vpd => VpdCalculator.Compute(Temperature, Humidity);
@@ -814,7 +815,8 @@ namespace api.Dal
                 return new UnitZoneDeviceSnapshot(
                     d.DeviceFarmUnitID, d.DeviceFarmUnitZoneID, enabled, online, d.HasRecentProblemEvent,
                     s?.Temperature, s?.SoilTemperature, s?.Humidity, s?.Moisture, s?.Light,
-                    s?.Co2, s?.Tvoc, s?.Barometer, s?.LiquidPH, s?.RainLevel, s?.WaterLevel, s?.Wind);
+                    s?.Co2, s?.Tvoc, s?.Barometer, s?.LiquidPH, s?.RainLevel, s?.WaterLevel, s?.Wind,
+                    s?.Ec, s?.Weight);
             }).ToList();
         }
 
@@ -882,7 +884,7 @@ namespace api.Dal
                 .Select(s => new
                 {
                     s.DateCreated, s.Temperature, s.SoilTemperature, s.Humidity, s.Moisture, s.Light,
-                    s.Co2, s.Tvoc, s.Barometer, s.LiquidPH, s.RainLevel, s.WaterLevel, s.Wind,
+                    s.Co2, s.Tvoc, s.Barometer, s.LiquidPH, s.RainLevel, s.WaterLevel, s.Wind, s.Ec, s.Weight,
                 })
                 .ToListAsync();
 
@@ -910,6 +912,8 @@ namespace api.Dal
                 trend.RainLevel[bucket.Key] = rowsInBucket.Select(r => r.RainLevel).Average();
                 trend.WaterLevel[bucket.Key] = rowsInBucket.Select(r => r.WaterLevel).Average();
                 trend.Wind[bucket.Key] = rowsInBucket.Select(r => r.Wind).Average();
+                trend.Ec[bucket.Key] = rowsInBucket.Select(r => r.Ec).Average();
+                trend.Weight[bucket.Key] = rowsInBucket.Select(r => r.Weight).Average();
             }
             return trend;
         }
@@ -940,7 +944,7 @@ namespace api.Dal
                 .Select(s => new
                 {
                     s.DeviceFarmUnitZoneID, s.DateCreated, s.Temperature, s.SoilTemperature, s.Humidity, s.Moisture, s.Light,
-                    s.Co2, s.Tvoc, s.Barometer, s.LiquidPH, s.RainLevel, s.WaterLevel, s.Wind,
+                    s.Co2, s.Tvoc, s.Barometer, s.LiquidPH, s.RainLevel, s.WaterLevel, s.Wind, s.Ec, s.Weight,
                 })
                 .ToListAsync();
 
@@ -969,6 +973,8 @@ namespace api.Dal
                 trend.RainLevel[group.Key.Bucket] = rowsInBucket.Select(r => r.RainLevel).Average();
                 trend.WaterLevel[group.Key.Bucket] = rowsInBucket.Select(r => r.WaterLevel).Average();
                 trend.Wind[group.Key.Bucket] = rowsInBucket.Select(r => r.Wind).Average();
+                trend.Ec[group.Key.Bucket] = rowsInBucket.Select(r => r.Ec).Average();
+                trend.Weight[group.Key.Bucket] = rowsInBucket.Select(r => r.Weight).Average();
             }
             return result;
         }
@@ -1003,6 +1009,8 @@ namespace api.Dal
                 RainLevel = snapshots.Select(s => s.RainLevel).Average(),
                 WaterLevel = waterLevel,
                 Wind = snapshots.Select(s => s.Wind).Average(),
+                Ec = snapshots.Select(s => s.Ec).Average(),
+                Weight = snapshots.Select(s => s.Weight).Average(),
                 TankFillPercent = tankFillPercent,
                 TankVolumeLiters = tankVolumeLiters,
             };

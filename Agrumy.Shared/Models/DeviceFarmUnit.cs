@@ -120,6 +120,10 @@ namespace api.Models
         DewPoint = 14,
         /// DERIVED - Temperature minus DewPoint; a small/shrinking spread is an early condensation/fungal-disease signal, distinct from absolute humidity alone.
         DewPointSpread = 15,
+        /// RAW (roadmap #416) - electrical conductivity, ADS1115Ec.
+        Ec = 16,
+        /// RAW (roadmap #416) - load cell reading, HX711.
+        Weight = 17,
     }
 
     /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.
@@ -256,6 +260,8 @@ namespace api.Models
         public double? RainLevel { get; set; }
         public double? WaterLevel { get; set; }
         public double? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
         /// Derived from WaterLevel + the zone's tank calibration (api.Utils.TankCalculator) - null for a Unit rollup (spans zones with potentially different/no calibration) or an uncalibrated zone.
         public double? TankFillPercent { get; set; }
         public double? TankVolumeLiters { get; set; }
@@ -290,6 +296,8 @@ namespace api.Models
         public double?[] RainLevel { get; set; } = new double?[HourBuckets];
         public double?[] WaterLevel { get; set; } = new double?[HourBuckets];
         public double?[] Wind { get; set; } = new double?[HourBuckets];
+        public double?[] Ec { get; set; } = new double?[HourBuckets];
+        public double?[] Weight { get; set; } = new double?[HourBuckets];
     }
 
     /// One non-critical problem alert behind a Unit/Zone's Orange status - shown in _ZoneStatusBadge's dropdown, dismissable via DeviceApiController.DeviceEventAcknowledge.

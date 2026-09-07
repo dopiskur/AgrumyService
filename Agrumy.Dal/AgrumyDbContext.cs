@@ -299,6 +299,8 @@ namespace api.Dal
                 e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorRainLevel).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorWaterLevel).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorWind).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorEc).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorWeight).OnDelete(DeleteBehavior.NoAction);
             });
 
             // Real one-to-many, replacing the old flat Schedule* columns.

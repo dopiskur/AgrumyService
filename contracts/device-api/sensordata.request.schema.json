@@ -37,6 +37,8 @@
       },
       "waterLevel": { "type": ["number", "string", "null"] },
       "wind": { "type": ["number", "string", "null"] },
+      "ec": { "type": ["number", "string", "null"], "description": "Roadmap #416." },
+      "weight": { "type": ["number", "string", "null"], "description": "Roadmap #416." },
       "dateCreated": {
         "type": ["string", "null"],
         "description": "Firmware-side timestamp (device.getDateTime()) recorded when the reading was buffered; null when the clock is not yet set."

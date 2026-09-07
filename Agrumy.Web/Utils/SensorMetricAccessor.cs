@@ -22,6 +22,8 @@ namespace api.Utils
             SensorMetric.Wind => "Wind",
             SensorMetric.DewPoint => "Dew point",
             SensorMetric.DewPointSpread => "Dew point spread",
+            SensorMetric.Ec => "EC",
+            SensorMetric.Weight => "Weight",
             _ => metric.ToString(),
         };
 
@@ -42,6 +44,8 @@ namespace api.Utils
             SensorMetric.Wind => a.Wind,
             SensorMetric.DewPoint => a.DewPoint,
             SensorMetric.DewPointSpread => a.DewPointSpread,
+            SensorMetric.Ec => a.Ec,
+            SensorMetric.Weight => a.Weight,
             _ => null,
         };
 
@@ -62,6 +66,8 @@ namespace api.Utils
             SensorMetric.Wind => t.Wind,
             SensorMetric.DewPoint => t.DewPoint,
             SensorMetric.DewPointSpread => t.DewPointSpread,
+            SensorMetric.Ec => t.Ec,
+            SensorMetric.Weight => t.Weight,
             _ => new double?[SensorTrend.HourBuckets],
         };
     }

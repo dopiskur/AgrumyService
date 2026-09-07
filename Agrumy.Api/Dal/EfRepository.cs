@@ -160,7 +160,7 @@ namespace api.Dal
             if (!await db.DeviceTypeSensors.AnyAsync())
             {
                 db.DeviceTypeSensors.AddRange(
-                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Disabled, SensorName = "Disabled", Battery = 1, Temperature = 1, TemperatureSoil = 1, Humidity = 1, Moisture = 1, Light = 1, Co2 = 1, Tvoc = 1, Barometer = 1, WaterPH = 1, WaterTankLevel = 1, RainLevel = 1, Wind = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Disabled, SensorName = "Disabled", Battery = 1, Temperature = 1, TemperatureSoil = 1, Humidity = 1, Moisture = 1, Light = 1, Co2 = 1, Tvoc = 1, Barometer = 1, WaterPH = 1, WaterTankLevel = 1, RainLevel = 1, Wind = 1, Ec = 1, Weight = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Dht11, SensorName = "DHT11", Temperature = 1, Humidity = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Dht22, SensorName = "DHT22", Temperature = 1, Humidity = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Bmp180, SensorName = "BMP180", Temperature = 1, Barometer = 1 },
@@ -172,7 +172,36 @@ namespace api.Dal
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max17048, SensorName = "MAX17048", SensorDescription = "I2C fuel gauge (coulomb counting), address 0x36 - recommended, more precise than a voltage divider", Battery = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogVoltage, SensorName = "Analog voltage", Battery = 1 },
                     new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogMoisture, SensorName = "Analog moisture", Moisture = 1 },
-                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogWaterLevel, SensorName = "Analog water tank", WaterTankLevel = 1 });
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnalogWaterLevel, SensorName = "Analog water tank", WaterTankLevel = 1 },
+                    // Roadmap #416 - extended catalog.
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31855, SensorName = "MAX31855", SensorDescription = "K-type thermocouple amplifier, SPI", Temperature = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31856, SensorName = "MAX31856", SensorDescription = "Thermocouple amplifier, SPI", Temperature = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Max31865, SensorName = "MAX31865", SensorDescription = "PT100 RTD amplifier, SPI", Temperature = 1, TemperatureSoil = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Mlx90614, SensorName = "MLX90614", SensorDescription = "Non-contact IR thermometer, I2C", Temperature = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Mcp9808, SensorName = "MCP9808", Temperature = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Aht, SensorName = "AHT20/AHT21", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Am2320, SensorName = "AM2320", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Htu21Df, SensorName = "HTU21DF", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Si7021, SensorName = "Si7021", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Sht31, SensorName = "SHT31", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Sht4x, SensorName = "SHT4x", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Shtc3, SensorName = "SHTC3", Temperature = 1, Humidity = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Bme680, SensorName = "BME680", Temperature = 1, Humidity = 1, Barometer = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Dps310, SensorName = "DPS310", Temperature = 1, Barometer = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Scd30, SensorName = "SCD30", SensorDescription = "NDIR CO2, I2C", Co2 = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Scd4x, SensorName = "SCD4x", SensorDescription = "Photoacoustic CO2, I2C", Co2 = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Mhz19, SensorName = "MH-Z19", SensorDescription = "NDIR CO2, UART (Serial2, fixed pins)", Co2 = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.ChirpSoilMoisture, SensorName = "Chirp soil moisture", SensorDescription = "Capacitive I2C soil moisture", Moisture = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.EzoPh, SensorName = "Atlas Scientific EZO pH", SensorDescription = "I2C, address 0x63", WaterPH = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.AnyleafPh, SensorName = "Anyleaf pH", SensorDescription = "Analog pH probe, ConfigPin.PH", WaterPH = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Ads1115Ec, SensorName = "ADS1115 EC probe", SensorDescription = "Analog EC probe via ADS1115 ADC - needs per-install ecCalibrationSlope/Offset, no universal formula", Ec = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Tsl2561, SensorName = "TSL2561", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Tsl2591, SensorName = "TSL2591", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Si1145, SensorName = "SI1145", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Ltr390, SensorName = "LTR390", SensorDescription = "Ambient light channel only, UV channel unused", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Veml7700, SensorName = "VEML7700", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.As7341, SensorName = "AS7341", SensorDescription = "Reports raw spectral clear-channel count, not calibrated lux", Light = 1 },
+                    new DeviceTypeSensorRow { IDDeviceTypeSensor = SensorTypeIds.Hx711, SensorName = "HX711 load cell", SensorDescription = "Needs weightCalibrationFactor set per install (set_scale())", Weight = 1 });
             }
 
             // Any Kit string not in this table falls back to the existing, admin-controlled DeviceRole/DeviceControllerEnabled signal - see DeviceFleetGetAsync. VirtualDevice is a software-only kit for fully simulated devices, not a real board.

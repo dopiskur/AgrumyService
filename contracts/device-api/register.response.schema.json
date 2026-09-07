@@ -281,7 +281,12 @@
         "sensorPH",
         "sensorRainLevel",
         "sensorWaterLevel",
-        "sensorWind"
+        "sensorWind",
+        "sensorEc",
+        "sensorWeight",
+        "weightCalibrationFactor",
+        "ecCalibrationSlope",
+        "ecCalibrationOffset"
       ],
       "properties": {
         "idDeviceConfigSensor": {
@@ -383,6 +388,41 @@
             "integer",
             "null"
           ]
+        },
+        "sensorEc": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Roadmap #416. FK into deviceTypeSensor: 1030=Ads1115Ec."
+        },
+        "sensorWeight": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Roadmap #416. FK into deviceTypeSensor: 1037=Hx711."
+        },
+        "weightCalibrationFactor": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Roadmap #416. HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install."
+        },
+        "ecCalibrationSlope": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Roadmap #416. No universal analog-EC-probe formula exists - identity default (1.0) reports raw millivolts until calibrated against known-EC reference solutions."
+        },
+        "ecCalibrationOffset": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Roadmap #416. Paired with ecCalibrationSlope above."
         }
       }
     },

@@ -343,6 +343,8 @@ namespace api.Dal
                     WaterTankLevel = s.WaterTankLevel,
                     RainLevel = s.RainLevel,
                     Wind = s.Wind,
+                    Ec = s.Ec,
+                    Weight = s.Weight,
                 })
                 .ToListAsync();
         }
@@ -477,6 +479,11 @@ namespace api.Dal
                 row.SensorRainLevel = cfg.SensorRainLevel;
                 row.SensorWaterLevel = cfg.SensorWaterLevel;
                 row.SensorWind = cfg.SensorWind;
+                row.SensorEc = cfg.SensorEc;
+                row.SensorWeight = cfg.SensorWeight;
+                row.WeightCalibrationFactor = cfg.WeightCalibrationFactor;
+                row.EcCalibrationSlope = cfg.EcCalibrationSlope;
+                row.EcCalibrationOffset = cfg.EcCalibrationOffset;
             }
 
             var deviceRow = await db.Devices.FirstOrDefaultAsync(d => d.IDDevice == idDevice);
@@ -506,6 +513,11 @@ namespace api.Dal
             SensorRainLevel = c.SensorRainLevel,
             SensorWaterLevel = c.SensorWaterLevel,
             SensorWind = c.SensorWind,
+            SensorEc = c.SensorEc,
+            SensorWeight = c.SensorWeight,
+            WeightCalibrationFactor = c.WeightCalibrationFactor,
+            EcCalibrationSlope = c.EcCalibrationSlope,
+            EcCalibrationOffset = c.EcCalibrationOffset,
         };
 
         // Relay-pin mapping only - Rules/WaterPumpMaxRunSeconds/WaterPumpCooldownSeconds on the DTO come from the assigned zone via DeviceApiController.BuildDeviceConfigAsync, not this row.

@@ -16,5 +16,7 @@ namespace api.Simulation
         public int RainLevel { get; set; }
         public int WaterLevel { get; set; }
         public int Wind { get; set; }
+        public double Ec { get; set; }
+        public double Weight { get; set; }
     }
 }

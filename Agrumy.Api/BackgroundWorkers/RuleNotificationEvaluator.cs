@@ -177,6 +177,8 @@ namespace api.BackgroundWorkers
             SensorMetric.RainLevel => averages.RainLevel,
             SensorMetric.WaterLevel => averages.WaterLevel,
             SensorMetric.Wind => averages.Wind,
+            SensorMetric.Ec => averages.Ec,
+            SensorMetric.Weight => averages.Weight,
             _ => null,
         };
     }

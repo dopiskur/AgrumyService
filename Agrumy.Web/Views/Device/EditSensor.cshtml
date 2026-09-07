@@ -20,9 +20,11 @@
         (nameof(sensorCfg.SensorPH), s => s.WaterPH, sensorCfg.SensorPH, "Soil & Water"),
         (nameof(sensorCfg.SensorRainLevel), s => s.RainLevel, sensorCfg.SensorRainLevel, "Soil & Water"),
         (nameof(sensorCfg.SensorWaterLevel), s => s.WaterTankLevel, sensorCfg.SensorWaterLevel, "Soil & Water"),
+        (nameof(sensorCfg.SensorEc), s => s.Ec, sensorCfg.SensorEc, "Soil & Water"),
 
         (nameof(sensorCfg.SensorBattery), s => s.Battery, sensorCfg.SensorBattery, "Other"),
         (nameof(sensorCfg.SensorWind), s => s.Wind, sensorCfg.SensorWind, "Other"),
+        (nameof(sensorCfg.SensorWeight), s => s.Weight, sensorCfg.SensorWeight, "Other"),
     };
 
     Task<IHtmlContent> RenderSlot((string Name, Func<DeviceTypeSensor, int?> SupportsFlag, int? Selected, string Tab) slot)
@@ -118,6 +120,30 @@
                                 <label asp-for="DeviceConfigSensor!.BatteryDividerR2" class="form-label">R2 (&Omega;)</label>
                                 <input asp-for="DeviceConfigSensor!.BatteryDividerR2" id="battery-divider-r2" class="form-control" />
                                 <span asp-validation-for="DeviceConfigSensor!.BatteryDividerR2" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Roadmap #416 - no universal analog-EC-probe or load-cell formula exists, same reason the battery divider above needs real per-install values, not a preset. *@
+                    <div id="weight-ec-fields">
+                        <hr />
+                        <h6>Weight &amp; EC calibration</h6>
+                        <p class="text-secondary">Only used when Weight/EC above is set to a real sensor - HX711 needs its scale factor, the ADS1115 EC probe needs a slope/offset against known reference solutions.</p>
+                        <div class="row g-3 mb-3">
+                            <div class="col-auto">
+                                <label asp-for="DeviceConfigSensor!.WeightCalibrationFactor" class="form-label">HX711 scale factor</label>
+                                <input asp-for="DeviceConfigSensor!.WeightCalibrationFactor" class="form-control" />
+                                <span asp-validation-for="DeviceConfigSensor!.WeightCalibrationFactor" class="text-danger"></span>
+                            </div>
+                            <div class="col-auto">
+                                <label asp-for="DeviceConfigSensor!.EcCalibrationSlope" class="form-label">EC slope</label>
+                                <input asp-for="DeviceConfigSensor!.EcCalibrationSlope" class="form-control" />
+                                <span asp-validation-for="DeviceConfigSensor!.EcCalibrationSlope" class="text-danger"></span>
+                            </div>
+                            <div class="col-auto">
+                                <label asp-for="DeviceConfigSensor!.EcCalibrationOffset" class="form-label">EC offset</label>
+                                <input asp-for="DeviceConfigSensor!.EcCalibrationOffset" class="form-control" />
+                                <span asp-validation-for="DeviceConfigSensor!.EcCalibrationOffset" class="text-danger"></span>
                             </div>
                         </div>
                     </div>

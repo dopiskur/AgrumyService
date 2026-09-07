@@ -40,6 +40,8 @@ namespace api.Devices
             SensorMetric.RainLevel => r.RainLevel,
             SensorMetric.WaterLevel => r.WaterLevel,
             SensorMetric.Wind => r.Wind,
+            SensorMetric.Ec => r.Ec,
+            SensorMetric.Weight => r.Weight,
             _ => null,
         };
     }

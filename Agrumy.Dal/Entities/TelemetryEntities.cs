@@ -20,6 +20,8 @@ namespace api.Dal.Entities
         public int? RainLevel { get; set; }
         public int? WaterLevel { get; set; }
         public int? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
     }
 

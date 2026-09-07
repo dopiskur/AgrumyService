@@ -128,6 +128,8 @@ namespace api.Dal.Entities
         public int? WaterTankLevel { get; set; }
         public int? RainLevel { get; set; }
         public int? Wind { get; set; }
+        public int? Ec { get; set; }
+        public int? Weight { get; set; }
     }
 
     public class DeviceConfigControllerRow
@@ -209,6 +211,11 @@ namespace api.Dal.Entities
         public int? SensorRainLevel { get; set; }
         public int? SensorWaterLevel { get; set; }
         public int? SensorWind { get; set; }
+        public int? SensorEc { get; set; }
+        public int? SensorWeight { get; set; }
+        public double? WeightCalibrationFactor { get; set; }
+        public double? EcCalibrationSlope { get; set; }
+        public double? EcCalibrationOffset { get; set; }
     }
 
     /// Per-metric sensor-reading overrides for an EXISTING physical device (Simulation Mode) - one row per device, upserted from the Web Simulation page. A null field means "use the real reading"; Enabled=false means every field is ignored regardless of value.

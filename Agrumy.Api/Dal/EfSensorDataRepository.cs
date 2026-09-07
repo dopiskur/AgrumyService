@@ -42,6 +42,8 @@ namespace api.Dal
                     RainLevel = ReadInt(o, "rainLevel"),
                     WaterLevel = ReadInt(o, "waterLevel"),
                     Wind = ReadInt(o, "wind"),
+                    Ec = ReadDouble(o, "ec"),
+                    Weight = ReadDouble(o, "weight"),
                     // A missing/blank timestamp becomes "now" (UTC - device timestamps are UTC).
                     DateCreated = dc ?? DateTime.UtcNow,
                 });
@@ -347,6 +349,8 @@ namespace api.Dal
                 RainLevel = TrimmedMeanInt(rows.Select(r => r.RainLevel)),
                 WaterLevel = TrimmedMeanInt(rows.Select(r => r.WaterLevel)),
                 Wind = TrimmedMeanInt(rows.Select(r => r.Wind)),
+                Ec = TrimmedMean(rows.Select(r => r.Ec)),
+                Weight = TrimmedMean(rows.Select(r => r.Weight)),
                 DateCreated = bucketStart,
             };
         }
@@ -440,6 +444,8 @@ namespace api.Dal
                 RainLevel = s.RainLevel,
                 WaterLevel = s.WaterLevel,
                 Wind = s.Wind,
+                Ec = s.Ec,
+                Weight = s.Weight,
                 DateCreated = s.DateCreated ?? default,
             }).ToListAsync();
         }
@@ -465,6 +471,8 @@ namespace api.Dal
                 RainLevel = r.RainLevel,
                 WaterLevel = r.WaterLevel,
                 Wind = (int?)r.Wind, // SensorDataRow.Wind is int, api.Models.SensorData.Wind is double
+                Ec = r.Ec,
+                Weight = r.Weight,
                 DateCreated = r.DateCreated,
             }));
             await db.SaveChangesAsync();

@@ -125,6 +125,8 @@ namespace api.Devices
             SensorMetric.RainLevel => trend.RainLevel[bucketIndex],
             SensorMetric.WaterLevel => trend.WaterLevel[bucketIndex],
             SensorMetric.Wind => trend.Wind[bucketIndex],
+            SensorMetric.Ec => trend.Ec[bucketIndex],
+            SensorMetric.Weight => trend.Weight[bucketIndex],
             _ => null,
         };
 

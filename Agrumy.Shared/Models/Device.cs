@@ -426,6 +426,13 @@ namespace api.Models
         public int? SensorRainLevel { get; set; }
         public int? SensorWaterLevel { get; set; }
         public int? SensorWind { get; set; }
+        public int? SensorEc { get; set; }
+        public int? SensorWeight { get; set; }
+        // HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install.
+        public double? WeightCalibrationFactor { get; set; }
+        // No universal analog-EC-probe formula exists (same reason #202 left Wind/pH/rainLevel unimplemented) - identity default (1.0/0.0) reports raw millivolts until a real install calibrates against known-EC reference solutions.
+        public double? EcCalibrationSlope { get; set; }
+        public double? EcCalibrationOffset { get; set; }
 
     }
 
@@ -490,6 +497,8 @@ namespace api.Models
         public static readonly (double Min, double Max) RainLevel = (0, 100);
         public static readonly (double Min, double Max) WaterLevel = (0, 100);
         public static readonly (double Min, double Max) Wind = (0, 100);
+        public static readonly (double Min, double Max) Ec = (0, 20);
+        public static readonly (double Min, double Max) Weight = (0, 5000);
     }
 
     /// One physically-wired relay slot and the RelayFunction assigned to it - Slot is 1-based, matching AgrumyFirmware's ConfigPin.RELAY_PINS[Slot-1]. A slot with no row is unassigned/disabled; there is no fixed count baked into this shape, unlike the old fixed Relay1..Relay8 columns.
@@ -635,6 +644,8 @@ namespace api.Models
         public int? WaterTankLevel { get; set; }
         public int? RainLevel { get; set; }
         public int? Wind { get; set; }
+        public int? Ec { get; set; }
+        public int? Weight { get; set; }
 
     }
 

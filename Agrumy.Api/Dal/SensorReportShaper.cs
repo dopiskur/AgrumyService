@@ -37,6 +37,8 @@ namespace api.Dal
                 ["rainLevel"] = r.RainLevel,
                 ["waterLevel"] = r.WaterLevel,
                 ["wind"] = r.Wind,
+                ["ec"] = r.Ec,
+                ["weight"] = r.Weight,
                 ["dateCreated"] = r.DateCreated?.ToString("yyyy-MM-dd HH:mm:ss"),
             });
 
@@ -84,6 +86,8 @@ namespace api.Dal
                 ["rainLevel"] = g.Average(r => r.RainLevel),
                 ["waterLevel"] = g.Average(r => r.WaterLevel),
                 ["wind"] = g.Average(r => r.Wind),
+                ["ec"] = g.Average(r => r.Ec),
+                ["weight"] = g.Average(r => r.Weight),
                 ["dateCreated"] = g.Key.ToString("yyyy-MM-dd HH:mm:ss"),
             });
 

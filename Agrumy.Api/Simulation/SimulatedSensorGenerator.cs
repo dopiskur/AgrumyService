@@ -25,6 +25,8 @@ namespace api.Simulation
                 RainLevel = (int)Walk(last.RainLevel, SimulationMetricRange.RainLevel, 2),
                 WaterLevel = (int)Walk(last.WaterLevel, SimulationMetricRange.WaterLevel, 1.0),
                 Wind = (int)Walk(last.Wind, SimulationMetricRange.Wind, 3),
+                Ec = Walk(last.Ec, SimulationMetricRange.Ec, 0.2),
+                Weight = Walk(last.Weight, SimulationMetricRange.Weight, 10),
             };
             lastByDevice[deviceId] = next;
             return next;
@@ -44,6 +46,7 @@ namespace api.Simulation
             Temperature = 22, SoilTemperature = 20, Humidity = 55, Battery = 90, Moisture = 40,
             Light = 5000, Co2 = 600, Tvoc = 200, Barometer = 101325, LiquidPH = 6.5,
             RainLevel = 0, WaterLevel = 50, Wind = 5,
+            Ec = 1.5, Weight = 1000,
         };
     }
 }
