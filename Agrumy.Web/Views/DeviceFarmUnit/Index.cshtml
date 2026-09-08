@@ -1,43 +1,50 @@
-@model Agrumy.Web.ViewModels.GroupedUnitCubesViewModel
+@model Agrumy.Web.ViewModels.DashboardWizardViewModel
 @{
     ViewData["Title"] = "Dashboard";
-    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
 }
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Units</h3>
-        @if (hasAnyRole(RoleNames.DeviceManagers))
-        {
-            <div class="float-end">
-                <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
-                    <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
-                </form>
-            </div>
-        }
+        <h3 class="card-title">Step 1 - pick a zone</h3>
     </div>
     <div class="card-body">
         <p class="text-secondary small">
-            Hierarchical view by physical/logical space - click a unit to see its zones.
-            For a flat, fast-triage list of every device instead, see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
+            Build a zone's custom dashboard - sensor value, sensor trend, relay status, or text widgets.
+            For the live status overview instead, see <a asp-action="Farms">Farm</a>.
         </p>
-        <div class="row" id="unitCubes">
-            <partial name="_UnitCubesGrouped" model="Model" />
-        </div>
+        @if (!Model.Zones.Any())
+        {
+            <p class="text-secondary fst-italic">No zones yet - add a unit on the <a asp-action="Farms">Farm</a> page first.</p>
+        }
+        else
+        {
+            <form asp-action="Index" method="get" class="d-flex gap-2">
+                <select name="idDeviceFarmUnitZone" class="form-select" style="max-width:24rem" onchange="this.form.requestSubmit()">
+                    <option value="">-- select a zone --</option>
+                    @foreach (var group in Model.Zones.GroupBy(z => z.GroupLabel))
+                    {
+                        <optgroup label="@group.Key">
+                            @foreach (var z in group)
+                            {
+                                <option value="@z.IDDeviceFarmUnitZone" selected="@(z.IDDeviceFarmUnitZone == Model.SelectedZoneId ? "selected" : null)">@z.ZoneName</option>
+                            }
+                        </optgroup>
+                    }
+                </select>
+                <noscript><button type="submit" class="btn btn-outline-secondary">Go</button></noscript>
+            </form>
+        }
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/live-refresh.js"></script>
-    <script nonce="@Context.CspNonce()">
-        document.addEventListener('DOMContentLoaded', function () {
-            startLiveRefresh({
-                url: '@Url.Action("IndexCubes")',
-                applyHtml: function (html) {
-                    document.getElementById('unitCubes').innerHTML = html;
-                }
-            });
-        });
-    </script>
+@if (Model.Selected != null)
+{
+    <div class="mt-3">
+        <h6 class="fw-semibold mb-2">Step 2 - build the dashboard for @Model.Selected.Zone.DeviceFarmUnitZoneName</h6>
+        <partial name="_DashboardWidgets" model="Model.Selected" />
+    </div>
+}
+else if (Model.Zones.Any())
+{
+    <p class="text-secondary fst-italic mt-3">Pick a zone above to start building its dashboard.</p>
 }

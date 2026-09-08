@@ -115,8 +115,16 @@
     </div>
 </div>
 
-@* Roadmap #238 - widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. *@
-<partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Zone = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.Fleet, CanManage = hasAnyRole(RoleNames.DeviceManagers) }" />
+@* Roadmap #238 - widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. Read-only here; built/edited in the Dashboard wizard instead. *@
+<partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Zone = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.Fleet, CanManage = false }" />
+@if (hasAnyRole(RoleNames.DeviceManagers))
+{
+    <p class="text-end">
+        <a asp-action="Index" asp-route-idDeviceFarmUnitZone="@zone.IDDeviceFarmUnitZone" class="small">
+            <i class="bi bi-magic"></i> Build this zone's dashboard in the wizard
+        </a>
+    </p>
+}
 
 @* Outside #zoneDetails on purpose - edited via full-page form posts, not polled/replaced by live-refresh. *@
 @if (hasController)

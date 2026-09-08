@@ -13,7 +13,48 @@ namespace Agrumy.Web.Controllers.View
     [Authorize]
     public class DeviceFarmUnitController(IApi api) : Controller
     {
-        public async Task<ActionResult> Index() => View(await BuildGroupedUnitCubesAsync());
+        // ---- Dashboard widget wizard ------------------------------------
+
+        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's custom dashboard (roadmap #238).
+        public async Task<ActionResult> Index(int? idDeviceFarmUnitZone)
+        {
+            IList<ZoneOption> zones = await BuildZoneOptionsAsync();
+            DashboardWidgetsViewModel? selected = null;
+            if (idDeviceFarmUnitZone is int zoneId && zones.Any(z => z.IDDeviceFarmUnitZone == zoneId))
+            {
+                IList<DeviceFleetStatus> fleet = (await api.DeviceFleetGet()).Where(f => f.DeviceFarmUnitZoneID == zoneId).ToList();
+                selected = new DashboardWidgetsViewModel
+                {
+                    Zone = await api.DeviceFarmUnitZoneGetById(zoneId),
+                    Dashboard = await api.DeviceFarmUnitZoneDashboardGet(zoneId),
+                    Fleet = fleet,
+                    CanManage = hasAnyRole(RoleNames.DeviceManagers),
+                };
+            }
+            return View(new DashboardWizardViewModel { Zones = zones, SelectedZoneId = idDeviceFarmUnitZone, Selected = selected });
+        }
+
+        private bool hasAnyRole(string csv) => csv.Split(',').Any(User.IsInRole);
+
+        /// Flattens every zone across every unit into one Farm/Unit-labeled list for the wizard's zone picker - no single API call returns this shape, so it composes DeviceFarmsGet+DeviceFarmUnitDashboardGet+per-unit DeviceFarmUnitZonesGet.
+        private async Task<IList<ZoneOption>> BuildZoneOptionsAsync()
+        {
+            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
+            IList<DeviceFarmUnitDashboard> units = await api.DeviceFarmUnitDashboardGet();
+            var options = new List<ZoneOption>();
+            foreach (DeviceFarmUnitDashboard unit in units)
+            {
+                string? farmName = unit.DeviceFarmID is int farmId ? farms.FirstOrDefault(f => f.IDDeviceFarm == farmId)?.DeviceFarmName : null;
+                string groupLabel = farmName is null ? unit.DeviceFarmUnitName ?? "" : $"{farmName} / {unit.DeviceFarmUnitName}";
+                foreach (DeviceFarmUnitZone zone in await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit))
+                {
+                    options.Add(new ZoneOption { IDDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone!.Value, ZoneName = zone.DeviceFarmUnitZoneName ?? "", GroupLabel = groupLabel });
+                }
+            }
+            return options;
+        }
+
+        // ---- Farm (roadmap #384) --------------------------------------
 
         // Shared by the full page and its 10s-polled fragment (IndexCubes below) so a live update never reverts the farm grouping.
         private async Task<GroupedUnitCubesViewModel> BuildGroupedUnitCubesAsync() => new()
@@ -22,12 +63,11 @@ namespace Agrumy.Web.Controllers.View
             Farms = await api.DeviceFarmsGet(),
         };
 
-        // ---- Farm (roadmap #384) --------------------------------------
-
+        // The Unit/Zone cube overview moved here from the old Dashboard (roadmap #238's wizard took that route over).
         public async Task<ActionResult> Farms() => View(new FarmListViewModel
         {
             Farms = await api.DeviceFarmsGet(),
-            Units = await api.DeviceFarmUnitsGet(),
+            Units = await api.DeviceFarmUnitDashboardGet(),
         });
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -366,7 +406,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> UnitDelete(int idDeviceFarmUnit)
         {
             await api.DeviceFarmUnitDelete(idDeviceFarmUnit);
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Farms));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -425,7 +465,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 TempData["Error"] = ex.Body;
             }
-            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -439,7 +479,7 @@ namespace Agrumy.Web.Controllers.View
                 zone.DashboardWidgets.RemoveAt(index);
                 await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
             }
-            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -454,7 +494,7 @@ namespace Agrumy.Web.Controllers.View
                 (zone.DashboardWidgets[index], zone.DashboardWidgets[target]) = (zone.DashboardWidgets[target], zone.DashboardWidgets[index]);
                 await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
             }
-            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -689,14 +729,14 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
-        // returnUrl comes from window.location client-side (_ZoneStatusBadge) since Request.Path server-side would be the AJAX poll endpoint, not the visible page; falls back to Index if missing/unsafe.
+        // returnUrl comes from window.location client-side (_ZoneStatusBadge) since Request.Path server-side would be the AJAX poll endpoint, not the visible page; falls back to Farms if missing/unsafe.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> AcknowledgeAlert(int idEventDevice, string? returnUrl)
         {
             await api.DeviceEventAcknowledge(idEventDevice);
-            return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Index));
+            return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Farms));
         }
     }
 }

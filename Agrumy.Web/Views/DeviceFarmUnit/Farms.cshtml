@@ -21,10 +21,9 @@
     </div>
     <div class="card-body">
         <p class="text-secondary small">
-            Top-level grouping above <a asp-action="Index">Units</a> within your tenant - a physical
-            farm/site. A unit not yet assigned to one stays fully valid ("unassigned"). Rules set here
-            apply to every unit/zone assigned to this farm unless a more specific unit/zone rule wins
-            (Zone &gt; Unit &gt; Farm &gt; Global).
+            Top-level grouping above the units below - a physical farm/site. A unit not yet assigned to
+            one stays fully valid ("unassigned"). Rules set here apply to every unit/zone assigned to
+            this farm unless a more specific unit/zone rule wins (Zone &gt; Unit &gt; Farm &gt; Global).
         </p>
         @if (!Model.Farms.Any())
         {
@@ -125,6 +124,31 @@
     </div>
 </div>
 
+@* Roadmap #238's dashboard wizard moved to Index, so the Unit/Zone cube browser that used to live there moved here instead. *@
+<div class="card mt-3">
+    <div class="card-header">
+        <h3 class="card-title">Units</h3>
+        @if (canManage)
+        {
+            <div class="float-end">
+                <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
+                    <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                </form>
+            </div>
+        }
+    </div>
+    <div class="card-body">
+        <p class="text-secondary small">
+            Hierarchical view by physical/logical space - click a unit to see its zones.
+            For a flat, fast-triage list of every device instead, see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
+        </p>
+        <div class="row" id="unitCubes">
+            <partial name="_UnitCubesGrouped" model="new GroupedUnitCubesViewModel { Units = Model.Units, Farms = Model.Farms }" />
+        </div>
+    </div>
+</div>
+
 @* Roadmap #408 (b) - delete is now a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
 <form id="farmDeleteForm" asp-action="FarmDelete" method="post">
     <input type="hidden" id="farmDeleteId" name="idDeviceFarm" />
@@ -166,4 +190,15 @@
 
 @section Scripts {
     <script src="~/js/farm-delete.js"></script>
+    <script src="~/js/live-refresh.js"></script>
+    <script nonce="@Context.CspNonce()">
+        document.addEventListener('DOMContentLoaded', function () {
+            startLiveRefresh({
+                url: '@Url.Action("IndexCubes")',
+                applyHtml: function (html) {
+                    document.getElementById('unitCubes').innerHTML = html;
+                }
+            });
+        });
+    </script>
 }

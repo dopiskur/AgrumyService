@@ -8,7 +8,7 @@ namespace Agrumy.Web.Controllers
     public class HomeController : Controller
     {
         [Authorize]
-        public IActionResult Index() => RedirectToAction("Index", "DeviceFarmUnit");
+        public IActionResult Index() => RedirectToAction("Farms", "DeviceFarmUnit");
 
         [AllowAnonymous]
         public IActionResult Privacy() => View();

@@ -72,7 +72,7 @@ namespace Agrumy.Web.Controllers.View
             }
 
             await SignInAsync(result, roles);
-            return RedirectToAction("Index", "DeviceFarmUnit");
+            return RedirectToAction("Farms", "DeviceFarmUnit");
         }
 
         /// Tenant-import counterpart to the login form, reached via the 428 redirect (Agrumy.Shared.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
@@ -110,7 +110,7 @@ namespace Agrumy.Web.Controllers.View
             }
 
             await SignInAsync(result, roles);
-            return RedirectToAction("Index", "DeviceFarmUnit");
+            return RedirectToAction("Farms", "DeviceFarmUnit");
         }
 
         /// Shared by Index(POST) and ForceChangePassword(POST) - both end with the same cookie sign-in once Agrumy.Api hands back a token.
