@@ -19,7 +19,8 @@ namespace Agrumy.Api.Dal.Interface
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
         /// Name only, StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
-        Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session);
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session, Func<Task<string?>>? quotaCheckAsync = null);
 
         /// Sets a fresh StartedAtUtc/ExpiresAtUtc window from now and clears StoppedAtUtc - same call whether this is the session's first start or a later Resume.
         Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes);

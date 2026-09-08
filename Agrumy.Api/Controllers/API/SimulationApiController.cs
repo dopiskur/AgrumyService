@@ -2,6 +2,7 @@ using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Simulation;
+using Agrumy.Api.Quota;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -87,16 +88,19 @@ namespace Agrumy.Api.Controllers.API
             {
                 return BadRequest("Name is required.");
             }
-            if (await quotaEnforcer.CheckCanAddSimulationAsync(CallerTenantId) is string limitError)
+            SimulationSession created;
+            try
             {
-                return StatusCode(403, limitError);
+                created = await simulationRepo.SimulationSessionAddAsync(new SimulationSession
+                {
+                    TenantID = CallerTenantId ?? 0,
+                    Name = request.Name.Trim(),
+                }, () => quotaEnforcer.CheckCanAddSimulationAsync(CallerTenantId));
             }
-
-            SimulationSession created = await simulationRepo.SimulationSessionAddAsync(new SimulationSession
+            catch (QuotaLimitExceededException ex)
             {
-                TenantID = CallerTenantId ?? 0,
-                Name = request.Name.Trim(),
-            });
+                return StatusCode(403, ex.Message);
+            }
             await WriteAuditAsync("Simulation.SessionCreated", created.TenantID, "SimulationSession", created.IDSimulationSession.ToString()!, created.Name);
             return Ok(created);
         }

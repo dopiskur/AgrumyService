@@ -5,11 +5,13 @@ namespace Agrumy.Api.Dal
     /// IUserRepository core members - forwarded to the standalone EfUserRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
     internal partial class EfRepository
     {
-        public Task UserAddAsync(User user, UserSecret userSecret) => userRepository.UserAddAsync(user, userSecret);
+        public Task UserAddAsync(User user, UserSecret userSecret, Func<Task<string?>>? quotaCheckAsync = null) =>
+            userRepository.UserAddAsync(user, userSecret, quotaCheckAsync);
 
         public Task<int> RegisterUserAsync(User user, UserSecret userSecret, int? existingTenantId, string? newTenantName,
-            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles) =>
-            userRepository.RegisterUserAsync(user, userSecret, existingTenantId, newTenantName, activationTokenHash, activationTokenExpiresAtUtc, startingRoles);
+            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles,
+            Func<int?, Task<string?>>? quotaCheckAsync = null) =>
+            userRepository.RegisterUserAsync(user, userSecret, existingTenantId, newTenantName, activationTokenHash, activationTokenExpiresAtUtc, startingRoles, quotaCheckAsync);
 
         public Task UserUpdateAsync(User user) => userRepository.UserUpdateAsync(user);
 

@@ -1,6 +1,7 @@
 using Agrumy.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Microsoft.EntityFrameworkCore;
@@ -10,48 +11,72 @@ namespace Agrumy.Api.Dal
     /// IUserRepository, extracted out of the EfRepository god class (roadmap #246) - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (same tenant-create branch also seeds the tenant's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
     internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository) : IUserRepository
     {
-        public async Task UserAddAsync(User user, UserSecret userSecret)
-        {
-            db.Users.Add(new UserRow
+        /// quotaCheckAsync null (RegisterUserAsync's own internal call) means "already checked by the caller, don't check again" - not "unlimited".
+        public Task UserAddAsync(User user, UserSecret userSecret, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                TenantID = user.TenantID ?? 0,
-                Email = user.Email ?? "",
-                Username = user.Username,
-                DevicePin = user.DevicePin,
-                DevicePinExpires = user.DevicePinExpires,
-                PwdHash = userSecret.PwdHash ?? "",
-                PwdSalt = userSecret.PwdSalt ?? "",
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Phone = user.Phone,
-                Enabled = user.Enabled,
-                EmailVerified = user.EmailVerified ?? false,
-                MustChangePassword = user.MustChangePassword,
+                db.Users.Add(new UserRow
+                {
+                    TenantID = user.TenantID ?? 0,
+                    Email = user.Email ?? "",
+                    Username = user.Username,
+                    DevicePin = user.DevicePin,
+                    DevicePinExpires = user.DevicePinExpires,
+                    PwdHash = userSecret.PwdHash ?? "",
+                    PwdSalt = userSecret.PwdSalt ?? "",
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Phone = user.Phone,
+                    Enabled = user.Enabled,
+                    EmailVerified = user.EmailVerified ?? false,
+                    MustChangePassword = user.MustChangePassword,
+                });
+                await db.SaveChangesAsync();
+                return true;
             });
-            await db.SaveChangesAsync();
-        }
+
+        // Same retry count/reasoning as Agrumy.Api.Quota.QuotaGuard.RunAsync - this method can't call that helper directly (the quota check needs user.TenantID, only known once the tenant-create branch above has run inside the same transaction), so it inlines the identical Serializable-transaction-plus-Contention-retry shape instead.
+        private const int MaxContentionRetries = 3;
 
         public async Task<int> RegisterUserAsync(User user, UserSecret userSecret, int? existingTenantId, string? newTenantName,
-            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles)
+            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles,
+            Func<int?, Task<string?>>? quotaCheckAsync = null)
         {
-            await using var transaction = await db.Database.BeginTransactionAsync();
-
-            bool isNewTenant = existingTenantId is null;
-            user.TenantID = existingTenantId ?? await tenantRepository.TenantAddAsync(newTenantName!);
-            if (isNewTenant)
+            for (int attempt = 1; ; attempt++)
             {
-                await deviceFarmUnitRepository.EnsureFirstFarmAsync(user.TenantID.Value);
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    bool isNewTenant = existingTenantId is null;
+                    user.TenantID = existingTenantId ?? await tenantRepository.TenantAddAsync(newTenantName!);
+                    if (isNewTenant)
+                    {
+                        await deviceFarmUnitRepository.EnsureFirstFarmAsync(user.TenantID.Value);
+                    }
+
+                    // Checked inside this same transaction, not by the caller beforehand - a plain pre-check would let two concurrent registrations into the same near-full tenant both read "one seat free" and both take it.
+                    if (quotaCheckAsync != null && await quotaCheckAsync(user.TenantID) is string limitError)
+                    {
+                        await transaction.RollbackAsync();
+                        throw new QuotaLimitExceededException(limitError);
+                    }
+
+                    await UserAddAsync(user, userSecret);
+
+                    // UserAddAsync doesn't return the new IDUser - re-fetch by the just-inserted unique email.
+                    User added = await UserGetAsync(null, user.Email, null)
+                        ?? throw new InvalidOperationException("UserAddAsync did not persist the expected row.");
+                    await UserSetActivationTokenAsync(added.IDUser!.Value, activationTokenHash, activationTokenExpiresAtUtc);
+                    await UserRolesSetAsync(added.IDUser.Value, startingRoles);
+
+                    await transaction.CommitAsync();
+                    return added.IDUser.Value;
+                }
+                catch (Exception ex) when (DbExceptionClassifier.Classify(ex) == DbFailureKind.Contention && attempt < MaxContentionRetries)
+                {
+                    await transaction.RollbackAsync();
+                }
             }
-            await UserAddAsync(user, userSecret);
-
-            // UserAddAsync doesn't return the new IDUser - re-fetch by the just-inserted unique email.
-            User added = await UserGetAsync(null, user.Email, null)
-                ?? throw new InvalidOperationException("UserAddAsync did not persist the expected row.");
-            await UserSetActivationTokenAsync(added.IDUser!.Value, activationTokenHash, activationTokenExpiresAtUtc);
-            await UserRolesSetAsync(added.IDUser.Value, startingRoles);
-
-            await transaction.CommitAsync();
-            return added.IDUser.Value;
         }
 
         public async Task UserUpdateAsync(User user)

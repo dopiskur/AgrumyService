@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Quota
 {
-    /// Hard-block guard for TenantQuota - every check returns null when allowed, else the exact message the caller surfaces; ingest-volume limits only, never a feature gate (rule engine/notifications/dashboard/sensor catalog stay fully open regardless of quota).
+    /// Hard-block guard for TenantQuota - every check returns null when allowed, else the exact message the caller surfaces; ingest-volume limits only, never a feature gate (rule engine/notifications/dashboard/sensor catalog stay fully open regardless of quota). A count-based check here is only race-free if the caller runs it inside the SAME Serializable transaction as the resource's own insert - see QuotaGuard for that shared, reusable shape, used by every repository Add method a TenantQuota check gates.
     public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, ISimulationRepository simulationRepo)
     {
         public const string LimitMessage = "Limit for the current tier reached, please contact support.";
@@ -105,4 +105,7 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxSimulations ? LimitMessage : null;
         }
     }
+
+    /// Thrown by Agrumy.Api.Quota.QuotaGuard.RunAsync (or RegisterUserAsync's own inlined equivalent) when a quota check blocks the insert - same SsrfBlockedException-style "throw at the source, catch at the controller" shape used elsewhere in this codebase.
+    public sealed class QuotaLimitExceededException(string message) : Exception(message);
 }

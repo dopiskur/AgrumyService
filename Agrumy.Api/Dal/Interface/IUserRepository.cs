@@ -5,12 +5,14 @@ namespace Agrumy.Api.Dal.Interface
     /// User facet: accounts, secrets, composable roles, and email activation.
     public interface IUserRepository
     {
-        Task UserAddAsync(User user, UserSecret userHash);
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        Task UserAddAsync(User user, UserSecret userHash, Func<Task<string?>>? quotaCheckAsync = null);
         Task UserUpdateAsync(User user);
 
-        /// Registration, atomically: optionally creates a new tenant, adds the user (with TenantID set from whichever tenant applies), issues its first activation token, and seeds its starting role - one transaction, so a crash partway can never leave a user row with no role. Returns the new IDUser.
+        /// Registration, atomically: optionally creates a new tenant, adds the user (with TenantID set from whichever tenant applies), issues its first activation token, and seeds its starting role - one Serializable transaction, so a crash partway can never leave a user row with no role and a concurrent registration can't slip past quotaCheckAsync on a stale count. quotaCheckAsync (when given) runs inside that same transaction, right after TenantID is resolved and before the user row is added - throws QuotaLimitExceededException instead of returning, since this method's own return type carries the new IDUser, not a nullable error. Returns the new IDUser.
         Task<int> RegisterUserAsync(User user, UserSecret userSecret, int? existingTenantId, string? newTenantName,
-            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles);
+            string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles,
+            Func<int?, Task<string?>>? quotaCheckAsync = null);
 
         /// Self-service profile write - only FirstName/LastName/TimeZone, never any authorization-bearing column. False if no such user.
         Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone);

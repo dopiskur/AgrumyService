@@ -3,6 +3,7 @@ using Agrumy.Shared;
 using System.Text.Json;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -57,13 +58,15 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoFarm(row);
         }
 
-        public async Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm)
-        {
-            var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName };
-            db.DeviceFarms.Add(row);
-            await db.SaveChangesAsync();
-            return ToDtoFarm(row);
-        }
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        public Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
+            {
+                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName };
+                db.DeviceFarms.Add(row);
+                await db.SaveChangesAsync();
+                return ToDtoFarm(row);
+            });
 
         /// Idempotent, safe to call from every tenant-creation path (registration, admin-created, import). A real "First farm" row lands in the DB immediately (not deferred to whenever an admin first visits Farms.cshtml) - the UI hides its name while it's still the tenant's only farm, matching Farms.cshtml's own multipleFarms check. Any unit the tenant already has, sitting unassigned, joins it too, so a pre-existing single-farm tenant doesn't suddenly see its units listed as "unassigned" once the invisible farm underneath them appears.
         public async Task EnsureFirstFarmAsync(int tenantId)
@@ -313,9 +316,15 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoUnit(row);
         }
 
-        public async Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit)
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        public Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, () => InsertUnitAsync(unit));
+
+        // IDDeviceFarmUnit is ValueGeneratedNever - MySQL's default sql_mode treats an explicit 0 on an AUTO_INCREMENT column as "generate a new value", which would collide with the reserved IDDeviceFarmUnit=0 sentinel (Math.Max(...,1) below keeps 0 free).
+        private async Task<DeviceFarmUnit> InsertUnitAsync(DeviceFarmUnit unit)
         {
-            // IDDeviceFarmUnit is ValueGeneratedNever - MySQL's default sql_mode treats an explicit 0 on an AUTO_INCREMENT column as "generate a new value", which would collide with the reserved IDDeviceFarmUnit=0 sentinel (Math.Max(...,1) below keeps 0 free).
+            // Retrying the MAX+1 collision below only makes sense with no ambient transaction already open - QuotaGuard's Serializable transaction (present whenever a caller passed quotaCheckAsync) already makes the underlying race far less likely, and Postgres aborts a WHOLE transaction on any error, so retrying inside one would just fail again instead of succeeding; let it surface as a plain ConstraintViolation (409) there instead.
+            bool retryOnCollision = db.Database.CurrentTransaction == null;
             for (int attempt = 0; ; attempt++)
             {
                 // IgnoreQueryFilters (roadmap #409) - a soft-deleted row's id is still physically present in the table (unique constraint doesn't care that it's hidden), so computing next-id from the FILTERED max would immediately collide with it.
@@ -327,7 +336,7 @@ namespace Agrumy.Api.Dal
                     await db.SaveChangesAsync();
                     return ToDtoUnit(row);
                 }
-                catch (DbUpdateException) when (attempt < 4)
+                catch (DbUpdateException) when (retryOnCollision && attempt < 4)
                 {
                     // Two concurrent adds computed the same MAX+1 - detach the failed row and retry against a freshly read max, rather than surfacing the PK collision to the caller.
                     db.Entry(row).State = EntityState.Detached;
@@ -386,9 +395,15 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoZone(row);
         }
 
-        public async Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone)
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        public Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, () => InsertZoneAsync(zone));
+
+        // Same manual max+1 reasoning, same collision-retry, and same IgnoreQueryFilters reasoning as InsertUnitAsync.
+        private async Task<DeviceFarmUnitZone> InsertZoneAsync(DeviceFarmUnitZone zone)
         {
-            // Same manual max+1 reasoning, same collision-retry, and same IgnoreQueryFilters reasoning (roadmap #409), as DeviceFarmUnitAddAsync.
+            // Same "skip the inner retry once QuotaGuard already has a Serializable transaction open" reasoning as InsertUnitAsync.
+            bool retryOnCollision = db.Database.CurrentTransaction == null;
             for (int attempt = 0; ; attempt++)
             {
                 int nextId = Math.Max((await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking().Select(z => (int?)z.IDDeviceFarmUnitZone).MaxAsync() ?? 0) + 1, 1);
@@ -415,7 +430,7 @@ namespace Agrumy.Api.Dal
                     await db.SaveChangesAsync();
                     return ToDtoZone(row);
                 }
-                catch (DbUpdateException) when (attempt < 4)
+                catch (DbUpdateException) when (retryOnCollision && attempt < 4)
                 {
                     db.Entry(row).State = EntityState.Detached;
                 }

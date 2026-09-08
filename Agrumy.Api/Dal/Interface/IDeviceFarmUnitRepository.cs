@@ -24,7 +24,8 @@ namespace Agrumy.Api.Dal.Interface
         /// The Farm with this id (no tenant filter), for ownership checks before an authorized write - or null if none.
         Task<DeviceFarm?> DeviceFarmGetByIdAsync(int? idDeviceFarm);
 
-        Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm);
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm, Func<Task<string?>>? quotaCheckAsync = null);
 
         /// No-op if the tenant already has any farm.
         Task EnsureFirstFarmAsync(int tenantId);
@@ -66,7 +67,8 @@ namespace Agrumy.Api.Dal.Interface
         /// The Unit with this id (no tenant filter), for ownership checks before an authorized write - same pattern as IDeviceRepository.DeviceGetByIdAsync - or null if none.
         Task<DeviceFarmUnit?> DeviceFarmUnitGetByIdAsync(int? idDeviceFarmUnit);
 
-        Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit);
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit, Func<Task<string?>>? quotaCheckAsync = null);
 
         Task DeviceFarmUnitUpdateAsync(DeviceFarmUnit unit);
 
@@ -81,7 +83,8 @@ namespace Agrumy.Api.Dal.Interface
         /// The Zone with this id (no tenant filter) - for ownership checks - or null if none.
         Task<DeviceFarmUnitZone?> DeviceFarmUnitZoneGetByIdAsync(int? idDeviceFarmUnitZone);
 
-        Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone);
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone, Func<Task<string?>>? quotaCheckAsync = null);
 
         Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone);
 

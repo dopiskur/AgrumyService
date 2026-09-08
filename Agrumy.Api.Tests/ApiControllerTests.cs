@@ -752,8 +752,8 @@ public class ApiControllerTests
     /// UserRegistration now delegates tenant-create + user-add + activation-token + starting-role to one transactional Repo.RegisterUserAsync (roadmap #293) - this stubs it to capture what a test needs and mutate `user.TenantID` the same way the real method does, since UserRegistration's own `return Ok(user)` reflects that mutation.
     private void StubRegisterUser(int idUser, Action<User, int?, string?, IReadOnlyList<string>>? capture = null)
     {
-        _repo.Setup(r => r.RegisterUserAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<IEnumerable<string>>()))
-             .Callback<User, UserSecret, int?, string?, string, DateTime, IEnumerable<string>>((u, _, existingTenantId, newTenantName, _, _, roles) =>
+        _repo.Setup(r => r.RegisterUserAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<IEnumerable<string>>(), It.IsAny<Func<int?, Task<string?>>?>()))
+             .Callback<User, UserSecret, int?, string?, string, DateTime, IEnumerable<string>, Func<int?, Task<string?>>?>((u, _, existingTenantId, newTenantName, _, _, roles, _) =>
              {
                  var roleList = roles.ToList();
                  u.TenantID = existingTenantId ?? 42; // 42 stands in for a freshly created tenant's id
@@ -1241,8 +1241,8 @@ public class ApiControllerTests
     public async Task UserAdd_IgnoresPayloadTenantID_UsesCallersTenant()
     {
         User? capturedUser = null;
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>()))
-             .Callback<User, UserSecret>((u, s) => capturedUser = u)
+        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<User, UserSecret, Func<Task<string?>>?>((u, s, _) => capturedUser = u)
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.UserGetAsync(null, "x@test.local", null)).ReturnsAsync(new User { IDUser = 99, Email = "x@test.local" });
         _repo.Setup(r => r.UserRolesSetAsync(99, It.IsAny<IEnumerable<string>>())).Returns(Task.CompletedTask);
@@ -1262,7 +1262,7 @@ public class ApiControllerTests
     [Fact]
     public async Task UserAdd_AdminRequestsTenantAdmin_Applied()
     {
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<Func<Task<string?>>?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.UserGetAsync(null, "boss@test.local", null)).ReturnsAsync(new User { IDUser = 100, Email = "boss@test.local" });
         List<string>? seededRoles = null;
         _repo.Setup(r => r.UserRolesSetAsync(100, It.IsAny<IEnumerable<string>>()))
@@ -1283,7 +1283,7 @@ public class ApiControllerTests
     [Fact]
     public async Task UserAdd_GlobalAdminRequestsGlobalAdmin_Applied()
     {
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<Func<Task<string?>>?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.UserGetAsync(null, "boss@test.local", null)).ReturnsAsync(new User { IDUser = 101, Email = "boss@test.local" });
         List<string>? seededRoles = null;
         _repo.Setup(r => r.UserRolesSetAsync(101, It.IsAny<IEnumerable<string>>()))
@@ -1303,7 +1303,7 @@ public class ApiControllerTests
     [Fact]
     public async Task UserAdd_AdminRequestsNoRoles_DefaultsToTenantReader()
     {
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<Func<Task<string?>>?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.UserGetAsync(null, "newbie@test.local", null)).ReturnsAsync(new User { IDUser = 102, Email = "newbie@test.local" });
         List<string>? seededRoles = null;
         _repo.Setup(r => r.UserRolesSetAsync(102, It.IsAny<IEnumerable<string>>()))
@@ -1324,7 +1324,7 @@ public class ApiControllerTests
     [Fact]
     public async Task UserAdd_NonAdminCaller_RequestedRolesIgnored_DefaultsToTenantReader()
     {
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<Func<Task<string?>>?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.UserGetAsync(null, "sneaky@test.local", null)).ReturnsAsync(new User { IDUser = 103, Email = "sneaky@test.local" });
         List<string>? seededRoles = null;
         _repo.Setup(r => r.UserRolesSetAsync(103, It.IsAny<IEnumerable<string>>()))

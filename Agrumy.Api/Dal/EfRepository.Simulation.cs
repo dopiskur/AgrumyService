@@ -13,7 +13,7 @@ namespace Agrumy.Api.Dal
 
         public Task VirtualDeviceDeleteAsync(int deviceID, int? tenantID) => simulationRepository.VirtualDeviceDeleteAsync(deviceID, tenantID);
 
-        public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session) => simulationRepository.SimulationSessionAddAsync(session);
+        public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session, Func<Task<string?>>? quotaCheckAsync = null) => simulationRepository.SimulationSessionAddAsync(session, quotaCheckAsync);
 
         public Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes) => simulationRepository.SimulationSessionStartAsync(idSimulationSession, durationMinutes);
 

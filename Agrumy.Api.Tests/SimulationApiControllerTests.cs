@@ -54,9 +54,9 @@ public class SimulationApiControllerTests
     public async Task CreateSession_Valid_PersistsWithNoStartedOrExpiry()
     {
         SimulationSession? saved = null;
-        _repo.Setup(r => r.SimulationSessionAddAsync(It.IsAny<SimulationSession>()))
-             .Callback<SimulationSession>(s => saved = s)
-             .ReturnsAsync((SimulationSession s) => { s.IDSimulationSession = 42; return s; });
+        _repo.Setup(r => r.SimulationSessionAddAsync(It.IsAny<SimulationSession>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<SimulationSession, Func<Task<string?>>?>((s, _) => saved = s)
+             .ReturnsAsync((SimulationSession s, Func<Task<string?>>? _) => { s.IDSimulationSession = 42; return s; });
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);

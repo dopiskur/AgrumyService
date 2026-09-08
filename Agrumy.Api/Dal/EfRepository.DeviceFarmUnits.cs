@@ -10,7 +10,8 @@ namespace Agrumy.Api.Dal
 
         public Task<DeviceFarm?> DeviceFarmGetByIdAsync(int? idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmGetByIdAsync(idDeviceFarm);
 
-        public Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm) => deviceFarmUnitRepository.DeviceFarmAddAsync(farm);
+        public Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm, Func<Task<string?>>? quotaCheckAsync = null) =>
+            deviceFarmUnitRepository.DeviceFarmAddAsync(farm, quotaCheckAsync);
 
         public Task EnsureFirstFarmAsync(int tenantId) => deviceFarmUnitRepository.EnsureFirstFarmAsync(tenantId);
 
@@ -39,7 +40,8 @@ namespace Agrumy.Api.Dal
 
         public Task<DeviceFarmUnit?> DeviceFarmUnitGetByIdAsync(int? idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit);
 
-        public Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit) => deviceFarmUnitRepository.DeviceFarmUnitAddAsync(unit);
+        public Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit, Func<Task<string?>>? quotaCheckAsync = null) =>
+            deviceFarmUnitRepository.DeviceFarmUnitAddAsync(unit, quotaCheckAsync);
 
         public Task DeviceFarmUnitUpdateAsync(DeviceFarmUnit unit) => deviceFarmUnitRepository.DeviceFarmUnitUpdateAsync(unit);
 
@@ -49,7 +51,8 @@ namespace Agrumy.Api.Dal
 
         public Task<DeviceFarmUnitZone?> DeviceFarmUnitZoneGetByIdAsync(int? idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone);
 
-        public Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone) => deviceFarmUnitRepository.DeviceFarmUnitZoneAddAsync(zone);
+        public Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone, Func<Task<string?>>? quotaCheckAsync = null) =>
+            deviceFarmUnitRepository.DeviceFarmUnitZoneAddAsync(zone, quotaCheckAsync);
 
         public Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone) => deviceFarmUnitRepository.DeviceFarmUnitZoneUpdateAsync(zone);
 

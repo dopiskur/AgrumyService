@@ -1,6 +1,7 @@
 using Agrumy.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,17 +49,19 @@ namespace Agrumy.Api.Dal
         // ---- Simulation sessions (roadmap #403) ----------------------------
 
         /// Name only; StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
-        public async Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session)
-        {
-            var row = new SimulationSessionRow
+        /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
+        public Task<SimulationSession> SimulationSessionAddAsync(SimulationSession session, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                TenantID = session.TenantID ?? 0,
-                Name = session.Name,
-            };
-            db.SimulationSessions.Add(row);
-            await db.SaveChangesAsync();
-            return ToDtoSession(row);
-        }
+                var row = new SimulationSessionRow
+                {
+                    TenantID = session.TenantID ?? 0,
+                    Name = session.Name,
+                };
+                db.SimulationSessions.Add(row);
+                await db.SaveChangesAsync();
+                return ToDtoSession(row);
+            });
 
         /// Same effect whether this is the session's first start or a later Resume after a Stop - sets a fresh window from now, clearing any previous stop.
         public async Task SimulationSessionStartAsync(int idSimulationSession, int durationMinutes)

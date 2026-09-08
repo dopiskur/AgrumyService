@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Agrumy.Api.BackgroundWorkers;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
 using Agrumy.Shared.Security;
@@ -75,11 +76,6 @@ namespace Agrumy.Api.Controllers.API
             }
 
             int? existingTenantId = isNewTenant ? null : await tenantRepo.TenantGetIdAsync(value.TenantName!);
-            // A brand-new tenant's own first/creating user is always allowed (that IS the "max users = 1" default's one seat) - only joining an already-provisioned tenant can hit the cap.
-            if (!isNewTenant && await quotaEnforcer.CheckCanAddUserAsync(existingTenantId) is string limitError)
-            {
-                return StatusCode(403, limitError);
-            }
 
             var user = new User
             {
@@ -101,13 +97,22 @@ namespace Agrumy.Api.Controllers.API
             // A new tenant's creator starts as its admin; everyone else starts as a read-only Tenant reader until granted more via PUT /api/User/UserRoles.
             string startingRole = isNewTenant ? RoleNames.TenantAdmin : RoleNames.TenantReader;
 
-            // One transaction (tenant create + user add + activation token + starting role) so a crash partway never leaves a user row with no role; sets user.TenantID on the same object this method returns.
-            await userRepository.RegisterUserAsync(user, userSecret,
-                existingTenantId: existingTenantId,
-                newTenantName: isNewTenant ? value.TenantName : null,
-                activationTokenHash: hash,
-                activationTokenExpiresAtUtc: DateTime.UtcNow.AddHours(ActivationTokenValidHours),
-                startingRoles: new[] { startingRole });
+            // One Serializable transaction (tenant create + quota check + user add + activation token + starting role) so a crash partway never leaves a user row with no role, and a concurrent registration into the same near-full tenant can't slip past a stale count - sets user.TenantID on the same object this method returns.
+            try
+            {
+                await userRepository.RegisterUserAsync(user, userSecret,
+                    existingTenantId: existingTenantId,
+                    newTenantName: isNewTenant ? value.TenantName : null,
+                    activationTokenHash: hash,
+                    activationTokenExpiresAtUtc: DateTime.UtcNow.AddHours(ActivationTokenValidHours),
+                    startingRoles: new[] { startingRole },
+                    // A brand-new tenant's own first/creating user is always allowed (that IS the "max users = 1" default's one seat) - only joining an already-provisioned tenant can hit the cap.
+                    quotaCheckAsync: isNewTenant ? null : quotaEnforcer.CheckCanAddUserAsync);
+            }
+            catch (QuotaLimitExceededException ex)
+            {
+                return StatusCode(403, ex.Message);
+            }
 
             SendActivationEmail(user.Email, plaintext);
 
@@ -544,11 +549,6 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
 
-            if (await quotaEnforcer.CheckCanAddUserAsync(CallerTenantId) is string limitError)
-            {
-                return StatusCode(403, limitError);
-            }
-
             var user = new User
             {
                 TenantID = CallerTenantId, // payload's TenantID is ignored - admins only create in their own tenant
@@ -564,7 +564,14 @@ namespace Agrumy.Api.Controllers.API
             var userSecret = new UserSecret { PwdSalt = AuthenticationProvider.GetSalt() };
             userSecret.PwdHash = AuthenticationProvider.GetHash(value.Password!, userSecret.PwdSalt); // [Required], guaranteed by ModelState.IsValid above
 
-            await userRepository.UserAddAsync(user, userSecret);
+            try
+            {
+                await userRepository.UserAddAsync(user, userSecret, () => quotaEnforcer.CheckCanAddUserAsync(CallerTenantId));
+            }
+            catch (QuotaLimitExceededException ex)
+            {
+                return StatusCode(403, ex.Message);
+            }
 
             User? added = await userRepository.UserGetAsync(null, value.Email, null);
             if (added?.IDUser is int idUser)

@@ -1,6 +1,7 @@
 using Agrumy.Shared;
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Utils;
@@ -39,11 +40,15 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<DeviceFarm>> DeviceFarmAdd([FromBody] DeviceFarm farm)
         {
             farm.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
-            if (await quotaEnforcer.CheckCanAddFarmAsync(farm.TenantID) is string limitError)
+            DeviceFarm added;
+            try
             {
-                return StatusCode(403, limitError);
+                added = await deviceFarmUnitRepo.DeviceFarmAddAsync(farm, () => quotaEnforcer.CheckCanAddFarmAsync(farm.TenantID));
             }
-            DeviceFarm added = await deviceFarmUnitRepo.DeviceFarmAddAsync(farm);
+            catch (QuotaLimitExceededException ex)
+            {
+                return StatusCode(403, ex.Message);
+            }
             await WriteAuditAsync("DeviceFarm.Created", added.TenantID, "DeviceFarm", added.IDDeviceFarm.ToString()!, added.DeviceFarmName);
             return Ok(added);
         }
@@ -99,11 +104,15 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<DeviceFarmUnit>> DeviceFarmUnitAdd([FromBody] DeviceFarmUnit unit)
         {
             unit.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
-            if (await quotaEnforcer.CheckCanAddUnitAsync(unit.TenantID) is string limitError)
+            DeviceFarmUnit added;
+            try
             {
-                return StatusCode(403, limitError);
+                added = await deviceFarmUnitRepo.DeviceFarmUnitAddAsync(unit, () => quotaEnforcer.CheckCanAddUnitAsync(unit.TenantID));
             }
-            DeviceFarmUnit added = await deviceFarmUnitRepo.DeviceFarmUnitAddAsync(unit);
+            catch (QuotaLimitExceededException ex)
+            {
+                return StatusCode(403, ex.Message);
+            }
             await WriteAuditAsync("DeviceFarmUnit.Created", added.TenantID, "DeviceFarmUnit", added.IDDeviceFarmUnit.ToString()!, added.DeviceFarmUnitName);
             return Ok(added);
         }
@@ -214,11 +223,15 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
             zone.TenantID = unit!.TenantID; // the owning unit's tenant, not necessarily the caller's (a Global admin may add to another tenant's unit)
-            if (await quotaEnforcer.CheckCanAddZoneAsync(zone.TenantID) is string limitError)
+            DeviceFarmUnitZone added;
+            try
             {
-                return StatusCode(403, limitError);
+                added = await deviceFarmUnitRepo.DeviceFarmUnitZoneAddAsync(zone, () => quotaEnforcer.CheckCanAddZoneAsync(zone.TenantID));
             }
-            DeviceFarmUnitZone added = await deviceFarmUnitRepo.DeviceFarmUnitZoneAddAsync(zone);
+            catch (QuotaLimitExceededException ex)
+            {
+                return StatusCode(403, ex.Message);
+            }
             await WriteAuditAsync("DeviceFarmUnitZone.Created", added.TenantID, "DeviceFarmUnitZone", added.IDDeviceFarmUnitZone.ToString()!, added.DeviceFarmUnitZoneName);
             return Ok(added);
         }
