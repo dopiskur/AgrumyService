@@ -1,4 +1,4 @@
-@model IList<Agrumy.Shared.Models.Experiment>
+@model ExperimentIndexViewModel
 @using Agrumy.Shared.Models
 
 @{
@@ -31,10 +31,35 @@
             <option value="@((int)ExperimentScope.Zone)" selected>Zone</option>
         </select>
     </div>
-    <div class="col-auto">
-        <label class="form-label" for="expScopeId">Scope id</label>
-        <input type="number" id="expScopeId" name="scopeId" class="form-control" required style="width:8rem" />
+    <div class="col-auto" id="expScopeFarmGroup" hidden>
+        <label class="form-label" for="expScopeFarmSelect">Farm</label>
+        <select id="expScopeFarmSelect" class="form-select" style="width:16rem">
+            @foreach (var farm in Model.Farms)
+            {
+                <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
+            }
+        </select>
     </div>
+    <div class="col-auto" id="expScopeUnitGroup" hidden>
+        <label class="form-label" for="expScopeUnitSelect">Unit</label>
+        <select id="expScopeUnitSelect" class="form-select" style="width:16rem">
+            @foreach (var unit in Model.Units)
+            {
+                string? farmName = unit.DeviceFarmID is int farmId ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == farmId)?.DeviceFarmName : null;
+                <option value="@unit.IDDeviceFarmUnit">@(farmName != null ? $"{farmName} / {unit.DeviceFarmUnitName}" : unit.DeviceFarmUnitName)</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto" id="expScopeZoneGroup">
+        <label class="form-label" for="expScopeZoneSelect">Zone</label>
+        <select id="expScopeZoneSelect" class="form-select" style="width:16rem">
+            @foreach (var zone in Model.Zones)
+            {
+                <option value="@zone.IDDeviceFarmUnitZone">@zone.GroupLabel / @zone.ZoneName</option>
+            }
+        </select>
+    </div>
+    <input type="hidden" id="expScopeId" name="scopeId" />
     <div class="col-auto">
         <label class="form-label" for="expExpires">Expires (optional)</label>
         <input type="datetime-local" id="expExpires" name="expiresAtUtc" class="form-control" />
@@ -56,7 +81,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var experiment in Model)
+        @foreach (var experiment in Model.Experiments)
         {
             bool running = experiment.StoppedAtUtc == null && (experiment.ExpiresAtUtc == null || experiment.ExpiresAtUtc > DateTimeOffset.UtcNow);
             <tr>
@@ -83,9 +108,40 @@
                 </td>
             </tr>
         }
-        @if (Model.Count == 0)
+        @if (Model.Experiments.Count == 0)
         {
             <tr><td colspan="6" class="text-muted">No experiments yet.</td></tr>
         }
     </tbody>
 </table>
+
+@section Scripts {
+    <script nonce="@Context.CspNonce()">
+        document.addEventListener('DOMContentLoaded', function () {
+            var scopeSelect = document.getElementById('expScope');
+            var hiddenId = document.getElementById('expScopeId');
+            var groups = {};
+            groups['@((int)ExperimentScope.Farm)'] = { group: document.getElementById('expScopeFarmGroup'), select: document.getElementById('expScopeFarmSelect') };
+            groups['@((int)ExperimentScope.Unit)'] = { group: document.getElementById('expScopeUnitGroup'), select: document.getElementById('expScopeUnitSelect') };
+            groups['@((int)ExperimentScope.Zone)'] = { group: document.getElementById('expScopeZoneGroup'), select: document.getElementById('expScopeZoneSelect') };
+
+            function syncHidden() {
+                var active = groups[scopeSelect.value];
+                hiddenId.value = active ? active.select.value : '';
+            }
+            function updateVisibility() {
+                Object.keys(groups).forEach(function (key) {
+                    var isActive = key === scopeSelect.value;
+                    groups[key].group.hidden = !isActive;
+                    groups[key].select.disabled = !isActive;
+                });
+                syncHidden();
+            }
+            scopeSelect.addEventListener('change', updateVisibility);
+            Object.keys(groups).forEach(function (key) {
+                groups[key].select.addEventListener('change', syncHidden);
+            });
+            updateVisibility();
+        });
+    </script>
+}

@@ -12,7 +12,29 @@ namespace Agrumy.Web.Controllers.View
     [Authorize(Roles = RoleNames.DeviceManagers)]
     public class ExperimentController(IApi api) : Controller
     {
-        public async Task<ActionResult> Index() => View(await api.ExperimentList());
+        public async Task<ActionResult> Index()
+        {
+            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            var zones = new List<ZoneOption>();
+            foreach (DeviceFarmUnit unit in units)
+            {
+                if (unit.IDDeviceFarmUnit is not int unitId) { continue; }
+                string? farmName = unit.DeviceFarmID is int farmId ? farms.FirstOrDefault(f => f.IDDeviceFarm == farmId)?.DeviceFarmName : null;
+                string groupLabel = farmName is null ? unit.DeviceFarmUnitName ?? "" : $"{farmName} / {unit.DeviceFarmUnitName}";
+                foreach (DeviceFarmUnitZone zone in await api.DeviceFarmUnitZonesGet(unitId))
+                {
+                    zones.Add(new ZoneOption { IDDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone!.Value, ZoneName = zone.DeviceFarmUnitZoneName ?? "", GroupLabel = groupLabel });
+                }
+            }
+            return View(new ExperimentIndexViewModel
+            {
+                Experiments = await api.ExperimentList(),
+                Farms = farms,
+                Units = units,
+                Zones = zones,
+            });
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
