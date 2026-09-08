@@ -6,95 +6,43 @@
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
 }
 
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">@ViewData["Title"]</h3>
-        @if (canManage)
-        {
-            <div class="float-end">
-                <form asp-action="FarmAdd" method="post" class="d-flex gap-2">
-                    <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New farm name" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm</button>
-                </form>
-            </div>
-        }
-    </div>
-    <div class="card-body">
-        <p class="text-secondary small">
-            Top-level grouping above the units below - a physical farm/site. A unit not yet assigned to
-            one stays fully valid ("unassigned"). Rules set here apply to every unit/zone assigned to
-            this farm unless a more specific unit/zone rule wins (Zone &gt; Unit &gt; Farm &gt; Global).
-        </p>
-        @if (!Model.Farms.Any())
-        {
-            <p class="text-secondary fst-italic">No farm created yet.</p>
-        }
-        else
-        {
-            @foreach (var farm in Model.Farms)
-            {
-                var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
-                @* The per-farm unit list used to live here too, duplicating the Unit cubes below in a second visual style; assign/unassign now lives exclusively on those cubes. While this is the ONLY farm, there's no wrapper at all (not just a hidden header) - a farm becomes its own bordered object only once a second one exists. *@
-                @if (multipleFarms)
-                {
-                    <div class="border rounded p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">@farm.DeviceFarmName</h5>
-                            <div class="d-flex gap-2">
-                                <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
-                                @if (canManage)
-                                {
-                                    <form asp-action="FarmRename" method="post" class="d-flex gap-1">
-                                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                                        <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
-                                    </form>
-                                    <button type="button" class="btn btn-sm btn-outline-danger farm-delete-button" title="Delete"
-                                            data-id-device-farm="@farm.IDDeviceFarm" data-farm-name="@farm.DeviceFarmName" data-other-farm-count="@otherFarms.Count">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                }
-                else if (canManage)
-                {
-                    <div class="d-flex justify-content-end gap-2 mb-2">
-                        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
-                    </div>
-                }
-            }
-        }
-    </div>
+@* Live-refreshed as a whole (10s) - farm cards and their nested unit cubes are one structural unit now, not two separately-refreshed pieces, so a farm's Rules/Rename/Delete controls live inside the same poll target as its units. *@
+<div id="farmsAndUnits">
+    <partial name="_FarmsAndUnits" model="new GroupedUnitCubesViewModel { Units = Model.Units, Farms = Model.Farms }" />
 </div>
 
-@* The Dashboard wizard moved to Index, so the Unit/Zone cube browser that used to live there moved here instead. *@
-<div class="card mt-3">
-    <div class="card-header">
-        <h3 class="card-title">Units</h3>
-        @if (canManage)
-        {
-            <div class="float-end">
-                <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
-                    <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
-                </form>
+@* Farm-level admin (create one, or edit the sole farm's Rules when there's exactly one and so no per-farm card to host that button) - deliberately unobtrusive and collapsed by default, since a farm is rarely created/renamed compared to how often this page is just viewed for unit status. *@
+<div class="mt-3">
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#manageFarmsCollapse">
+        <i class="bi bi-gear"></i> Manage Farms
+    </button>
+    <div class="collapse mt-2" id="manageFarmsCollapse">
+        <div class="card">
+            <div class="card-body">
+                <p class="text-secondary small">
+                    Top-level grouping above the units above - a physical farm/site. A unit not yet assigned to
+                    one stays fully valid ("unassigned"). Rules set here apply to every unit/zone assigned to
+                    this farm unless a more specific unit/zone rule wins (Zone &gt; Unit &gt; Farm &gt; Global).
+                </p>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    @if (canManage)
+                    {
+                        <form asp-action="FarmAdd" method="post" class="d-flex gap-2">
+                            <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New farm name" required maxlength="100" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm</button>
+                        </form>
+                    }
+                    @if (Model.Farms.Count == 1)
+                    {
+                        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                    }
+                </div>
             </div>
-        }
-    </div>
-    <div class="card-body">
-        <p class="text-secondary small">
-            Hierarchical view by physical/logical space - click a unit to see its zones.
-            For a flat, fast-triage list of every device instead, see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
-        </p>
-        <div class="row" id="unitCubes">
-            <partial name="_UnitCubesGrouped" model="new GroupedUnitCubesViewModel { Units = Model.Units, Farms = Model.Farms }" />
         </div>
     </div>
 </div>
 
-@* Delete is now a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
+@* Delete is a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
 <form id="farmDeleteForm" asp-action="FarmDelete" method="post">
     <input type="hidden" id="farmDeleteId" name="idDeviceFarm" />
 </form>
@@ -141,7 +89,7 @@
             startLiveRefresh({
                 url: '@Url.Action("IndexCubes")',
                 applyHtml: function (html) {
-                    document.getElementById('unitCubes').innerHTML = html;
+                    document.getElementById('farmsAndUnits').innerHTML = html;
                 }
             });
         });

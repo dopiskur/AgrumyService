@@ -17,15 +17,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentFarmId = null;
 
-    document.querySelectorAll('.farm-delete-button').forEach(function (button) {
-        button.addEventListener('click', function () {
-            currentFarmId = button.dataset.idDeviceFarm;
-            nameLabel.textContent = button.dataset.farmName;
-            deleteIdInput.value = currentFarmId;
-            migrateTarget.value = '';
-            migrateSection.style.display = Number(button.dataset.otherFarmCount) > 0 ? 'block' : 'none';
-            modal.show();
-        });
+    // Delegated on document, not attached per-button - the button lives inside the 10s live-refreshed
+    // #farmsAndUnits area, so a direct per-button listener would stop working the moment innerHTML
+    // swaps in a freshly-rendered button with no listener attached.
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('.farm-delete-button');
+        if (!button) {
+            return;
+        }
+        currentFarmId = button.dataset.idDeviceFarm;
+        nameLabel.textContent = button.dataset.farmName;
+        deleteIdInput.value = currentFarmId;
+        migrateTarget.value = '';
+        migrateSection.style.display = Number(button.dataset.otherFarmCount) > 0 ? 'block' : 'none';
+        modal.show();
     });
 
     migrateButton.addEventListener('click', async function () {

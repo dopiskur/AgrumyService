@@ -1,0 +1,131 @@
+@model Agrumy.Web.ViewModels.GroupedUnitCubesViewModel
+@{
+    // A lone farm (or none at all) isn't shown as its own object - no name, no card wrapper, no Rules/Rename/Delete anywhere near the units. Units become their own object only once a second farm exists to actually distinguish them from.
+    bool multipleFarms = Model.Farms.Count > 1;
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    var unassigned = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
+}
+@if (!multipleFarms)
+{
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Units</h3>
+            @if (canManage)
+            {
+                <div class="float-end">
+                    <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
+                        <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                    </form>
+                </div>
+            }
+        </div>
+        <div class="card-body">
+            <p class="text-secondary small">
+                Click a unit to see its zones. For a flat, fast-triage list of every device instead,
+                see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
+            </p>
+            @if (canManage && Model.Farms.Count == 1 && unassigned.Count > 0)
+            {
+                <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
+                    <input type="hidden" name="idDeviceFarm" value="@Model.Farms[0].IDDeviceFarm" />
+                    <select name="idDeviceFarmUnit" class="form-select form-select-sm" style="width:auto" required>
+                        <option value="">-- add unit to farm --</option>
+                        @foreach (var unit in unassigned)
+                        {
+                            <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
+                </form>
+            }
+            <div class="row">
+                <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = Model.Units, Farms = Model.Farms }" />
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var farm in Model.Farms)
+    {
+        var unitsInFarm = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
+        var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">@farm.DeviceFarmName</h3>
+                <div class="float-end d-flex gap-2">
+                    <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                    @if (canManage)
+                    {
+                        <form asp-action="FarmRename" method="post" class="d-flex gap-1">
+                            <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                            <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                        </form>
+                        @* Delegated in farm-delete.js (not a per-button listener) - this card is inside the 10s live-refresh target, so a freshly re-rendered button must still work without DOMContentLoaded re-running. *@
+                        <button type="button" class="btn btn-sm btn-outline-danger farm-delete-button" title="Delete"
+                                data-id-device-farm="@farm.IDDeviceFarm" data-farm-name="@farm.DeviceFarmName" data-other-farm-count="@otherFarms.Count">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                @if (canManage && unassigned.Count > 0)
+                {
+                    <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
+                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                        <select name="idDeviceFarmUnit" class="form-select form-select-sm" style="width:auto" required>
+                            <option value="">-- add unit --</option>
+                            @foreach (var unit in unassigned)
+                            {
+                                <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
+                    </form>
+                }
+                @if (unitsInFarm.Count == 0)
+                {
+                    <p class="text-secondary small fst-italic mb-0">No units assigned.</p>
+                }
+                else
+                {
+                    <div class="row">
+                        <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unitsInFarm, Farms = Model.Farms }" />
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* Always rendered (not just when non-empty) - a newly created unit lands here, so this is where "Add Unit" has to live once units are no longer grouped under one single "Units" card. *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Unassigned Units</h3>
+            @if (canManage)
+            {
+                <div class="float-end">
+                    <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
+                        <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                    </form>
+                </div>
+            }
+        </div>
+        <div class="card-body">
+            @if (unassigned.Count == 0)
+            {
+                <p class="text-secondary small fst-italic mb-0">No unassigned units.</p>
+            }
+            else
+            {
+                <div class="row">
+                    <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unassigned, Farms = Model.Farms }" />
+                </div>
+            }
+        </div>
+    </div>
+}

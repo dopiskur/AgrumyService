@@ -2,7 +2,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Web.ViewModels
 {
-    /// Drives DeviceFarmUnit/_UnitCubesGrouped.cshtml.
+    /// Drives DeviceFarmUnit/_FarmsAndUnits.cshtml.
     public class GroupedUnitCubesViewModel
     {
         public IList<DeviceFarmUnitDashboard> Units { get; init; } = [];

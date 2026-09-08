@@ -207,7 +207,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        public async Task<ActionResult> IndexCubes() => PartialView("_UnitCubesGrouped", await BuildGroupedUnitCubesAsync());
+        public async Task<ActionResult> IndexCubes() => PartialView("_FarmsAndUnits", await BuildGroupedUnitCubesAsync());
 
         public async Task<ActionResult> Zones(int idDeviceFarmUnit)
         {
