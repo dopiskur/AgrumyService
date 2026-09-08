@@ -9,14 +9,15 @@ namespace Agrumy.Web.ViewModels
         Farm,
         Global,
         Simulation,
+        Experiment,
     }
 
-    /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the tenant-wide Global Rules page, and a Simulation session's own Details page - the five scopes differ only in which API routes/hidden field they post to.
+    /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the tenant-wide Global Rules page, a Simulation session's own Details page, and an Experiment's own Details page - the six scopes differ only in which API routes/hidden field they post to.
     public class RuleEditorViewModel
     {
         public required RuleScope Scope { get; init; }
 
-        /// IDDeviceFarmUnitZone for Zone scope, IDDeviceFarmUnit for Unit scope, IDDeviceFarm for Farm scope, IDSimulationSession for Simulation scope, null for Global (implied by the caller's tenant).
+        /// IDDeviceFarmUnitZone for Zone scope, IDDeviceFarmUnit for Unit scope, IDDeviceFarm for Farm scope, IDSimulationSession for Simulation scope, IDExperiment for Experiment scope, null for Global (implied by the caller's tenant).
         public int? ScopeId { get; init; }
 
         public IList<DeviceFarmUnitZoneRule> Rules { get; init; } = [];
@@ -27,6 +28,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Unit => "UnitRuleAdd",
             RuleScope.Farm => "DeviceFarmRuleAdd",
             RuleScope.Simulation => "SessionRuleAdd",
+            RuleScope.Experiment => "ExperimentRuleAdd",
             _ => "GlobalRuleAdd",
         };
 
@@ -36,6 +38,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Unit => "UnitRuleDelete",
             RuleScope.Farm => "DeviceFarmRuleDelete",
             RuleScope.Simulation => "SessionRuleDelete",
+            RuleScope.Experiment => "ExperimentRuleDelete",
             _ => "GlobalRuleDelete",
         };
 
@@ -46,6 +49,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Unit => "idDeviceFarmUnit",
             RuleScope.Farm => "idDeviceFarm",
             RuleScope.Simulation => "idSimulationSession",
+            RuleScope.Experiment => "idExperiment",
             _ => "",
         };
 

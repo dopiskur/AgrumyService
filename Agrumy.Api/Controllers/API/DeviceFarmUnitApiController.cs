@@ -413,6 +413,7 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitID = null;
             rule.DeviceFarmID = null;
             rule.SimulationSessionID = null;
+            rule.ExperimentID = null;
             rule.TenantID = zone!.TenantID ?? CallerTenantId ?? 0;
             return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value)).Count, scopeLabel: $"zone {rule.DeviceFarmUnitZoneID}");
         }
@@ -429,6 +430,7 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmID = null;
             rule.SimulationSessionID = null;
+            rule.ExperimentID = null;
             rule.TenantID = unit!.TenantID ?? CallerTenantId ?? 0;
             return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForUnitAsync(unit.IDDeviceFarmUnit!.Value)).Count, scopeLabel: $"unit {rule.DeviceFarmUnitID}");
         }
@@ -445,6 +447,7 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmUnitID = null;
             rule.SimulationSessionID = null;
+            rule.ExperimentID = null;
             rule.TenantID = farm!.TenantID ?? CallerTenantId ?? 0;
             return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).Count, scopeLabel: $"farm {rule.DeviceFarmID}");
         }
@@ -461,6 +464,7 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitID = null;
             rule.DeviceFarmID = null;
             rule.SimulationSessionID = null;
+            rule.ExperimentID = null;
             rule.TenantID = tenantId;
             return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(tenantId)).Count, scopeLabel: $"tenant {tenantId} (global)");
         }

@@ -127,15 +127,17 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
         var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository);
+        var experimentRepository = new EfExperimentRepository(db);
 
         return new EfRepository(db, NullLogger<EfRepository>.Instance,
-            new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db),
+            new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db, experimentRepository),
             new EfDiscoveryRepository(db), tenantRepository, new EfGatewayRepository(db), serverConfigRepository,
             new EfCommandRepository(db), new EfFirmwareRepository(db),
             new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository), deviceRepository,
             new EfSimulationRepository(db, deviceRepository),
             deviceFarmUnitRepository,
-            new EfSensorDataRepository(db));
+            new EfSensorDataRepository(db, experimentRepository),
+            experimentRepository);
     }
 
     private sealed class NullCache : ICache
@@ -1336,6 +1338,100 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         // Cascade delete - removing the session (via the DAL delete, same as SimulationApiController.DeleteSession) must take its own rule with it.
         await _repo.SimulationSessionDeleteAsync(session.IDSimulationSession!.Value);
         Assert.Null(await _repo.RuleGetByIdAsync(simRuleId));
+    }
+
+    // Same null-Farm/Unit/Zone shape as Simulation, same exclusion requirement.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task Rule_ExperimentScope_ExcludedFromGlobalScope_ButFetchableByOwnExperiment(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+
+        int experimentRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, ExperimentID = experiment.IDExperiment!.Value, RelayFunction = RelayFunction.Heating, Name = "Experiment rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
+        });
+        int globalRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "Global rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.WaterLevel, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
+        });
+
+        Assert.Equal(globalRuleId, Assert.Single(await _repo.RulesGetForTenantGlobalAsync(tenantId)).IDDeviceFarmUnitZoneRule);
+        Assert.Equal(experimentRuleId, Assert.Single(await _repo.RulesGetForExperimentAsync(experiment.IDExperiment!.Value)).IDDeviceFarmUnitZoneRule);
+    }
+
+    // Zone>Unit>Farm cascade - a Zone-scope experiment wins even when its parent Unit/Farm also has one active, and a device falls through to whichever is the most specific covering scope.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ActiveExperimentIdForZone_CascadesZoneThenUnitThenFarm(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        DeviceFarm farm = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Farm_" + U() });
+        DeviceFarmUnit unit = await _repo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = tenantId, DeviceFarmUnitName = "Unit_" + U(), DeviceFarmID = farm.IDDeviceFarm });
+        DeviceFarmUnitZone zoneWithOwnExperiment = await _repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone { TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, DeviceFarmUnitZoneName = "Zone_" + U() });
+        DeviceFarmUnitZone zoneInheritsFromUnit = await _repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone { TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, DeviceFarmUnitZoneName = "Zone_" + U() });
+
+        Experiment farmExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Farm", Scope = ExperimentScope.Farm, ScopeID = farm.IDDeviceFarm!.Value });
+        Experiment unitExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Unit", Scope = ExperimentScope.Unit, ScopeID = unit.IDDeviceFarmUnit!.Value });
+        Experiment zoneExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Zone", Scope = ExperimentScope.Zone, ScopeID = zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value });
+
+        Assert.Equal(zoneExperiment.IDExperiment, await _repo.ActiveExperimentIdForZoneAsync(zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value));
+        Assert.Equal(unitExperiment.IDExperiment, await _repo.ActiveExperimentIdForZoneAsync(zoneInheritsFromUnit.IDDeviceFarmUnitZone!.Value));
+
+        // Batched lookup must agree with the single-zone one.
+        var byZone = await _repo.ActiveExperimentIdsByZoneAsync(tenantId);
+        Assert.Equal(zoneExperiment.IDExperiment, byZone[zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value]);
+        Assert.Equal(unitExperiment.IDExperiment, byZone[zoneInheritsFromUnit.IDDeviceFarmUnitZone!.Value]);
+
+        await _repo.ExperimentStopAsync(unitExperiment.IDExperiment!.Value);
+        Assert.Equal(farmExperiment.IDExperiment, await _repo.ActiveExperimentIdForZoneAsync(zoneInheritsFromUnit.IDDeviceFarmUnitZone!.Value));
+    }
+
+    // dataSensorExperiment mirrors the normal push (never instead of it) only while the zone is under an active experiment.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SensorDataPush_UnderActiveExperiment_AlsoWritesExperimentTable(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 21.5 }], d.IDDevice!.Value, tenantId, zone.DeviceFarmUnitID, zone.IDDeviceFarmUnitZone);
+
+        var samples = await _repo.ExperimentSensorSamplesGetAsync(experiment.IDExperiment!.Value, 10);
+        Assert.Equal(21.5, Assert.Single(samples).Temperature);
+
+        // A device outside any experiment scope must not leak into it.
+        var outsideZone = (await MakeUnitAndZone(tenantId)).Zone;
+        var outsideDevice = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(outsideDevice.IDDevice!.Value, outsideZone.IDDeviceFarmUnitZone!.Value);
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 99 }], outsideDevice.IDDevice!.Value, tenantId, outsideZone.DeviceFarmUnitID, outsideZone.IDDeviceFarmUnitZone);
+        Assert.Single(await _repo.ExperimentSensorSamplesGetAsync(experiment.IDExperiment!.Value, 10));
+    }
+
+    // dataControllerExperiment is a genuine append-only log (unlike dataController's upsert-current-state) - two pushes for the SAME (device, relay) must leave two rows here, one row there.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ControllerDataPush_UnderActiveExperiment_AppendsEveryEvent_UnlikeTheUpsertedLiveTable(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+
+        await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Heating, IsOn = true } });
+        await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Heating, IsOn = false } });
+
+        var events = await _repo.ExperimentControllerEventsGetAsync(experiment.IDExperiment!.Value, 10);
+        Assert.Equal(2, events.Count);
+        Assert.Single(await _repo.ControllerDataGetAsync(d.IDDevice!.Value));
     }
 
     // ActiveSimulationSessionIdsByZoneAsync is RuleNotificationEvaluator's per-zone lookup for which session (if any) has a member device in that zone - the one genuinely new LINQ join here, worth a real-DB check beyond the mocked unit tests.

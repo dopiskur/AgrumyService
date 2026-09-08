@@ -320,6 +320,35 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/Simulation/Session/{idSimulationSession}/Rule/{idRule}")]
         Task SessionRuleDelete(int idSimulationSession, int idRule);
 
+        // ---- Experiments ----------------------------
+
+        [Post("/api/Experiment")]
+        Task<Experiment> ExperimentCreate([Body] ExperimentCreateRequest request);
+
+        [Get("/api/Experiment")]
+        Task<IList<Experiment>> ExperimentList();
+
+        [Get("/api/Experiment/{idExperiment}")]
+        Task<Experiment> ExperimentGet(int idExperiment);
+
+        [Post("/api/Experiment/{idExperiment}/Stop")]
+        Task ExperimentStop(int idExperiment);
+
+        [Get("/api/Experiment/{idExperiment}/Rule")]
+        Task<IList<DeviceFarmUnitZoneRule>> ExperimentRulesGet(int idExperiment);
+
+        [Post("/api/Experiment/{idExperiment}/Rule")]
+        Task<int> ExperimentRuleAdd(int idExperiment, [Body] DeviceFarmUnitZoneRule rule);
+
+        [Delete("/api/Experiment/{idExperiment}/Rule/{idRule}")]
+        Task ExperimentRuleDelete(int idExperiment, int idRule);
+
+        [Get("/api/Experiment/{idExperiment}/SensorData")]
+        Task<IList<ExperimentSensorSample>> ExperimentSensorDataGet(int idExperiment);
+
+        [Get("/api/Experiment/{idExperiment}/ControllerData")]
+        Task<IList<ExperimentControllerEvent>> ExperimentControllerDataGet(int idExperiment);
+
         [Get("/api/DeviceFarmUnit/Unassigned")]
         Task<IList<DeviceDto>> DeviceUnassignedGet(bool controllerCapable);
 

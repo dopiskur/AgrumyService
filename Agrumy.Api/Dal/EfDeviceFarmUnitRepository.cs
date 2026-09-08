@@ -519,8 +519,8 @@ namespace Agrumy.Api.Dal
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                // SimulationSessionID excluded - a simulation-scoped rule has the same null Farm/Unit/Zone shape as Global, but must never be evaluated as one.
-                .Where(r => r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null && r.SimulationSessionID == null)
+                // SimulationSessionID/ExperimentID excluded - those scopes have the same null Farm/Unit/Zone shape as Global, but must never be evaluated as one.
+                .Where(r => r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null)
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
@@ -535,11 +535,20 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoRule).ToList();
         }
 
-        /// Every Notification-action rule for the tenant across all three real scopes - RuleNotificationEvaluator resolves Zone>Unit>Global itself per zone, so this deliberately returns the flat, unresolved set. Simulation-scoped ones excluded, same reasoning as RulesGetForTenantGlobalAsync above - fetched separately per zone via RulesGetForSimulationAsync instead.
+        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForExperimentAsync(int idExperiment)
+        {
+            var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
+                .Where(r => r.ExperimentID == idExperiment)
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .ToListAsync();
+            return rows.Select(ToDtoRule).ToList();
+        }
+
+        /// Every Notification-action rule for the tenant across all three real scopes - RuleNotificationEvaluator resolves Zone>Unit>Global itself per zone, so this deliberately returns the flat, unresolved set. Simulation/experiment-scoped ones excluded, same reasoning as RulesGetForTenantGlobalAsync above - fetched separately per zone via RulesGetForSimulationAsync/RulesGetForExperimentAsync instead.
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                .Where(r => r.TenantID == tenantId && r.ActionType == (int)ActionType.Notification && r.SimulationSessionID == null)
+                .Where(r => r.TenantID == tenantId && r.ActionType == (int)ActionType.Notification && r.SimulationSessionID == null && r.ExperimentID == null)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
@@ -559,6 +568,7 @@ namespace Agrumy.Api.Dal
                 DeviceFarmUnitID = rule.DeviceFarmUnitID,
                 DeviceFarmUnitZoneID = rule.DeviceFarmUnitZoneID,
                 SimulationSessionID = rule.SimulationSessionID,
+                ExperimentID = rule.ExperimentID,
                 ActionType = (int)rule.ActionType,
                 RelayFunction = (int?)rule.RelayFunction,
                 Name = rule.Name,
@@ -590,6 +600,12 @@ namespace Agrumy.Api.Dal
                 // Only the session's own member devices, not the whole tenant - a simulation rule change must not force every other device in the tenant to re-fetch a config that didn't actually change for them.
                 var memberIds = db.SimulationSessionDevices.AsNoTracking().Where(m => m.IDSimulationSession == idSession).Select(m => m.DeviceID);
                 await db.Devices.Where(d => memberIds.Contains(d.IDDevice))
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+            }
+            else if (rule.ExperimentID != null)
+            {
+                // An experiment's rule membership is dynamic (Scope+ScopeID, not a snapshotted device list) - bumping every device in the tenant is broader than strictly needed, but resolving the exact current membership here would duplicate ActiveExperimentIdForZoneAsync's own cascade for a rare admin action.
+                await db.Devices.Where(d => d.TenantID == rule.TenantID)
                     .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
             }
             else
@@ -683,6 +699,7 @@ namespace Agrumy.Api.Dal
             DeviceFarmUnitID = r.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = r.DeviceFarmUnitZoneID,
             SimulationSessionID = r.SimulationSessionID,
+            ExperimentID = r.ExperimentID,
             ActionType = (ActionType)r.ActionType,
             RelayFunction = (RelayFunction?)r.RelayFunction,
             Name = r.Name,

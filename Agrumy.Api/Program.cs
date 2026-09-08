@@ -112,6 +112,7 @@ builder.Services.AddScoped<IGatewayRepository, EfGatewayRepository>();
 builder.Services.AddScoped<IDiscoveryRepository, EfDiscoveryRepository>();
 builder.Services.AddScoped<IControllerDataRepository, EfControllerDataRepository>();
 builder.Services.AddScoped<ISimulationRepository, EfSimulationRepository>();
+builder.Services.AddScoped<IExperimentRepository, EfExperimentRepository>();
 
 // Cache:Redis:ConnectionString switches to Redis; unset/empty keeps the in-process default.
 string? redisConnectionString = builder.Configuration["Cache:Redis:ConnectionString"];

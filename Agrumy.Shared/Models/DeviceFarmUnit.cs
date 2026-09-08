@@ -236,7 +236,7 @@ namespace Agrumy.Shared.Models
         public static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, all four null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Api.Devices.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Api.Devices.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule
     {
         [HiddenInput(DisplayValue = true)]
@@ -247,6 +247,8 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmUnitZoneID { get; set; }
         /// A device evaluates this ahead of its real Zone>Unit>Farm>Global rules while it's a member of this session, falling back to that real hierarchy for any RelayFunction/Name this scope has no rule for - lets a simulation test rule logic without a gap in coverage silently doing nothing.
         public int? SimulationSessionID { get; set; }
+        /// Same "evaluated ahead of the real hierarchy, falls back for anything uncovered" precedence as SimulationSessionID, one tier below it - see RuleHierarchyResolver's Simulation&gt;Experiment&gt;Zone&gt;Unit&gt;Farm&gt;Global order. Unlike Simulation this controls real devices, so its rules are a real A/B test, not a sandboxed dry run.
+        public int? ExperimentID { get; set; }
         public ActionType ActionType { get; set; } = ActionType.Relay;
         /// Required when ActionType is Relay, null when Notification.
         public RelayFunction? RelayFunction { get; set; }

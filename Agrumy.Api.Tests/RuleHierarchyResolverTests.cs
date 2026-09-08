@@ -8,7 +8,7 @@ public class RuleHierarchyResolverTests
 {
     private static ConditionNode Leaf() => new() { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 };
 
-    private static DeviceFarmUnitZoneRule RelayRule(RelayFunction function, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, int? simulationId = null, bool isSafetyRule = false) => new()
+    private static DeviceFarmUnitZoneRule RelayRule(RelayFunction function, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, int? simulationId = null, int? experimentId = null, bool isSafetyRule = false) => new()
     {
         IDDeviceFarmUnitZoneRule = marker,
         TenantID = 1,
@@ -16,6 +16,7 @@ public class RuleHierarchyResolverTests
         DeviceFarmUnitID = unitId,
         DeviceFarmID = farmId,
         SimulationSessionID = simulationId,
+        ExperimentID = experimentId,
         ActionType = ActionType.Relay,
         RelayFunction = function,
         Name = "rule " + marker,
@@ -43,7 +44,7 @@ public class RuleHierarchyResolverTests
         var farmRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Ventilation, 1, farmId: 7) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Ventilation, 2) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], farmRules, globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], [], farmRules, globalRules);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -54,7 +55,7 @@ public class RuleHierarchyResolverTests
         var unitRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Ventilation, 1, unitId: 9) };
         var farmRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Ventilation, 2, farmId: 7) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], [], unitRules, farmRules, []);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], unitRules, farmRules, []);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -66,7 +67,7 @@ public class RuleHierarchyResolverTests
         var unitRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Light, 2, unitId: 9) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Light, 3) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], zoneRules, unitRules, [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], zoneRules, unitRules, [], globalRules);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -77,7 +78,7 @@ public class RuleHierarchyResolverTests
         var unitRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, unitId: 9) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 3) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], [], unitRules, [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], unitRules, [], globalRules);
 
         Assert.Equal([2], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -87,7 +88,7 @@ public class RuleHierarchyResolverTests
     {
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.WaterPump, 3) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], [], [], [], globalRules);
 
         Assert.Equal([3], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -98,7 +99,7 @@ public class RuleHierarchyResolverTests
         var simulationRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, simulationId: 42) };
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, zoneId: 5) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, zoneRules, [], [], []);
+        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, [], zoneRules, [], [], []);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -110,7 +111,33 @@ public class RuleHierarchyResolverTests
         var simulationRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, simulationId: 42) };
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Light, 2, zoneId: 5) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, zoneRules, [], [], []);
+        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, [], zoneRules, [], [], []);
+
+        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(id => id));
+    }
+
+    /// Experiment sits one tier below Simulation (a sandboxed test still outranks a real, consequence-carrying experiment) but above Zone.
+    [Fact]
+    public void ResolveRelayRules_ExperimentRuleExists_ExperimentWinsOverZone_ButLosesToSimulation()
+    {
+        var simulationRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, simulationId: 42) };
+        var experimentRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, experimentId: 7) };
+        var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 3, zoneId: 5) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, zoneRules, [], [], []);
+        Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
+
+        var withoutSimulation = RuleHierarchyResolver.ResolveRelayRules([], experimentRules, zoneRules, [], [], []);
+        Assert.Equal([2], withoutSimulation.Select(r => r.IDDeviceFarmUnitZoneRule));
+    }
+
+    [Fact]
+    public void ResolveRelayRules_ExperimentHasNoRuleForFunction_FallsBackToZone()
+    {
+        var experimentRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, experimentId: 7) };
+        var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Light, 2, zoneId: 5) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules([], experimentRules, zoneRules, [], [], []);
 
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(id => id));
     }
@@ -122,7 +149,7 @@ public class RuleHierarchyResolverTests
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Light, 1, zoneId: 5) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 3), RelayRule(RelayFunction.Light, 4) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], zoneRules, [], [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], zoneRules, [], [], globalRules);
 
         Assert.Equal([1, 3], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }
@@ -132,7 +159,7 @@ public class RuleHierarchyResolverTests
     {
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Ventilation, 1, zoneId: 5), RelayRule(RelayFunction.Ventilation, 2, zoneId: 5) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], zoneRules, [], [], []);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], zoneRules, [], [], []);
 
         Assert.Equal(2, result.Count);
     }
@@ -144,7 +171,7 @@ public class RuleHierarchyResolverTests
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, zoneId: 5) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], zoneRules, [], [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], zoneRules, [], [], globalRules);
 
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }
@@ -155,7 +182,7 @@ public class RuleHierarchyResolverTests
         var zoneRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, zoneId: 5) };
         var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: false) };
 
-        var result = RuleHierarchyResolver.ResolveRelayRules([], zoneRules, [], [], globalRules);
+        var result = RuleHierarchyResolver.ResolveRelayRules([], [], zoneRules, [], [], globalRules);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -167,7 +194,7 @@ public class RuleHierarchyResolverTests
         var zoneRule = NotificationRule("Frost Guard", 1, zoneId: 5);
         var globalRule = NotificationRule("Frost Guard", 2);
 
-        var result = RuleHierarchyResolver.ResolveNotificationRules([], [zoneRule], [], [], [globalRule]);
+        var result = RuleHierarchyResolver.ResolveNotificationRules([], [], [zoneRule], [], [], [globalRule]);
 
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
@@ -178,7 +205,7 @@ public class RuleHierarchyResolverTests
         var zoneRule = NotificationRule("Reminder", 1, zoneId: 5);
         var globalRule = NotificationRule("Hot Alert", 2);
 
-        var result = RuleHierarchyResolver.ResolveNotificationRules([], [zoneRule], [], [], [globalRule]);
+        var result = RuleHierarchyResolver.ResolveNotificationRules([], [], [zoneRule], [], [], [globalRule]);
 
         // Both survive - different names never shadow each other.
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
@@ -191,7 +218,7 @@ public class RuleHierarchyResolverTests
         var zoneRule = NotificationRule("Frost Guard", 1, zoneId: 5);
         var globalRule = NotificationRule("Frost Guard", 2, isSafetyRule: true);
 
-        var result = RuleHierarchyResolver.ResolveNotificationRules([], [zoneRule], [], [], [globalRule]);
+        var result = RuleHierarchyResolver.ResolveNotificationRules([], [], [zoneRule], [], [], [globalRule]);
 
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }

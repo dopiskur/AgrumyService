@@ -1,0 +1,136 @@
+@model Agrumy.Shared.Models.Experiment
+@using Agrumy.Shared.Models
+@using Agrumy.Web.ViewModels
+
+@{
+    ViewData["Title"] = $"Experiment - {Model.Name}";
+    var rules = (IList<DeviceFarmUnitZoneRule>)ViewBag.Rules;
+    var sensorSamples = (IList<ExperimentSensorSample>)ViewBag.SensorSamples;
+    var controllerEvents = (IList<ExperimentControllerEvent>)ViewBag.ControllerEvents;
+    bool running = Model.StoppedAtUtc == null && (Model.ExpiresAtUtc == null || Model.ExpiresAtUtc > DateTimeOffset.UtcNow);
+}
+
+<h1>@Model.Name</h1>
+<p class="text-muted">
+    Scope: <strong>@Model.Scope @(Model.ScopeName != null ? $"\"{Model.ScopeName}\"" : $"#{Model.ScopeID}")</strong> -
+    every device currently under this scope is affected while the experiment runs (dynamic membership,
+    unlike Simulation's fixed device list).
+</p>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<div class="card mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+            <div>Started: @(Model.StartedAtUtc?.ToString("u") ?? "-")</div>
+            <div>Expires: @(Model.ExpiresAtUtc?.ToString("u") ?? "open-ended")</div>
+            <div>
+                Status:
+                @if (running)
+                {
+                    <span class="badge text-bg-success">Running</span>
+                }
+                else if (Model.StoppedAtUtc != null)
+                {
+                    <span class="badge text-bg-secondary">Stopped @Model.StoppedAtUtc?.ToString("u")</span>
+                }
+                else
+                {
+                    <span class="badge text-bg-secondary">Expired</span>
+                }
+            </div>
+        </div>
+        @if (running)
+        {
+            <form asp-action="Stop" method="post" onsubmit="return confirm('Stop this experiment? Devices in scope return to the real Zone/Unit/Farm/Global rules immediately. The recorded sensor/controller history stays.');">
+                <input type="hidden" name="idExperiment" value="@Model.IDExperiment" />
+                <button type="submit" class="btn btn-outline-danger">Stop</button>
+            </form>
+        }
+    </div>
+</div>
+
+@await Html.PartialAsync("_RuleEditor", new RuleEditorViewModel
+{
+    Scope = RuleScope.Experiment,
+    ScopeId = Model.IDExperiment,
+    Rules = rules,
+    RedirectActionName = nameof(Agrumy.Web.Controllers.View.ExperimentController.Details),
+})
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">Sensor data (most recent @sensorSamples.Count shown)</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-secondary small mb-2">
+            Mirrored from every device's normal sensor push while under this experiment - a basic raw
+            view; comparison/charting against the device's own normal history is a separate, future
+            roadmap item.
+        </p>
+        <div style="overflow-x:auto;">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Time</th><th>Device</th><th>Temp</th><th>Humidity</th><th>Moisture</th><th>Light</th><th>Co2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in sensorSamples)
+                    {
+                        <tr>
+                            <td>@(s.DateCreated?.ToString("u") ?? "-")</td>
+                            <td>@(s.DeviceName ?? $"#{s.DeviceID}")</td>
+                            <td>@(s.Temperature?.ToString("0.##") ?? "-")</td>
+                            <td>@(s.Humidity?.ToString("0.##") ?? "-")</td>
+                            <td>@(s.Moisture?.ToString() ?? "-")</td>
+                            <td>@(s.Light?.ToString() ?? "-")</td>
+                            <td>@(s.Co2?.ToString() ?? "-")</td>
+                        </tr>
+                    }
+                    @if (sensorSamples.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-muted">No sensor data recorded yet.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">Relay events (most recent @controllerEvents.Count shown)</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-secondary small mb-2">
+            Every relay state change while under this experiment, not just the latest state (unlike the
+            live Fleet view).
+        </p>
+        <div style="overflow-x:auto;">
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Time</th><th>Device</th><th>Relay</th><th>State</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in controllerEvents)
+                    {
+                        <tr>
+                            <td>@(c.DateCreated?.ToString("u") ?? "-")</td>
+                            <td>@(c.DeviceName ?? $"#{c.DeviceID}")</td>
+                            <td>@c.RelayFunction</td>
+                            <td>@(c.IsOn ? "ON" : "OFF")</td>
+                        </tr>
+                    }
+                    @if (controllerEvents.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-muted">No relay events recorded yet.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

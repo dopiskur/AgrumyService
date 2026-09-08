@@ -8,14 +8,20 @@ using Npgsql;
 
 namespace Agrumy.Api.Dal
 {
-    /// ISensorDataRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet.
-    internal sealed class EfSensorDataRepository(AgrumyDbContext db) : ISensorDataRepository
+    /// ISensorDataRepository, extracted out of the EfRepository god class - a leaf facet, its only cross-facet dependency being the experiment dual-write below.
+    internal sealed class EfSensorDataRepository(AgrumyDbContext db, IExperimentRepository experimentRepository) : ISensorDataRepository
     {
         public async Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID)
         {
             if (readings.Count == 0)
             {
                 return;
+            }
+
+            // Mirrors this same push into dataSensorExperiment when the zone is currently under an active experiment, alongside (never instead of) the normal insert below.
+            if (deviceFarmUnitZoneID is int idZone && await experimentRepository.ActiveExperimentIdForZoneAsync(idZone) is int idExperiment)
+            {
+                await experimentRepository.SensorDataExperimentAddRangeAsync(idExperiment, deviceID, tenantID, readings);
             }
 
             var rows = readings.Select(r => new SensorDataRow

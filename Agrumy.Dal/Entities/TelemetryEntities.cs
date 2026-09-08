@@ -36,6 +36,54 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? DateChanged { get; set; }
     }
 
+    /// A long-term, real-device rule experiment scoped to exactly one Farm/Unit/Zone. ExpiresAtUtc is optional (unlike simulationSession's mandatory 48h cap) - null means open-ended, runs until an explicit Stop. StoppedAtUtc null means still running.
+    public class ExperimentRow
+    {
+        public int IDExperiment { get; set; }
+        public int TenantID { get; set; }
+        public string Name { get; set; } = "";
+        /// 1=Farm, 2=Unit, 3=Zone (Agrumy.Shared.Models.ExperimentScope).
+        public int Scope { get; set; }
+        public int ScopeID { get; set; }
+        public DateTimeOffset StartedAtUtc { get; set; }
+        public DateTimeOffset? ExpiresAtUtc { get; set; }
+        public DateTimeOffset? StoppedAtUtc { get; set; }
+    }
+
+    /// Append-only mirror of SensorDataRow, written alongside it whenever the pushing device is currently under an active experiment - kept permanently (no retention/optimize pass touches this table), so an experiment's own history survives independently of dataSensor's own retention/optimization.
+    public class SensorDataExperimentRow
+    {
+        public int IDSensorDataExperiment { get; set; }
+        public int IDExperiment { get; set; }
+        public int TenantID { get; set; }
+        public int DeviceID { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public int? Moisture { get; set; }
+        public int? Light { get; set; }
+        public int? Co2 { get; set; }
+        public int? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public int? RainLevel { get; set; }
+        public int? WaterLevel { get; set; }
+        public int? Wind { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+    }
+
+    /// Unlike dataController (upserted current state, see ControllerDataRow's own remarks), this is a genuine append-only log - one row per push event, so an experiment's full history of relay flips survives, not just the latest state.
+    public class ControllerDataExperimentRow
+    {
+        public int IDControllerDataExperiment { get; set; }
+        public int IDExperiment { get; set; }
+        public int TenantID { get; set; }
+        public int DeviceID { get; set; }
+        public int RelayFunction { get; set; }
+        public bool IsOn { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+    }
+
     public class SensorDataReportRow
     {
         public int IDSensorDataReport { get; set; }

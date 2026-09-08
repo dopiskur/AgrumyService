@@ -67,6 +67,42 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("auditLog", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataExperimentRow", b =>
+                {
+                    b.Property<int>("IDControllerDataExperiment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDControllerDataExperiment"));
+
+                    b.Property<DateTimeOffset?>("DateCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DeviceID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IDExperiment")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsOn")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("RelayFunction")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDControllerDataExperiment");
+
+                    b.HasIndex("DeviceID");
+
+                    b.HasIndex("IDExperiment", "DateCreated")
+                        .HasDatabaseName("ix_dataControllerExperiment_experiment_date");
+
+                    b.ToTable("dataControllerExperiment", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataRow", b =>
                 {
                     b.Property<int>("IDControllerData")
@@ -598,6 +634,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("DeviceFarmUnitZoneID")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ExperimentID")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsSafetyRule")
                         .HasColumnType("boolean");
 
@@ -635,6 +674,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("DeviceFarmUnitZoneID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_zone");
+
+                    b.HasIndex("ExperimentID")
+                        .HasDatabaseName("ix_deviceFarmUnitZoneRule_experiment");
 
                     b.HasIndex("SimulationSessionID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_simulationSession");
@@ -1217,6 +1259,45 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("eventType", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.ExperimentRow", b =>
+                {
+                    b.Property<int>("IDExperiment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDExperiment"));
+
+                    b.Property<DateTimeOffset?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScopeID")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("StoppedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDExperiment");
+
+                    b.HasIndex("TenantID", "Scope", "ScopeID")
+                        .HasDatabaseName("ix_experiment_tenant_scope");
+
+                    b.ToTable("experiment", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.GatewayDeviceMappingRow", b =>
                 {
                     b.Property<int>("IDGatewayDeviceMapping")
@@ -1324,6 +1405,72 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasDatabaseName("ux_ruleNotificationState_rule_zone");
 
                     b.ToTable("ruleNotificationState", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataExperimentRow", b =>
+                {
+                    b.Property<int>("IDSensorDataExperiment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSensorDataExperiment"));
+
+                    b.Property<double?>("Barometer")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Co2")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("DateCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DeviceID")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Humidity")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("IDExperiment")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Light")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("LiquidPH")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Moisture")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RainLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("SoilTemperature")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Temperature")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Tvoc")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Wind")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDSensorDataExperiment");
+
+                    b.HasIndex("DeviceID");
+
+                    b.HasIndex("IDExperiment", "DateCreated")
+                        .HasDatabaseName("ix_dataSensorExperiment_experiment_date");
+
+                    b.ToTable("dataSensorExperiment", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataReportRow", b =>
@@ -2029,6 +2176,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("userUserRole", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataExperimentRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.ExperimentRow", null)
+                        .WithMany()
+                        .HasForeignKey("IDExperiment")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
@@ -2197,6 +2359,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("DeviceFarmUnitZoneID")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("Agrumy.Dal.Entities.ExperimentRow", null)
+                        .WithMany()
+                        .HasForeignKey("ExperimentID")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Agrumy.Dal.Entities.SimulationSessionRow", null)
                         .WithMany()
                         .HasForeignKey("SimulationSessionID")
@@ -2321,6 +2488,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.DeviceFarmUnitZoneRuleRow", null)
                         .WithMany()
                         .HasForeignKey("RuleID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataExperimentRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.ExperimentRow", null)
+                        .WithMany()
+                        .HasForeignKey("IDExperiment")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

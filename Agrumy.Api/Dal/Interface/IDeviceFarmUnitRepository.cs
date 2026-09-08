@@ -157,7 +157,10 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule scoped to exactly this simulation session - evaluated ahead of a member device's real Zone>Unit>Farm>Global rules, falling back to that hierarchy for anything this session has no rule for.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSimulationAsync(int idSimulationSession);
 
-        /// Every Notification-action rule for the tenant across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation-scoped rules excluded, fetched separately per session.
+        /// Every rule scoped to exactly this experiment - same "evaluated ahead, falls back to the real hierarchy" precedence as RulesGetForSimulationAsync, one tier below it.
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForExperimentAsync(int idExperiment);
+
+        /// Every Notification-action rule for the tenant across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation/experiment-scoped rules excluded, fetched separately per session/experiment.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId);
 
         /// Single rule by id (no tenant filter) - for ownership checks, resolve its scope then check that scope's tenant - or null if none.

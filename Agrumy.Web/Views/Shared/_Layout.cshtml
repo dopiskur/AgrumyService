@@ -222,6 +222,15 @@
                                 </a>
                             </li>
                         }
+                        @if (hasAnyRole(RoleNames.DeviceManagers))
+                        {
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Experiment" asp-action="Index" class="nav-link @navActive("Experiment")">
+                                    <i class="nav-icon bi bi-flask"></i>
+                                    <p>@Localizer["Experiments"]</p>
+                                </a>
+                            </li>
+                        }
                         @if (User.IsInRole(RoleNames.GlobalAdmin))
                         {
                             <li class="nav-item">

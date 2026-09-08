@@ -72,6 +72,8 @@ namespace Agrumy.Api.Dal
 
         public Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSimulationAsync(int idSimulationSession) => deviceFarmUnitRepository.RulesGetForSimulationAsync(idSimulationSession);
 
+        public Task<IList<DeviceFarmUnitZoneRule>> RulesGetForExperimentAsync(int idExperiment) => deviceFarmUnitRepository.RulesGetForExperimentAsync(idExperiment);
+
         public Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId) => deviceFarmUnitRepository.RulesGetNotificationRulesForTenantAsync(tenantId);
 
         public Task<DeviceFarmUnitZoneRule?> RuleGetByIdAsync(int? idRule) => deviceFarmUnitRepository.RuleGetByIdAsync(idRule);

@@ -45,6 +45,9 @@ namespace Agrumy.Dal
         public DbSet<SimulationSessionRow> SimulationSessions => Set<SimulationSessionRow>();
         public DbSet<SimulationSessionDeviceRow> SimulationSessionDevices => Set<SimulationSessionDeviceRow>();
         public DbSet<SimulationGroupRow> SimulationGroups => Set<SimulationGroupRow>();
+        public DbSet<ExperimentRow> Experiments => Set<ExperimentRow>();
+        public DbSet<SensorDataExperimentRow> SensorDataExperiments => Set<SensorDataExperimentRow>();
+        public DbSet<ControllerDataExperimentRow> ControllerDataExperiments => Set<ControllerDataExperimentRow>();
         public DbSet<DeviceCommandRow> DeviceCommands => Set<DeviceCommandRow>();
         public DbSet<DeviceManualOverrideRow> DeviceManualOverrides => Set<DeviceManualOverrideRow>();
         public DbSet<GatewayDeviceMappingRow> GatewayDeviceMappings => Set<GatewayDeviceMappingRow>();
@@ -209,10 +212,13 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.DeviceFarmID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 // Cascade (unlike the other three scopes above) - a simulation-scoped rule only ever makes sense alongside the session it was written for, so it goes away with it instead of becoming an orphaned, unreachable row.
                 e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.SimulationSessionID).OnDelete(DeleteBehavior.Cascade).IsRequired(false);
+                // Cascade, same reasoning as SimulationSessionID above - an experiment-scoped rule only makes sense alongside the experiment it was written for.
+                e.HasOne<ExperimentRow>().WithMany().HasForeignKey(x => x.ExperimentID).OnDelete(DeleteBehavior.Cascade).IsRequired(false);
                 e.HasIndex(x => x.DeviceFarmUnitZoneID).HasDatabaseName("ix_deviceFarmUnitZoneRule_zone");
                 e.HasIndex(x => x.DeviceFarmUnitID).HasDatabaseName("ix_deviceFarmUnitZoneRule_unit");
                 e.HasIndex(x => x.DeviceFarmID).HasDatabaseName("ix_deviceFarmUnitZoneRule_farm");
                 e.HasIndex(x => x.SimulationSessionID).HasDatabaseName("ix_deviceFarmUnitZoneRule_simulationSession");
+                e.HasIndex(x => x.ExperimentID).HasDatabaseName("ix_deviceFarmUnitZoneRule_experiment");
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_deviceFarmUnitZoneRule_tenant");
             });
 
@@ -444,6 +450,35 @@ namespace Agrumy.Dal
                 e.Property(x => x.IDSimulationGroup).ValueGeneratedOnAdd();
                 e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.IDSimulationSession).OnDelete(DeleteBehavior.Cascade);
                 e.HasIndex(x => x.IDSimulationSession).HasDatabaseName("ix_simulationGroup_session");
+            });
+
+            modelBuilder.Entity<ExperimentRow>(e =>
+            {
+                e.ToTable("experiment");
+                e.HasKey(x => x.IDExperiment);
+                e.Property(x => x.IDExperiment).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+                e.HasIndex(x => new { x.TenantID, x.Scope, x.ScopeID }).HasDatabaseName("ix_experiment_tenant_scope"); // ActiveExperimentIdForZoneAsync/ActiveExperimentIdsByZoneAsync's own lookup shape.
+            });
+
+            modelBuilder.Entity<SensorDataExperimentRow>(e =>
+            {
+                e.ToTable("dataSensorExperiment");
+                e.HasKey(x => x.IDSensorDataExperiment);
+                e.Property(x => x.IDSensorDataExperiment).ValueGeneratedOnAdd();
+                e.HasOne<ExperimentRow>().WithMany().HasForeignKey(x => x.IDExperiment).OnDelete(DeleteBehavior.NoAction); // NoAction, not Cascade - kept permanently even if the experiment row itself is ever removed.
+                e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
+                e.HasIndex(x => new { x.IDExperiment, x.DateCreated }).HasDatabaseName("ix_dataSensorExperiment_experiment_date");
+            });
+
+            modelBuilder.Entity<ControllerDataExperimentRow>(e =>
+            {
+                e.ToTable("dataControllerExperiment");
+                e.HasKey(x => x.IDControllerDataExperiment);
+                e.Property(x => x.IDControllerDataExperiment).ValueGeneratedOnAdd();
+                e.HasOne<ExperimentRow>().WithMany().HasForeignKey(x => x.IDExperiment).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
+                e.HasIndex(x => new { x.IDExperiment, x.DateCreated }).HasDatabaseName("ix_dataControllerExperiment_experiment_date");
             });
 
             modelBuilder.Entity<DeviceFirmwareRow>(e =>

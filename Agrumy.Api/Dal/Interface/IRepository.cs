@@ -16,7 +16,8 @@ namespace Agrumy.Api.Dal.Interface
         IGatewayRepository,
         IDiscoveryRepository,
         IControllerDataRepository,
-        ISimulationRepository
+        ISimulationRepository,
+        IExperimentRepository
     {
     }
 }

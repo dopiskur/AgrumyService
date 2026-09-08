@@ -1,0 +1,91 @@
+@model IList<Agrumy.Shared.Models.Experiment>
+@using Agrumy.Shared.Models
+
+@{
+    ViewData["Title"] = "Experiments";
+}
+
+<h1>Experiments</h1>
+<p class="text-muted">
+    Long-term rule A/B testing on REAL devices with REAL relay/notification actions - unlike
+    Simulation Mode this is not a consequence-free sandbox. Every sensor/controller push from a
+    device in scope while an experiment is running is also kept in a separate, permanent history
+    table for later comparison.
+</p>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<form asp-action="Create" method="post" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label" for="expName">Name</label>
+        <input type="text" id="expName" name="name" class="form-control" required maxlength="128" placeholder="e.g. Alternate ventilation curve" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="expScope">Scope</label>
+        <select id="expScope" name="scope" class="form-select">
+            <option value="@((int)ExperimentScope.Farm)">Farm</option>
+            <option value="@((int)ExperimentScope.Unit)">Unit</option>
+            <option value="@((int)ExperimentScope.Zone)" selected>Zone</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="expScopeId">Scope id</label>
+        <input type="number" id="expScopeId" name="scopeId" class="form-control" required style="width:8rem" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="expExpires">Expires (optional)</label>
+        <input type="datetime-local" id="expExpires" name="expiresAtUtc" class="form-control" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Add Experiment</button>
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Scope</th>
+            <th>Started</th>
+            <th>Expires</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var experiment in Model)
+        {
+            bool running = experiment.StoppedAtUtc == null && (experiment.ExpiresAtUtc == null || experiment.ExpiresAtUtc > DateTimeOffset.UtcNow);
+            <tr>
+                <td><a asp-action="Details" asp-route-idExperiment="@experiment.IDExperiment">@experiment.Name</a></td>
+                <td>@experiment.Scope @(experiment.ScopeName != null ? $"\"{experiment.ScopeName}\"" : $"#{experiment.ScopeID}")</td>
+                <td>@(experiment.StartedAtUtc?.ToString("u") ?? "-")</td>
+                <td>@(experiment.ExpiresAtUtc?.ToString("u") ?? "open-ended")</td>
+                <td>
+                    @if (running)
+                    {
+                        <span class="badge text-bg-success">Running</span>
+                    }
+                    else if (experiment.StoppedAtUtc != null)
+                    {
+                        <span class="badge text-bg-secondary">Stopped</span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-secondary">Expired</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-idExperiment="@experiment.IDExperiment" class="btn btn-outline-secondary btn-sm">Open</a>
+                </td>
+            </tr>
+        }
+        @if (Model.Count == 0)
+        {
+            <tr><td colspan="6" class="text-muted">No experiments yet.</td></tr>
+        }
+    </tbody>
+</table>

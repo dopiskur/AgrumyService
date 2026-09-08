@@ -6,14 +6,15 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Evaluates every Notification-action rule against each zone it reaches (Simulation>Zone>Unit>Farm>Global
+    /// Evaluates every Notification-action rule against each zone it reaches (Simulation>Experiment>Zone>Unit>Farm>Global
     /// precedence resolved per zone via RuleHierarchyResolver.ResolveNotificationRules, same "more specific
     /// wins" semantics as Relay rules), dispatching one notification per false->true transition - a Relay
     /// rule's OR-across-rules/AND-OR-within-a-rule fold happens on-device, this is the server-side
     /// equivalent for the action type firmware has no way to perform itself.
     public sealed class RuleNotificationEvaluator(
         ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo,
-        INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo)
+        INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo,
+        IExperimentRepository experimentRepo)
     {
         private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend);
 
@@ -53,6 +54,10 @@ namespace Agrumy.Api.BackgroundWorkers
             IDictionary<int, int> simulationSessionIdByZone = await simulationRepo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
             var simulationRulesBySession = new Dictionary<int, List<DeviceFarmUnitZoneRule>>();
 
+            // Same batched, once-per-tenant lookup as Simulation above (Zone>Unit>Farm cascade already resolved by ActiveExperimentIdsByZoneAsync itself).
+            IDictionary<int, int> experimentIdByZone = await experimentRepo.ActiveExperimentIdsByZoneAsync(tenantId);
+            var experimentRulesByExperiment = new Dictionary<int, List<DeviceFarmUnitZoneRule>>();
+
             var items = new List<EvalItem>();
             foreach (DeviceFarmUnit unit in await unitRepo.DeviceFarmUnitsGetAsync(tenantId))
             {
@@ -84,7 +89,17 @@ namespace Agrumy.Api.BackgroundWorkers
                         }
                         simulationScoped = cached;
                     }
-                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, zoneScoped, unitScoped, farmScoped, globalScoped);
+                    List<DeviceFarmUnitZoneRule> experimentScoped = [];
+                    if (experimentIdByZone.TryGetValue(zoneId, out int experimentId))
+                    {
+                        if (!experimentRulesByExperiment.TryGetValue(experimentId, out List<DeviceFarmUnitZoneRule>? cachedExperiment))
+                        {
+                            cachedExperiment = (await unitRepo.RulesGetForExperimentAsync(experimentId)).Where(r => r.ActionType == ActionType.Notification).ToList();
+                            experimentRulesByExperiment[experimentId] = cachedExperiment;
+                        }
+                        experimentScoped = cachedExperiment;
+                    }
+                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, experimentScoped, zoneScoped, unitScoped, farmScoped, globalScoped);
                     if (effective.Count == 0)
                     {
                         continue;

@@ -334,6 +334,7 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmUnitID = null;
             rule.DeviceFarmID = null;
+            rule.ExperimentID = null;
             rule.SimulationSessionID = idSimulationSession;
             rule.TenantID = session.TenantID ?? CallerTenantId ?? 0;
 
