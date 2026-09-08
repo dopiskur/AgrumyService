@@ -4,6 +4,8 @@ using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
@@ -22,6 +24,8 @@ namespace Agrumy.Api.Dal
 
         public async Task EnsureSchemaAsync()
         {
+            await MarkLegacyEnsureCreatedSchemaAsBaselineAsync(db);
+
             // Roadmap #247 - a brand-new DB gets every migration from empty; invent.hr's __EFMigrationsHistory was seeded with InitialBeta as already-applied (its schema already matched), so this is a no-op there until a real future migration ships.
             await db.Database.MigrateAsync();
 
@@ -46,6 +50,36 @@ namespace Agrumy.Api.Dal
                 // The only channel this secret is ever exposed on - never written to the DB in plaintext or returned by any API.
                 logger.LogWarning("Bootstrap Global Admin setup secret (required by POST /api/User/BootstrapSetPassword, works once): {BootstrapSecret}", bootstrapSecret);
             }
+        }
+
+        /// Any DB created by the pre-#247 EnsureCreatedAsync path has the full schema but no __EFMigrationsHistory row, so MigrateAsync would try to CREATE TABLE against tables that already exist - detect that case via the "device" table and mark the baseline migration applied first.
+        private async Task MarkLegacyEnsureCreatedSchemaAsBaselineAsync(AgrumyDbContext db)
+        {
+            var historyRepository = db.GetService<IHistoryRepository>();
+            if (await historyRepository.ExistsAsync())
+            {
+                return;
+            }
+
+            var connection = db.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'device'";
+            var deviceTableExists = Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
+            if (!deviceTableExists)
+            {
+                return;
+            }
+
+            var baselineMigrationId = db.Database.GetMigrations().First();
+            var productVersion = typeof(DbContext).Assembly.GetName().Version?.ToString() ?? "9.0.0";
+            await db.Database.ExecuteSqlRawAsync(historyRepository.GetCreateIfNotExistsScript());
+            await db.Database.ExecuteSqlRawAsync(historyRepository.GetInsertScript(new HistoryRow(baselineMigrationId, productVersion)));
+            logger.LogWarning("Legacy EnsureCreated schema detected (device table exists, no migrations history) - marked {MigrationId} as already applied", baselineMigrationId);
         }
 
         /// TimescaleDB requires the partitioning column in every unique constraint including the PK, so this widens sensorData's PK from IDSensorData alone to (IDSensorData, DateCreated) - no-op on MySQL/Pomelo.

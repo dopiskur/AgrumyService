@@ -339,4 +339,15 @@ public class SecretProtectorTests
 
         Assert.Equal("hunter2", new SecretProtector(provider, NullLogger<SecretProtector>.Instance).Unprotect(stored));
     }
+
+    /// A value that carries the ciphertext prefix but no longer decrypts (rotated/lost key) must throw, never be handed back as if it were a legacy plaintext password.
+    [Fact]
+    public void Unprotect_CiphertextPrefixButUndecryptable_Throws()
+    {
+        string? stored = NewProtector().Protect("hunter2");
+        var protectorWithDifferentKey = NewProtector();
+
+        Assert.StartsWith("CfDJ8", stored);
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => protectorWithDifferentKey.Unprotect(stored));
+    }
 }

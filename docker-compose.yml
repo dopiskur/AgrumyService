@@ -42,6 +42,7 @@ services:
       JWT__SecureKey: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT__Issuer: ${AGRUMY_JWT_ISSUER:-https://api.agrumy.local}
       JWT__Audience: agrumy-api
+      DataProtection__KeyPath: /keys
       # Roadmap #30: TLS terminates at whatever reverse proxy an admin puts in front of this
       # compose stack (not part of the container path itself in this v1 - see install.sh's
       # standalone/bare-metal path for the nginx/Apache+certbot setup), so the app itself stays on
@@ -52,6 +53,10 @@ services:
       # Local-repository .bin files (container filesystem is ephemeral) while the DB keeps referencing
       # the now-deleted paths.
       - firmware-store:/app/firmware-store
+      # Without this, every `docker compose up --build` mints a fresh ephemeral DataProtection key,
+      # making every previously-encrypted secret (SecretProtector-protected SMTP/MQTT/WiFi passwords)
+      # undecryptable - same reasoning as the web service's web-keys volume below.
+      - api-keys:/keys
     ports:
       - "5000:5000"
     healthcheck:
@@ -92,4 +97,5 @@ services:
 volumes:
   db-data:
   web-keys:
+  api-keys:
   firmware-store:

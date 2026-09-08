@@ -57,6 +57,7 @@ services:
       JWT__SecureKey: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT__Issuer: ${AGRUMY_JWT_ISSUER:-https://api.agrumy.local}
       JWT__Audience: agrumy-api
+      DataProtection__KeyPath: /keys
       Security__EnforceHttps: "false"
       # Roadmap #72: only meaningful when the redis service above is actually started (--profile
       # redis) - CacheRepository falls back to the in-process default if this host is unreachable
@@ -67,6 +68,9 @@ services:
       # Roadmap #318: same reasoning as docker-compose.yml - without this, a rebuild wipes the Local
       # firmware repository's .bin files while the DB keeps referencing the now-deleted paths.
       - firmware-store:/app/firmware-store
+      # Same reasoning as docker-compose.yml's api-keys volume - without a persisted key path, every
+      # rebuild mints a fresh DataProtection key and SecretProtector-protected secrets become undecryptable.
+      - api-keys:/keys
     ports:
       - "5000:5000"
     healthcheck:
@@ -106,4 +110,5 @@ volumes:
   db-data:
   redis-data:
   web-keys:
+  api-keys:
   firmware-store:
