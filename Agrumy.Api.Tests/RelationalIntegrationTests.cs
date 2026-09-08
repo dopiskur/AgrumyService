@@ -10,8 +10,11 @@ using Agrumy.Api.Security;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Agrumy.Api.Tests;
@@ -133,7 +136,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db, experimentRepository),
             new EfDiscoveryRepository(db), tenantRepository, new EfGatewayRepository(db), serverConfigRepository,
             new EfCommandRepository(db), new EfFirmwareRepository(db),
-            new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository), deviceRepository,
+            new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository, new NullCache()), deviceRepository,
             new EfSimulationRepository(db, deviceRepository),
             deviceFarmUnitRepository,
             new EfSensorDataRepository(db, experimentRepository),
@@ -710,6 +713,23 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotNull(user!.TokensValidAfterUtc);
         Assert.True(user.TokensValidAfterUtc >= beforeChange);
         Assert.NotNull((await _repo.RefreshTokenGetAsync(refreshTokenHash))!.RevokedAt);
+    }
+
+    // Without this invalidation, a caller who already had an authenticated request in the last 30s keeps TokenRevocationValidator's stale, pre-revoke cached state (TokensValidAfterUtc=null) until it naturally expires - a revoked token would still pass for up to 30s more. _repo's own EfUserRepository uses NullCache (see BuildRepository), so this needs its own real cache-backed instance to observe.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task RevokeUserTokensAsync_InvalidatesCachedRevocationState(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (_, userId, email) = await MakeUser(t);
+
+        ICache cache = new CacheRepository(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())), NullLogger<CacheRepository>.Instance);
+        string cacheKey = TokenRevocationValidator.CacheKey(email);
+        await cache.SetAsync(cacheKey, new CachedRevocationState(null), TimeSpan.FromSeconds(30));
+
+        IUserRepository userRepo = new EfUserRepository(_db!, new Mock<ITenantRepository>().Object, new Mock<IDeviceFarmUnitRepository>().Object, new EfRefreshTokenRepository(_db!), cache);
+        await userRepo.RevokeUserTokensAsync(userId);
+
+        Assert.Null(await cache.GetAsync<CachedRevocationState>(cacheKey));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

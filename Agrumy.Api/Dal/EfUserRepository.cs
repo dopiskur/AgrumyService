@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IUserRepository, extracted out of the EfRepository god class (roadmap #246) - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (same tenant-create branch also seeds the tenant's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
-    internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository) : IUserRepository
+    /// IUserRepository, extracted out of the EfRepository god class - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (same tenant-create branch also seeds the tenant's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository (and ICache, to invalidate Agrumy.Api.Security.TokenRevocationValidator's own cached state) - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
+    internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository, ICache cache) : IUserRepository
     {
         /// quotaCheckAsync null (RegisterUserAsync's own internal call) means "already checked by the caller, don't check again" - not "unlimited".
         public Task UserAddAsync(User user, UserSecret userSecret, Func<Task<string?>>? quotaCheckAsync = null) =>
@@ -236,6 +236,13 @@ namespace Agrumy.Api.Dal
             await db.Users.Where(u => u.IDUser == idUser)
                 .ExecuteUpdateAsync(s => s.SetProperty(u => u.TokensValidAfterUtc, DateTime.UtcNow));
             await refreshTokenRepository.RefreshTokenRevokeAllForUserAsync(idUser);
+
+            // Without this, a caller who already had an authenticated request in the last 30s (e.g. the MustChangePassword page itself) keeps TokenRevocationValidator's stale, pre-revoke cached state until that cache entry naturally expires - a revoked token would still pass for up to 30s more.
+            string? email = await db.Users.AsNoTracking().Where(u => u.IDUser == idUser).Select(u => u.Email).FirstOrDefaultAsync();
+            if (email != null)
+            {
+                await cache.RemoveAsync(Agrumy.Api.Security.TokenRevocationValidator.CacheKey(email));
+            }
         }
 
         // Never empty for a real tenant since its creator becomes an admin at registration - TenantID 0 has no owning admin, so Global admin is the equivalent role there.

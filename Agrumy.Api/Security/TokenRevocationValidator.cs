@@ -14,7 +14,8 @@ namespace Agrumy.Api.Security
     {
         // Roadmap #397(4) - this hook ran a DB query on every authenticated request. 30s is a deliberate trade-off (user's own call): a revoked token can still pass for up to this long, in exchange for cutting DB load on every single API call.
         private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
-        private static string CacheKey(string email) => $"tokenRevocation:{email}";
+        /// Public so EfUserRepository.RevokeUserTokensAsync can invalidate the exact key this hook reads, instead of duplicating the format string and risking the two drifting apart.
+        public static string CacheKey(string email) => $"tokenRevocation:{email}";
 
         public static async Task ValidateAsync(TokenValidatedContext context)
         {
