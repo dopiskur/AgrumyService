@@ -25,7 +25,8 @@ public class DeviceFarmUnitApiControllerTests
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()),
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
             new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
-            new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object));
+            new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object),
+            _repo.Object);
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         return controller;
     }

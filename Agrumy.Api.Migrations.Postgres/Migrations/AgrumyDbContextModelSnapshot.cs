@@ -1360,6 +1360,216 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("gatewayDeviceMapping", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogCropRow", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<double?>("AirHumidityMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirHumidityMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Max")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Min")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<double?>("LightMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LightMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double?>("SoilECMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilECMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMin")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("horticultureCatalogCrop", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogHydroponicRow", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<double?>("AirHumidityMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirHumidityMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Max")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Min")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<double?>("LightMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LightMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double?>("SoilECMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilECMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMin")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("horticultureCatalogHydroponic", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogPermaRow", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<double?>("AirHumidityMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirHumidityMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Max")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Co2Min")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<double?>("LightMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LightMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double?>("SoilECMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilECMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilPHMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMin")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("horticultureCatalogPerma", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.RefreshTokenRow", b =>
                 {
                     b.Property<int>("IDRefreshToken")

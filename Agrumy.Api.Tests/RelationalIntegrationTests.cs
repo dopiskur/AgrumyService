@@ -141,7 +141,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             new EfSimulationRepository(db, deviceRepository),
             deviceFarmUnitRepository,
             new EfSensorDataRepository(db, experimentRepository),
-            experimentRepository);
+            experimentRepository,
+            new EfHorticultureCatalogRepository(db));
     }
 
     private sealed class NullCache : ICache
@@ -3151,6 +3152,33 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         IReadOnlyList<string> roles = await _repo.UserRoleNamesGetAsync(userId);
 
         Assert.Empty(roles);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task HorticultureCatalog_AddGetUpdateDelete_RoundTripsOnEachOfTheThreeTables(DbProviderKind provider)
+    {
+        var t = Use(provider);
+
+        foreach (HorticultureCatalogType type in Enum.GetValues<HorticultureCatalogType>())
+        {
+            var added = await _repo.CatalogAddAsync(type, new HorticultureCatalogEntry { Name = "Test entry", AirTempMin = 18, AirTempMax = 26 });
+            Assert.NotNull(added.ID);
+
+            var fetched = await _repo.CatalogGetByIdAsync(type, added.ID!.Value);
+            Assert.NotNull(fetched);
+            Assert.Equal("Test entry", fetched!.Name);
+            Assert.Equal(18, fetched.AirTempMin);
+
+            fetched.AirTempMax = 30;
+            Assert.True(await _repo.CatalogUpdateAsync(type, fetched));
+            var updated = await _repo.CatalogGetByIdAsync(type, added.ID.Value);
+            Assert.Equal(30, updated!.AirTempMax);
+
+            Assert.Contains(await _repo.CatalogGetAsync(type), e => e.ID == added.ID);
+
+            Assert.True(await _repo.CatalogDeleteAsync(type, added.ID.Value));
+            Assert.Null(await _repo.CatalogGetByIdAsync(type, added.ID.Value));
+        }
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

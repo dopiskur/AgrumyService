@@ -1,0 +1,67 @@
+@model IList<Agrumy.Shared.Models.HorticultureCatalogEntry>
+@{
+    ViewData["Title"] = "Horticulture Catalog";
+    var type = (Agrumy.Shared.Models.HorticultureCatalogType)ViewBag.CatalogType;
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Horticulture Catalog</h3>
+        <div class="card-tools">
+            <a asp-action="Create" asp-route-type="@type" class="btn btn-sm btn-info">Add New</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs mb-3">
+            @foreach (var tab in Enum.GetValues<Agrumy.Shared.Models.HorticultureCatalogType>())
+            {
+                <li class="nav-item">
+                    <a class="nav-link @(tab == type ? "active" : "")" asp-action="Index" asp-route-type="@tab">
+                        @(tab switch { Agrumy.Shared.Models.HorticultureCatalogType.Crop => "Crop culture", Agrumy.Shared.Models.HorticultureCatalogType.Perma => "Permaculture", Agrumy.Shared.Models.HorticultureCatalogType.Hydroponic => "Hydroponics", _ => tab.ToString() })
+                    </a>
+                </li>
+            }
+        </ul>
+
+        <p class="text-secondary small">
+            Applying an entry to a zone (from the zone's own page) generates a starter set of rules
+            from its Air Temp/Air Humidity/Soil Moisture/Light ranges - Soil pH/EC/CO2 are recorded
+            here for reference only, no matching actuator exists to automate them yet.
+        </p>
+
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Air Temp (°C)</th>
+                    <th>Air Humidity (%)</th>
+                    <th>Soil Moisture (%)</th>
+                    <th>Light (lx)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model)
+                {
+                    <tr>
+                        <td>@entry.Name</td>
+                        <td>@entry.AirTempMin - @entry.AirTempMax</td>
+                        <td>@entry.AirHumidityMin - @entry.AirHumidityMax</td>
+                        <td>@entry.SoilMoistureMin - @entry.SoilMoistureMax</td>
+                        <td>@entry.LightMin - @entry.LightMax</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Edit" asp-route-type="@type" asp-route-id="@entry.ID" class="btn btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <form asp-action="Delete" method="post" class="d-inline">
+                                    <input type="hidden" name="type" value="@type" />
+                                    <input type="hidden" name="id" value="@entry.ID" />
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Delete this catalog entry?');"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

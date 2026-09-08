@@ -228,6 +228,12 @@
                         @if (User.IsInRole(RoleNames.GlobalAdmin))
                         {
                             <li class="nav-item">
+                                <a asp-area="" asp-controller="HorticultureCatalog" asp-action="Index" class="nav-link @navActive("HorticultureCatalog")">
+                                    <i class="nav-icon bi bi-flower1"></i>
+                                    <p>@Localizer["Horticulture Catalog"]</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a asp-area="" asp-controller="Firmware" asp-action="Index" class="nav-link @navActive("Firmware")">
                                     <i class="nav-icon bi bi-cpu"></i>
                                     <p>@Localizer["Firmware"]</p>

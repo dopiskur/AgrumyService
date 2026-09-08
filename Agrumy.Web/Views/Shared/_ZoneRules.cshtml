@@ -33,6 +33,49 @@
 
 <partial name="_RuleEditor" model="ruleEditorModel" />
 
+@{
+    (string Label, IList<HorticultureCatalogEntry> Entries)[] catalogs =
+    [
+        ("Crop", Model.CropCatalog),
+        ("Perma", Model.PermaCatalog),
+        ("Hydroponic", Model.HydroponicCatalog),
+    ];
+}
+@if (catalogs.Any(c => c.Entries.Count > 0))
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="fw-semibold">Apply Horticulture Catalog template</h6>
+            <p class="text-secondary small">
+                Adds a starter set of rules from the picked entry's recommended ranges - a reasonable
+                default, not a finished configuration. Fine-tune (or delete) the generated rules above
+                afterward like any other rule.
+            </p>
+            @foreach (var (label, entries) in catalogs)
+            {
+                if (entries.Count == 0)
+                {
+                    continue;
+                }
+                <form asp-action="ApplyHorticultureCatalog" method="post" class="d-flex align-items-end gap-2 mb-2">
+                    <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.Zone!.IDDeviceFarmUnitZone" />
+                    <input type="hidden" name="catalogType" value="@label" />
+                    <div>
+                        <label class="form-label small mb-0">@label</label>
+                        <select name="catalogId" class="form-select form-select-sm" style="min-width:16rem">
+                            @foreach (var entry in entries)
+                            {
+                                <option value="@entry.ID">@entry.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Apply</button>
+                </form>
+            }
+        </div>
+    </div>
+}
+
 <div class="card mb-3" id="manualActuateCard">
     <div class="card-body">
         <h6 class="fw-semibold">Manual actuate</h6>

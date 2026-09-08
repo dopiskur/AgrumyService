@@ -442,10 +442,16 @@ namespace Agrumy.Web.Controllers.View
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             IList<DeviceFarmUnitZoneRule> rules = [];
             IList<DeviceManualOverride> manualOverrides = [];
+            IList<HorticultureCatalogEntry> cropCatalog = [];
+            IList<HorticultureCatalogEntry> permaCatalog = [];
+            IList<HorticultureCatalogEntry> hydroponicCatalog = [];
             if (hasController)
             {
                 rules = await api.DeviceFarmUnitZoneRulesGet(idDeviceFarmUnitZone);
                 manualOverrides = await api.DeviceFarmUnitZoneManualActuateStatus(idDeviceFarmUnitZone);
+                cropCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop);
+                permaCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Perma);
+                hydroponicCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Hydroponic);
             }
 
             // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
@@ -461,6 +467,9 @@ namespace Agrumy.Web.Controllers.View
                 Zone = zone,
                 Rules = rules,
                 ManualOverrides = manualOverrides,
+                CropCatalog = cropCatalog,
+                PermaCatalog = permaCatalog,
+                HydroponicCatalog = hydroponicCatalog,
                 DiscoveredDevices = await api.DiscoveryResultsGet(null, idDeviceFarmUnitZone),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
                 UnitName = unit.DeviceFarmUnitName,
@@ -471,6 +480,18 @@ namespace Agrumy.Web.Controllers.View
                 Zones = ctx.Zones,
                 WidgetData = ctx.WidgetData,
             };
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ApplyHorticultureCatalog(int idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId)
+        {
+            HorticultureCatalogApplyResult result = await api.HorticultureCatalogApplyToZone(idDeviceFarmUnitZone, catalogType, catalogId);
+            TempData["Message"] = result.RulesSkipped.Count == 0
+                ? $"Added {result.RulesAdded} rule(s) from the catalog template."
+                : $"Added {result.RulesAdded} rule(s); skipped {result.RulesSkipped.Count} (zone's rule limit reached): {string.Join(", ", result.RulesSkipped)}.";
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

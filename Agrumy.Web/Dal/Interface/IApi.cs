@@ -295,6 +295,26 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Zone/Rule")]
         Task DeviceFarmUnitZoneRuleDelete(int? idDeviceFarmUnitZoneRule);
 
+        // ---- Horticulture Catalog -------------------------------
+
+        [Get("/api/HorticultureCatalog")]
+        Task<IList<HorticultureCatalogEntry>> HorticultureCatalogGet(HorticultureCatalogType type);
+
+        [Get("/api/HorticultureCatalog/ById")]
+        Task<HorticultureCatalogEntry> HorticultureCatalogGetById(HorticultureCatalogType type, int id);
+
+        [Post("/api/HorticultureCatalog")]
+        Task<HorticultureCatalogEntry> HorticultureCatalogAdd(HorticultureCatalogType type, [Body] HorticultureCatalogEntry entry);
+
+        [Put("/api/HorticultureCatalog")]
+        Task HorticultureCatalogUpdate(HorticultureCatalogType type, [Body] HorticultureCatalogEntry entry);
+
+        [Delete("/api/HorticultureCatalog")]
+        Task HorticultureCatalogDelete(HorticultureCatalogType type, int id);
+
+        [Post("/api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog")]
+        Task<HorticultureCatalogApplyResult> HorticultureCatalogApplyToZone(int idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId);
+
         [Get("/api/DeviceFarmUnit/Unit/Rule")]
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmUnitRulesGet(int? idDeviceFarmUnit);
 

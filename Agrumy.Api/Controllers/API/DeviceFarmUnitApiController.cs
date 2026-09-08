@@ -2,6 +2,7 @@ using Agrumy.Shared;
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Quota;
+using Agrumy.Rules;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Utils;
@@ -13,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
-    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation, Agrumy.Api.Devices.RuleScopeConflictService ruleScopeConflict) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation, Agrumy.Api.Devices.RuleScopeConflictService ruleScopeConflict, IHorticultureCatalogRepository horticultureCatalogRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -416,6 +417,46 @@ namespace Agrumy.Api.Controllers.API
             rule.ExperimentID = null;
             rule.TenantID = zone!.TenantID ?? CallerTenantId ?? 0;
             return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForZoneAsync(zone.IDDeviceFarmUnitZone!.Value)).Count, scopeLabel: $"zone {rule.DeviceFarmUnitZoneID}");
+        }
+
+        /// Reuses AddRuleAsync per generated rule (same validation/cap-check/audit as adding one rule by hand) - a catalog entry's ranges are a starting point, not guaranteed to fit if the zone is already near its rule-count cap.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Zone/ApplyHorticultureCatalog")]
+        public async Task<ActionResult<HorticultureCatalogApplyResult>> ApplyHorticultureCatalog(int? idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId)
+        {
+            var (zone, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+
+            HorticultureCatalogEntry? entry = await horticultureCatalogRepo.CatalogGetByIdAsync(catalogType, catalogId);
+            if (entry == null)
+            {
+                return NotFound("Catalog entry not found.");
+            }
+
+            int zoneId = zone!.IDDeviceFarmUnitZone!.Value;
+            IList<DeviceFarmUnitZoneRule> templateRules = HorticultureRuleTemplateBuilder.BuildRules(entry, zoneId);
+            int existingCount = (await deviceFarmUnitRepo.RulesGetForZoneAsync(zoneId)).Count;
+            int added = 0;
+            var skipped = new List<string>();
+            foreach (DeviceFarmUnitZoneRule rule in templateRules)
+            {
+                rule.TenantID = zone.TenantID ?? CallerTenantId ?? 0;
+                ActionResult<RuleAddResult> result = await AddRuleAsync(rule, existingCount + added, scopeLabel: $"zone {zoneId}");
+                if (result.Result is OkObjectResult)
+                {
+                    added++;
+                }
+                else
+                {
+                    skipped.Add(rule.Name);
+                }
+            }
+
+            await WriteAuditAsync("DeviceFarmUnitZone.HorticultureCatalogApplied", zone.TenantID, "DeviceFarmUnitZone", zoneId.ToString(), $"{catalogType}/{entry.Name}: {added} rule(s) added");
+            return Ok(new HorticultureCatalogApplyResult { RulesAdded = added, RulesSkipped = skipped });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

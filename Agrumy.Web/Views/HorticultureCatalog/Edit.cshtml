@@ -1,0 +1,90 @@
+@model Agrumy.Web.ViewModels.HorticultureCatalogEditViewModel
+@{
+    ViewData["Title"] = Model.Entry.ID is int ? "Edit Catalog Entry" : "Add Catalog Entry";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">@ViewData["Title"] - @Model.CatalogType</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="Save">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="CatalogType" />
+            <input type="hidden" asp-for="Entry.ID" />
+
+            <div class="mb-3">
+                <label asp-for="Entry.Name" class="form-label"></label>
+                <input asp-for="Entry.Name" class="form-control" required />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Entry.Description" class="form-label"></label>
+                <textarea asp-for="Entry.Description" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="row g-3" style="max-width:48rem">
+                <div class="col-6">
+                    <label class="form-label">Air Temp Min / Max (°C)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.AirTempMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.AirTempMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Soil Temp Min / Max (°C)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.SoilTempMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.SoilTempMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Air Humidity Min / Max (%)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.AirHumidityMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.AirHumidityMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Soil Moisture Min / Max (%)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.SoilMoistureMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.SoilMoistureMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Light Min / Max (lx)</label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.LightMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.LightMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Soil pH Min / Max <span class="text-muted">(reference only)</span></label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.SoilPHMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.SoilPHMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Soil EC Min / Max <span class="text-muted">(reference only)</span></label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.SoilECMin" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.SoilECMax" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">CO2 Min / Max (ppm) <span class="text-muted">(reference only)</span></label>
+                    <div class="d-flex gap-2">
+                        <input asp-for="Entry.Co2Min" type="number" step="any" class="form-control" />
+                        <input asp-for="Entry.Co2Max" type="number" step="any" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-action="Index" asp-route-type="@Model.CatalogType" class="btn btn-outline-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+</div>
