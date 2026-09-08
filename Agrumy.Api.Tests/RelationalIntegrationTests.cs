@@ -327,11 +327,11 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             : "SELECT TABLE_NAME AS Value FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()";
         var tables = await db.Database.SqlQueryRaw<string>(sql).ToListAsync();
 
-        foreach (var name in new[] { "tenant", "user", "userRole", "userRoleScope",
+        foreach (var name in new[] { "tenant", "user", "userRole",
             "device", "deviceFarmUnit", "deviceFarmUnitZone", "deviceType", "deviceTypeService",
             "deviceTypeRelay", "deviceTypeSensor", "deviceConfigSensor", "deviceConfigController",
-            "deviceFirmware", "deviceDiagnostic", "sensorData", "sensorDataReport", "eventDevice",
-            "eventService", "serverConfig" })
+            "deviceFirmware", "deviceDiagnostic", "dataSensor", "sensorDataReport", "eventDevice",
+            "serverConfig" })
         {
             Assert.Contains(name, tables);
         }

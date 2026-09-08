@@ -438,15 +438,15 @@ namespace Agrumy.Dal
 
             modelBuilder.Entity<SensorDataRow>(e =>
             {
-                e.ToTable("sensorData");
+                e.ToTable("dataSensor");
                 e.HasKey(x => x.IDSensorData);
                 e.Property(x => x.IDSensorData).ValueGeneratedOnAdd();
                 // Legacy Battery/Moisture/WaterLevel are tinyint(1); the DTO exposes them as int, so a fresh DB uses int (old tinyint(1) columns still read fine).
                 e.HasIndex(x => new { x.DeviceID, x.TenantID, x.DateCreated })
-                 .HasDatabaseName("ix_sensorData_device_tenant_date");
+                 .HasDatabaseName("ix_dataSensor_device_tenant_date");
                 e.HasIndex(x => new { x.DeviceFarmUnitZoneID, x.DateCreated })
-                 .HasDatabaseName("ix_sensorData_deviceFarmUnitZone_date"); // The 24h trend sparkline query filters directly by zone, not by device.
-                // Legacy fk_sensorData_* (no FK on sensorData.TenantID).
+                 .HasDatabaseName("ix_dataSensor_deviceFarmUnitZone_date"); // The 24h trend sparkline query filters directly by zone, not by device.
+                // Legacy fk_sensorData_* (no FK on dataSensor.TenantID).
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitZoneRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitZoneID).OnDelete(DeleteBehavior.NoAction);
@@ -454,10 +454,10 @@ namespace Agrumy.Dal
 
             modelBuilder.Entity<ControllerDataRow>(e =>
             {
-                e.ToTable("controllerData");
+                e.ToTable("dataController");
                 e.HasKey(x => x.IDControllerData);
                 e.Property(x => x.IDControllerData).ValueGeneratedOnAdd();
-                e.HasIndex(x => new { x.DeviceID, x.RelayFunction }).IsUnique().HasDatabaseName("ux_controllerData_device_relayFunction");
+                e.HasIndex(x => new { x.DeviceID, x.RelayFunction }).IsUnique().HasDatabaseName("ux_dataController_device_relayFunction");
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
             });
 

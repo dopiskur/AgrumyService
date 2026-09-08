@@ -239,12 +239,12 @@ namespace Agrumy.Api.Dal
                 try
                 {
                     isHypertable = await db.Database.SqlQueryRaw<int>(
-                        "SELECT COUNT(*)::int FROM timescaledb_information.hypertables WHERE hypertable_name = 'sensorData'")
+                        "SELECT COUNT(*)::int FROM timescaledb_information.hypertables WHERE hypertable_name = 'dataSensor'")
                         .FirstAsync(ct) > 0;
                 }
                 catch (PostgresException)
                 {
-                    // TimescaleDB extension not installed - sensorData is a plain table here (like MariaDB, minus the OPTIMIZE-TABLE shrink step below).
+                    // TimescaleDB extension not installed - dataSensor is a plain table here (like MariaDB, minus the OPTIMIZE-TABLE shrink step below).
                     isHypertable = false;
                 }
 
@@ -252,7 +252,7 @@ namespace Agrumy.Api.Dal
                 {
                     // drop_chunks deletes whole chunk files (space returned immediately, unlike DELETE) - the embedded double-quotes keep the regclass cast from lowercasing this mixed-case table name.
                     await db.Database.ExecuteSqlInterpolatedAsync(
-                        $"""SELECT drop_chunks('"sensorData"'::regclass, older_than => {cutoffUtc});""", ct);
+                        $"""SELECT drop_chunks('"dataSensor"'::regclass, older_than => {cutoffUtc});""", ct);
                     return;
                 }
 
@@ -265,7 +265,7 @@ namespace Agrumy.Api.Dal
             do
             {
                 deletedRows = await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"DELETE FROM `sensorData` WHERE `DateCreated` < {cutoffUtc} LIMIT {PurgeBatchSize}", ct);
+                    $"DELETE FROM `dataSensor` WHERE `DateCreated` < {cutoffUtc} LIMIT {PurgeBatchSize}", ct);
                 if (deletedRows == PurgeBatchSize)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
@@ -275,7 +275,7 @@ namespace Agrumy.Api.Dal
             if (shrinkAfterPurge)
             {
                 // InnoDB never shrinks its .ibd file on a plain DELETE - OPTIMIZE TABLE is the locking rebuild that actually returns space, only run when the admin opts in since it can take a long time.
-                await db.Database.ExecuteSqlRawAsync("OPTIMIZE TABLE `sensorData`;", ct);
+                await db.Database.ExecuteSqlRawAsync("OPTIMIZE TABLE `dataSensor`;", ct);
             }
         }
 

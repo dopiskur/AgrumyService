@@ -242,18 +242,18 @@ namespace Agrumy.Api.Dal
             try
             {
                 await db.Database.ExecuteSqlRawAsync(
-                    """SELECT remove_retention_policy('"sensorData"'::regclass, if_exists => true);""");
+                    """SELECT remove_retention_policy('"dataSensor"'::regclass, if_exists => true);""");
 
                 if (retentionDays is > 0)
                 {
                     await db.Database.ExecuteSqlInterpolatedAsync(
-                        $"""SELECT add_retention_policy('"sensorData"'::regclass, INTERVAL '1 day' * {retentionDays.Value}, if_not_exists => true);""");
+                        $"""SELECT add_retention_policy('"dataSensor"'::regclass, INTERVAL '1 day' * {retentionDays.Value}, if_not_exists => true);""");
                 }
             }
             catch (PostgresException ex)
             {
                 logger.LogWarning(ex,
-                    "Could not apply sensorData retention policy; automatic PostgreSQL retention stays inactive.");
+                    "Could not apply dataSensor retention policy; automatic PostgreSQL retention stays inactive.");
             }
         }
 

@@ -82,7 +82,7 @@ namespace Agrumy.Api.Dal
             logger.LogWarning("Legacy EnsureCreated schema detected (device table exists, no migrations history) - marked {MigrationId} as already applied", baselineMigrationId);
         }
 
-        /// TimescaleDB requires the partitioning column in every unique constraint including the PK, so this widens sensorData's PK from IDSensorData alone to (IDSensorData, DateCreated) - no-op on MySQL/Pomelo.
+        /// TimescaleDB requires the partitioning column in every unique constraint including the PK, so this widens dataSensor's PK from IDSensorData alone to (IDSensorData, DateCreated) - no-op on MySQL/Pomelo.
         private async Task EnsureTimescaleHypertableAsync()
         {
             if (!db.Database.IsNpgsql())
@@ -97,7 +97,7 @@ namespace Agrumy.Api.Dal
             catch (PostgresException ex)
             {
                 logger.LogWarning(ex,
-                    "TimescaleDB extension unavailable on this PostgreSQL server; sensorData stays a plain table.");
+                    "TimescaleDB extension unavailable on this PostgreSQL server; dataSensor stays a plain table.");
                 return;
             }
 
@@ -108,16 +108,16 @@ namespace Agrumy.Api.Dal
                   pk_name text;
                 BEGIN
                   IF NOT EXISTS (
-                    SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'sensorData'
+                    SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = 'dataSensor'
                   ) THEN
                     SELECT conname INTO pk_name FROM pg_constraint
-                      WHERE conrelid = '"sensorData"'::regclass AND contype = 'p';
+                      WHERE conrelid = '"dataSensor"'::regclass AND contype = 'p';
                     IF pk_name IS NOT NULL THEN
-                      EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'sensorData', pk_name);
+                      EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'dataSensor', pk_name);
                     END IF;
-                    ALTER TABLE "sensorData" ADD PRIMARY KEY ("IDSensorData", "DateCreated");
-                    -- create_hypertable's first parameter is REGCLASS: an unquoted literal here folds to lowercase and misses this mixed-case table - the embedded double quotes below make it match "sensorData" exactly.
-                    PERFORM create_hypertable('"sensorData"', 'DateCreated', migrate_data => true, if_not_exists => true);
+                    ALTER TABLE "dataSensor" ADD PRIMARY KEY ("IDSensorData", "DateCreated");
+                    -- create_hypertable's first parameter is REGCLASS: an unquoted literal here folds to lowercase and misses this mixed-case table - the embedded double quotes below make it match "dataSensor" exactly.
+                    PERFORM create_hypertable('"dataSensor"', 'DateCreated', migrate_data => true, if_not_exists => true);
                   END IF;
                 END $$;
                 """;

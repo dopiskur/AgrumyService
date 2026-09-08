@@ -94,9 +94,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasIndex("DeviceID", "RelayFunction")
                         .IsUnique()
-                        .HasDatabaseName("ux_controllerData_device_relayFunction");
+                        .HasDatabaseName("ux_dataController_device_relayFunction");
 
-                    b.ToTable("controllerData", (string)null);
+                    b.ToTable("dataController", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceCommandRow", b =>
@@ -1425,12 +1425,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasIndex("DeviceFarmUnitID");
 
                     b.HasIndex("DeviceFarmUnitZoneID", "DateCreated")
-                        .HasDatabaseName("ix_sensorData_deviceFarmUnitZone_date");
+                        .HasDatabaseName("ix_dataSensor_deviceFarmUnitZone_date");
 
                     b.HasIndex("DeviceID", "TenantID", "DateCreated")
-                        .HasDatabaseName("ix_sensorData_device_tenant_date");
+                        .HasDatabaseName("ix_dataSensor_device_tenant_date");
 
-                    b.ToTable("sensorData", (string)null);
+                    b.ToTable("dataSensor", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.ServerConfigRow", b =>
