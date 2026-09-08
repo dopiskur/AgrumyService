@@ -732,12 +732,51 @@ namespace Agrumy.Web.Controllers.View
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        public async Task<ActionResult> GlobalRules() => View(new RuleEditorViewModel
+        public async Task<ActionResult> GlobalRules() => View(new GlobalRulesPageViewModel
         {
-            Scope = RuleScope.Global,
-            Rules = await api.GlobalRulesGet(),
-            RedirectActionName = nameof(GlobalRules),
+            Editor = new RuleEditorViewModel
+            {
+                Scope = RuleScope.Global,
+                Rules = await api.GlobalRulesGet(),
+                RedirectActionName = nameof(GlobalRules),
+            },
+            AllRules = await BuildRuleOverviewAsync(),
         });
+
+        /// Flattens every scope's rules into one tenant-wide list for GlobalRules' overview table - N+1 by design (one page load, not a hot path), same tradeoff as BuildZoneOptionsAsync above.
+        private async Task<IList<RuleOverviewRow>> BuildRuleOverviewAsync()
+        {
+            var rows = new List<RuleOverviewRow>();
+            foreach (DeviceFarmUnitZoneRule rule in await api.GlobalRulesGet())
+            {
+                rows.Add(new RuleOverviewRow { Rule = rule, ScopeLabel = "Global", DetailUrl = Url.Action(nameof(GlobalRules))! });
+            }
+            foreach (DeviceFarm farm in await api.DeviceFarmsGet())
+            {
+                if (farm.IDDeviceFarm is not int farmId) { continue; }
+                foreach (DeviceFarmUnitZoneRule rule in await api.DeviceFarmRulesGet(farmId))
+                {
+                    rows.Add(new RuleOverviewRow { Rule = rule, ScopeLabel = $"Farm: {farm.DeviceFarmName}", DetailUrl = Url.Action(nameof(DeviceFarmRules), new { idDeviceFarm = farmId })! });
+                }
+            }
+            foreach (DeviceFarmUnit unit in await api.DeviceFarmUnitsGet())
+            {
+                if (unit.IDDeviceFarmUnit is not int unitId) { continue; }
+                foreach (DeviceFarmUnitZoneRule rule in await api.DeviceFarmUnitRulesGet(unitId))
+                {
+                    rows.Add(new RuleOverviewRow { Rule = rule, ScopeLabel = $"Unit: {unit.DeviceFarmUnitName}", DetailUrl = Url.Action(nameof(UnitRules), new { idDeviceFarmUnit = unitId })! });
+                }
+                foreach (DeviceFarmUnitZone zone in await api.DeviceFarmUnitZonesGet(unitId))
+                {
+                    if (zone.IDDeviceFarmUnitZone is not int zoneId) { continue; }
+                    foreach (DeviceFarmUnitZoneRule rule in await api.DeviceFarmUnitZoneRulesGet(zoneId))
+                    {
+                        rows.Add(new RuleOverviewRow { Rule = rule, ScopeLabel = $"Zone: {zone.DeviceFarmUnitZoneName}", DetailUrl = Url.Action(nameof(Zone), new { idDeviceFarmUnitZone = zoneId })! });
+                    }
+                }
+            }
+            return rows;
+        }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]

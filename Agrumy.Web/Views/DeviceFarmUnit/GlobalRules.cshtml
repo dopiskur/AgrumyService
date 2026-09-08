@@ -1,4 +1,4 @@
-@model RuleEditorViewModel
+@model GlobalRulesPageViewModel
 @{
     ViewData["Title"] = "Global rules";
 }
@@ -19,9 +19,44 @@
     <div class="alert alert-info">@scopeWarning</div>
 }
 
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">All rules</h3>
+    </div>
+    <div class="card-body table-responsive p-0">
+        <table id="allRulesTable" class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Scope</th>
+                    <th>Type</th>
+                    <th>Function / Name</th>
+                    <th>Safety</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (RuleOverviewRow row in Model.AllRules)
+                {
+                    <tr>
+                        <td>@row.ScopeLabel</td>
+                        <td>@row.Rule.ActionType</td>
+                        <td>@(row.Rule.ActionType == ActionType.Relay ? row.Rule.RelayFunction!.Value.ToString() : row.Rule.Name)</td>
+                        <td>@(row.Rule.IsSafetyRule ? "Yes" : "")</td>
+                        <td><a href="@row.DetailUrl" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <p class="text-secondary">
     Applies to every unit/zone you own that doesn't define its own rule for the same
-    function/metric - the least specific level of the Zone &gt; Unit &gt; Global precedence.
+    function/metric - the least specific level of the Zone &gt; Unit &gt; Farm &gt; Global precedence.
 </p>
 
-<partial name="_RuleEditor" model="Model" />
+<partial name="_RuleEditor" model="Model.Editor" />
+
+@section Scripts {
+    <partial name="_DataTableScripts" model="@("allRulesTable")" />
+}

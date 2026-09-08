@@ -56,4 +56,19 @@ namespace Agrumy.Web.ViewModels
         /// Which page RuleAdd/RuleDelete redirect back to, so this same partial works unmodified across all three host pages.
         public required string RedirectActionName { get; init; }
     }
+
+    /// One row of GlobalRules' flat, searchable overview across every scope in the tenant - a triage list, not a detail view, so it carries only what the table shows plus a link to the rule's own scope page for editing.
+    public class RuleOverviewRow
+    {
+        public required DeviceFarmUnitZoneRule Rule { get; init; }
+        public required string ScopeLabel { get; init; }
+        public required string DetailUrl { get; init; }
+    }
+
+    /// GlobalRules page model - the tenant-wide overview table (AllRules) plus the existing Global-scope rule editor (Editor), which still lives on this same page for actually adding/removing Global-scope rules.
+    public class GlobalRulesPageViewModel
+    {
+        public required RuleEditorViewModel Editor { get; init; }
+        public required IList<RuleOverviewRow> AllRules { get; init; }
+    }
 }
