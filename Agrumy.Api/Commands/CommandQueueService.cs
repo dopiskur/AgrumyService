@@ -64,8 +64,8 @@ namespace Agrumy.Api.Commands
             return await IssueToTargetsAsync(targets, actionType);
         }
 
-        /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else tenant-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
-        public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId)
+        /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else farm, else tenant-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
+        public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId, int? farmId = null)
         {
             IList<Device> targets;
             string notFoundMessage;
@@ -78,6 +78,11 @@ namespace Agrumy.Api.Commands
             {
                 targets = await unitRepo.DeviceFarmUnitGetSensorsAsync(uid);
                 notFoundMessage = $"Unit {uid} has no sensor-only devices across any of its zones.";
+            }
+            else if (farmId is int fid)
+            {
+                targets = await unitRepo.DeviceFarmGetSensorsAsync(fid);
+                notFoundMessage = $"Farm {fid} has no sensor-only devices across any of its units.";
             }
             else
             {

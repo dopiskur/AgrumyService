@@ -56,9 +56,15 @@ else
             <div class="card-header">
                 <h3 class="card-title">@farm.DeviceFarmName</h3>
                 <div class="float-end d-flex gap-2">
-                    <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                    <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-diagram-3"></i> Automation rules
+                    </a>
                     @if (canManage)
                     {
+                        <form asp-action="ScanFarm" method="post" class="d-inline">
+                            <input type="hidden" name="FarmID" value="@farm.IDDeviceFarm" />
+                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                        </form>
                         <form asp-action="FarmRename" method="post" class="d-flex gap-1">
                             <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
                             <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />

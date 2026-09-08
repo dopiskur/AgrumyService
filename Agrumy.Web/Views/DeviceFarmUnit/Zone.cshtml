@@ -46,7 +46,13 @@
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">Discovered devices</h3>
-            <div class="float-end">
+            <div class="float-end d-flex gap-2">
+                @if (hasController)
+                {
+                    <a href="#ruleEditorCard" class="btn btn-sm btn-outline-primary text-nowrap">
+                        <i class="bi bi-diagram-3"></i> Automation rules
+                    </a>
+                }
                 <form asp-action="ScanZone" method="post">
                     <input type="hidden" name="UnitID" value="@zone.IDDeviceFarmUnit" />
                     <input type="hidden" name="ZoneID" value="@zone.IDDeviceFarmUnitZone" />

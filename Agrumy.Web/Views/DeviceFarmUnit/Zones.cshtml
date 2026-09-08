@@ -83,7 +83,10 @@
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">Discovered devices</h3>
-            <div class="float-end">
+            <div class="float-end d-flex gap-2">
+                <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="bi bi-diagram-3"></i> Automation rules
+                </a>
                 <form asp-action="ScanUnit" method="post">
                     <input type="hidden" name="UnitID" value="@Model.Unit.IDDeviceFarmUnit" />
                     <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
@@ -109,9 +112,6 @@
         {
             <div class="float-end d-flex align-items-center gap-3">
                 <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Unit, TargetId = Model.Unit.IDDeviceFarmUnit!.Value }" />
-                <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
-                    <i class="bi bi-diagram-3"></i> Unit rules
-                </a>
                 <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitWifiUpdateModal">
                     <i class="bi bi-wifi"></i> Switch network
                 </button>

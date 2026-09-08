@@ -6,6 +6,15 @@
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
 }
 
+@if (TempData["Message"] is string scanMessage)
+{
+    <div class="alert alert-success">@scanMessage</div>
+}
+@if (TempData["Error"] is string scanError)
+{
+    <div class="alert alert-warning">@scanError</div>
+}
+
 @* Live-refreshed as a whole (10s) - farm cards and their nested unit cubes are one structural unit now, not two separately-refreshed pieces, so a farm's Rules/Rename/Delete controls live inside the same poll target as its units. *@
 <div id="farmsAndUnits">
     <partial name="_FarmsAndUnits" model="new GroupedUnitCubesViewModel { Units = Model.Units, Farms = Model.Farms }" />
@@ -34,7 +43,13 @@
                     }
                     @if (Model.Farms.Count == 1)
                     {
-                        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-diagram-3"></i> Automation rules
+                        </a>
+                        <form asp-action="ScanFarm" method="post" class="d-inline">
+                            <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
+                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                        </form>
                     }
                 </div>
             </div>

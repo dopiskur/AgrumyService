@@ -129,6 +129,23 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ScanFarm(DiscoveryScanRequest request)
+        {
+            try
+            {
+                await api.DiscoveryScan(request);
+                TempData["Message"] = "Scan started - discovered devices will appear on each unit/zone's own page shortly.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Farms));
+        }
+
         /// Whole-object PUT semantics (same as UnitRename) - fetches the unit first so DeviceFarmUnitName isn't wiped by a partial payload. idDeviceFarm null unassigns.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]

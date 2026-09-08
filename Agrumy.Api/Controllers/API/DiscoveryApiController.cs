@@ -61,9 +61,17 @@ namespace Agrumy.Api.Controllers.API
                     return error;
                 }
             }
+            else if (request.FarmID is int farmId)
+            {
+                var (_, error) = await EnsureOwnedFarmAsync(farmId, forWrite: true);
+                if (error != null)
+                {
+                    return error;
+                }
+            }
 
             int? tenantId = CallerManagesDevicesGlobally ? null : CallerTenantId;
-            IssueCommandResult result = await commandQueue.IssueScanCommandAsync(tenantId, request.UnitID, request.ZoneID);
+            IssueCommandResult result = await commandQueue.IssueScanCommandAsync(tenantId, request.UnitID, request.ZoneID, request.FarmID);
             return result.Outcome switch
             {
                 IssueCommandOutcome.Success => Ok(result.CreatedCommandIds),
@@ -286,6 +294,9 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int idDeviceFarmUnit, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit), u => u.TenantID, "Unit", forWrite);
+
+        private Task<(DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 
         private Task<(TenantWifiConfig? Config, ActionResult? Error)> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
             EnsureOwnedDeviceEntityAsync(() => tenantRepo.TenantWifiConfigGetByIdAsync(idTenantWifiConfig), c => (int?)c.TenantID, "WiFi network", forWrite: true);

@@ -7,11 +7,12 @@ namespace Agrumy.Shared.Models
         public int? Rssi { get; set; }
     }
 
-    /// Body of POST /api/Discovery/Scan - both null means Fleet-wide; ZoneID takes precedence over UnitID when both are given.
+    /// Body of POST /api/Discovery/Scan - all null means Fleet-wide; precedence when more than one is set is Zone > Unit > Farm, same cascade order as rule scoping.
     public class DiscoveryScanRequest
     {
         public int? UnitID { get; set; }
         public int? ZoneID { get; set; }
+        public int? FarmID { get; set; }
     }
 
     /// One row per unique DiscoveredApMac in GET /api/Discovery/Results - see Agrumy.Api.Utils.DiscoveryResultPicker for the best-report/tiebreak rule.
