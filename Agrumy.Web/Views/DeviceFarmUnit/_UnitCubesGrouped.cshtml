@@ -8,7 +8,7 @@
 }
 @if (!multipleFarms)
 {
-    @* Roadmap #429 - a lone farm still isn't shown as its own object (no heading), but "add unit to farm" stays available - only the grouping chrome disappears, not the capability. *@
+    @* A lone farm still isn't shown as its own object (no heading), but "add unit to farm" stays available - only the grouping chrome disappears, not the capability. *@
     @if (canManage && Model.Farms.Count == 1 && unassigned.Count > 0)
     {
         <div class="col-12 mb-2">

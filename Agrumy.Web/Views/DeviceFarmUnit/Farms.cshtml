@@ -34,7 +34,7 @@
             @foreach (var farm in Model.Farms)
             {
                 var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
-                @* Roadmap #429 - the per-farm unit list used to live here too, duplicating the Unit cubes below in a second visual style; assign/unassign now lives exclusively on those cubes. Point 3: while this is the ONLY farm, there's no wrapper at all (not just a hidden header) - a farm becomes its own bordered object only once a second one exists. *@
+                @* The per-farm unit list used to live here too, duplicating the Unit cubes below in a second visual style; assign/unassign now lives exclusively on those cubes. While this is the ONLY farm, there's no wrapper at all (not just a hidden header) - a farm becomes its own bordered object only once a second one exists. *@
                 @if (multipleFarms)
                 {
                     <div class="border rounded p-3 mb-3">
@@ -69,7 +69,7 @@
     </div>
 </div>
 
-@* Roadmap #238's dashboard wizard moved to Index, so the Unit/Zone cube browser that used to live there moved here instead. *@
+@* The Dashboard wizard moved to Index, so the Unit/Zone cube browser that used to live there moved here instead. *@
 <div class="card mt-3">
     <div class="card-header">
         <h3 class="card-title">Units</h3>
@@ -94,7 +94,7 @@
     </div>
 </div>
 
-@* Roadmap #408 (b) - delete is now a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
+@* Delete is now a real destructive cascade (farm + its units/zones/devices all go to the Recycle Bin together), not the old "units survive, just unassigned" behavior - offer migrating units to another farm first when one exists. *@
 <form id="farmDeleteForm" asp-action="FarmDelete" method="post">
     <input type="hidden" id="farmDeleteId" name="idDeviceFarm" />
 </form>

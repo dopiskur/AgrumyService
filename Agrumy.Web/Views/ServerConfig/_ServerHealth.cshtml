@@ -2,7 +2,7 @@
 @model IReadOnlyList<ServerHealthEntry>
 
 @{
-    // Roadmap #419 - passive, auto-refreshing (live-refresh.js polls ServerConfigController.Health every 30s); only lists a dependency currently enabled/configured in ServerConfig, see ServerHealthService.
+    // Passive, auto-refreshing (live-refresh.js polls ServerConfigController.Health every 30s); only lists a dependency currently enabled/configured in ServerConfig, see ServerHealthService.
     string Label(string name) => name switch
     {
         "database" => "Database",

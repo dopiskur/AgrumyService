@@ -115,7 +115,7 @@
     </div>
 </div>
 
-@* Roadmap #238 - widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. Read-only here; built/edited in the Dashboard wizard instead. *@
+@* Widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. Read-only here; built/edited in the Dashboard wizard instead. *@
 <partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Zone = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.Fleet, CanManage = false }" />
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {

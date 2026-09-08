@@ -28,7 +28,7 @@
             <input type="hidden" asp-for="EventDedupeMinutes" />
             <input type="hidden" asp-for="ProblemEventAlertsEnabled" />
             <input type="hidden" asp-for="ProblemEventExpiryHours" />
-            @* Data Archiving (roadmap #209) has its own dedicated save action (test-before-persist), never part of this form's own submit - these just carry the last-saved values along so saving any OTHER tab here doesn't reset them, same reasoning as the Firmware/Alerts fields above. *@
+            @* Data Archiving has its own dedicated save action (test-before-persist), never part of this form's own submit - these just carry the last-saved values along so saving any OTHER tab here doesn't reset them, same reasoning as the Firmware/Alerts fields above. *@
             <input type="hidden" asp-for="ArchiveEnabled" />
             <input type="hidden" asp-for="ArchiveCutoffMode" />
             <input type="hidden" asp-for="ArchiveCustomCutoffDate" />
@@ -300,7 +300,7 @@
 
                     <div class="tab-pane fade" id="subtab-archiving" role="tabpanel">
                         <p class="text-secondary">
-                            Roadmap #209 - MariaDB/MySQL only (PostgreSQL/TimescaleDB installs use
+                            MariaDB/MySQL only (PostgreSQL/TimescaleDB installs use
                             their own native tiered storage instead, see Data Retention). Moves
                             sensorData rows past the cutoff below to a separate database instead of
                             deleting them - opt-in, inactive until a connection is successfully
@@ -448,7 +448,7 @@
 
                 <div class="tab-pane fade" id="tab-gateway" role="tabpanel">
                     <p class="text-secondary">
-                        Roadmap #147/#225: Agrumy.Gateway forwards other devices' traffic through
+                        Agrumy.Gateway forwards other devices' traffic through
                         <code>POST /api/Gateway/Batch</code> instead of reporting its own sensors - a
                         local WiFi repeater (devices keep their own ApiKey, Gateway is a transparent
                         forwarder), a LoRa/ChirpStack gateway, or a LoRa private-protocol gateway
@@ -481,7 +481,7 @@
 
                 <div class="tab-pane fade" id="tab-mqtt" role="tabpanel">
                     <p class="text-secondary">
-                        Roadmap #146: opt-in, alongside the normal HTTP/JWT poll cycle, not a
+                        Opt-in, alongside the normal HTTP/JWT poll cycle, not a
                         replacement of it. When enabled, a newly-queued command is also published
                         immediately to this broker so a persistently-connected device can act on it
                         before its next poll - OTA/registration/firmware distribution stay on HTTP.

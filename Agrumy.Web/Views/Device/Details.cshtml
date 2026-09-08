@@ -148,7 +148,7 @@
         {
             <a asp-action="EditController" asp-route-idDevice="@Model.IDDevice" class="btn btn-primary">Controller config</a>
         }
-        @* Roadmap #403 - simulation controls moved entirely into the dedicated Simulations section (Add Simulation -> add this device to a session), no longer a direct link from this page. *@
+        @* Simulation controls moved entirely into the dedicated Simulations section (Add Simulation -> add this device to a session), no longer a direct link from this page. *@
         <a asp-action="Events" asp-route-idDevice="@Model.IDDevice" class="btn btn-secondary">Events</a>
         <a asp-action="Delete" asp-route-idDevice="@Model.IDDevice" class="btn btn-danger">Delete</a>
         @if (hasAnyRole(RoleNames.GlobalAdmin))

@@ -22,7 +22,7 @@
                 <div class="small-box-icon"><i class="bi bi-house-door"></i></div>
             </div>
         </a>
-        @* Roadmap #429 - assign/unassign now lives on the cube itself instead of a second, separate unit list on the Farms page; only a unit already assigned to a farm gets these (an unassigned unit is picked up via that farm's own "add unit" control instead). *@
+        @* Assign/unassign now lives on the cube itself instead of a second, separate unit list on the Farms page; only a unit already assigned to a farm gets these (an unassigned unit is picked up via that farm's own "add unit" control instead). *@
         @if (canManage && u.DeviceFarmID != null)
         {
             var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != u.DeviceFarmID).ToList();
