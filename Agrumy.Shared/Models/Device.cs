@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace Agrumy.Shared.Models
 {
@@ -447,6 +448,13 @@ namespace Agrumy.Shared.Models
         public double? EcCalibrationSlope { get; set; }
         public double? EcCalibrationOffset { get; set; }
 
+        /// Count of Sensor* type-selector fields set to a real (non-0/null) type - the calibration-only fields (BatteryDividerR1/R2, WeightCalibrationFactor/TareOffset, EcCalibrationSlope/Offset) aren't selectors themselves, so they're excluded.
+        public int EnabledSensorCount() => new[]
+        {
+            SensorBattery, SensorTemp, SensorTempSoil, SensorHumid, SensorMoist, SensorLight,
+            SensorCo2, SensorTvoc, SensorBarometer, SensorPH, SensorRainLevel, SensorWaterLevel,
+            SensorWind, SensorEc, SensorWeight,
+        }.Count(v => v is > 0);
     }
 
     /// Per-metric sensor-reading overrides for an already-registered physical device (Simulation Mode) - a null field means "use the real reading", Enabled=false ignores every field regardless of value.

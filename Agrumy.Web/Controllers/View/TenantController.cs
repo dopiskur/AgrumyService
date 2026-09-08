@@ -75,6 +75,45 @@ namespace Agrumy.Web.Controllers.View
             return options;
         }
 
+        // ---- Quota --------------------------------------------------------
+
+        /// The default tenant (IDTenant=0) has no configurable quota - GlobalAdmin never reaches this route for it (Index hides the button), but redirect defensively rather than surface a raw 404/400 if it's ever hit directly.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> Quota(int idTenant)
+        {
+            if (idTenant == 0)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            TenantQuota quota;
+            try
+            {
+                quota = await api.TenantQuotaGet(idTenant);
+            }
+            catch (ApiException ex) when (ex.StatusCode == 404)
+            {
+                quota = TenantQuota.Default(idTenant);
+            }
+            return View(quota);
+        }
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Quota(TenantQuota quota)
+        {
+            if (quota.IDTenant == 0)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            if (!ModelState.IsValid)
+            {
+                return View(quota);
+            }
+            await api.TenantQuotaSet(quota);
+            return RedirectToAction(nameof(Index));
+        }
+
         // ---- Export/Import --------------------------------------------------
 
         /// Streams the ZIP export straight through as a browser download, never written to this server's disk (see TenantApiController.Export - contains password hashes, device ApiKeys); narrowed to GlobalAdmin since a Global reader must not pull credentials out.

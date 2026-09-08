@@ -33,15 +33,20 @@ public class ApiControllerTests
     // Same appsettings.json binding TestConfig exposes elsewhere, so a token signed here and JwtTokenProvider.ValidateToken use the same key/issuer/audience.
     private static readonly IOptions<AgrumySettings> TestSettings = Options.Create(TestConfig.Settings);
 
+    // None of these tests are about quota behavior (that's TenantQuotaEnforcerTests) - every tenant is unlimited by default here.
+    public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
+
     // CommandQueueService is a plain sealed class (not mocked); IRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
+    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object);
+
     private DeviceApiController NewDeviceController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance);
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
-    private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings);
+    private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings, NewQuotaEnforcer());
     private DeviceCommandApiController NewDeviceCommandController() =>
         new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
@@ -60,7 +65,7 @@ public class ApiControllerTests
     private void AssertNoJobWasQueued() =>
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
-        new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer());
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object), new Agrumy.Api.Migration.TenantImportService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
@@ -548,7 +553,7 @@ public class ApiControllerTests
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
-            Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance);
+            Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
 
     [Fact]
@@ -839,6 +844,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.TenantGetAsync("Acme")).ReturnsAsync(true);
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(42);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        _repo.Setup(r => r.TenantQuotaGetAsync(42)).ReturnsAsync((TenantQuota?)null); // no quota governs this tenant in this test
 
         User? capturedUser = null;
         int? capturedExistingTenantId = null;
@@ -1264,6 +1270,7 @@ public class ApiControllerTests
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        _repo.Setup(r => r.TenantQuotaGetAsync(24)).ReturnsAsync((TenantQuota?)null); // no quota governs this tenant in this test
 
         var controller = NewUserController();
         SetCaller(controller, "admin", 24); // NOT tenant 0 - a regular Tenant admin, not Global admin

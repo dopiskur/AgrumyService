@@ -57,6 +57,8 @@ namespace Agrumy.Dal
 
         public DbSet<AuditLogRow> AuditLogs => Set<AuditLogRow>();
 
+        public DbSet<TenantQuotaRow> TenantQuotas => Set<TenantQuotaRow>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<TenantRow>(e =>
@@ -68,6 +70,14 @@ namespace Agrumy.Dal
                 e.Property(x => x.ScheduleTimeZone).HasMaxLength(64); // same cap as serverConfig.ScheduleTimeZone/user.TimeZone
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.HasIndex(x => x.TenantName).IsUnique().HasDatabaseName("Name_UNIQUE");
+            });
+
+            modelBuilder.Entity<TenantQuotaRow>(e =>
+            {
+                e.ToTable("tenantQuota");
+                e.HasKey(x => x.IDTenant);
+                e.Property(x => x.IDTenant).ValueGeneratedNever();
+                e.HasOne<TenantRow>().WithOne().HasForeignKey<TenantQuotaRow>(x => x.IDTenant).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<TenantWifiConfigRow>(e =>

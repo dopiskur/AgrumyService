@@ -218,11 +218,12 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
-        /// The scheduled half of marking - same per-tenant-retention logic as DeviceRecycleBinMarkPurgedByRetentionAsync, cascading Purged onto the farm's devices the same way DeviceFarmRecycleBinMarkPurgedAsync does for the manual trigger.
+        /// The scheduled half of marking - same per-tenant-retention logic as DeviceRecycleBinMarkPurgedByRetentionAsync (a governing TenantQuota's RecycleBinRetentionDays replaces the tenant's own override entirely), cascading Purged onto the farm's devices the same way DeviceFarmRecycleBinMarkPurgedAsync does for the manual trigger.
         public async Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
         {
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
             var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant, t => t.RecycleBinRetentionDays, ct);
+            var tenantQuotaRetentionDays = await db.TenantQuotas.AsNoTracking().ToDictionaryAsync(q => q.IDTenant, q => q.RecycleBinRetentionDays, ct);
 
             var candidates = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
                 .Where(f => f.Deleted && !f.Purged)
@@ -232,8 +233,7 @@ namespace Agrumy.Api.Dal
             var idsToMark = candidates
                 .Where(c =>
                 {
-                    int retentionDays = c.TenantID != null && tenantRetentionDays.TryGetValue(c.TenantID.Value, out int? tenantOverride) && tenantOverride != null
-                        ? tenantOverride.Value : serverDefaultRetentionDays;
+                    int retentionDays = RecycleBinRetentionResolver.EffectiveRecycleBinRetentionDays(c.TenantID, tenantQuotaRetentionDays, tenantRetentionDays, serverDefaultRetentionDays);
                     return retentionDays > 0 && c.DeletedAtUtc != null && c.DeletedAtUtc <= nowUtc.AddDays(-retentionDays);
                 })
                 .ToList();

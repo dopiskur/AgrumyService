@@ -18,7 +18,7 @@ namespace Agrumy.Api.Controllers.API
     [Route("api/User")]
     public class UserApiController(
         IUserRepository userRepo, ITenantRepository tenantRepo, IRefreshTokenRepository refreshTokenRepo, IServerConfigRepository serverConfigRepo, IAuditLogRepository auditLogRepo,
-        ICache cache, BackgroundJobQueue jobQueue, IOptions<AgrumySettings> settingsOptions)
+        ICache cache, BackgroundJobQueue jobQueue, IOptions<AgrumySettings> settingsOptions, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
@@ -74,6 +74,13 @@ namespace Agrumy.Api.Controllers.API
                 }
             }
 
+            int? existingTenantId = isNewTenant ? null : await tenantRepo.TenantGetIdAsync(value.TenantName!);
+            // A brand-new tenant's own first/creating user is always allowed (that IS the "max users = 1" default's one seat) - only joining an already-provisioned tenant can hit the cap.
+            if (!isNewTenant && await quotaEnforcer.CheckCanAddUserAsync(existingTenantId) is string limitError)
+            {
+                return StatusCode(403, limitError);
+            }
+
             var user = new User
             {
                 Email = value.Email,
@@ -96,7 +103,7 @@ namespace Agrumy.Api.Controllers.API
 
             // One transaction (tenant create + user add + activation token + starting role) so a crash partway never leaves a user row with no role; sets user.TenantID on the same object this method returns.
             await userRepository.RegisterUserAsync(user, userSecret,
-                existingTenantId: isNewTenant ? null : await tenantRepo.TenantGetIdAsync(value.TenantName!),
+                existingTenantId: existingTenantId,
                 newTenantName: isNewTenant ? value.TenantName : null,
                 activationTokenHash: hash,
                 activationTokenExpiresAtUtc: DateTime.UtcNow.AddHours(ActivationTokenValidHours),
@@ -535,6 +542,11 @@ namespace Agrumy.Api.Controllers.API
             if (error != null)
             {
                 return error;
+            }
+
+            if (await quotaEnforcer.CheckCanAddUserAsync(CallerTenantId) is string limitError)
+            {
+                return StatusCode(403, limitError);
             }
 
             var user = new User

@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/Device")]
-    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions, ILogger<DeviceApiController> logger) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions, ILogger<DeviceApiController> logger, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
@@ -53,6 +53,15 @@ namespace Agrumy.Api.Controllers.API
 
             Device internalDevice = device.ToDevice();
             internalDevice.TenantID = existing!.TenantID; // payload cannot move a device to another tenant
+
+            if (internalDevice.LoRaGatewayEnabled == true && await quotaEnforcer.CheckLoRaAllowedAsync(internalDevice.TenantID) is string loRaLimitError)
+            {
+                return StatusCode(403, loRaLimitError);
+            }
+            if (await quotaEnforcer.CheckMinSensorIntervalAsync(internalDevice.TenantID, internalDevice.SleepSeconds) is string intervalLimitError)
+            {
+                return StatusCode(403, intervalLimitError);
+            }
 
             await deviceRepo.DeviceUpdateAsync(internalDevice);
             await WriteAuditAsync("Device.Updated", existing.TenantID, "Device", existing.IDDevice.ToString()!, existing.DeviceName);
@@ -186,11 +195,17 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest("Device is required.");
             }
 
-            var (_, error) = await EnsureOwnedDeviceAsync(
+            var (existing, error) = await EnsureOwnedDeviceAsync(
                 () => deviceRepo.DeviceGetByIdAsync(deviceUpdate.Device.IDDevice), "Device", forWrite: true);
             if (error != null)
             {
                 return error;
+            }
+
+            if (deviceUpdate.Sensor != null
+                && await quotaEnforcer.CheckSensorFieldCountAsync(existing!.TenantID, deviceUpdate.Sensor.EnabledSensorCount()) is string limitError)
+            {
+                return StatusCode(403, limitError);
             }
 
             await deviceRepo.DeviceConfigSensorUpdateAsync(deviceUpdate.Device.IDDevice, deviceUpdate.Sensor);
@@ -207,11 +222,17 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest("Device is required.");
             }
 
-            var (_, error) = await EnsureOwnedDeviceAsync(
+            var (existing, error) = await EnsureOwnedDeviceAsync(
                 () => deviceRepo.DeviceGetByIdAsync(deviceUpdate.Device.IDDevice), "Device", forWrite: true);
             if (error != null)
             {
                 return error;
+            }
+
+            if (deviceUpdate.Controller != null
+                && await quotaEnforcer.CheckControllerRelayCountAsync(existing!.TenantID, deviceUpdate.Controller.Relays.Count) is string limitError)
+            {
+                return StatusCode(403, limitError);
             }
 
             string? problem = await deviceRepo.DeviceConfigControllerUpdateAsync(deviceUpdate.Device.IDDevice, deviceUpdate.Controller);

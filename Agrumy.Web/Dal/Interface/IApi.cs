@@ -458,6 +458,14 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/Tenant/ImportAsSentinel")]
         Task<TenantImportResult> TenantImportAsSentinel([Body] TenantExport value);
 
+        // ---- Tenant Quota ---------------------------------------------------
+
+        [Get("/api/TenantQuota")]
+        Task<TenantQuota> TenantQuotaGet(int idTenant);
+
+        [Put("/api/TenantQuota")]
+        Task TenantQuotaSet([Body] TenantQuota quota);
+
         // ---- Server config --------------------------------
 
         [Get("/api/ServerConfig")]

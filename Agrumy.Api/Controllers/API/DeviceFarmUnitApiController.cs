@@ -12,7 +12,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
-    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -39,6 +39,10 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<DeviceFarm>> DeviceFarmAdd([FromBody] DeviceFarm farm)
         {
             farm.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
+            if (await quotaEnforcer.CheckCanAddFarmAsync(farm.TenantID) is string limitError)
+            {
+                return StatusCode(403, limitError);
+            }
             DeviceFarm added = await deviceFarmUnitRepo.DeviceFarmAddAsync(farm);
             await WriteAuditAsync("DeviceFarm.Created", added.TenantID, "DeviceFarm", added.IDDeviceFarm.ToString()!, added.DeviceFarmName);
             return Ok(added);
@@ -95,6 +99,10 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<DeviceFarmUnit>> DeviceFarmUnitAdd([FromBody] DeviceFarmUnit unit)
         {
             unit.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
+            if (await quotaEnforcer.CheckCanAddUnitAsync(unit.TenantID) is string limitError)
+            {
+                return StatusCode(403, limitError);
+            }
             DeviceFarmUnit added = await deviceFarmUnitRepo.DeviceFarmUnitAddAsync(unit);
             await WriteAuditAsync("DeviceFarmUnit.Created", added.TenantID, "DeviceFarmUnit", added.IDDeviceFarmUnit.ToString()!, added.DeviceFarmUnitName);
             return Ok(added);
@@ -206,6 +214,10 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
             zone.TenantID = unit!.TenantID; // the owning unit's tenant, not necessarily the caller's (a Global admin may add to another tenant's unit)
+            if (await quotaEnforcer.CheckCanAddZoneAsync(zone.TenantID) is string limitError)
+            {
+                return StatusCode(403, limitError);
+            }
             DeviceFarmUnitZone added = await deviceFarmUnitRepo.DeviceFarmUnitZoneAddAsync(zone);
             await WriteAuditAsync("DeviceFarmUnitZone.Created", added.TenantID, "DeviceFarmUnitZone", added.IDDeviceFarmUnitZone.ToString()!, added.DeviceFarmUnitZoneName);
             return Ok(added);

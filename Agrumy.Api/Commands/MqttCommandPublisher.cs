@@ -19,13 +19,17 @@ namespace Agrumy.Api.Commands
         public static string ForDevice(int tenantId, int deviceId) => $"agrumy/{tenantId}/{deviceId}/command";
     }
 
-    /// Best-effort instant command delivery over MQTT alongside the HTTP/JWT poll cycle - never the only way a command reaches a device, since CommandQueueService.GetPendingCommandAsync's next poll response always carries it too; a no-op when MqttTransportEnabled is off or unconfigured, and any broker/network failure is swallowed so it can never fail the triggering request.
-    public sealed class MqttCommandPublisher(IRepository repo, IMqttConnectionManager connectionManager, ILogger<MqttCommandPublisher> logger) : IMqttCommandPublisher
+    /// Best-effort instant command delivery over MQTT alongside the HTTP/JWT poll cycle - never the only way a command reaches a device, since CommandQueueService.GetPendingCommandAsync's next poll response always carries it too; a no-op when MqttTransportEnabled is off/unconfigured or the device's tenant quota disallows MQTT, and any broker/network failure is swallowed so it can never fail the triggering request.
+    public sealed class MqttCommandPublisher(IRepository repo, IMqttConnectionManager connectionManager, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, ILogger<MqttCommandPublisher> logger) : IMqttCommandPublisher
     {
         public async Task PublishAsync(Device device, PendingCommand command, CancellationToken ct = default)
         {
             ServerConfig serverConfig = await repo.ServerConfigGetAsync(1);
             if (!serverConfig.MqttTransportEnabled || string.IsNullOrWhiteSpace(serverConfig.MqttBrokerHost) || device.IDDevice is not int deviceId)
+            {
+                return;
+            }
+            if (!await quotaEnforcer.IsMqttAllowedAsync(device.TenantID))
             {
                 return;
             }

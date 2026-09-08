@@ -76,6 +76,58 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
         }
 
+        public async Task<TenantQuota?> TenantQuotaGetAsync(int idTenant)
+        {
+            if (idTenant == 0)
+            {
+                return null;
+            }
+            var row = await db.TenantQuotas.AsNoTracking().FirstOrDefaultAsync(q => q.IDTenant == idTenant);
+            return row == null ? TenantQuota.Default(idTenant) : ToDto(row);
+        }
+
+        public async Task TenantQuotaSetAsync(TenantQuota quota)
+        {
+            var row = await db.TenantQuotas.FirstOrDefaultAsync(q => q.IDTenant == quota.IDTenant);
+            if (row == null)
+            {
+                row = new TenantQuotaRow { IDTenant = quota.IDTenant };
+                db.TenantQuotas.Add(row);
+            }
+            row.MaxFarms = quota.MaxFarms;
+            row.MaxUnits = quota.MaxUnits;
+            row.MaxZones = quota.MaxZones;
+            row.MaxControllersPerDevice = quota.MaxControllersPerDevice;
+            row.MaxSensorsPerDevice = quota.MaxSensorsPerDevice;
+            row.MqttEnabled = quota.MqttEnabled;
+            row.LoRaEnabled = quota.LoRaEnabled;
+            row.GatewayEnabled = quota.GatewayEnabled;
+            row.MinSensorIntervalMinutes = quota.MinSensorIntervalMinutes;
+            row.MaxDataRetentionDays = quota.MaxDataRetentionDays;
+            row.RecycleBinRetentionDays = quota.RecycleBinRetentionDays;
+            row.MaxUsers = quota.MaxUsers;
+            row.MaxSimulations = quota.MaxSimulations;
+            await db.SaveChangesAsync();
+        }
+
+        private static TenantQuota ToDto(TenantQuotaRow row) => new()
+        {
+            IDTenant = row.IDTenant,
+            MaxFarms = row.MaxFarms,
+            MaxUnits = row.MaxUnits,
+            MaxZones = row.MaxZones,
+            MaxControllersPerDevice = row.MaxControllersPerDevice,
+            MaxSensorsPerDevice = row.MaxSensorsPerDevice,
+            MqttEnabled = row.MqttEnabled,
+            LoRaEnabled = row.LoRaEnabled,
+            GatewayEnabled = row.GatewayEnabled,
+            MinSensorIntervalMinutes = row.MinSensorIntervalMinutes,
+            MaxDataRetentionDays = row.MaxDataRetentionDays,
+            RecycleBinRetentionDays = row.RecycleBinRetentionDays,
+            MaxUsers = row.MaxUsers,
+            MaxSimulations = row.MaxSimulations,
+        };
+
         public async Task<bool> TenantZeroIsEmptyAsync()
         {
             if (await db.Devices.AsNoTracking().AnyAsync(d => d.TenantID == 0))

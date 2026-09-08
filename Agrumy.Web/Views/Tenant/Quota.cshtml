@@ -1,0 +1,88 @@
+@model Agrumy.Shared.Models.TenantQuota
+
+@{
+    ViewData["Title"] = "Configure Limits";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Configure Limits - Tenant #@Model.IDTenant</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-secondary">
+            Ingest-volume limits only - every feature (rule engine, notifications, dashboard,
+            sensor catalog) stays fully available regardless of these values. A limit reached
+            blocks the action outright, with a "contact support" message.
+        </p>
+        <form asp-action="Quota">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            @Html.HiddenFor(m => m.IDTenant)
+
+            <div class="row g-3" style="max-width:36rem">
+                <div class="col-6">
+                    <label asp-for="MaxFarms" class="form-label"></label>
+                    <input asp-for="MaxFarms" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxUnits" class="form-label"></label>
+                    <input asp-for="MaxUnits" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxZones" class="form-label"></label>
+                    <input asp-for="MaxZones" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxUsers" class="form-label"></label>
+                    <input asp-for="MaxUsers" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxSimulations" class="form-label"></label>
+                    <input asp-for="MaxSimulations" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MinSensorIntervalMinutes" class="form-label"></label>
+                    <input asp-for="MinSensorIntervalMinutes" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxControllersPerDevice" class="form-label"></label>
+                    <input asp-for="MaxControllersPerDevice" type="number" min="0" class="form-control" />
+                    <div class="form-text">Per device, not tenant-wide.</div>
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxSensorsPerDevice" class="form-label"></label>
+                    <input asp-for="MaxSensorsPerDevice" type="number" min="0" class="form-control" />
+                    <div class="form-text">Per device, not tenant-wide.</div>
+                </div>
+                <div class="col-6">
+                    <label asp-for="MaxDataRetentionDays" class="form-label"></label>
+                    <input asp-for="MaxDataRetentionDays" type="number" min="0" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="RecycleBinRetentionDays" class="form-label"></label>
+                    <input asp-for="RecycleBinRetentionDays" type="number" min="0" class="form-control" />
+                    <div class="form-text">Replaces this tenant's own Recycle Bin setting while this quota governs it.</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1" style="max-width:36rem">
+                <div class="col-4 form-check form-switch">
+                    <input asp-for="MqttEnabled" class="form-check-input" role="switch" />
+                    <label asp-for="MqttEnabled" class="form-check-label"></label>
+                </div>
+                <div class="col-4 form-check form-switch">
+                    <input asp-for="LoRaEnabled" class="form-check-input" role="switch" />
+                    <label asp-for="LoRaEnabled" class="form-check-label"></label>
+                </div>
+                <div class="col-4 form-check form-switch">
+                    <input asp-for="GatewayEnabled" class="form-check-input" role="switch" />
+                    <label asp-for="GatewayEnabled" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+</div>

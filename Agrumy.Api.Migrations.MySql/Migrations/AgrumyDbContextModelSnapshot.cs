@@ -1688,6 +1688,55 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("simulationSession", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantQuotaRow", b =>
+                {
+                    b.Property<int>("IDTenant")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("GatewayEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("LoRaEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("MaxControllersPerDevice")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxDataRetentionDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxFarms")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSensorsPerDevice")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSimulations")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxUnits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxUsers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxZones")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinSensorIntervalMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("MqttEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("RecycleBinRetentionDays")
+                        .HasColumnType("int");
+
+                    b.HasKey("IDTenant");
+
+                    b.ToTable("tenantQuota", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantRow", b =>
                 {
                     b.Property<int>("IDTenant")
@@ -2235,6 +2284,15 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .WithMany()
                         .HasForeignKey("IDSimulationSession")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantQuotaRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
+                        .WithOne()
+                        .HasForeignKey("Agrumy.Dal.Entities.TenantQuotaRow", "IDTenant")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

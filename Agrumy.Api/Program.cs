@@ -195,6 +195,7 @@ builder.Services.AddScoped<ManualActuateService>();
 builder.Services.AddScoped<Agrumy.Api.Devices.DeviceConfigBuilder>();
 builder.Services.AddScoped<Agrumy.Api.Migration.TenantExportService>();
 builder.Services.AddScoped<Agrumy.Api.Migration.TenantImportService>();
+builder.Services.AddScoped<Agrumy.Api.Quota.TenantQuotaEnforcer>();
 
 // Singleton so it outlives any one request's DI scope; BackgroundJobRunner consumes it one job at a time.
 builder.Services.AddSingleton<BackgroundJobQueue>();

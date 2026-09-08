@@ -16,6 +16,25 @@ namespace Agrumy.Dal.Entities
         public int? RecycleBinRetentionDays { get; set; }
     }
 
+    /// See Agrumy.Shared.Models.TenantQuota - IDTenant is both PK and FK (1:1 with TenantRow), absent row means "not yet explicitly configured" (EfTenantQuotaRepository falls back to TenantQuota.Default, never unlimited).
+    public class TenantQuotaRow
+    {
+        public int IDTenant { get; set; }
+        public int MaxFarms { get; set; }
+        public int MaxUnits { get; set; }
+        public int MaxZones { get; set; }
+        public int MaxControllersPerDevice { get; set; }
+        public int MaxSensorsPerDevice { get; set; }
+        public bool MqttEnabled { get; set; }
+        public bool LoRaEnabled { get; set; }
+        public bool GatewayEnabled { get; set; }
+        public int MinSensorIntervalMinutes { get; set; }
+        public int MaxDataRetentionDays { get; set; }
+        public int RecycleBinRetentionDays { get; set; }
+        public int MaxUsers { get; set; }
+        public int MaxSimulations { get; set; }
+    }
+
     /// See Agrumy.Shared.Models.TenantWifiConfig.
     public class TenantWifiConfigRow
     {

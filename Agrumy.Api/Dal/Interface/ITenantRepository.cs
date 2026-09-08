@@ -13,6 +13,12 @@ namespace Agrumy.Api.Dal.Interface
         Task<Tenant?> TenantGetByIdAsync(int idTenant);
         Task TenantUpdateAsync(Tenant tenant);
 
+        /// Null for IDTenant=0 (the default/bootstrap tenant is always exempt); otherwise the tenant's own configured row, or TenantQuota.Default when none exists yet - never "unlimited" for a real tenant just because nobody has configured it.
+        Task<TenantQuota?> TenantQuotaGetAsync(int idTenant);
+
+        /// Upsert - Global Admin only, enforced by the caller (TenantQuotaApiController), not here.
+        Task TenantQuotaSetAsync(TenantQuota quota);
+
         /// The only writer of Tenant.EmergencyStopActive (roadmap #230) - also bumps ConfigVersion for every device in the tenant so the change reaches them on their next poll rather than waiting for the heartbeat window.
         Task TenantEmergencyStopSetAsync(int idTenant, bool active);
 

@@ -9,7 +9,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Admin-facing create/list/delete for fully virtual devices - the actual per-tick simulation runs in Agrumy.Api.BackgroundWorkers.VirtualDeviceRunnerBackgroundService, not here.
     [Route("/api/Simulation")]
-    public class SimulationApiController(ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, IHttpClientFactory httpClientFactory) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class SimulationApiController(ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, IHttpClientFactory httpClientFactory, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
         private readonly IUserRepository users = userRepo;
@@ -86,6 +86,10 @@ namespace Agrumy.Api.Controllers.API
             if (string.IsNullOrWhiteSpace(request.Name))
             {
                 return BadRequest("Name is required.");
+            }
+            if (await quotaEnforcer.CheckCanAddSimulationAsync(CallerTenantId) is string limitError)
+            {
+                return StatusCode(403, limitError);
             }
 
             SimulationSession created = await simulationRepo.SimulationSessionAddAsync(new SimulationSession

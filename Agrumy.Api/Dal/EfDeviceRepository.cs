@@ -136,11 +136,12 @@ namespace Agrumy.Api.Dal
             return updated > 0;
         }
 
-        /// The scheduled half of marking - evaluated per device's OWNING TENANT (its own RecycleBinRetentionDays override, falling back to serverDefaultRetentionDays), since #427 made retention a per-tenant setting. Materializes candidates client-side (recycle-bin volumes are small) rather than trying to push a per-row variable cutoff into a single translatable EF query.
+        /// The scheduled half of marking - evaluated per device's OWNING TENANT (a governing TenantQuota's RecycleBinRetentionDays replaces the tenant's own self-configured override entirely, since #404 moved that field behind the quota; falls back to the tenant's own override, then serverDefaultRetentionDays), since #427 made retention a per-tenant setting. Materializes candidates client-side (recycle-bin volumes are small) rather than trying to push a per-row variable cutoff into a single translatable EF query.
         public async Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
         {
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
             var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant, t => t.RecycleBinRetentionDays, ct);
+            var tenantQuotaRetentionDays = await db.TenantQuotas.AsNoTracking().ToDictionaryAsync(q => q.IDTenant, q => q.RecycleBinRetentionDays, ct);
 
             var candidates = await db.Devices.IgnoreQueryFilters().AsNoTracking()
                 .Where(d => d.Deleted && !d.Purged)
@@ -150,8 +151,7 @@ namespace Agrumy.Api.Dal
             var idsToMark = candidates
                 .Where(c =>
                 {
-                    int retentionDays = c.TenantID != null && tenantRetentionDays.TryGetValue(c.TenantID.Value, out int? tenantOverride) && tenantOverride != null
-                        ? tenantOverride.Value : serverDefaultRetentionDays;
+                    int retentionDays = RecycleBinRetentionResolver.EffectiveRecycleBinRetentionDays(c.TenantID, tenantQuotaRetentionDays, tenantRetentionDays, serverDefaultRetentionDays);
                     return retentionDays > 0 && c.DeletedAtUtc != null && c.DeletedAtUtc <= nowUtc.AddDays(-retentionDays);
                 })
                 .Select(c => c.IDDevice)

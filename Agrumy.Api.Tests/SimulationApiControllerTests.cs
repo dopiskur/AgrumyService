@@ -16,9 +16,13 @@ public class SimulationApiControllerTests
     private readonly Mock<ICache> _cache = new();
     private readonly Mock<IHttpClientFactory> _httpClientFactory = new(MockBehavior.Strict);
 
+    // These tests aren't about quota behavior - every tenant is unlimited by default here.
+    public SimulationApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
+
     private SimulationApiController NewController()
     {
-        var controller = new SimulationApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _httpClientFactory.Object);
+        var controller = new SimulationApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _httpClientFactory.Object,
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         return controller;
     }

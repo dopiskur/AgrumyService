@@ -22,6 +22,9 @@ public class GatewayApiControllerTests
     private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
+    // Gateway tenant-boundary behavior, not quota behavior - every tenant is unlimited by default here.
+    public GatewayApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
+
     private GatewayApiController NewController(string callerApiId)
     {
         var controller = NewJwtController();
@@ -36,7 +39,8 @@ public class GatewayApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new GatewayApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), NullLogger<GatewayApiController>.Instance);
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object), NullLogger<GatewayApiController>.Instance);
     }
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User - same pattern as ApiControllerTests.SetCallerRoles.

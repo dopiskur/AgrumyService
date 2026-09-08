@@ -19,7 +19,7 @@ namespace Agrumy.Api.Controllers.API
     public class GatewayApiController(
         IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, ISensorDataRepository sensorDataRepo, IGatewayRepository gatewayRepo,
         IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue,
-        FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, ILogger<GatewayApiController> logger)
+        FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, ILogger<GatewayApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         /// The caller's own device row, already confirmed to be a gateway - null (with the ActionResult already set) covers every failure mode, so every action below is one guard clause instead of repeating the same checks.
@@ -39,6 +39,10 @@ namespace Agrumy.Api.Controllers.API
             if (!serverConfig.GatewayEnabled)
             {
                 return (null, StatusCode(403, "Gateway support is disabled server-wide (Server Settings -> Gateway)."));
+            }
+            if (!await quotaEnforcer.IsGatewayAllowedAsync(gateway.TenantID))
+            {
+                return (null, StatusCode(403, Agrumy.Api.Quota.TenantQuotaEnforcer.LimitMessage));
             }
             return (gateway, null);
         }

@@ -17,6 +17,10 @@ namespace Agrumy.Api.Dal
 
         public Task TenantUpdateAsync(Tenant tenant) => tenantRepository.TenantUpdateAsync(tenant);
 
+        public Task<TenantQuota?> TenantQuotaGetAsync(int idTenant) => tenantRepository.TenantQuotaGetAsync(idTenant);
+
+        public Task TenantQuotaSetAsync(TenantQuota quota) => tenantRepository.TenantQuotaSetAsync(quota);
+
         public Task TenantEmergencyStopSetAsync(int idTenant, bool active) => tenantRepository.TenantEmergencyStopSetAsync(idTenant, active);
 
         public Task<bool> TenantZeroIsEmptyAsync() => tenantRepository.TenantZeroIsEmptyAsync();
