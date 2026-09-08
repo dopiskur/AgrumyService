@@ -188,12 +188,6 @@
                                     <p>@Localizer["WiFi Networks"]</p>
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                    <i class="nav-icon bi bi-trash3"></i>
-                                    <p>@Localizer["Recycle Bin"]</p>
-                                </a>
-                            </li>
                         }
                         @if (hasAnyRole(RoleNames.UserManagers))
                         {
@@ -269,6 +263,15 @@
                                     </a>
                                 </li>
                             }
+                        }
+                        @if (hasAnyRole(RoleNames.DeviceManagers))
+                        {
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                    <i class="nav-icon bi bi-trash3"></i>
+                                    <p>@Localizer["Recycle Bin"]</p>
+                                </a>
+                            </li>
                         }
                         <li class="nav-item mt-2 border-top border-secondary border-opacity-25 pt-2">
                             <a asp-area="" asp-controller="Login" asp-action="Logout" class="nav-link">
