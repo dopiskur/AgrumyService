@@ -77,6 +77,38 @@
                         <span id="flashResultText"></span>
                         <button type="button" class="btn-close ms-auto" aria-label="Dismiss" onclick="document.getElementById('flashResultBanner').hidden = true"></button>
                     </div>
+
+                    @* Shown by firmware-provisioning.js only after a flash that actually finished (esp-web-tools' internal state, not just the dialog closing); reopens the same serial port to send WiFi+login+PIN, then offers Assign-to-farm/Skip once the device confirms it registered. *@
+                    <div id="provisionPanel" class="card mt-2" hidden>
+                        <div class="card-header py-2"><h6 class="card-title mb-0">Provision this device</h6></div>
+                        <div class="card-body">
+                            <div id="provisionWifiStep">
+                                <p class="text-secondary small mb-2">Sent directly to the device over the same USB connection - no captive portal, no separate app.</p>
+                                <div class="mb-2" style="max-width:24rem">
+                                    <label class="form-label small">WiFi network</label>
+                                    <select id="provisionWifiSelect" class="form-select form-select-sm mb-2">
+                                        <option value="">Enter manually…</option>
+                                    </select>
+                                    <div id="provisionWifiManual" class="d-flex gap-2">
+                                        <input type="text" id="provisionWifiSsid" class="form-control form-control-sm" placeholder="SSID" />
+                                        <input type="password" id="provisionWifiPassword" class="form-control form-control-sm" placeholder="Password" />
+                                    </div>
+                                </div>
+                                <button type="button" id="provisionSendButton" class="btn btn-sm btn-primary">Send to device</button>
+                            </div>
+                            <div id="provisionStatus" class="text-secondary small mt-2"></div>
+                            <div id="provisionAssignStep" class="mt-2" hidden>
+                                <hr />
+                                <div class="mb-2 d-flex flex-wrap gap-2" style="max-width:36rem">
+                                    <select id="provisionFarmSelect" class="form-select form-select-sm" style="max-width:11rem" hidden></select>
+                                    <select id="provisionUnitSelect" class="form-select form-select-sm" style="max-width:11rem" hidden></select>
+                                    <select id="provisionZoneSelect" class="form-select form-select-sm" style="max-width:11rem"></select>
+                                </div>
+                                <button type="button" id="provisionAssignButton" class="btn btn-sm btn-primary">Assign to farm</button>
+                                <button type="button" id="provisionSkipButton" class="btn btn-sm btn-outline-secondary">Skip</button>
+                            </div>
+                        </div>
+                    </div>
                 }
             </div>
 
@@ -238,4 +270,5 @@
 @section Scripts {
     <script type="module" src="~/lib/esp-web-tools/dist/install-button.min.js"></script>
     <script src="~/js/firmware-install-picker.js"></script>
+    <script src="~/js/firmware-provisioning.js"></script>
 }

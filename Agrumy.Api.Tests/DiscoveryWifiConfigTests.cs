@@ -97,4 +97,29 @@ public class DiscoveryWifiConfigTests
 
         Assert.IsType<NotFoundResult>(result);
     }
+
+    /// The one deliberate exception to the "Password never returned" rule above - the web-flasher provisioning wizard needs the real bytes for a moment to write them over Web Serial.
+    [Fact]
+    public async Task WifiConfigReveal_OwnTenant_ReturnsRealPassword()
+    {
+        _repo.Setup(r => r.TenantWifiConfigGetByIdAsync(5))
+            .ReturnsAsync(new TenantWifiConfig { IDTenantWifiConfig = 5, TenantID = 1, Ssid = "HomeWifi", Password = "secret" });
+
+        var result = await NewController(1, RoleNames.TenantAdmin).WifiConfigReveal(5);
+
+        var config = Assert.IsType<TenantWifiConfig>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal("secret", config.Password);
+    }
+
+    [Fact]
+    public async Task WifiConfigReveal_DifferentTenant_Returns403()
+    {
+        _repo.Setup(r => r.TenantWifiConfigGetByIdAsync(5))
+            .ReturnsAsync(new TenantWifiConfig { IDTenantWifiConfig = 5, TenantID = 2, Ssid = "OtherTenantNet", Password = "secret" });
+
+        var result = await NewController(1, RoleNames.TenantAdmin).WifiConfigReveal(5);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
 }

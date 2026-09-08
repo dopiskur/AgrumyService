@@ -134,6 +134,15 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
+        /// The one deliberate exception to WifiConfigs()'s "Password never included" rule above - narrowly scoped (DeviceManagers only, one config at a time, on demand) for the web-flasher provisioning wizard, which needs the real bytes in the browser for a moment to write them over Web Serial to the device being provisioned. Never cached, never logged.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpGet("WifiConfigs/{idTenantWifiConfig}/Reveal")]
+        public async Task<ActionResult<TenantWifiConfig>> WifiConfigReveal(int idTenantWifiConfig)
+        {
+            var (config, error) = await EnsureOwnedWifiConfigAsync(idTenantWifiConfig);
+            return error ?? Ok(config);
+        }
+
         /// Open to any authenticated caller, same rule as DeviceApiController.DeviceFleetGet - the Register modal that acts on these results is still gated to DeviceManagers in the Web UI.
         [Authorize]
         [HttpGet("Results")]

@@ -356,6 +356,10 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/Discovery/WifiConfigs/{idTenantWifiConfig}")]
         Task DiscoveryWifiConfigDelete(int idTenantWifiConfig);
 
+        /// The real Password, unlike DiscoveryWifiConfigsGet() above - see DiscoveryApiController.WifiConfigReveal.
+        [Get("/api/Discovery/WifiConfigs/{idTenantWifiConfig}/Reveal")]
+        Task<TenantWifiConfig> DiscoveryWifiConfigReveal(int idTenantWifiConfig);
+
         [Post("/api/Discovery/Register")]
         Task<DiscoveryRegisterResult> DiscoveryRegister([Body] DiscoveryRegisterRequest request);
 

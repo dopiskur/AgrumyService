@@ -11,8 +11,11 @@ using StreamPart = Refit.StreamPart; // not `using Refit;` - its AuthorizeAttrib
 namespace Agrumy.Web.Controllers.View
 {
     [Authorize(Roles = RoleNames.GlobalAdmin)]
-    public class FirmwareController(IApi api) : Controller
+    public class FirmwareController(IApi api, IConfiguration configuration) : Controller
     {
+        // Bare host, matching what the captive portal's own servicePoint field expects (Agrumy.Shared.Models.DeviceRegistration) - WebView:ApiService is a full URL (e.g. "https://api.agrumy.com"), Agrumy.Api itself, NOT this Web app's own host.
+        private string ApiServicePointHost => new Uri(configuration["WebView:ApiService"]!).Host;
+
         public async Task<ActionResult> Index()
         {
             ServerConfig config = await api.ServerConfigGet();
@@ -125,6 +128,86 @@ namespace Agrumy.Web.Controllers.View
         {
             await api.FirmwareDelete(idDeviceFirmware);
             return RedirectToAction(nameof(Index));
+        }
+
+        // ---- Post-flash provisioning wizard - AJAX endpoints backing firmware-provisioning.js ----
+
+        /// Auto-fills the wizard's userLogin/devicePin instead of asking the admin to retype what Device/AddDevice already shows them - same "reuse caller's still-valid PIN" mechanism, minted fresh only when the current one is missing/expired.
+        [HttpGet]
+        public async Task<ActionResult> MyProvisioningCredentials()
+        {
+            User self = await api.UserGetSelf();
+            bool stillValid = !string.IsNullOrEmpty(self.DevicePin) &&
+                self.DevicePinExpires is DateTimeOffset expires && expires > DateTimeOffset.UtcNow;
+            string? devicePin = stillValid ? self.DevicePin : (await api.DevicePinGenerate()).DevicePin;
+            return Json(new { email = self.Email, devicePin, servicePoint = ApiServicePointHost });
+        }
+
+        /// Ssid-only - the caller never needs the real Password (see ResolveWifiSecret below, used only at the moment of sending it to the device over serial).
+        [HttpGet]
+        public async Task<ActionResult> WifiConfigsForProvisioning() =>
+            Json((await api.DiscoveryWifiConfigsGet()).Select(c => new { id = c.IDTenantWifiConfig, ssid = c.Ssid }));
+
+        /// The one place this wizard needs the real WiFi password - resolved just-in-time, never persisted client-side beyond the moment it's written to the device's serial port.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ResolveWifiSecret(int idTenantWifiConfig)
+        {
+            try
+            {
+                TenantWifiConfig config = await api.DiscoveryWifiConfigReveal(idTenantWifiConfig);
+                return Json(new { ssid = config.Ssid, password = config.Password });
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        /// Farm > Unit > Zone, nested - the wizard needs the whole shape up front to decide whether to show a Farm picker at all ("one farm = no farm-object" principle extends here: skip straight to Unit > Zone when there's only one).
+        [HttpGet]
+        public async Task<ActionResult> FarmTree()
+        {
+            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            var zonesByUnit = new Dictionary<int, IList<DeviceFarmUnitZone>>();
+            foreach (DeviceFarmUnit unit in units)
+            {
+                zonesByUnit[unit.IDDeviceFarmUnit!.Value] = await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit);
+            }
+
+            object UnitNode(DeviceFarmUnit u) => new
+            {
+                id = u.IDDeviceFarmUnit,
+                name = u.DeviceFarmUnitName,
+                zones = zonesByUnit[u.IDDeviceFarmUnit!.Value].Select(z => new { id = z.IDDeviceFarmUnitZone, name = z.DeviceFarmUnitZoneName }),
+            };
+
+            return Json(new
+            {
+                farms = farms.Select(f => new
+                {
+                    id = f.IDDeviceFarm,
+                    name = f.DeviceFarmName,
+                    units = units.Where(u => u.DeviceFarmID == f.IDDeviceFarm).Select(UnitNode),
+                }),
+                unassignedUnits = units.Where(u => u.DeviceFarmID == null).Select(UnitNode),
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> AssignProvisionedDevice(int idDevice, int idDeviceFarmUnitZone)
+        {
+            try
+            {
+                await api.DeviceAssign(new DeviceZoneAssignment { IDDevice = idDevice, IDDeviceFarmUnitZone = idDeviceFarmUnitZone });
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
         }
 
         public async Task<ActionResult> OfflineFile(string fileName)
