@@ -236,6 +236,13 @@ namespace Agrumy.Shared.Models
         public static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);
     }
 
+    /// Response of POST .../Rule (Zone/Unit/Farm/Global scope) - ScopeConflictWarning is non-null only when this rule's RelayFunction/Name already has a rule at a DIFFERENT scope somewhere in its ancestor/descendant chain (see Agrumy.Api.Devices.RuleScopeConflictService); purely informational, the rule is saved either way.
+    public class RuleAddResult
+    {
+        public int IDDeviceFarmUnitZoneRule { get; set; }
+        public string? ScopeConflictWarning { get; set; }
+    }
+
     /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Api.Devices.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule
     {

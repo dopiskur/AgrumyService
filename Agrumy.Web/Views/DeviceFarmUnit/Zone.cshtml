@@ -135,6 +135,10 @@
 @* Outside #zoneDetails on purpose - edited via full-page form posts, not polled/replaced by live-refresh. *@
 @if (hasController)
 {
+    @if (TempData["Warning"] is string scopeWarning)
+    {
+        <div class="alert alert-info">@scopeWarning</div>
+    }
     <partial name="_ZoneRules" model="Model" />
 }
 

@@ -13,7 +13,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
-    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, CommandQueueService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation, Agrumy.Api.Devices.RuleScopeConflictService ruleScopeConflict) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -403,7 +403,7 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Zone/Rule")]
-        public async Task<ActionResult<int>> DeviceFarmUnitZoneRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> DeviceFarmUnitZoneRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
             var (zone, error) = await EnsureOwnedZoneAsync(rule.DeviceFarmUnitZoneID, forWrite: true);
             if (error != null)
@@ -420,7 +420,7 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Unit/Rule")]
-        public async Task<ActionResult<int>> DeviceFarmUnitRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> DeviceFarmUnitRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
             var (unit, error) = await EnsureOwnedUnitAsync(rule.DeviceFarmUnitID, forWrite: true);
             if (error != null)
@@ -437,7 +437,7 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Farm/Rule")]
-        public async Task<ActionResult<int>> DeviceFarmRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> DeviceFarmRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
             var (farm, error) = await EnsureOwnedFarmAsync(rule.DeviceFarmID, forWrite: true);
             if (error != null)
@@ -454,7 +454,7 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Global/Rule")]
-        public async Task<ActionResult<int>> GlobalRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> GlobalRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
             if (CallerTenantId is not int tenantId)
             {
@@ -470,7 +470,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Shared validate+cap+persist body for all four scopes - the only difference between them is which EnsureOwned*/existing-count call the caller already made.
-        private async Task<ActionResult<int>> AddRuleAsync(DeviceFarmUnitZoneRule rule, int existingCount, string scopeLabel)
+        private async Task<ActionResult<RuleAddResult>> AddRuleAsync(DeviceFarmUnitZoneRule rule, int existingCount, string scopeLabel)
         {
             if (await ruleValidation.ShapeErrorAsync(rule) is string shapeError)
             {
@@ -482,9 +482,10 @@ namespace Agrumy.Api.Controllers.API
             {
                 return BadRequest($"This scope already has {existingCount} rules, the configured maximum ({effectiveMax}). Remove one before adding another.");
             }
+            string? conflictWarning = await ruleScopeConflict.FindConflictWarningAsync(rule);
             int idRule = await deviceFarmUnitRepo.RuleAddAsync(rule);
             await WriteAuditAsync("DeviceFarmUnitZoneRule.Created", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"{scopeLabel}, {rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
-            return Ok(idRule);
+            return Ok(new RuleAddResult { IDDeviceFarmUnitZoneRule = idRule, ScopeConflictWarning = conflictWarning });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

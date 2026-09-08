@@ -279,7 +279,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmUnitZoneRulesGet(int? idDeviceFarmUnitZone);
 
         [Post("/api/DeviceFarmUnit/Zone/Rule")]
-        Task<int> DeviceFarmUnitZoneRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+        Task<RuleAddResult> DeviceFarmUnitZoneRuleAdd([Body] DeviceFarmUnitZoneRule rule);
 
         [Delete("/api/DeviceFarmUnit/Zone/Rule")]
         Task DeviceFarmUnitZoneRuleDelete(int? idDeviceFarmUnitZoneRule);
@@ -288,7 +288,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmUnitRulesGet(int? idDeviceFarmUnit);
 
         [Post("/api/DeviceFarmUnit/Unit/Rule")]
-        Task<int> DeviceFarmUnitRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+        Task<RuleAddResult> DeviceFarmUnitRuleAdd([Body] DeviceFarmUnitZoneRule rule);
 
         [Delete("/api/DeviceFarmUnit/Unit/Rule")]
         Task DeviceFarmUnitRuleDelete(int? idDeviceFarmUnitZoneRule);
@@ -297,7 +297,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmRulesGet(int? idDeviceFarm);
 
         [Post("/api/DeviceFarmUnit/Farm/Rule")]
-        Task<int> DeviceFarmRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+        Task<RuleAddResult> DeviceFarmRuleAdd([Body] DeviceFarmUnitZoneRule rule);
 
         [Delete("/api/DeviceFarmUnit/Farm/Rule")]
         Task DeviceFarmRuleDelete(int? idDeviceFarmUnitZoneRule);
@@ -306,7 +306,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IList<DeviceFarmUnitZoneRule>> GlobalRulesGet();
 
         [Post("/api/DeviceFarmUnit/Global/Rule")]
-        Task<int> GlobalRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+        Task<RuleAddResult> GlobalRuleAdd([Body] DeviceFarmUnitZoneRule rule);
 
         [Delete("/api/DeviceFarmUnit/Global/Rule")]
         Task GlobalRuleDelete(int? idDeviceFarmUnitZoneRule);

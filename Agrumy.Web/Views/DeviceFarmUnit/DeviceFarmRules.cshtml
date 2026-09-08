@@ -14,6 +14,10 @@
 {
     <div class="alert alert-warning">@error</div>
 }
+@if (TempData["Warning"] is string scopeWarning)
+{
+    <div class="alert alert-info">@scopeWarning</div>
+}
 
 <p class="text-secondary">
     Applies to every unit/zone assigned to this farm that doesn't define its own rule for the

@@ -757,11 +757,15 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(GlobalRules));
         }
 
-        private async Task AddRuleAsync(DeviceFarmUnitZoneRule rule, Func<DeviceFarmUnitZoneRule, Task<int>> add)
+        private async Task AddRuleAsync(DeviceFarmUnitZoneRule rule, Func<DeviceFarmUnitZoneRule, Task<RuleAddResult>> add)
         {
             try
             {
-                await add(rule);
+                RuleAddResult result = await add(rule);
+                if (result.ScopeConflictWarning != null)
+                {
+                    TempData["Warning"] = result.ScopeConflictWarning;
+                }
             }
             catch (ApiException ex)
             {
