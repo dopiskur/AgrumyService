@@ -285,6 +285,7 @@
         "sensorEc",
         "sensorWeight",
         "weightCalibrationFactor",
+        "weightTareOffset",
         "ecCalibrationSlope",
         "ecCalibrationOffset"
       ],
@@ -409,6 +410,13 @@
             "null"
           ],
           "description": "Roadmap #416. HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install."
+        },
+        "weightTareOffset": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "HX711 set_offset() raw reading with the scale empty, applied every boot instead of tare()ing whatever's currently on the scale."
         },
         "ecCalibrationSlope": {
           "type": [

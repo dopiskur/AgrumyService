@@ -1,0 +1,6 @@
+# Shared with AgrumyFirmware's test/test_native_rule_tree_limits/rule_tree_limits.txt - the two
+# hardcoded caps (DeviceFarmUnitApiController's HardMaxNodesPerRule/HardMaxChildrenPerGroup,
+# ConditionTree.h's MAX_NODES_PER_RULE/MAX_CHILDREN_PER_GROUP) must stay equal or a rule the server
+# accepts can silently overflow the device's fixed-size ConditionNode array.
+maxNodesPerRule=8
+maxChildrenPerGroup=4

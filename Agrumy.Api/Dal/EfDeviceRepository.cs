@@ -590,6 +590,7 @@ namespace Agrumy.Api.Dal
                 row.SensorEc = cfg.SensorEc;
                 row.SensorWeight = cfg.SensorWeight;
                 row.WeightCalibrationFactor = cfg.WeightCalibrationFactor;
+                row.WeightTareOffset = cfg.WeightTareOffset;
                 row.EcCalibrationSlope = cfg.EcCalibrationSlope;
                 row.EcCalibrationOffset = cfg.EcCalibrationOffset;
             }
@@ -624,6 +625,7 @@ namespace Agrumy.Api.Dal
             SensorEc = c.SensorEc,
             SensorWeight = c.SensorWeight,
             WeightCalibrationFactor = c.WeightCalibrationFactor,
+            WeightTareOffset = c.WeightTareOffset,
             EcCalibrationSlope = c.EcCalibrationSlope,
             EcCalibrationOffset = c.EcCalibrationOffset,
         };

@@ -329,6 +329,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<double?>("WeightCalibrationFactor")
                         .HasColumnType("double");
 
+                    b.Property<long?>("WeightTareOffset")
+                        .HasColumnType("bigint");
+
                     b.HasKey("IDDeviceConfigSensor");
 
                     b.HasIndex("SensorBarometer");

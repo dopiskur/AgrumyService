@@ -441,6 +441,8 @@ namespace Agrumy.Shared.Models
         public int? SensorWeight { get; set; }
         // HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install.
         public double? WeightCalibrationFactor { get; set; }
+        // HX711 set_offset() raw ADC reading with the scale empty - applied on every boot instead of tare()ing against whatever happens to be on the scale at that moment.
+        public long? WeightTareOffset { get; set; }
         // No universal analog-EC-probe formula exists (same reason Wind/pH/rainLevel stayed unimplemented for so long) - identity default (1.0/0.0) reports raw millivolts until a real install calibrates against known-EC reference solutions.
         public double? EcCalibrationSlope { get; set; }
         public double? EcCalibrationOffset { get; set; }

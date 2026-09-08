@@ -218,6 +218,7 @@ namespace Agrumy.Dal.Entities
         public int? SensorEc { get; set; }
         public int? SensorWeight { get; set; }
         public double? WeightCalibrationFactor { get; set; }
+        public long? WeightTareOffset { get; set; }
         public double? EcCalibrationSlope { get; set; }
         public double? EcCalibrationOffset { get; set; }
     }

@@ -157,6 +157,12 @@
                                 <span asp-validation-for="DeviceConfigSensor!.WeightCalibrationFactor" class="text-danger"></span>
                             </div>
                             <div class="col-auto">
+                                @* Set once with the scale physically empty (e.g. via the device's own serial output), then left as-is - applied on every boot via set_offset() instead of tare()ing against whatever's on the scale at boot time. *@
+                                <label asp-for="DeviceConfigSensor!.WeightTareOffset" class="form-label">HX711 tare offset</label>
+                                <input asp-for="DeviceConfigSensor!.WeightTareOffset" class="form-control" />
+                                <span asp-validation-for="DeviceConfigSensor!.WeightTareOffset" class="text-danger"></span>
+                            </div>
+                            <div class="col-auto">
                                 <label asp-for="DeviceConfigSensor!.EcCalibrationSlope" class="form-label">EC slope</label>
                                 <input asp-for="DeviceConfigSensor!.EcCalibrationSlope" class="form-control" />
                                 <span asp-validation-for="DeviceConfigSensor!.EcCalibrationSlope" class="text-danger"></span>
