@@ -60,6 +60,7 @@ namespace Agrumy.Shared.Models
         public string? DeviceName { get; set; }
         public RelayFunction RelayFunction { get; set; }
         public bool IsOn { get; set; }
+        public int? Percent { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
     }
 }

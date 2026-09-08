@@ -81,6 +81,7 @@ namespace Agrumy.Dal.Entities
         public string Name { get; set; } = "";
         public string? Description { get; set; }
         public string RootConditionJson { get; set; } = "null";
+        public int? TargetPercent { get; set; }
         public bool IsSafetyRule { get; set; }
         public string? NotificationSubject { get; set; }
         public string? NotificationBody { get; set; }

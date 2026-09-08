@@ -1434,6 +1434,28 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Single(await _repo.ControllerDataGetAsync(d.IDDevice!.Value));
     }
 
+    // A positional (Screen/Vent) rule's TargetPercent round-trips through RuleAddAsync/RuleGetByIdAsync, and a device's reported Percent round-trips through ControllerDataPushAsync/ControllerDataGetAsync.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task PositionalRule_TargetPercentAndControllerDataPercent_RoundTrip(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+
+        int ruleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Vent, Name = "Vent rule", TargetPercent = 42,
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 25, Hysteresis = 1 },
+        });
+        DeviceFarmUnitZoneRule? fetched = await _repo.RuleGetByIdAsync(ruleId);
+        Assert.Equal(42, fetched!.TargetPercent);
+
+        await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Vent, IsOn = true, Percent = 42 } });
+        ControllerDataStatus status = Assert.Single(await _repo.ControllerDataGetAsync(d.IDDevice!.Value));
+        Assert.Equal(42, status.Percent);
+    }
+
     // ActiveSimulationSessionIdsByZoneAsync is RuleNotificationEvaluator's per-zone lookup for which session (if any) has a member device in that zone - the one genuinely new LINQ join here, worth a real-DB check beyond the mocked unit tests.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task ActiveSimulationSessionIdsByZone_OnlyMapsZonesWithAnActiveSessionMember(DbProviderKind provider)

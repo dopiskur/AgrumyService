@@ -28,6 +28,7 @@ namespace Agrumy.Api.Dal
                 }
                 row.TenantID = tenantID;
                 row.IsOn = entry.IsOn;
+                row.Percent = entry.Percent;
                 row.DateChanged = entry.DateCreated ?? DateTime.UtcNow;
             }
             await db.SaveChangesAsync();
@@ -37,7 +38,7 @@ namespace Agrumy.Api.Dal
         {
             return await db.ControllerData.AsNoTracking()
                 .Where(c => c.DeviceID == deviceID)
-                .Select(c => new ControllerDataStatus { RelayFunction = (RelayFunction)c.RelayFunction, IsOn = c.IsOn, DateChanged = c.DateChanged })
+                .Select(c => new ControllerDataStatus { RelayFunction = (RelayFunction)c.RelayFunction, IsOn = c.IsOn, Percent = c.Percent, DateChanged = c.DateChanged })
                 .ToListAsync();
         }
     }

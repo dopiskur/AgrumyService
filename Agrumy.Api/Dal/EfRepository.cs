@@ -183,14 +183,19 @@ namespace Agrumy.Api.Dal
                     new DeviceTypeServiceRow { IDDeviceTypeService = 2, ServiceType = "MQTT" });
             }
 
-            if (!await db.DeviceTypeRelays.AnyAsync())
+            // Per-row (not "if table empty") so a NEW RelayFunction value (Screen/Vent) reaches an already-seeded live DB the next time this runs (every startup, not just first boot) without a migration data-seed - a migration's InsertData would run BEFORE this method and make the "table empty" guard skip a truly fresh DB's rows 0-4 entirely.
+            var existingRelayIds = (await db.DeviceTypeRelays.AsNoTracking().Select(t => t.IDDeviceTypeRelay).ToListAsync()).ToHashSet();
+            (int Id, string Name)[] relayCatalog =
+            [
+                (0, "Disabled"), (1, "Ventilation"), (2, "Light"), (3, "Heating"), (4, "Water pump"),
+                (5, "Screen"), (6, "Vent"),
+            ];
+            foreach (var (id, name) in relayCatalog)
             {
-                db.DeviceTypeRelays.AddRange(
-                    new DeviceTypeRelayRow { IDDeviceTypeRelay = 0, RelayName = "Disabled" },
-                    new DeviceTypeRelayRow { IDDeviceTypeRelay = 1, RelayName = "Ventilation" },
-                    new DeviceTypeRelayRow { IDDeviceTypeRelay = 2, RelayName = "Light" },
-                    new DeviceTypeRelayRow { IDDeviceTypeRelay = 3, RelayName = "Heating" },
-                    new DeviceTypeRelayRow { IDDeviceTypeRelay = 4, RelayName = "Water pump" });
+                if (!existingRelayIds.Contains(id))
+                {
+                    db.DeviceTypeRelays.Add(new DeviceTypeRelayRow { IDDeviceTypeRelay = id, RelayName = name });
+                }
             }
 
             if (!await db.DeviceTypeSensors.AnyAsync())

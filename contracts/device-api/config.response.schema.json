@@ -604,6 +604,7 @@
         "experimentID",
         "actionType",
         "relayFunction",
+        "targetPercent",
         "name",
         "description",
         "root",
@@ -652,7 +653,14 @@
         },
         "relayFunction": {
           "type": "integer",
-          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - which of the device's relay slots this rule targets, resolved device-side against its OWN relays[] mapping above (the rule itself carries no slot number)."
+          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump, 5=Screen, 6=Vent (api.Models.RelayFunction) - which of the device's relay slots this rule targets, resolved device-side against its OWN relays[]/pwmSlots[] mapping above (the rule itself carries no slot number)."
+        },
+        "targetPercent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Only meaningful when relayFunction is positional (Screen=5/Vent=6) - the 0-100 position this rule commands while root evaluates true; several simultaneously-true rules for the same function fold to the HIGHEST targetPercent among them, not on/off OR. Null for every other function."
         },
         "actionType": {
           "type": "integer",

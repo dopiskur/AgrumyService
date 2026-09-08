@@ -9,6 +9,8 @@ namespace Agrumy.Web.ViewModels
         public RelayFunction? RelayFunction { get; set; }
         public string Name { get; set; } = "";
         public string? Description { get; set; }
+        /// Screen/Vent (positional) rules only - the 0-100 position to drive to while the tree evaluates true.
+        public int? TargetPercent { get; set; }
         public bool IsSafetyRule { get; set; }
         public string? NotificationSubject { get; set; }
         public string? NotificationBody { get; set; }

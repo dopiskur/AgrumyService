@@ -12,11 +12,15 @@
     "properties": {
       "relayFunction": {
         "type": "integer",
-        "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - same convention as deviceFarmUnitZoneRule.relayFunction in config.response.schema.json."
+        "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump, 5=Screen, 6=Vent (api.Models.RelayFunction) - same convention as deviceFarmUnitZoneRule.relayFunction in config.response.schema.json."
       },
       "isOn": {
         "type": "boolean",
-        "description": "The relay's new state after this transition."
+        "description": "The relay's new state after this transition - for a positional function (Screen/Vent) this is percent>0, not an independent decision."
+      },
+      "percent": {
+        "type": ["integer", "null"],
+        "description": "Only meaningful for a positional function (Screen/Vent) - the actual 0-100 position driven to. Optional/absent for a binary function; a real device does not send this field yet, a simulated one always does."
       },
       "dateCreated": {
         "type": ["string", "null"],

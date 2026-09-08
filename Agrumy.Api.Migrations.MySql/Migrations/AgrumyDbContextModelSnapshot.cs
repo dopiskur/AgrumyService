@@ -87,6 +87,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<bool>("IsOn")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<int?>("Percent")
+                        .HasColumnType("int");
+
                     b.Property<int>("RelayFunction")
                         .HasColumnType("int");
 
@@ -119,6 +122,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.Property<bool>("IsOn")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("Percent")
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
                         .HasColumnType("int");
@@ -659,6 +665,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<int?>("SimulationSessionID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetPercent")
                         .HasColumnType("int");
 
                     b.Property<int>("TenantID")

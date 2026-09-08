@@ -13,6 +13,8 @@
         (Agrumy.Shared.Models.RelayFunction.Light, "Light"),
         (Agrumy.Shared.Models.RelayFunction.Heating, "Heating"),
         (Agrumy.Shared.Models.RelayFunction.WaterPump, "Water pump"),
+        (Agrumy.Shared.Models.RelayFunction.Screen, "Screen"),
+        (Agrumy.Shared.Models.RelayFunction.Vent, "Vent"),
     ];
     (Agrumy.Shared.Models.SensorMetric Value, string Label)[] metrics =
     [
@@ -79,8 +81,9 @@
     </div>
     <div class="card-body">
         <p class="text-secondary small">
-            A function may have several rules - any rule that evaluates "on" wins (OR). A safety rule
-            always survives being overridden by a more specific scope.
+            A function may have several rules - any rule that evaluates "on" wins (OR). Screen/Vent are
+            positional instead: the highest target percent among the currently-true rules wins. A safety
+            rule always survives being overridden by a more specific scope.
         </p>
         @foreach (var (function, label) in functions)
         {
@@ -106,6 +109,7 @@
                                 <span>
                                     <strong>@rule.Name</strong>
                                     @if (rule.IsSafetyRule) { <span class="badge text-bg-warning">safety</span> }
+                                    @if (rule.TargetPercent is int targetPercent) { <span class="badge text-bg-info">&rarr; @targetPercent%</span> }
                                     - @Html.Raw(SummarizeTree(rule.Root))
                                 </span>
                                 <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
@@ -138,6 +142,13 @@
                                 <label class="form-label small mb-0">Description (optional)</label>
                                 <input type="text" name="Description" class="form-control form-control-sm" style="width:18rem" />
                             </div>
+                            @if (function.IsPositional())
+                            {
+                                <div class="col-auto">
+                                    <label class="form-label small mb-0">Target % (0-100)</label>
+                                    <input type="number" name="TargetPercent" class="form-control form-control-sm" style="width:7rem" min="0" max="100" required />
+                                </div>
+                            }
                             <div class="col-auto align-self-end">
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" name="IsSafetyRule" value="true" id="safety-@function" />

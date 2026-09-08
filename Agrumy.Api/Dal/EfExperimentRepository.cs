@@ -160,6 +160,7 @@ namespace Agrumy.Api.Dal
                 DeviceID = deviceID,
                 RelayFunction = (int)entry.RelayFunction,
                 IsOn = entry.IsOn,
+                Percent = entry.Percent,
                 DateCreated = entry.DateCreated ?? DateTimeOffset.UtcNow,
             }));
             await db.SaveChangesAsync();
@@ -202,6 +203,7 @@ namespace Agrumy.Api.Dal
                        DeviceName = d != null ? d.DeviceName : null,
                        RelayFunction = (RelayFunction)c.RelayFunction,
                        IsOn = c.IsOn,
+                       Percent = c.Percent,
                        DateCreated = c.DateCreated,
                    }).Take(limit).ToListAsync();
 

@@ -21,10 +21,19 @@ namespace Agrumy.Api.Devices
             if (rule.ActionType == ActionType.Relay)
             {
                 if (rule.RelayFunction == null) { return "Relay rule: relayFunction is required."; }
+                if (rule.RelayFunction.Value.IsPositional())
+                {
+                    if (rule.TargetPercent is not int percent || percent < 0 || percent > 100) { return "Screen/Vent rule: targetPercent is required, 0-100."; }
+                }
+                else if (rule.TargetPercent != null)
+                {
+                    return "targetPercent only applies to a Screen/Vent (positional) rule.";
+                }
             }
             else
             {
                 if (rule.RelayFunction != null) { return "Notification rule: relayFunction must not be set."; }
+                if (rule.TargetPercent != null) { return "Notification rule: targetPercent must not be set."; }
                 if (string.IsNullOrWhiteSpace(rule.NotificationSubject)) { return "Notification rule: subject is required."; }
             }
 

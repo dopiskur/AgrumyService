@@ -23,6 +23,25 @@ namespace Agrumy.Api.Devices
             return any;
         }
 
+        /// Positional counterpart to Evaluate (Screen/Vent) - folds every currently-true rule's own TargetPercent to their MAX (0 if none true), same "OR across rules" spirit as Evaluate just MAX instead of boolean-OR, mirroring AgrumyFirmware's foldTargetPercent.
+        public static int EvaluatePercent(RelayFunction function, IList<DeviceFarmUnitZoneRule> rules, bool wasOn, SimulatedReading reading, DateTime utcNow, int utcOffsetSeconds)
+        {
+            Func<SensorMetric, double?> readMetric = metric => ReadMetric(reading, metric);
+            int best = 0;
+            foreach (DeviceFarmUnitZoneRule rule in rules)
+            {
+                if (rule.ActionType != ActionType.Relay || rule.RelayFunction != function || rule.Root == null || rule.TargetPercent is not int percent)
+                {
+                    continue;
+                }
+                if (RuleConditionEvaluator.EvaluateRule(rule, wasOn, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick: static _ => false) && percent > best)
+                {
+                    best = percent;
+                }
+            }
+            return best;
+        }
+
         private static double? ReadMetric(SimulatedReading r, SensorMetric metric) => metric switch
         {
             SensorMetric.Temperature => r.Temperature,

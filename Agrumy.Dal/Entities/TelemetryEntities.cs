@@ -33,6 +33,7 @@ namespace Agrumy.Dal.Entities
         public int TenantID { get; set; }
         public int RelayFunction { get; set; }
         public bool IsOn { get; set; }
+        public int? Percent { get; set; }
         public DateTimeOffset? DateChanged { get; set; }
     }
 
@@ -81,6 +82,7 @@ namespace Agrumy.Dal.Entities
         public int DeviceID { get; set; }
         public int RelayFunction { get; set; }
         public bool IsOn { get; set; }
+        public int? Percent { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
     }
 
