@@ -619,6 +619,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("SimulationSessionID")
+                        .HasColumnType("int");
+
                     b.Property<int>("TenantID")
                         .HasColumnType("int");
 
@@ -632,6 +635,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasIndex("DeviceFarmUnitZoneID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_zone");
+
+                    b.HasIndex("SimulationSessionID")
+                        .HasDatabaseName("ix_deviceFarmUnitZoneRule_simulationSession");
 
                     b.HasIndex("TenantID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_tenant");
@@ -2121,6 +2127,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .WithMany()
                         .HasForeignKey("DeviceFarmUnitZoneID")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Agrumy.Dal.Entities.SimulationSessionRow", null)
+                        .WithMany()
+                        .HasForeignKey("SimulationSessionID")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceManualOverrideRow", b =>

@@ -74,6 +74,7 @@ namespace Agrumy.Dal.Entities
         public int? DeviceFarmID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        public int? SimulationSessionID { get; set; }
         public int ActionType { get; set; }
         public int? RelayFunction { get; set; }
         public string Name { get; set; } = "";

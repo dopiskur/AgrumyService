@@ -1311,6 +1311,57 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(globalRuleId, Assert.Single(await _repo.RulesGetForTenantGlobalAsync(tenantId)).IDDeviceFarmUnitZoneRule);
     }
 
+    // A simulation-scoped rule has the same null Farm/Unit/Zone shape as a Global rule - RulesGetForTenantGlobalAsync's own SimulationSessionID filter (not just the mocked unit tests) must keep it out of the real Global tier against a real DB.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task Rule_SimulationScope_ExcludedFromGlobalScope_ButFetchableByOwnSession(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
+
+        int simRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, SimulationSessionID = session.IDSimulationSession!.Value, RelayFunction = RelayFunction.Heating, Name = "Sim rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
+        });
+        int globalRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "Global rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.WaterLevel, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
+        });
+
+        Assert.Equal(globalRuleId, Assert.Single(await _repo.RulesGetForTenantGlobalAsync(tenantId)).IDDeviceFarmUnitZoneRule);
+        Assert.Equal(simRuleId, Assert.Single(await _repo.RulesGetForSimulationAsync(session.IDSimulationSession!.Value)).IDDeviceFarmUnitZoneRule);
+
+        // Cascade delete - removing the session (via the DAL delete, same as SimulationApiController.DeleteSession) must take its own rule with it.
+        await _repo.SimulationSessionDeleteAsync(session.IDSimulationSession!.Value);
+        Assert.Null(await _repo.RuleGetByIdAsync(simRuleId));
+    }
+
+    // ActiveSimulationSessionIdsByZoneAsync is RuleNotificationEvaluator's per-zone lookup for which session (if any) has a member device in that zone - the one genuinely new LINQ join here, worth a real-DB check beyond the mocked unit tests.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ActiveSimulationSessionIdsByZone_OnlyMapsZonesWithAnActiveSessionMember(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zoneWithMember) = await MakeUnitAndZone(tenantId);
+        var (_, zoneWithoutMember) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zoneWithMember.IDDeviceFarmUnitZone!.Value);
+
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
+        Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
+
+        // Not yet started - a pending session must not show up as "active" here, same rule DeviceActiveSimulationSessionIdGetAsync already enforces.
+        var beforeStart = await _repo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
+        Assert.DoesNotContain(zoneWithMember.IDDeviceFarmUnitZone!.Value, beforeStart.Keys);
+
+        await _repo.SimulationSessionStartAsync(session.IDSimulationSession!.Value, 60);
+        var afterStart = await _repo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
+        Assert.Equal(session.IDSimulationSession, afterStart[zoneWithMember.IDDeviceFarmUnitZone!.Value]);
+        Assert.DoesNotContain(zoneWithoutMember.IDDeviceFarmUnitZone!.Value, afterStart.Keys);
+    }
+
     // The freshly-created farm scoops up a unit that already existed unassigned.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task EnsureFirstFarm_NoExistingFarm_CreatesOneAndSweepsUnassignedUnits(DbProviderKind provider)

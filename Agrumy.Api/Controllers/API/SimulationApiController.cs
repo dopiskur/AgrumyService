@@ -1,17 +1,24 @@
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Devices;
+using Agrumy.Shared;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Simulation;
 using Agrumy.Api.Quota;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.Controllers.API
 {
     /// Admin-facing create/list/delete for fully virtual devices - the actual per-tick simulation runs in Agrumy.Api.BackgroundWorkers.VirtualDeviceRunnerBackgroundService, not here.
     [Route("/api/Simulation")]
-    public class SimulationApiController(ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, IHttpClientFactory httpClientFactory, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class SimulationApiController(ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, IHttpClientFactory httpClientFactory, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, RuleValidationService ruleValidation, IOptions<AgrumySettings> settingsOptions) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
+        private readonly AgrumySettings settings = settingsOptions.Value;
+        // Same ceiling DeviceFarmUnitApiController's Zone/Unit/Farm/Global rule routes use - a simulation session's own rule list is one more scope, no reason for a different cap.
+        private const int HardMaxRulesPerZone = 32;
+
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
         private readonly IUserRepository users = userRepo;
         /// Creates the device via the SAME POST /api/Device/Register a real device calls after WiFi setup (Option C design - the endpoint never learns the caller isn't real hardware), then tags it in the virtual-device registry so the background runner picks it up. Deliberately bare - no Name/Unit/Zone here, an admin configures those afterward through the ordinary Device Edit/Fleet UI, same as any freshly-registered real device.
@@ -279,6 +286,99 @@ namespace Agrumy.Api.Controllers.API
                 await deviceRepo.DeviceSimulationSetAsync(idDevice, new DeviceSimulation { Enabled = false });
             }
             return Ok();
+        }
+
+        // ---- Simulation-scoped rules - a member device evaluates these ahead of its real Zone>Unit>Farm>Global rules, falling back to that hierarchy for whatever a session has no rule for. ----
+
+        /// Same ownership check every other Session-scoped route in this controller already does - kept local rather than shared since it's three lines and every one of these routes needs it inline anyway.
+        private async Task<(SimulationSession? Session, ActionResult? Error)> EnsureOwnedSessionAsync(int idSimulationSession)
+        {
+            SimulationSession? session = await simulationRepo.SimulationSessionGetByIdAsync(idSimulationSession);
+            if (session is null)
+            {
+                return (null, NotFound());
+            }
+            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            {
+                return (null, StatusCode(403, "Session belongs to a different tenant"));
+            }
+            return (session, null);
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpGet("Session/{idSimulationSession}/Rule")]
+        public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> SessionRulesGet(int idSimulationSession)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await deviceFarmUnitRepo.RulesGetForSimulationAsync(session!.IDSimulationSession!.Value));
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpPost("Session/{idSimulationSession}/Rule")]
+        public async Task<ActionResult<int>> SessionRuleAdd(int idSimulationSession, [FromBody] DeviceFarmUnitZoneRule rule)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            if (session!.StoppedAtUtc != null || session.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+            {
+                return BadRequest("This session has already ended.");
+            }
+
+            rule.DeviceFarmUnitZoneID = null;
+            rule.DeviceFarmUnitID = null;
+            rule.DeviceFarmID = null;
+            rule.SimulationSessionID = idSimulationSession;
+            rule.TenantID = session.TenantID ?? CallerTenantId ?? 0;
+
+            if (await ruleValidation.ShapeErrorAsync(rule) is string shapeError)
+            {
+                return BadRequest(shapeError);
+            }
+            int existingCount = (await deviceFarmUnitRepo.RulesGetForSimulationAsync(idSimulationSession)).Count;
+            int configuredMax = (await serverConfigRepo.ServerConfigGetAsync(1)).MaxRulesPerZone ?? settings.MaxRulesPerZone;
+            int effectiveMax = Math.Min(configuredMax, HardMaxRulesPerZone);
+            if (existingCount >= effectiveMax)
+            {
+                return BadRequest($"This session already has {existingCount} rules, the configured maximum ({effectiveMax}). Remove one before adding another.");
+            }
+
+            int idRule = await deviceFarmUnitRepo.RuleAddAsync(rule);
+            await WriteAuditAsync("DeviceFarmUnitZoneRule.Created", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"simulation session {idSimulationSession}, {rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
+            return Ok(idRule);
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpDelete("Session/{idSimulationSession}/Rule/{idRule}")]
+        public async Task<ActionResult<bool>> SessionRuleDelete(int idSimulationSession, int idRule)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            DeviceFarmUnitZoneRule? rule = await deviceFarmUnitRepo.RuleGetByIdAsync(idRule);
+            if (rule == null || rule.SimulationSessionID != idSimulationSession)
+            {
+                return NotFound();
+            }
+
+            var referencing = await deviceFarmUnitRepo.RulesReferencingAsync(idRule, rule.TenantID);
+            if (referencing.Count > 0)
+            {
+                string names = string.Join(", ", referencing.Select(r => $"#{r.IDDeviceFarmUnitZoneRule}"));
+                return Conflict($"Cannot delete: still referenced by another rule's \"another rule fired\" condition ({names}). Remove that condition first.");
+            }
+
+            await deviceFarmUnitRepo.RuleDeleteAsync(idRule);
+            await WriteAuditAsync("DeviceFarmUnitZoneRule.Deleted", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"simulation session {idSimulationSession}, {rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
+            return true;
         }
     }
 }

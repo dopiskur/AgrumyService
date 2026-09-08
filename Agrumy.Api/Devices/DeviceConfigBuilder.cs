@@ -88,6 +88,9 @@ namespace Agrumy.Api.Devices
                 DeviceConfigController? controller = await repo.DeviceConfigControllerGetAsync(device.DeviceConfigControllerID);
                 if (controller != null && device.DeviceFarmUnitZoneID is int idZone)
                 {
+                    // Most specific tier, checked ahead of the real hierarchy below - empty unless this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover.
+                    IList<DeviceFarmUnitZoneRule> simulationRules = await repo.DeviceActiveSimulationSessionIdGetAsync(device.IDDevice!.Value) is int idSession
+                        ? await repo.RulesGetForSimulationAsync(idSession) : [];
                     IList<DeviceFarmUnitZoneRule> zoneRules = await repo.RulesGetForZoneAsync(idZone);
                     IList<DeviceFarmUnitZoneRule> unitRules = device.DeviceFarmUnitID is int idUnit ? await repo.RulesGetForUnitAsync(idUnit) : [];
                     // Farm rules only apply when the device's own Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules at all, same "unassigned means no inheritance" rule as Global always applying regardless.
@@ -95,7 +98,7 @@ namespace Agrumy.Api.Devices
                         && (await repo.DeviceFarmUnitGetByIdAsync(farmUnitId))?.DeviceFarmID is int idFarm
                         ? await repo.RulesGetForFarmAsync(idFarm) : [];
                     IList<DeviceFarmUnitZoneRule> globalRules = device.TenantID is int globalTenantId ? await repo.RulesGetForTenantGlobalAsync(globalTenantId) : [];
-                    IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(zoneRules, unitRules, farmRules, globalRules);
+                    IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, zoneRules, unitRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
                     // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
                     double? lat = tenant?.Latitude ?? serverConfig.WeatherLocationLat;

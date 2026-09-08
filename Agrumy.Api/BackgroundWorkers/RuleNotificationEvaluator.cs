@@ -6,14 +6,14 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Evaluates every Notification-action rule (roadmap #212) against each zone it reaches (Zone>Unit>Farm>Global
+    /// Evaluates every Notification-action rule against each zone it reaches (Simulation>Zone>Unit>Farm>Global
     /// precedence resolved per zone via RuleHierarchyResolver.ResolveNotificationRules, same "more specific
     /// wins" semantics as Relay rules), dispatching one notification per false->true transition - a Relay
     /// rule's OR-across-rules/AND-OR-within-a-rule fold happens on-device, this is the server-side
     /// equivalent for the action type firmware has no way to perform itself.
     public sealed class RuleNotificationEvaluator(
         ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo,
-        INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo)
+        INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo)
     {
         private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend);
 
@@ -49,6 +49,10 @@ namespace Agrumy.Api.BackgroundWorkers
             DateOnly localDate = DateOnly.FromDateTime(utcNow.AddSeconds(utcOffsetSeconds));
             notificationRules = AstronomicalRuleResolver.Resolve(notificationRules, lat, lon, localDate, utcOffsetSeconds);
 
+            // Which zones (if any) currently have a member device of an active simulation session, and which session - fetched once per tenant, not once per zone. Simulation-scoped rules for each such session are also fetched lazily and cached here (a session commonly covers several zones).
+            IDictionary<int, int> simulationSessionIdByZone = await simulationRepo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
+            var simulationRulesBySession = new Dictionary<int, List<DeviceFarmUnitZoneRule>>();
+
             var items = new List<EvalItem>();
             foreach (DeviceFarmUnit unit in await unitRepo.DeviceFarmUnitsGetAsync(tenantId))
             {
@@ -70,7 +74,17 @@ namespace Agrumy.Api.BackgroundWorkers
                         continue;
                     }
                     var zoneScoped = notificationRules.Where(r => r.DeviceFarmUnitZoneID == zoneId).ToList();
-                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(zoneScoped, unitScoped, farmScoped, globalScoped);
+                    List<DeviceFarmUnitZoneRule> simulationScoped = [];
+                    if (simulationSessionIdByZone.TryGetValue(zoneId, out int simSessionId))
+                    {
+                        if (!simulationRulesBySession.TryGetValue(simSessionId, out List<DeviceFarmUnitZoneRule>? cached))
+                        {
+                            cached = (await unitRepo.RulesGetForSimulationAsync(simSessionId)).Where(r => r.ActionType == ActionType.Notification).ToList();
+                            simulationRulesBySession[simSessionId] = cached;
+                        }
+                        simulationScoped = cached;
+                    }
+                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, zoneScoped, unitScoped, farmScoped, globalScoped);
                     if (effective.Count == 0)
                     {
                         continue;

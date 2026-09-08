@@ -193,6 +193,7 @@ builder.Services.AddScoped<Agrumy.Api.Commands.IMqttCommandPublisher, Agrumy.Api
 builder.Services.AddScoped<CommandQueueService>();
 builder.Services.AddScoped<ManualActuateService>();
 builder.Services.AddScoped<Agrumy.Api.Devices.DeviceConfigBuilder>();
+builder.Services.AddScoped<Agrumy.Api.Devices.RuleValidationService>();
 builder.Services.AddScoped<Agrumy.Api.Migration.TenantExportService>();
 builder.Services.AddScoped<Agrumy.Api.Migration.TenantImportService>();
 builder.Services.AddScoped<Agrumy.Api.Quota.TenantQuotaEnforcer>();

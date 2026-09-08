@@ -10,6 +10,13 @@
     var fleet = (IList<DeviceFleetStatus>)ViewBag.Fleet;
     var memberIds = Model.Devices.Select(d => d.IDDevice).ToHashSet();
     var candidates = fleet.Where(f => !memberIds.Contains(f.IDDevice)).ToList();
+    var ruleEditorModel = new Agrumy.Web.ViewModels.RuleEditorViewModel
+    {
+        Scope = Agrumy.Web.ViewModels.RuleScope.Simulation,
+        ScopeId = Model.IDSimulationSession,
+        Rules = (IList<DeviceFarmUnitZoneRule>)ViewBag.Rules,
+        RedirectActionName = "Details",
+    };
 }
 
 <h1>@Model.Name</h1>
@@ -122,5 +129,14 @@ else
         <button type="submit" class="btn btn-primary">Add to simulation</button>
     </div>
 </form>
+
+<h4 class="mt-4">Simulation-scoped rules</h4>
+<p class="text-secondary small">
+    Evaluated ahead of a member device's real Zone/Unit/Farm/Global rules while this session is
+    active, falling back to that real hierarchy for anything not covered here - lets you test rule
+    logic against this session's simulated readings without it silently doing nothing, or (for
+    whatever you don't override here) still reaching a real notification/relay outside the simulation.
+</p>
+<partial name="_RuleEditor" model="ruleEditorModel" />
 
 <a asp-action="Index" class="btn btn-link mt-3">Back to simulations</a>

@@ -299,6 +299,15 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Global/Rule")]
         Task GlobalRuleDelete(int? idDeviceFarmUnitZoneRule);
 
+        [Get("/api/Simulation/Session/{idSimulationSession}/Rule")]
+        Task<IList<DeviceFarmUnitZoneRule>> SessionRulesGet(int idSimulationSession);
+
+        [Post("/api/Simulation/Session/{idSimulationSession}/Rule")]
+        Task<int> SessionRuleAdd(int idSimulationSession, [Body] DeviceFarmUnitZoneRule rule);
+
+        [Delete("/api/Simulation/Session/{idSimulationSession}/Rule/{idRule}")]
+        Task SessionRuleDelete(int idSimulationSession, int idRule);
+
         [Get("/api/DeviceFarmUnit/Unassigned")]
         Task<IList<DeviceDto>> DeviceUnassignedGet(bool controllerCapable);
 

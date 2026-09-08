@@ -2,6 +2,7 @@ using Agrumy.Web.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,6 +50,7 @@ namespace Agrumy.Web.Controllers.View
         {
             SimulationSession session = await api.SimulationSessionGet(idSimulationSession);
             ViewBag.Fleet = await api.DeviceFleetGet();
+            ViewBag.Rules = await api.SessionRulesGet(idSimulationSession);
             return View(session);
         }
 
@@ -121,6 +123,52 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> DeleteVirtualDevice(int idDevice, int idSimulationSession)
         {
             await api.SimulationDeviceDelete(idDevice);
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
+        }
+
+        // ---- Simulation-scoped rules - a member device evaluates these ahead of its real Zone>Unit>Farm>Global rules, same RuleFormInput/rule-builder.js as DeviceFarmUnitController's own Zone/Unit/Farm/Global rule forms. ----
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SessionRuleAdd(int idSimulationSession, RuleFormInput input)
+        {
+            ConditionNode? root = string.IsNullOrWhiteSpace(input.RootConditionJson)
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize<ConditionNode>(input.RootConditionJson, ConditionConfigJson.Options);
+            var rule = new DeviceFarmUnitZoneRule
+            {
+                ActionType = input.ActionType,
+                RelayFunction = input.ActionType == ActionType.Relay ? input.RelayFunction : null,
+                Name = input.Name.Trim(),
+                Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim(),
+                IsSafetyRule = input.IsSafetyRule,
+                NotificationSubject = input.ActionType == ActionType.Notification ? input.NotificationSubject : null,
+                NotificationBody = input.ActionType == ActionType.Notification ? input.NotificationBody : null,
+                Root = root,
+            };
+            try
+            {
+                await api.SessionRuleAdd(idSimulationSession, rule);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SessionRuleDelete(int idDeviceFarmUnitZoneRule, int idSimulationSession)
+        {
+            try
+            {
+                await api.SessionRuleDelete(idSimulationSession, idDeviceFarmUnitZoneRule);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
     }

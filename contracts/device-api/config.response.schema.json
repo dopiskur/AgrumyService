@@ -600,6 +600,7 @@
         "deviceFarmID",
         "deviceFarmUnitID",
         "deviceFarmUnitZoneID",
+        "simulationSessionID",
         "actionType",
         "relayFunction",
         "name",
@@ -633,6 +634,13 @@
             "null"
           ],
           "description": "Set only for a Unit-scope rule - never seen here, since a rule reaching a device is already resolved to a specific Zone (RuleHierarchyResolver)."
+        },
+        "simulationSessionID": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Set only for a Simulation-scope rule - a rule reaching a device is already resolved to a specific Zone (RuleHierarchyResolver) regardless of which scope originally won, so this stays null on the wire just like deviceFarmID/deviceFarmUnitID above."
         },
         "relayFunction": {
           "type": "integer",

@@ -1,9 +1,8 @@
-using System.Reflection;
-using Agrumy.Api.Controllers.API;
+using Agrumy.Api.Devices;
 
 namespace Agrumy.Api.Tests;
 
-/// Reads the SAME rule_tree_limits.txt AgrumyFirmware's test_native_rule_tree_limits reads, so DeviceFarmUnitApiController's hardcoded caps can't silently drift from ConditionTree.h's without a build failing somewhere.
+/// Reads the SAME rule_tree_limits.txt AgrumyFirmware's test_native_rule_tree_limits reads, so RuleValidationService's hardcoded caps can't silently drift from ConditionTree.h's without a build failing somewhere.
 public class RuleTreeLimitTests
 {
     private static int ReadLimit(string key)
@@ -24,22 +23,15 @@ public class RuleTreeLimitTests
         throw new KeyNotFoundException($"{key} not found in rule_tree_limits.txt");
     }
 
-    private static int GetPrivateConst(string name)
-    {
-        FieldInfo field = typeof(DeviceFarmUnitApiController).GetField(name, BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new MissingFieldException(nameof(DeviceFarmUnitApiController), name);
-        return (int)field.GetRawConstantValue()!;
-    }
-
     [Fact]
     public void HardMaxNodesPerRule_MatchesSharedVector()
     {
-        Assert.Equal(ReadLimit("maxNodesPerRule"), GetPrivateConst("HardMaxNodesPerRule"));
+        Assert.Equal(RuleValidationService.HardMaxNodesPerRule, ReadLimit("maxNodesPerRule"));
     }
 
     [Fact]
     public void HardMaxChildrenPerGroup_MatchesSharedVector()
     {
-        Assert.Equal(ReadLimit("maxChildrenPerGroup"), GetPrivateConst("HardMaxChildrenPerGroup"));
+        Assert.Equal(RuleValidationService.HardMaxChildrenPerGroup, ReadLimit("maxChildrenPerGroup"));
     }
 }

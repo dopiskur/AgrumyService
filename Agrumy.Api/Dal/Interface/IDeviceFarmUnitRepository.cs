@@ -154,7 +154,10 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule at Global (per-tenant) scope - applies to every farm/unit/zone the tenant owns unless a more specific scope overrides it for that function/metric.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId);
 
-        /// Every Notification-action rule for the tenant across all three scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution).
+        /// Every rule scoped to exactly this simulation session - evaluated ahead of a member device's real Zone>Unit>Farm>Global rules, falling back to that hierarchy for anything this session has no rule for.
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSimulationAsync(int idSimulationSession);
+
+        /// Every Notification-action rule for the tenant across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation-scoped rules excluded, fetched separately per session.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId);
 
         /// Single rule by id (no tenant filter) - for ownership checks, resolve its scope then check that scope's tenant - or null if none.

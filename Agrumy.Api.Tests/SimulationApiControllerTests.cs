@@ -21,8 +21,10 @@ public class SimulationApiControllerTests
 
     private SimulationApiController NewController()
     {
-        var controller = new SimulationApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _httpClientFactory.Object,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object));
+        var controller = new SimulationApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _httpClientFactory.Object,
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object),
+            new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
+            Microsoft.Extensions.Options.Options.Create(new Agrumy.Shared.AgrumySettings()));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         return controller;
     }
@@ -307,5 +309,110 @@ public class SimulationApiControllerTests
         Assert.IsType<OkResult>(result);
         _repo.Verify(r => r.DeviceSimulationSetAsync(8, It.IsAny<DeviceSimulation>()), Times.Once);
         // Strict mock: DeviceSimulationSetAsync(9, ...) has no setup, proving the virtual member was never touched.
+    }
+
+    // ---- Simulation-scoped rules ----
+
+    private static DeviceFarmUnitZoneRule ValidRelayRule() => new()
+    {
+        ActionType = ActionType.Relay,
+        RelayFunction = RelayFunction.Heating,
+        Name = "Test rule",
+        Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 30 },
+    };
+
+    [Fact]
+    public async Task SessionRuleAdd_Valid_PinsScopeAndPersists()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1),
+        });
+        _repo.Setup(r => r.RulesGetForSimulationAsync(5)).ReturnsAsync(new List<DeviceFarmUnitZoneRule>());
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        _repo.Setup(r => r.RuleAddAsync(It.Is<DeviceFarmUnitZoneRule>(rule =>
+            rule.SimulationSessionID == 5 && rule.DeviceFarmUnitZoneID == null && rule.DeviceFarmUnitID == null && rule.DeviceFarmID == null && rule.TenantID == 1)))
+            .ReturnsAsync(77);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleAdd(5, ValidRelayRule());
+
+        Assert.Equal(77, Assert.IsType<OkObjectResult>(result.Result).Value);
+    }
+
+    [Fact]
+    public async Task SessionRuleAdd_SessionAlreadyEnded_Returns400_NeverAdds()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, StartedAtUtc = DateTimeOffset.UtcNow.AddHours(-2), ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(-1),
+        });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleAdd(5, ValidRelayRule());
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        // MockBehavior.Strict: RuleAddAsync has no setup, proving the ended session was rejected before any shape check or write.
+    }
+
+    [Fact]
+    public async Task SessionRuleAdd_ForeignTenantSession_Returns403_NeverAdds()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 99 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleAdd(5, ValidRelayRule());
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+    }
+
+    [Fact]
+    public async Task SessionRuleAdd_InvalidShape_Returns400_NeverAdds()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1),
+        });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleAdd(5, new DeviceFarmUnitZoneRule { ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, Name = "" });
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        // MockBehavior.Strict: RulesGetForSimulationAsync/RuleAddAsync have no setup, proving the shape error was caught before the cap check or the write.
+    }
+
+    [Fact]
+    public async Task SessionRuleDelete_BelongsToSession_Deletes()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 1 });
+        _repo.Setup(r => r.RuleGetByIdAsync(77)).ReturnsAsync(new DeviceFarmUnitZoneRule { IDDeviceFarmUnitZoneRule = 77, TenantID = 1, SimulationSessionID = 5, ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, Name = "Test rule" });
+        _repo.Setup(r => r.RulesReferencingAsync(77, 1)).ReturnsAsync(new List<DeviceFarmUnitZoneRule>());
+        _repo.Setup(r => r.RuleDeleteAsync(77)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleDelete(5, 77);
+
+        Assert.True(result.Value);
+    }
+
+    [Fact]
+    public async Task SessionRuleDelete_BelongsToDifferentSession_Returns404_NeverDeletes()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 1 });
+        _repo.Setup(r => r.RuleGetByIdAsync(77)).ReturnsAsync(new DeviceFarmUnitZoneRule { IDDeviceFarmUnitZoneRule = 77, TenantID = 1, SimulationSessionID = 6, ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, Name = "Other session's rule" });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.SessionRuleDelete(5, 77);
+
+        Assert.IsType<NotFoundResult>(result.Result);
+        // MockBehavior.Strict: RuleDeleteAsync has no setup, proving a rule from a DIFFERENT session was never deleted just because both belong to the same caller's tenant.
     }
 }

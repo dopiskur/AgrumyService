@@ -145,6 +145,23 @@ namespace Agrumy.Api.Dal
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<IDictionary<int, int>> ActiveSimulationSessionIdsByZoneAsync(int tenantID)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var rows = await db.SimulationSessionDevices.AsNoTracking()
+                .Join(db.SimulationSessions.AsNoTracking().Where(s => s.TenantID == tenantID && s.StoppedAtUtc == null && s.ExpiresAtUtc > now),
+                    sd => sd.IDSimulationSession, s => s.IDSimulationSession, (sd, s) => new { sd.DeviceID, s.IDSimulationSession })
+                .Join(db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID != null),
+                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { ZoneID = d.DeviceFarmUnitZoneID!.Value, ms.IDSimulationSession })
+                .ToListAsync();
+            var map = new Dictionary<int, int>();
+            foreach (var r in rows)
+            {
+                map[r.ZoneID] = r.IDSimulationSession;
+            }
+            return map;
+        }
+
         public async Task<IList<SimulationSession>> SimulationSessionsExpiredButActiveGetAsync(DateTimeOffset nowUtc)
         {
             List<SimulationSessionRow> rows = await db.SimulationSessions.AsNoTracking()
