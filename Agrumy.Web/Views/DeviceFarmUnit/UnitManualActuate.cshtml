@@ -1,0 +1,36 @@
+@model UnitManualActuateViewModel
+@{
+    ViewData["Title"] = "Manual actuate";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Units</a></li>
+        <li class="breadcrumb-item"><a asp-action="Zones" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit">@Model.Unit.DeviceFarmUnitName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Manual actuate</li>
+    </ol>
+</nav>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Manual actuate (all zones)</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-secondary small">
+            Fans out to every zone under this unit that has a controller - a zone with no
+            MaxRunSeconds configured for a Target-mode command is skipped, not failed outright.
+        </p>
+        <partial name="_ManualActuateFunction" model="Model.Heating" />
+        <partial name="_ManualActuateFunction" model="Model.Ventilation" />
+        <partial name="_ManualActuateFunction" model="Model.Irrigation" />
+    </div>
+</div>

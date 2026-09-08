@@ -41,62 +41,32 @@
     <div class="alert alert-warning">@manualError</div>
 }
 
-@{
-    int idUnit = Model.Unit.IDDeviceFarmUnit!.Value;
-    var unitHeatingModel = new ManualActuateFunctionViewModel
-    {
-        ScopeId = idUnit, IsUnitLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
-        AllowedTargetMetrics = [SensorMetric.Temperature],
-    };
-    var unitVentilationModel = new ManualActuateFunctionViewModel
-    {
-        ScopeId = idUnit, IsUnitLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
-        AllowedTargetMetrics = [SensorMetric.Temperature, SensorMetric.Humidity],
-    };
-    var unitIrrigationModel = new ManualActuateFunctionViewModel
-    {
-        ScopeId = idUnit, IsUnitLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
-        AllowedTargetMetrics = [SensorMetric.Moisture],
-    };
-}
-
+@* Always visible, no scrolling needed - separate from the Discovered devices card below (which only renders when there's something to show) so these controls never disappear along with an empty results list. *@
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Manual actuate (all zones)</h3>
-        </div>
-        <div class="card-body">
-            <p class="text-secondary small">
-                Fans out to every zone under this unit that has a controller - a zone with no
-                MaxRunSeconds configured for a Target-mode command is skipped, not failed outright.
-            </p>
-            <partial name="_ManualActuateFunction" model="unitHeatingModel" />
-            <partial name="_ManualActuateFunction" model="unitVentilationModel" />
-            <partial name="_ManualActuateFunction" model="unitIrrigationModel" />
-        </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <a asp-action="UnitManualActuate" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
+            <i class="bi bi-hand-index-thumb"></i> Manual actuate
+        </a>
+        <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
+            <i class="bi bi-diagram-3"></i> Automation rules
+        </a>
+        <form asp-action="ScanUnit" method="post" class="d-inline">
+            <input type="hidden" name="UnitID" value="@Model.Unit.IDDeviceFarmUnit" />
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+        </form>
     </div>
-}
-
-@if (hasAnyRole(RoleNames.DeviceManagers))
-{
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Discovered devices</h3>
-            <div class="float-end d-flex gap-2">
-                <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
-                    <i class="bi bi-diagram-3"></i> Automation rules
-                </a>
-                <form asp-action="ScanUnit" method="post">
-                    <input type="hidden" name="UnitID" value="@Model.Unit.IDDeviceFarmUnit" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
-                </form>
+    @if (Model.DiscoveredDevices.Count > 0)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Discovered devices</h3>
+            </div>
+            <div class="card-body">
+                <partial name="_DiscoveredDevicesRows" model="Model.DiscoveredDevices" />
             </div>
         </div>
-        <div class="card-body">
-            <partial name="_DiscoveredDevicesRows" model="Model.DiscoveredDevices" />
-        </div>
-    </div>
+    }
 }
 
 <div class="card">

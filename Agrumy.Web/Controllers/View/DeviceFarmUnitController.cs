@@ -281,6 +281,31 @@ namespace Agrumy.Web.Controllers.View
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
+        public async Task<ActionResult> UnitManualActuate(int idDeviceFarmUnit)
+        {
+            DeviceFarmUnit unit = await api.DeviceFarmUnitGet(idDeviceFarmUnit);
+            return View(new UnitManualActuateViewModel
+            {
+                Unit = unit,
+                Heating = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarmUnit, IsUnitLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
+                    AllowedTargetMetrics = [SensorMetric.Temperature],
+                },
+                Ventilation = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarmUnit, IsUnitLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
+                    AllowedTargetMetrics = [SensorMetric.Temperature, SensorMetric.Humidity],
+                },
+                Irrigation = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarmUnit, IsUnitLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
+                    AllowedTargetMetrics = [SensorMetric.Moisture],
+                },
+            });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ScanUnit(DiscoveryScanRequest request)
@@ -493,7 +518,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 TempData["Error"] = ex.Body;
             }
-            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+            return RedirectToAction(nameof(UnitManualActuate), new { idDeviceFarmUnit });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
