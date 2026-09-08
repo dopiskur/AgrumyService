@@ -39,10 +39,11 @@
                     <td class="d-none d-md-table-cell">
                         <form asp-action="ToggleEnabled" method="post" class="d-inline">
                             <input type="hidden" name="idUser" value="@item.IDUser" />
-                            <input type="hidden" name="enabled" value="@(!(item.Enabled ?? false))" />
-                            <button type="submit" class="btn btn-sm @((item.Enabled ?? false) ? "btn-success" : "btn-outline-secondary")" title="Click to @((item.Enabled ?? false) ? "disable" : "enable")">
-                                @((item.Enabled ?? false) ? "Enabled" : "Disabled")
-                            </button>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" name="enabled" value="true"
+                                       id="userEnabled-@item.IDUser" @((item.Enabled ?? false) ? "checked=\"checked\"" : "") onchange="this.form.requestSubmit()" />
+                                <label class="form-check-label" for="userEnabled-@item.IDUser"></label>
+                            </div>
                         </form>
                     </td>
                     <td>
