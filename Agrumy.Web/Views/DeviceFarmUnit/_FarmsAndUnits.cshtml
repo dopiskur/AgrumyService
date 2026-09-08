@@ -56,6 +56,9 @@ else
             <div class="card-header">
                 <h3 class="card-title">@farm.DeviceFarmName</h3>
                 <div class="float-end d-flex gap-2">
+                    <a asp-action="DeviceFarmAlertRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-bell"></i> Alert rules
+                    </a>
                     <a asp-action="DeviceFarmManualActuate" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-hand-index-thumb"></i> Manual actuate
                     </a>

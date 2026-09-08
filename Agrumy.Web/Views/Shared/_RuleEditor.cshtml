@@ -75,6 +75,8 @@
     }
 }
 
+@if (Model.ShowRelayCard)
+{
 <div class="card mb-3" id="ruleEditorCard">
     <div class="card-header">
         <h3 class="card-title">Relay automation</h3>
@@ -169,8 +171,9 @@
         </p>
     </div>
 </div>
+}
 
-<div class="card mb-3">
+<div class="card mb-3" id="notificationRuleEditorCard">
     <div class="card-header">
         <h3 class="card-title">Notification automation</h3>
     </div>

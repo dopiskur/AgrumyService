@@ -10,6 +10,10 @@ namespace Agrumy.Web.ViewModels
         Global,
         Simulation,
         Experiment,
+        /// Same Unit scope/rule set as RuleScope.Unit, but the "Alert rules" landing page only shows the Notification card - see RuleEditorViewModel.ShowRelayCard.
+        UnitAlert,
+        /// Same Farm scope/rule set as RuleScope.Farm, Notification-only like UnitAlert.
+        FarmAlert,
     }
 
     /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the tenant-wide Global Rules page, a Simulation session's own Details page, and an Experiment's own Details page - the six scopes differ only in which API routes/hidden field they post to.
@@ -26,7 +30,9 @@ namespace Agrumy.Web.ViewModels
         {
             RuleScope.Zone => "RuleAdd",
             RuleScope.Unit => "UnitRuleAdd",
+            RuleScope.UnitAlert => "UnitAlertRuleAdd",
             RuleScope.Farm => "DeviceFarmRuleAdd",
+            RuleScope.FarmAlert => "DeviceFarmAlertRuleAdd",
             RuleScope.Simulation => "SessionRuleAdd",
             RuleScope.Experiment => "ExperimentRuleAdd",
             _ => "GlobalRuleAdd",
@@ -36,7 +42,9 @@ namespace Agrumy.Web.ViewModels
         {
             RuleScope.Zone => "RuleDelete",
             RuleScope.Unit => "UnitRuleDelete",
+            RuleScope.UnitAlert => "UnitAlertRuleDelete",
             RuleScope.Farm => "DeviceFarmRuleDelete",
+            RuleScope.FarmAlert => "DeviceFarmAlertRuleDelete",
             RuleScope.Simulation => "SessionRuleDelete",
             RuleScope.Experiment => "ExperimentRuleDelete",
             _ => "GlobalRuleDelete",
@@ -46,8 +54,8 @@ namespace Agrumy.Web.ViewModels
         public string ScopeHiddenFieldName => Scope switch
         {
             RuleScope.Zone => "idDeviceFarmUnitZone",
-            RuleScope.Unit => "idDeviceFarmUnit",
-            RuleScope.Farm => "idDeviceFarm",
+            RuleScope.Unit or RuleScope.UnitAlert => "idDeviceFarmUnit",
+            RuleScope.Farm or RuleScope.FarmAlert => "idDeviceFarm",
             RuleScope.Simulation => "idSimulationSession",
             RuleScope.Experiment => "idExperiment",
             _ => "",
@@ -55,6 +63,9 @@ namespace Agrumy.Web.ViewModels
 
         /// Which page RuleAdd/RuleDelete redirect back to, so this same partial works unmodified across all three host pages.
         public required string RedirectActionName { get; init; }
+
+        /// Alert-rules landing pages (UnitAlert/FarmAlert) show only the Notification card - every other scope shows both.
+        public bool ShowRelayCard => Scope != RuleScope.UnitAlert && Scope != RuleScope.FarmAlert;
     }
 
     /// One row of GlobalRules' flat, searchable overview across every scope in the tenant - a triage list, not a detail view, so it carries only what the table shows plus a link to the rule's own scope page for editing.

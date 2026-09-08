@@ -37,6 +37,9 @@
 @if (Model.Farms.Count == 1)
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+        <a asp-action="DeviceFarmAlertRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-bell"></i> Alert rules
+        </a>
         <a asp-action="DeviceFarmManualActuate" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-hand-index-thumb"></i> Manual actuate
         </a>

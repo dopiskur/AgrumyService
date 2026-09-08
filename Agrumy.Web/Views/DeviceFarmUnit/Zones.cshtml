@@ -45,6 +45,9 @@
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <a asp-action="UnitAlertRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
+            <i class="bi bi-bell"></i> Alert rules
+        </a>
         <a asp-action="UnitManualActuate" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
             <i class="bi bi-hand-index-thumb"></i> Manual actuate
         </a>

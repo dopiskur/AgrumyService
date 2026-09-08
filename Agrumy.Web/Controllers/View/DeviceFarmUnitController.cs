@@ -773,6 +773,34 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(UnitRules), new { idDeviceFarmUnit });
         }
 
+        /// "Alert rules" - same Unit rule set as UnitRules, but the view (RuleEditorViewModel.ShowRelayCard) only shows the Notification card.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        public async Task<ActionResult> UnitAlertRules(int idDeviceFarmUnit) => View(new RuleEditorViewModel
+        {
+            Scope = RuleScope.UnitAlert,
+            ScopeId = idDeviceFarmUnit,
+            Rules = await api.DeviceFarmUnitRulesGet(idDeviceFarmUnit),
+            RedirectActionName = nameof(UnitAlertRules),
+        });
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitAlertRuleAdd(int idDeviceFarmUnit, RuleFormInput input)
+        {
+            await AddRuleAsync(BuildRule(input, null, idDeviceFarmUnit), r => api.DeviceFarmUnitRuleAdd(r));
+            return RedirectToAction(nameof(UnitAlertRules), new { idDeviceFarmUnit });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitAlertRuleDelete(int idDeviceFarmUnitZoneRule, int idDeviceFarmUnit)
+        {
+            await DeleteRuleAsync(idDeviceFarmUnitZoneRule, r => api.DeviceFarmUnitRuleDelete(r));
+            return RedirectToAction(nameof(UnitAlertRules), new { idDeviceFarmUnit });
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         public async Task<ActionResult> DeviceFarmRules(int idDeviceFarm) => View(new RuleEditorViewModel
         {
@@ -798,6 +826,34 @@ namespace Agrumy.Web.Controllers.View
         {
             await DeleteRuleAsync(idDeviceFarmUnitZoneRule, r => api.DeviceFarmRuleDelete(r));
             return RedirectToAction(nameof(DeviceFarmRules), new { idDeviceFarm });
+        }
+
+        /// "Alert rules" - same Farm rule set as DeviceFarmRules, Notification-only view like UnitAlertRules.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        public async Task<ActionResult> DeviceFarmAlertRules(int idDeviceFarm) => View(new RuleEditorViewModel
+        {
+            Scope = RuleScope.FarmAlert,
+            ScopeId = idDeviceFarm,
+            Rules = await api.DeviceFarmRulesGet(idDeviceFarm),
+            RedirectActionName = nameof(DeviceFarmAlertRules),
+        });
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DeviceFarmAlertRuleAdd(int idDeviceFarm, RuleFormInput input)
+        {
+            await AddRuleAsync(BuildRule(input, null, null, idDeviceFarm), r => api.DeviceFarmRuleAdd(r));
+            return RedirectToAction(nameof(DeviceFarmAlertRules), new { idDeviceFarm });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DeviceFarmAlertRuleDelete(int idDeviceFarmUnitZoneRule, int idDeviceFarm)
+        {
+            await DeleteRuleAsync(idDeviceFarmUnitZoneRule, r => api.DeviceFarmRuleDelete(r));
+            return RedirectToAction(nameof(DeviceFarmAlertRules), new { idDeviceFarm });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
