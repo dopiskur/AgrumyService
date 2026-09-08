@@ -36,6 +36,16 @@ namespace Agrumy.Dal.Entities
         public int MaxSimulations { get; set; }
     }
 
+    /// See Agrumy.Shared.Models.UserNotificationPreference - absence of a row for a given (UserID, EventType, Channel) means enabled, so this table only ever holds explicit opt-outs.
+    public class UserNotificationPreferenceRow
+    {
+        public int IDUserNotificationPreference { get; set; }
+        public int UserID { get; set; }
+        public int EventType { get; set; }
+        public string Channel { get; set; } = "";
+        public bool Enabled { get; set; }
+    }
+
     /// See Agrumy.Shared.Models.TenantWifiConfig.
     public class TenantWifiConfigRow
     {

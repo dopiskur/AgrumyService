@@ -78,3 +78,58 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Notification Preferences</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-secondary">Everything below is enabled by default - untick a box to stop getting that alert on that channel. This only changes what reaches you personally; other tenant admins are unaffected.</p>
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Alert</th>
+                            @foreach (string channel in new[] { "email", "push-fcm" })
+                            {
+                                <th class="text-center">@(channel == "email" ? "Email" : "Push")</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (Agrumy.Shared.Models.NotificationEventType eventType in Enum.GetValues<Agrumy.Shared.Models.NotificationEventType>())
+                        {
+                            <tr>
+                                <td>
+                                    @(eventType switch
+                                    {
+                                        Agrumy.Shared.Models.NotificationEventType.Offline => "Device offline",
+                                        Agrumy.Shared.Models.NotificationEventType.LowBattery => "Low battery",
+                                        Agrumy.Shared.Models.NotificationEventType.TankRefill => "Tank needs refill",
+                                        Agrumy.Shared.Models.NotificationEventType.RuleTriggered => "Rule-triggered alert",
+                                        _ => eventType.ToString(),
+                                    })
+                                </td>
+                                @foreach (string channel in new[] { "email", "push-fcm" })
+                                {
+                                    bool enabled = Model.NotificationPreferences.FirstOrDefault(p => p.EventType == eventType && p.Channel == channel)?.Enabled ?? true;
+                                    <td class="text-center">
+                                        <form asp-action="NotificationPreferenceToggle" class="d-inline">
+                                            <input type="hidden" name="eventType" value="@((int)eventType)" />
+                                            <input type="hidden" name="channel" value="@channel" />
+                                            <input type="hidden" name="enabled" value="@(!enabled)" />
+                                            <button type="submit" class="btn btn-sm @(enabled ? "btn-success" : "btn-outline-secondary")" title="@(enabled ? "Enabled - click to disable" : "Disabled - click to enable")">
+                                                @(enabled ? "On" : "Off")
+                                            </button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

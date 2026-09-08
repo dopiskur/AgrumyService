@@ -69,5 +69,14 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Every admin-role user in the given tenant, used to notify a tenant's admins - never empty for a real tenant since its creator always becomes its first admin.
         Task<IList<User>> TenantAdminsGetAsync(int tenantId);
+
+        /// Bulk lookup for a whole recipient list at once - per user, the channel names (matching INotificationChannel.Name) they've explicitly turned OFF for this event type; a user/channel absent from the result stays enabled (opt-out model, see UserNotificationPreferenceRow).
+        Task<IReadOnlyDictionary<int, HashSet<string>>> NotificationDisabledChannelsGetAsync(IEnumerable<int> userIds, NotificationEventType eventType);
+
+        /// Every explicit override for one user - Web's notification-preferences page overlays these onto the full (EventType x Channel) matrix.
+        Task<IList<UserNotificationPreference>> NotificationPreferencesGetForUserAsync(int userId);
+
+        /// enabled=true (the default) clears any existing override instead of storing it.
+        Task NotificationPreferenceSetAsync(int userId, NotificationEventType eventType, string channel, bool enabled);
     }
 }

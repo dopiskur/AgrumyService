@@ -36,5 +36,13 @@ namespace Agrumy.Api.Dal
         public Task RevokeUserTokensAsync(int idUser) => userRepository.RevokeUserTokensAsync(idUser);
 
         public Task<IList<User>> TenantAdminsGetAsync(int tenantId) => userRepository.TenantAdminsGetAsync(tenantId);
+
+        public Task<IReadOnlyDictionary<int, HashSet<string>>> NotificationDisabledChannelsGetAsync(IEnumerable<int> userIds, NotificationEventType eventType) =>
+            userRepository.NotificationDisabledChannelsGetAsync(userIds, eventType);
+
+        public Task<IList<UserNotificationPreference>> NotificationPreferencesGetForUserAsync(int userId) => userRepository.NotificationPreferencesGetForUserAsync(userId);
+
+        public Task NotificationPreferenceSetAsync(int userId, NotificationEventType eventType, string channel, bool enabled) =>
+            userRepository.NotificationPreferenceSetAsync(userId, eventType, channel, enabled);
     }
 }

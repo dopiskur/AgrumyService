@@ -68,6 +68,8 @@ public class OfflineAlertEvaluatorTests
                   new() { IDUser = 2, Email = "admin2@example.com" },
                   new() { IDUser = 3, Email = null }, // no email - must be skipped, not throw
               });
+        _users.Setup(u => u.NotificationDisabledChannelsGetAsync(It.IsAny<IEnumerable<int>>(), NotificationEventType.Offline))
+              .ReturnsAsync(new Dictionary<int, HashSet<string>>());
         _dispatcher.Setup(n => n.DispatchToRecipientsAsync(
                        It.IsAny<string>(), It.IsAny<string>(), It.IsAny<NotificationSeverity>(),
                        It.IsAny<IReadOnlyList<NotificationRecipient>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))

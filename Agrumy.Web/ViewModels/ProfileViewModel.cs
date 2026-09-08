@@ -14,6 +14,9 @@ namespace Agrumy.Web.ViewModels
         // Display-only; a new PIN is issued via the page's "Generate new PIN" post, never typed in by hand.
         public string? DevicePin { get; set; }
         public DateTimeOffset? DevicePinExpires { get; set; }
+
+        // Full (EventType x Channel) matrix, defaults already resolved server-side - each row renders as one checkbox, toggling posts NotificationPreferenceToggle for just that row.
+        public IList<UserNotificationPreference> NotificationPreferences { get; set; } = [];
     }
 
     public class ChangePasswordViewModel

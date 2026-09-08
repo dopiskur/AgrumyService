@@ -262,6 +262,51 @@ namespace Agrumy.Api.Dal
             return await db.Users.AsNoTracking().AnyAsync(u => u.PwdHash == null);
         }
 
+        /// One bulk query for a whole recipient list (e.g. every tenant admin for one alert) rather than one round trip per user - only explicit opt-outs exist as rows, so a user/channel absent from the result stays enabled.
+        public async Task<IReadOnlyDictionary<int, HashSet<string>>> NotificationDisabledChannelsGetAsync(IEnumerable<int> userIds, NotificationEventType eventType)
+        {
+            var ids = userIds.ToList();
+            if (ids.Count == 0)
+            {
+                return new Dictionary<int, HashSet<string>>();
+            }
+            var rows = await db.UserNotificationPreferences.AsNoTracking()
+                .Where(p => ids.Contains(p.UserID) && p.EventType == (int)eventType && !p.Enabled)
+                .ToListAsync();
+            return rows.GroupBy(p => p.UserID).ToDictionary(g => g.Key, g => g.Select(p => p.Channel).ToHashSet());
+        }
+
+        /// Every explicit override for one user, across every event type/channel - Web's notification-preferences page overlays these onto the full (EventType x Channel) matrix, defaulting anything absent to enabled.
+        public async Task<IList<UserNotificationPreference>> NotificationPreferencesGetForUserAsync(int userId)
+        {
+            var rows = await db.UserNotificationPreferences.AsNoTracking().Where(p => p.UserID == userId).ToListAsync();
+            return rows.Select(r => new UserNotificationPreference { UserID = r.UserID, EventType = (NotificationEventType)r.EventType, Channel = r.Channel, Enabled = r.Enabled }).ToList();
+        }
+
+        /// enabled=true (the default) deletes any existing override instead of storing it, keeping the table an opt-out-only record - see UserNotificationPreferenceRow's own remarks.
+        public async Task NotificationPreferenceSetAsync(int userId, NotificationEventType eventType, string channel, bool enabled)
+        {
+            var existing = await db.UserNotificationPreferences.FirstOrDefaultAsync(p => p.UserID == userId && p.EventType == (int)eventType && p.Channel == channel);
+            if (enabled)
+            {
+                if (existing != null)
+                {
+                    db.UserNotificationPreferences.Remove(existing);
+                    await db.SaveChangesAsync();
+                }
+                return;
+            }
+            if (existing != null)
+            {
+                existing.Enabled = false;
+            }
+            else
+            {
+                db.UserNotificationPreferences.Add(new UserNotificationPreferenceRow { UserID = userId, EventType = (int)eventType, Channel = channel, Enabled = false });
+            }
+            await db.SaveChangesAsync();
+        }
+
         /// Fetch-then-verify-then-write (verification needs C#), but still race-safe since the final write stays gated by WHERE PwdHash IS NULL.
         public async Task<bool> BootstrapAdminSetPasswordAsync(UserSecret secret, string setupSecret)
         {

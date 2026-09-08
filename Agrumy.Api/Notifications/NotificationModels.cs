@@ -12,6 +12,14 @@ namespace Agrumy.Api.Notifications
         string? Email = null,
         IReadOnlyList<string>? PushTokens = null);
 
+    /// Per-recipient channel names a user can individually opt in/out of (matches EmailNotificationChannel/FcmPushNotificationChannel's own Name) - Webhook is per-EVENT (INotificationChannel.PerRecipient false), so it has no per-user concept and is deliberately absent here.
+    public static class NotificationChannels
+    {
+        public const string Email = "email";
+        public const string PushFcm = "push-fcm";
+        public static readonly IReadOnlyList<string> PerRecipient = [Email, PushFcm];
+    }
+
     /// ContainsSecret marks a notification whose Body carries a live credential (e.g. an activation-link token) - WebhookNotificationChannel refuses to forward those to its shared, operator-configured endpoint.
     public sealed record Notification(
         string Subject,

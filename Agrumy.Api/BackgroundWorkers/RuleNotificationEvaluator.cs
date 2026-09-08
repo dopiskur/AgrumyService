@@ -170,9 +170,8 @@ namespace Agrumy.Api.BackgroundWorkers
                 return; // true->false recovery clears the latch silently, no notification
             }
 
-            var admins = await userRepo.TenantAdminsGetAsync(item.TenantId);
-            var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
-            // Best-effort now that a rule can span several metrics (roadmap #396(4)) - {metric}/{value} resolve from the first ComparisonNode found in the tree, not "the" rule's metric (there no longer is a single one).
+            var recipients = await NotificationRecipientBuilder.BuildForTenantAdminsAsync(userRepo, item.TenantId, NotificationEventType.RuleTriggered);
+            // Best-effort now that a rule can span several metrics - {metric}/{value} resolve from the first ComparisonNode found in the tree, not "the" rule's metric (there no longer is a single one).
             ConditionNode? firstComparison = RuleConditionEvaluator.FindFirstComparison(item.Rule.Root);
             double? firstValue = firstComparison?.Metric is SensorMetric m && item.Averages != null ? ReadMetric(item.Averages, m) : null;
             if (recipients.Count > 0)

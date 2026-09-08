@@ -57,8 +57,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 await deviceRepo.EventDevicePushAsync(d.IDDevice, tenantId, DeviceEventType.LowBattery,
                     $"Battery at {battery}% (threshold {threshold:0.#}%)");
 
-                var admins = await userRepo.TenantAdminsGetAsync(tenantId);
-                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                var recipients = await NotificationRecipientBuilder.BuildForTenantAdminsAsync(userRepo, tenantId, NotificationEventType.LowBattery);
                 if (recipients.Count > 0)
                 {
                     await dispatcher.DispatchToRecipientsAsync(

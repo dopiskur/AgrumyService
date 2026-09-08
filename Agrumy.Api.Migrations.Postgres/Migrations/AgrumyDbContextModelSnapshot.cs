@@ -2066,6 +2066,37 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("tenantConfigWifi", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.UserNotificationPreferenceRow", b =>
+                {
+                    b.Property<int>("IDUserNotificationPreference")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDUserNotificationPreference"));
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDUserNotificationPreference");
+
+                    b.HasIndex("UserID", "EventType", "Channel")
+                        .IsUnique()
+                        .HasDatabaseName("UserID_EventType_Channel_UNIQUE");
+
+                    b.ToTable("userNotificationPreference", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.UserRoleRow", b =>
                 {
                     b.Property<int>("IDUserRole")
@@ -2598,6 +2629,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
                         .WithOne()
                         .HasForeignKey("Agrumy.Dal.Entities.TenantQuotaRow", "IDTenant")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.UserNotificationPreferenceRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.UserRow", null)
+                        .WithMany()
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

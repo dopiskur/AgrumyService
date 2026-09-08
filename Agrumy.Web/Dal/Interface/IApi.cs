@@ -50,6 +50,14 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/User/Profile")]
         Task UserProfileSet([Body] UserProfileUpdate value);
 
+        /// Full (EventType x Channel) matrix for the caller, defaults resolved server-side - see UserApiController.NotificationPreferencesGet.
+        [Get("/api/User/NotificationPreferences")]
+        Task<IList<UserNotificationPreference>> NotificationPreferencesGet();
+
+        /// One toggle at a time.
+        [Put("/api/User/NotificationPreferences")]
+        Task NotificationPreferenceSet([Body] UserNotificationPreference value);
+
         /// Password-change flow - proves the caller still knows the old password, identity otherwise comes from the attached JWT.
         [Post("/api/User/ChangePassword")]
         Task ChangePassword([Body] UserSetPassword value);

@@ -21,6 +21,7 @@ namespace Agrumy.Dal
         public DbSet<RefreshTokenRow> RefreshTokens => Set<RefreshTokenRow>();
         public DbSet<UserRoleRow> UserRoles => Set<UserRoleRow>();
         public DbSet<UserUserRoleRow> UserUserRoles => Set<UserUserRoleRow>();
+        public DbSet<UserNotificationPreferenceRow> UserNotificationPreferences => Set<UserNotificationPreferenceRow>();
         public DbSet<ServerConfigRow> ServerConfigs => Set<ServerConfigRow>();
 
         public DbSet<DeviceRow> Devices => Set<DeviceRow>();
@@ -132,6 +133,16 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.Username).IsUnique().HasDatabaseName("Username_UNIQUE");
                 e.HasIndex(x => x.ActivationTokenHash).IsUnique().HasDatabaseName("ActivationTokenHash_UNIQUE");
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every tenant-scoped user list filters by TenantID alone.
+            });
+
+            modelBuilder.Entity<UserNotificationPreferenceRow>(e =>
+            {
+                e.ToTable("userNotificationPreference");
+                e.HasKey(x => x.IDUserNotificationPreference);
+                e.Property(x => x.IDUserNotificationPreference).ValueGeneratedOnAdd();
+                e.Property(x => x.Channel).HasMaxLength(20).IsRequired();
+                e.HasOne<UserRow>().WithMany().HasForeignKey(x => x.UserID).OnDelete(DeleteBehavior.Cascade); // deleting a user drops their preference rows
+                e.HasIndex(x => new { x.UserID, x.EventType, x.Channel }).IsUnique().HasDatabaseName("UserID_EventType_Channel_UNIQUE");
             });
 
             modelBuilder.Entity<RefreshTokenRow>(e =>

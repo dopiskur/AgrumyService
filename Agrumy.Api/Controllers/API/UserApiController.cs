@@ -481,6 +481,66 @@ namespace Agrumy.Api.Controllers.API
                 : NotFound();
         }
 
+        /// Full (EventType x Channel) matrix for the calling user, defaulting anything with no stored row to enabled - see UserNotificationPreferenceRow's opt-out-only remarks.
+        [HttpGet("NotificationPreferences")]
+        [Authorize]
+        public async Task<ActionResult<IList<UserNotificationPreference>>> NotificationPreferencesGet()
+        {
+            string? name = User.Identity?.Name;
+            if (string.IsNullOrEmpty(name))
+            {
+                return Unauthorized();
+            }
+            User? user = await userRepository.UserGetAsync(null, name, null);
+            if (user?.IDUser is not int idUser)
+            {
+                return NotFound();
+            }
+
+            IList<UserNotificationPreference> overrides = await userRepository.NotificationPreferencesGetForUserAsync(idUser);
+            var overrideLookup = overrides.ToDictionary(p => (p.EventType, p.Channel), p => p.Enabled);
+
+            var matrix = new List<UserNotificationPreference>();
+            foreach (NotificationEventType eventType in Enum.GetValues<NotificationEventType>())
+            {
+                foreach (string channel in NotificationChannels.PerRecipient)
+                {
+                    matrix.Add(new UserNotificationPreference
+                    {
+                        UserID = idUser,
+                        EventType = eventType,
+                        Channel = channel,
+                        Enabled = !overrideLookup.TryGetValue((eventType, channel), out bool enabled) || enabled,
+                    });
+                }
+            }
+            return Ok(matrix);
+        }
+
+        /// One toggle at a time - the Web notification-preferences page fires this per checkbox change, not a bulk save.
+        [HttpPut("NotificationPreferences")]
+        [Authorize]
+        public async Task<ActionResult<bool>> NotificationPreferenceSet([FromBody] UserNotificationPreference value)
+        {
+            string? name = User.Identity?.Name;
+            if (string.IsNullOrEmpty(name))
+            {
+                return Unauthorized();
+            }
+            User? user = await userRepository.UserGetAsync(null, name, null);
+            if (user?.IDUser is not int idUser)
+            {
+                return NotFound();
+            }
+            if (!NotificationChannels.PerRecipient.Contains(value.Channel))
+            {
+                return BadRequest($"Unknown channel: {value.Channel}");
+            }
+
+            await userRepository.NotificationPreferenceSetAsync(idUser, value.EventType, value.Channel, value.Enabled);
+            return Ok(true);
+        }
+
         /// (Re)issues the caller's device-registration PIN (multi-use within its 24h window, not consumed on first use) - POST not GET, since every call rotates the PIN, which is also the only revocation mechanism.
         [HttpPost("DevicePin")]
         [Authorize]

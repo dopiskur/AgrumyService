@@ -48,6 +48,14 @@ namespace Agrumy.Web.Controllers.View
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<ActionResult> NotificationPreferenceToggle(NotificationEventType eventType, string channel, bool enabled)
+        {
+            await api.NotificationPreferenceSet(new UserNotificationPreference { EventType = eventType, Channel = channel, Enabled = enabled });
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> DevicePin()
         {
             await api.DevicePinGenerate();
@@ -79,10 +87,18 @@ namespace Agrumy.Web.Controllers.View
                 }
             }
 
-            return View(nameof(Index), BuildViewModel(self));
+            ProfileViewModel model = BuildViewModel(self);
+            model.NotificationPreferences = await api.NotificationPreferencesGet();
+            return View(nameof(Index), model);
         }
 
-        private async Task<ProfileViewModel> BuildViewModelAsync() => BuildViewModel(await api.UserGetSelf());
+        private async Task<ProfileViewModel> BuildViewModelAsync()
+        {
+            User self = await api.UserGetSelf();
+            ProfileViewModel model = BuildViewModel(self);
+            model.NotificationPreferences = await api.NotificationPreferencesGet();
+            return model;
+        }
 
         private static ProfileViewModel BuildViewModel(User self) => new()
         {
@@ -106,6 +122,7 @@ namespace Agrumy.Web.Controllers.View
             value.DevicePin = self.DevicePin;
             value.DevicePinExpires = self.DevicePinExpires;
             value.TimeZones = TimeZoneOptions(value.Profile.TimeZone);
+            value.NotificationPreferences = await api.NotificationPreferencesGet();
             return value;
         }
 

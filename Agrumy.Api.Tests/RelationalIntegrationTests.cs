@@ -6,6 +6,7 @@ using Agrumy.Api.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
+using Agrumy.Api.Notifications;
 using Agrumy.Api.Security;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.DataProtection;
@@ -3150,6 +3151,31 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         IReadOnlyList<string> roles = await _repo.UserRoleNamesGetAsync(userId);
 
         Assert.Empty(roles);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task NotificationPreference_DefaultEnabled_ThenOptOut_ThenBackIn(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (_, userId, _) = await MakeUser(t);
+
+        // No row yet - stays enabled (opt-out model), disabled-channels lookup finds nothing.
+        var disabledBefore = await _repo.NotificationDisabledChannelsGetAsync([userId], NotificationEventType.Offline);
+        Assert.False(disabledBefore.ContainsKey(userId));
+
+        await _repo.NotificationPreferenceSetAsync(userId, NotificationEventType.Offline, NotificationChannels.Email, enabled: false);
+        var disabledAfter = await _repo.NotificationDisabledChannelsGetAsync([userId], NotificationEventType.Offline);
+        Assert.True(disabledAfter.TryGetValue(userId, out var channels) && channels.Contains(NotificationChannels.Email));
+
+        // A different event type for the same user is unaffected - the opt-out is per (user, eventType, channel).
+        var disabledLowBattery = await _repo.NotificationDisabledChannelsGetAsync([userId], NotificationEventType.LowBattery);
+        Assert.False(disabledLowBattery.ContainsKey(userId));
+
+        // enabled=true deletes the override row entirely (see UserNotificationPreferenceRow's own remarks) rather than storing Enabled=true.
+        await _repo.NotificationPreferenceSetAsync(userId, NotificationEventType.Offline, NotificationChannels.Email, enabled: true);
+        var disabledFinal = await _repo.NotificationDisabledChannelsGetAsync([userId], NotificationEventType.Offline);
+        Assert.False(disabledFinal.ContainsKey(userId));
+        Assert.Empty(await _repo.NotificationPreferencesGetForUserAsync(userId));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

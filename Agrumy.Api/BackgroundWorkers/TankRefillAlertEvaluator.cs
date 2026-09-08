@@ -50,8 +50,7 @@ namespace Agrumy.Api.BackgroundWorkers
 
                 string zoneLabel = string.IsNullOrWhiteSpace(z.DeviceFarmUnitZoneName) ? $"Zone {z.IDDeviceFarmUnitZone}" : z.DeviceFarmUnitZoneName;
 
-                var admins = await userRepo.TenantAdminsGetAsync(z.TenantID);
-                var recipients = admins.Where(a => !string.IsNullOrWhiteSpace(a.Email)).Select(a => new NotificationRecipient(Email: a.Email)).ToList();
+                var recipients = await NotificationRecipientBuilder.BuildForTenantAdminsAsync(userRepo, z.TenantID, NotificationEventType.TankRefill);
                 if (recipients.Count > 0)
                 {
                     await dispatcher.DispatchToRecipientsAsync(
