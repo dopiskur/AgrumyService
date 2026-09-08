@@ -1,11 +1,14 @@
 name: Roadmap ref check
 
-# Rejects a PR/push that introduces a NEW "Roadmap #NNN"-style ticket reference in a code
+# Flags a PR/push that introduces a NEW "Roadmap #NNN"-style ticket reference in a code
 # comment (tools/check_roadmap_refs.py) - CLAUDE.md's comment-style rule says that number
 # belongs only in the commit message. Existing occurrences are left alone (roadmap #269's
 # gradual cleanup already covers those); this only gates new ones from creeping back in.
 # Kept as its own workflow (separate from build.yml) so it stays fast and does not
 # conflict-merge with it.
+# NOTE: on a direct push to master (this repo's normal flow, no PR gate) this can only
+# report failure AFTER the commit has already landed - it cannot block it. The pre-commit
+# hook (.githooks/pre-commit, same script with --staged) is what actually prevents it.
 
 on:
   push:

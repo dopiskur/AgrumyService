@@ -44,8 +44,14 @@ def resolve_base_sha() -> str:
 
 
 def main() -> int:
-    base_sha = resolve_base_sha()
-    diff = run("git", "diff", "--unified=0", base_sha, "HEAD", "--", *SOURCE_GLOBS)
+    # The CI workflow only runs after a push already landed on master - by the time it can
+    # fail, the violation is already merged. --staged runs the same check pre-commit instead,
+    # against what's about to be committed, so the pre-commit hook can actually block it.
+    if "--staged" in sys.argv:
+        diff = run("git", "diff", "--unified=0", "--cached", "--", *SOURCE_GLOBS)
+    else:
+        base_sha = resolve_base_sha()
+        diff = run("git", "diff", "--unified=0", base_sha, "HEAD", "--", *SOURCE_GLOBS)
 
     violations: list[tuple[str, int | None, str]] = []
     current_file = None

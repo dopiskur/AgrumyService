@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Blocks the commit itself, unlike roadmap-ref-check.yml which only runs after
+# a push already landed on master - see tools/check_roadmap_refs.py.
+set -e
+repo_root="$(git rev-parse --show-toplevel)"
+python "$repo_root/tools/check_roadmap_refs.py" --staged

@@ -143,6 +143,14 @@ dotnet run --project Agrumy.Web     # http://localhost:5001
 `Agrumy.Web/appsettings.json` -> `WebView:ApiService` must match the port `Agrumy.Api`
 listens on (5000 by default, set in `Agrumy.Api/Properties/launchSettings.json`).
 
+One-time per clone, enables the tracked pre-commit hooks (currently just
+`tools/check_roadmap_refs.py`, blocking new "Roadmap #NNN" comments before they're
+committed rather than after they're pushed):
+
+```
+git config core.hooksPath .githooks
+```
+
 ## Configuration
 
 **`Agrumy.Api/appsettings.json`**
