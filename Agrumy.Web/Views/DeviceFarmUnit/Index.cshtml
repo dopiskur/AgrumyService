@@ -5,11 +5,12 @@
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Step 1 - pick a zone</h3>
+        <h3 class="card-title">Pick which zone's dashboard page to edit</h3>
     </div>
     <div class="card-body">
         <p class="text-secondary small">
-            Build a zone's custom dashboard - sensor value, sensor trend, relay status, or text widgets.
+            Only picks which zone's widget page you're building - each widget you add below chooses its own
+            data source (a Farm-wide average, a Unit-specific average, or one specific zone) independently.
             For the live status overview instead, see <a asp-action="Farms">Farm</a>.
         </p>
         @if (!Model.Zones.Any())
@@ -40,7 +41,7 @@
 @if (Model.Selected != null)
 {
     <div class="mt-3">
-        <h6 class="fw-semibold mb-2">Step 2 - build the dashboard for @Model.Selected.Zone.DeviceFarmUnitZoneName</h6>
+        <h6 class="fw-semibold mb-2">Widgets on @Model.Selected.Zone.DeviceFarmUnitZoneName's dashboard page</h6>
         <partial name="_DashboardWidgets" model="Model.Selected" />
     </div>
 }

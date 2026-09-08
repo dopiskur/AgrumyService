@@ -131,7 +131,8 @@ public class DeviceFarmUnitApiControllerTests
     public async Task DeviceFarmUnitZoneWidgetsSet_Valid_SavesAndAudits()
     {
         _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
-        var widgets = new List<DashboardWidget> { new() { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature } };
+        // AggregationLevel/LevelID are required for a SensorValue/SensorTrend widget; Zone/7 reuses the same zone already mocked above for its own ownership check.
+        var widgets = new List<DashboardWidget> { new() { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature, AggregationLevel = DashboardAggregationLevel.Zone, LevelID = 7 } };
         _repo.Setup(r => r.DeviceFarmUnitZoneWidgetsSetAsync(7, widgets)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         var controller = NewController();
@@ -140,5 +141,73 @@ public class DeviceFarmUnitApiControllerTests
         var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, widgets);
 
         Assert.True(result.Value);
+    }
+
+    // Each SensorValue/SensorTrend widget carries its own (level, levelId) target, independent of the zone whose page it's displayed on.
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_SensorWidgetMissingLevel_Returns400()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, [new DashboardWidget { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature }]);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_SensorWidgetTargetsForeignTenantFarm_Returns400_NeverSaves()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        _repo.Setup(r => r.DeviceFarmGetByIdAsync(3)).ReturnsAsync(new DeviceFarm { IDDeviceFarm = 3, TenantID = 99 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+        var widgets = new List<DashboardWidget> { new() { Type = DashboardWidgetType.SensorValue, Metric = SensorMetric.Temperature, AggregationLevel = DashboardAggregationLevel.Farm, LevelID = 3 } };
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, widgets);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        // MockBehavior.Strict: DeviceFarmUnitZoneWidgetsSetAsync has no setup, proving nothing was saved once the widget's own target failed ownership.
+    }
+
+    [Fact]
+    public async Task DeviceFarmUnitZoneWidgetsSet_RelayWidgetMissingZone_Returns400()
+    {
+        _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(7)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 7, TenantID = 1 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, [new DashboardWidget { Type = DashboardWidgetType.RelayStatus, RelayFunction = RelayFunction.WaterPump }]);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DashboardWidgetAggregateGet_OwnedFarm_ReturnsAggregate()
+    {
+        _repo.Setup(r => r.DeviceFarmGetByIdAsync(3)).ReturnsAsync(new DeviceFarm { IDDeviceFarm = 3, TenantID = 1 });
+        var aggregate = new DashboardAggregate { Averages = new SensorAverages { Temperature = 21.5 } };
+        _repo.Setup(r => r.DashboardAggregateGetAsync(DashboardAggregationLevel.Farm, 3)).ReturnsAsync(aggregate);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DashboardWidgetAggregateGet(DashboardAggregationLevel.Farm, 3);
+
+        DashboardAggregate body = Assert.IsType<DashboardAggregate>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(21.5, body.Averages.Temperature);
+    }
+
+    [Fact]
+    public async Task DashboardWidgetAggregateGet_ForeignTenantFarm_Returns403()
+    {
+        _repo.Setup(r => r.DeviceFarmGetByIdAsync(3)).ReturnsAsync(new DeviceFarm { IDDeviceFarm = 3, TenantID = 99 });
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DashboardWidgetAggregateGet(DashboardAggregationLevel.Farm, 3);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        // MockBehavior.Strict: DashboardAggregateGetAsync has no setup, proving it was never queried for a foreign tenant's farm.
     }
 }

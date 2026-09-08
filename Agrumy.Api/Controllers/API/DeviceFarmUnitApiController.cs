@@ -292,6 +292,29 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest("A text widget needs a label.");
             }
 
+            // Each SensorValue/SensorTrend widget carries its OWN (level, levelId) target, independent of the zone whose page it's displayed on, so its ownership is checked separately here rather than inherited from the EnsureOwnedZoneAsync check above.
+            foreach (DashboardWidget w in widgets)
+            {
+                if (w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend)
+                {
+                    if (w.AggregationLevel is not DashboardAggregationLevel level || w.LevelID is not int levelId)
+                    {
+                        return BadRequest("A sensor widget needs an aggregation level and target.");
+                    }
+                    if (await EnsureOwnedAggregationTargetAsync(level, levelId, forWrite: false) != null)
+                    {
+                        return BadRequest("A sensor widget references a farm/unit/zone you don't have access to.");
+                    }
+                }
+                else if (w.Type == DashboardWidgetType.RelayStatus)
+                {
+                    if (w.LevelID is not int relayZoneId || (await EnsureOwnedZoneAsync(relayZoneId, forWrite: false)).Error != null)
+                    {
+                        return BadRequest("A relay status widget needs a zone you have access to.");
+                    }
+                }
+            }
+
             await deviceFarmUnitRepo.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
             await WriteAuditAsync("DeviceFarmUnitZone.WidgetsUpdated", existing!.TenantID, "DeviceFarmUnitZone", idDeviceFarmUnitZone.ToString(), $"{widgets.Count} widget(s)");
             return true;
@@ -826,6 +849,19 @@ namespace Agrumy.Api.Controllers.API
             return dashboard is null ? NotFound() : Ok(dashboard);
         }
 
+        /// One dashboard widget's own (level, levelId) scope - a widget on any zone's page can read a different Farm/Unit/Zone than the page itself, so ownership is checked against the widget's OWN target, not the page's.
+        [Authorize]
+        [HttpGet("Dashboard/Widget")]
+        public async Task<ActionResult<DashboardAggregate>> DashboardWidgetAggregateGet(DashboardAggregationLevel level, int levelId)
+        {
+            ActionResult? error = await EnsureOwnedAggregationTargetAsync(level, levelId, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await deviceFarmUnitRepo.DashboardAggregateGetAsync(level, levelId));
+        }
+
         #endregion
 
         /// Same shape as DeviceApiController.EnsureOwnedDeviceAsync, for DeviceFarm (roadmap #384).
@@ -839,6 +875,15 @@ namespace Agrumy.Api.Controllers.API
         /// Same shape as EnsureOwnedUnitAsync, for DeviceFarmUnitZone.
         private Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int? idDeviceFarmUnitZone, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite);
+
+        /// Routes a dashboard widget's own (level, levelId) target through whichever EnsureOwned*Async matches its level - a widget's data source is checked independently of the zone whose page it happens to be displayed on.
+        private async Task<ActionResult?> EnsureOwnedAggregationTargetAsync(DashboardAggregationLevel level, int levelId, bool forWrite) => level switch
+        {
+            DashboardAggregationLevel.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite)).Error,
+            DashboardAggregationLevel.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite)).Error,
+            DashboardAggregationLevel.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite)).Error,
+            _ => BadRequest("Unknown dashboard aggregation level."),
+        };
 
         /// Same shape as EnsureOwnedUnitAsync, for Device.
         private Task<(Device? Device, ActionResult? Error)> EnsureOwnedDeviceAsync(

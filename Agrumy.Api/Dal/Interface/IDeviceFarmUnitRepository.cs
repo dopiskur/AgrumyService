@@ -137,6 +137,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Same result shape as DeviceFarmUnitZoneDashboardGetAsync, for the Web dashboard display instead of alert evaluation (roadmap #410) - ReadUncommitted, same "dirty reads are fine for a display snapshot" reasoning as SensorDataExportGetAsync (#253), so a #409 purge batch never blocks/is blocked by a dashboard load.
         Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone);
 
+        /// Averages+Trend for one dashboard widget's own (level, levelId) scope - Farm rolls up every zone under every unit of that farm, Unit same narrowed to one unit's zones, Zone is a single zone's own reading.
+        Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId);
+
         // ---- Rules (Zone/Unit/Farm/Global scope) ------------------------------
 
         /// Every rule scoped to exactly this zone - several rows may share the same RelayFunction/SensorMetric (OR semantics; Relay-action OR is resolved by the firmware, Notification-action OR by RuleNotificationEvaluator).

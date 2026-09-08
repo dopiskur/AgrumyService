@@ -3,6 +3,26 @@
 @{
     int idZone = Model.Zone.IDDeviceFarmUnitZone!.Value;
     var widgets = Model.Zone.DashboardWidgets;
+
+    // Resolves a widget's own (level, levelId) into a short "Farm/Unit/Zone: name" tag, so a tile's scope is visible even when it differs from the page it's shown on.
+    string LevelTag(DashboardWidget w)
+    {
+        if (w.AggregationLevel is not DashboardAggregationLevel level || w.LevelID is not int id)
+        {
+            return "";
+        }
+        string? name = level switch
+        {
+            DashboardAggregationLevel.Farm => Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == id)?.DeviceFarmName,
+            DashboardAggregationLevel.Unit => Model.Units.FirstOrDefault(u => u.IDDeviceFarmUnit == id)?.DeviceFarmUnitName,
+            DashboardAggregationLevel.Zone => Model.Zones.FirstOrDefault(z => z.IDDeviceFarmUnitZone == id)?.ZoneName,
+            _ => null,
+        };
+        return name == null ? "" : $"{level}: {name}";
+    }
+
+    DashboardAggregate? DataFor(DashboardWidget w) =>
+        w.AggregationLevel is DashboardAggregationLevel level && w.LevelID is int id && Model.WidgetData.TryGetValue((level, id), out var data) ? data : null;
 }
 
 <div class="card">
@@ -22,21 +42,26 @@
                         : w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend ? SensorMetricAccessor.Label(w.Metric ?? default)
                         : w.Type == DashboardWidgetType.RelayStatus ? w.RelayFunction?.ToString() ?? ""
                         : "";
+                    string levelTag = LevelTag(w);
                     <div class="col-6 col-md-3">
                         <div class="card h-100">
                             <div class="card-body text-center">
                                 <div class="text-secondary small text-truncate">@title</div>
+                                @if (!string.IsNullOrEmpty(levelTag))
+                                {
+                                    <div class="text-secondary text-truncate" style="font-size:.7rem">@levelTag</div>
+                                }
                                 @switch (w.Type)
                                 {
                                     case DashboardWidgetType.SensorValue:
                                         {
-                                            double? value = SensorMetricAccessor.Average(Model.Dashboard.Averages, w.Metric ?? default);
+                                            double? value = DataFor(w) is DashboardAggregate d ? SensorMetricAccessor.Average(d.Averages, w.Metric ?? default) : null;
                                             <div class="fs-4">@(value?.ToString("0.#") ?? "-")</div>
                                             break;
                                         }
                                     case DashboardWidgetType.SensorTrend:
                                         {
-                                            double?[] trend = SensorMetricAccessor.Trend(Model.Dashboard.Trend, w.Metric ?? default);
+                                            double?[] trend = DataFor(w) is DashboardAggregate d ? SensorMetricAccessor.Trend(d.Trend, w.Metric ?? default) : new double?[Agrumy.Shared.Models.SensorTrend.HourBuckets];
                                             string points = SparklineHelper.BuildPoints(trend, 100, 30);
                                             <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:2.5rem">
                                                 @if (!string.IsNullOrEmpty(points))
@@ -48,7 +73,7 @@
                                         }
                                     case DashboardWidgetType.RelayStatus:
                                         {
-                                            bool isOn = Model.Fleet.Any(f => f.RelayStates?.Any(r => r.RelayFunction == w.RelayFunction && r.IsOn) == true);
+                                            bool isOn = Model.Fleet.Any(f => f.DeviceFarmUnitZoneID == w.LevelID && f.RelayStates?.Any(r => r.RelayFunction == w.RelayFunction && r.IsOn) == true);
                                             <span class="badge @(isOn ? "bg-success" : "bg-secondary")">@(isOn ? "ON" : "OFF")</span>
                                             break;
                                         }
@@ -89,50 +114,200 @@
 
         @if (Model.CanManage)
         {
-            <form asp-action="WidgetAdd" method="post" class="row g-2 align-items-end" id="widgetAddForm">
+            <!-- Metric/relay/text choice first, then (for a sensor metric) its own aggregation level+target, then chart type; no dashboard-wide zone scope. -->
+            <form asp-action="WidgetAdd" method="post" id="widgetAddForm">
                 <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
-                <div class="col-auto">
-                    <label class="form-label">Widget type</label>
-                    <select name="type" id="widgetTypeSelect" class="form-select form-select-sm">
-                        <option value="@((int)DashboardWidgetType.SensorValue)">Sensor value</option>
-                        <option value="@((int)DashboardWidgetType.SensorTrend)">Sensor trend (24h)</option>
-                        <option value="@((int)DashboardWidgetType.RelayStatus)">Relay status</option>
-                        <option value="@((int)DashboardWidgetType.Text)">Text</option>
-                    </select>
+                <input type="hidden" name="type" id="widgetTypeInput" value="@((int)DashboardWidgetType.SensorValue)" />
+
+                <div class="mb-2">
+                    <label class="form-label d-block">What do you want to show?</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="category" id="catMetric" value="metric" checked />
+                        <label class="btn btn-outline-secondary btn-sm" for="catMetric">Sensor metric</label>
+                        <input type="radio" class="btn-check" name="category" id="catRelay" value="relay" />
+                        <label class="btn btn-outline-secondary btn-sm" for="catRelay">Relay status</label>
+                        <input type="radio" class="btn-check" name="category" id="catText" value="text" />
+                        <label class="btn btn-outline-secondary btn-sm" for="catText">Text</label>
+                    </div>
                 </div>
-                <div class="col-auto" id="widgetMetricField">
-                    <label class="form-label">Metric</label>
-                    <select name="metric" class="form-select form-select-sm">
-                        @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
+
+                <div id="metricSection" class="border rounded p-2 mb-2">
+                    <div class="mb-2">
+                        <label class="form-label">1. Value</label>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
+                            {
+                                <input type="radio" class="btn-check metricRadio" name="metric" id="metric_@((int)m)" value="@((int)m)" @(m == SensorMetric.Temperature ? "checked" : null) />
+                                <label class="btn btn-outline-primary btn-sm" for="metric_@((int)m)">@SensorMetricAccessor.Label(m)</label>
+                            }
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">2. Source</label>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <select id="levelSelect" class="form-select form-select-sm" style="max-width:10rem">
+                                <option value="@((int)DashboardAggregationLevel.Farm)">Farm-wide average</option>
+                                <option value="@((int)DashboardAggregationLevel.Unit)">Unit-specific average</option>
+                                <option value="@((int)DashboardAggregationLevel.Zone)" selected>Zone-specific</option>
+                            </select>
+                            <select id="farmTargetSelect" class="form-select form-select-sm" style="max-width:14rem;display:none">
+                                @foreach (var f in Model.Farms)
+                                {
+                                    <option value="@f.IDDeviceFarm">@f.DeviceFarmName</option>
+                                }
+                            </select>
+                            <select id="unitTargetSelect" class="form-select form-select-sm" style="max-width:14rem;display:none">
+                                @foreach (var u in Model.Units)
+                                {
+                                    <option value="@u.IDDeviceFarmUnit">@u.DeviceFarmUnitName</option>
+                                }
+                            </select>
+                            <select id="zoneTargetSelect" class="form-select form-select-sm" style="max-width:14rem">
+                                @foreach (var z in Model.Zones)
+                                {
+                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
+                                }
+                            </select>
+                        </div>
+                        @if (!Model.Farms.Any())
                         {
-                            <option value="@((int)m)">@SensorMetricAccessor.Label(m)</option>
+                            <div class="text-secondary" style="font-size:.75rem">No farms yet - Farm-wide won't be selectable until one exists.</div>
                         }
-                    </select>
+                    </div>
+                    <div>
+                        <label class="form-label">3. Chart type</label>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check chartTypeRadio" name="chartType" id="chartValue" value="@((int)DashboardWidgetType.SensorValue)" checked />
+                            <label class="btn btn-outline-secondary btn-sm" for="chartValue">Value</label>
+                            <input type="radio" class="btn-check chartTypeRadio" name="chartType" id="chartTrend" value="@((int)DashboardWidgetType.SensorTrend)" />
+                            <label class="btn btn-outline-secondary btn-sm" for="chartTrend">Trend (24h)</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-auto" id="widgetRelayField" style="display:none">
-                    <label class="form-label">Relay function</label>
-                    <select name="relayFunction" class="form-select form-select-sm">
-                        @foreach (RelayFunction rf in Enum.GetValues<RelayFunction>())
-                        {
-                            <option value="@((int)rf)">@rf</option>
-                        }
-                    </select>
+
+                <div id="relaySection" class="border rounded p-2 mb-2" style="display:none">
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div>
+                            <label class="form-label">Zone</label>
+                            <select id="relayZoneSelect" class="form-select form-select-sm" style="max-width:14rem">
+                                @foreach (var z in Model.Zones)
+                                {
+                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Relay function</label>
+                            <select name="relayFunction" class="form-select form-select-sm">
+                                @foreach (RelayFunction rf in Enum.GetValues<RelayFunction>())
+                                {
+                                    <option value="@((int)rf)">@rf</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-auto">
-                    <label class="form-label">Label (optional)</label>
-                    <input type="text" name="label" class="form-control form-control-sm" maxlength="60" />
+
+                <div id="textSection" class="mb-2" style="display:none">
+                    <label class="form-label">Text</label>
+                    <input type="text" name="label" id="textLabelInput" class="form-control form-control-sm" maxlength="60" />
                 </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add widget</button>
+
+                <div class="mb-2" id="labelOverrideWrap">
+                    <label class="form-label">Label override (optional)</label>
+                    <input type="text" name="label" id="labelOverrideInput" class="form-control form-control-sm" maxlength="60" />
                 </div>
+
+                <input type="hidden" name="aggregationLevel" id="aggregationLevelInput" value="@((int)DashboardAggregationLevel.Zone)" />
+                <input type="hidden" name="levelId" id="levelIdInput" value="@idZone" />
+
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add widget</button>
             </form>
             <script nonce="@Context.CspNonce()">
-                document.getElementById('widgetTypeSelect')?.addEventListener('change', function () {
-                    var isText = this.value === '@((int)DashboardWidgetType.Text)';
-                    var isRelay = this.value === '@((int)DashboardWidgetType.RelayStatus)';
-                    document.getElementById('widgetMetricField').style.display = (isText || isRelay) ? 'none' : '';
-                    document.getElementById('widgetRelayField').style.display = isRelay ? '' : 'none';
-                });
+                (function () {
+                    var catMetric = document.getElementById('catMetric');
+                    var catRelay = document.getElementById('catRelay');
+                    var catText = document.getElementById('catText');
+                    var metricSection = document.getElementById('metricSection');
+                    var relaySection = document.getElementById('relaySection');
+                    var textSection = document.getElementById('textSection');
+                    var labelOverrideWrap = document.getElementById('labelOverrideWrap');
+                    var widgetTypeInput = document.getElementById('widgetTypeInput');
+                    var levelSelect = document.getElementById('levelSelect');
+                    var farmTargetSelect = document.getElementById('farmTargetSelect');
+                    var unitTargetSelect = document.getElementById('unitTargetSelect');
+                    var zoneTargetSelect = document.getElementById('zoneTargetSelect');
+                    var relayZoneSelect = document.getElementById('relayZoneSelect');
+                    var aggregationLevelInput = document.getElementById('aggregationLevelInput');
+                    var levelIdInput = document.getElementById('levelIdInput');
+                    var textLabelInput = document.getElementById('textLabelInput');
+                    var labelOverrideInput = document.getElementById('labelOverrideInput');
+
+                    function currentCategory() {
+                        if (catRelay.checked) return 'relay';
+                        if (catText.checked) return 'text';
+                        return 'metric';
+                    }
+
+                    function updateCategory() {
+                        var cat = currentCategory();
+                        metricSection.style.display = cat === 'metric' ? '' : 'none';
+                        relaySection.style.display = cat === 'relay' ? '' : 'none';
+                        textSection.style.display = cat === 'text' ? '' : 'none';
+                        labelOverrideWrap.style.display = cat === 'text' ? 'none' : '';
+                        textLabelInput.name = cat === 'text' ? 'label' : '';
+                        labelOverrideInput.name = cat === 'text' ? '' : 'label';
+                        if (cat === 'relay') {
+                            widgetTypeInput.value = '@((int)DashboardWidgetType.RelayStatus)';
+                        } else if (cat === 'text') {
+                            widgetTypeInput.value = '@((int)DashboardWidgetType.Text)';
+                        } else {
+                            updateChartType();
+                        }
+                        updateTargetFields();
+                    }
+
+                    function updateChartType() {
+                        var checked = document.querySelector('.chartTypeRadio:checked');
+                        widgetTypeInput.value = checked ? checked.value : '@((int)DashboardWidgetType.SensorValue)';
+                    }
+
+                    // Only the active category's own target select feeds aggregationLevel/levelId - the others stay out of it entirely rather than relying on disabled-attribute submit semantics.
+                    function updateTargetFields() {
+                        var cat = currentCategory();
+                        if (cat === 'relay') {
+                            aggregationLevelInput.value = '@((int)DashboardAggregationLevel.Zone)';
+                            levelIdInput.value = relayZoneSelect.value;
+                            return;
+                        }
+                        if (cat === 'text') {
+                            aggregationLevelInput.value = '';
+                            levelIdInput.value = '';
+                            return;
+                        }
+                        var level = levelSelect.value;
+                        aggregationLevelInput.value = level;
+                        farmTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Farm)' ? '' : 'none';
+                        unitTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Unit)' ? '' : 'none';
+                        zoneTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Zone)' ? '' : 'none';
+                        var activeSelect = level === '@((int)DashboardAggregationLevel.Farm)' ? farmTargetSelect
+                            : level === '@((int)DashboardAggregationLevel.Unit)' ? unitTargetSelect
+                            : zoneTargetSelect;
+                        levelIdInput.value = activeSelect.value || '';
+                    }
+
+                    catMetric.addEventListener('change', updateCategory);
+                    catRelay.addEventListener('change', updateCategory);
+                    catText.addEventListener('change', updateCategory);
+                    document.querySelectorAll('.chartTypeRadio').forEach(function (r) { r.addEventListener('change', updateChartType); });
+                    levelSelect.addEventListener('change', updateTargetFields);
+                    farmTargetSelect.addEventListener('change', updateTargetFields);
+                    unitTargetSelect.addEventListener('change', updateTargetFields);
+                    zoneTargetSelect.addEventListener('change', updateTargetFields);
+                    relayZoneSelect.addEventListener('change', updateTargetFields);
+
+                    updateCategory();
+                })();
             </script>
         }
     </div>

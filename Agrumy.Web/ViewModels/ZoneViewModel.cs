@@ -25,5 +25,12 @@ namespace Agrumy.Web.ViewModels
         public string? UnitName { get; init; }
         public int? UnitFarmID { get; init; }
         public IList<DeviceFarm> Farms { get; init; } = [];
+
+        // ---- Dashboard widget rendering context - Fleet above stays zone-scoped for the page's own device list, these are separate since a widget here can target a different zone/unit/farm. ----
+        public IList<DeviceFleetStatus> AllFleet { get; init; } = [];
+        public IList<DeviceFarmUnit> Units { get; init; } = [];
+        public IList<ZoneOption> Zones { get; init; } = [];
+        public IReadOnlyDictionary<(DashboardAggregationLevel Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
+            new Dictionary<(DashboardAggregationLevel, int), DashboardAggregate>();
     }
 }

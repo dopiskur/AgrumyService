@@ -68,13 +68,30 @@ namespace Agrumy.Shared.Models
         Text = 4,
     }
 
-    /// One tile on a Zone's customizable dashboard (roadmap #238) - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name).
+    /// Which scope a SensorValue/SensorTrend widget averages over - independent per widget, not a dashboard-wide selection every widget shares.
+    public enum DashboardAggregationLevel
+    {
+        Farm = 1,
+        Unit = 2,
+        Zone = 3,
+    }
+
+    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific Farm/Unit/Zone id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone id.
     public class DashboardWidget
     {
         public DashboardWidgetType Type { get; set; }
         public SensorMetric? Metric { get; set; }
         public RelayFunction? RelayFunction { get; set; }
+        public DashboardAggregationLevel? AggregationLevel { get; set; }
+        public int? LevelID { get; set; }
         public string? Label { get; set; }
+    }
+
+    /// GET target for one widget's live data - Averages+Trend only, not the full DeviceFarmUnitDashboard/DeviceFarmUnitZoneDashboard shape, since a widget tile needs neither device counts nor problem alerts.
+    public class DashboardAggregate
+    {
+        public SensorAverages Averages { get; set; } = new();
+        public SensorTrend Trend { get; set; } = new();
     }
 
     /// Relay function a DeviceFarmUnitZoneRule targets, same numeric convention as deviceTypeRelay seed rows; kept as a plain int on the wire (not this enum) so firmware can parse it as a number without JsonStringEnumConverter.

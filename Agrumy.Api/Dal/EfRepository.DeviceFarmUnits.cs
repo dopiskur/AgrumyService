@@ -111,6 +111,8 @@ namespace Agrumy.Api.Dal
 
         public Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDashboardForDisplayGetAsync(idDeviceFarmUnitZone);
 
+        public Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId) => deviceFarmUnitRepository.DashboardAggregateGetAsync(level, levelId);
+
         public Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync() => deviceFarmUnitRepository.TankRefillAlertCandidatesGetAsync();
 
         public Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt) => deviceFarmUnitRepository.TankRefillNotifiedSetAsync(idDeviceFarmUnitZone, notifiedAt);

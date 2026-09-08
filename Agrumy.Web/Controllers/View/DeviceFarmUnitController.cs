@@ -15,23 +15,55 @@ namespace Agrumy.Web.Controllers.View
     {
         // ---- Dashboard widget wizard ------------------------------------
 
-        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's custom dashboard (roadmap #238).
+        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's custom dashboard. Picking a zone here only chooses WHICH zone's widget page you're editing - each widget added on it independently picks its own Farm/Unit/Zone data source, it is no longer a dashboard-wide scope every widget shares.
         public async Task<ActionResult> Index(int? idDeviceFarmUnitZone)
         {
             IList<ZoneOption> zones = await BuildZoneOptionsAsync();
             DashboardWidgetsViewModel? selected = null;
             if (idDeviceFarmUnitZone is int zoneId && zones.Any(z => z.IDDeviceFarmUnitZone == zoneId))
             {
-                IList<DeviceFleetStatus> fleet = (await api.DeviceFleetGet()).Where(f => f.DeviceFarmUnitZoneID == zoneId).ToList();
-                selected = new DashboardWidgetsViewModel
-                {
-                    Zone = await api.DeviceFarmUnitZoneGetById(zoneId),
-                    Dashboard = await api.DeviceFarmUnitZoneDashboardGet(zoneId),
-                    Fleet = fleet,
-                    CanManage = hasAnyRole(RoleNames.DeviceManagers),
-                };
+                selected = await BuildDashboardWidgetsViewModelAsync(zoneId, zones);
             }
             return View(new DashboardWizardViewModel { Zones = zones, SelectedZoneId = idDeviceFarmUnitZone, Selected = selected });
+        }
+
+        private async Task<DashboardWidgetsViewModel> BuildDashboardWidgetsViewModelAsync(int zoneId, IList<ZoneOption> zones)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(zoneId);
+            DeviceFarmUnitZoneDashboard dashboard = await api.DeviceFarmUnitZoneDashboardGet(zoneId);
+            var ctx = await BuildWidgetContextAsync(zone.DashboardWidgets, zones);
+
+            return new DashboardWidgetsViewModel
+            {
+                Zone = zone,
+                Dashboard = dashboard,
+                Fleet = ctx.Fleet,
+                CanManage = hasAnyRole(RoleNames.DeviceManagers),
+                Farms = ctx.Farms,
+                Units = ctx.Units,
+                Zones = ctx.Zones,
+                WidgetData = ctx.WidgetData,
+            };
+        }
+
+        /// Shared by BuildDashboardWidgetsViewModelAsync (Index wizard) and BuildZoneViewAsync (Zone page) - one DashboardAggregate fetch per distinct (level, levelId) a zone's widgets reference, not one per widget, since several widgets commonly share the same target (e.g. two metrics for the same Farm).
+        private async Task<(IList<DeviceFarm> Farms, IList<DeviceFarmUnit> Units, IList<ZoneOption> Zones, IList<DeviceFleetStatus> Fleet, IReadOnlyDictionary<(DashboardAggregationLevel, int), DashboardAggregate> WidgetData)>
+            BuildWidgetContextAsync(IList<DashboardWidget> widgets, IList<ZoneOption>? zones = null)
+        {
+            zones ??= await BuildZoneOptionsAsync();
+            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            IList<DeviceFleetStatus> fleet = await api.DeviceFleetGet();
+
+            var widgetData = new Dictionary<(DashboardAggregationLevel, int), DashboardAggregate>();
+            foreach (DashboardWidget w in widgets)
+            {
+                if (w.AggregationLevel is DashboardAggregationLevel level && w.LevelID is int levelId && !widgetData.ContainsKey((level, levelId)))
+                {
+                    widgetData[(level, levelId)] = await api.DeviceFarmUnitDashboardWidgetAggregateGet(level, levelId);
+                }
+            }
+            return (farms, units, zones, fleet, widgetData);
         }
 
         private bool hasAnyRole(string csv) => csv.Split(',').Any(User.IsInRole);
@@ -333,6 +365,8 @@ namespace Agrumy.Web.Controllers.View
             // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
             DeviceFarmUnit unit = await api.DeviceFarmUnitGet(dashboard.IDDeviceFarmUnit);
 
+            var ctx = await BuildWidgetContextAsync(zone.DashboardWidgets);
+
             return new ZoneViewModel
             {
                 Dashboard = dashboard,
@@ -345,7 +379,11 @@ namespace Agrumy.Web.Controllers.View
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
                 UnitName = unit.DeviceFarmUnitName,
                 UnitFarmID = unit.DeviceFarmID,
-                Farms = await api.DeviceFarmsGet(),
+                Farms = ctx.Farms,
+                AllFleet = ctx.Fleet,
+                Units = ctx.Units,
+                Zones = ctx.Zones,
+                WidgetData = ctx.WidgetData,
             };
         }
 
@@ -504,10 +542,19 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> WidgetAdd(int idDeviceFarmUnitZone, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, string? label)
+        public async Task<ActionResult> WidgetAdd(int idDeviceFarmUnitZone, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, DashboardAggregationLevel? aggregationLevel, int? levelId, string? label)
         {
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
-            zone.DashboardWidgets.Add(new DashboardWidget { Type = type, Metric = metric, RelayFunction = relayFunction, Label = label });
+            // RelayStatus's target is always a zone - the form's own "which zone" picker feeds levelId the same as a sensor widget's Zone-level target does.
+            zone.DashboardWidgets.Add(new DashboardWidget
+            {
+                Type = type,
+                Metric = metric,
+                RelayFunction = relayFunction,
+                AggregationLevel = type == DashboardWidgetType.RelayStatus ? DashboardAggregationLevel.Zone : aggregationLevel,
+                LevelID = levelId,
+                Label = label,
+            });
             try
             {
                 await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);

@@ -886,6 +886,57 @@ namespace Agrumy.Api.Dal
             };
         }
 
+        // ---- Dashboard widget aggregation -----------------
+
+        /// One widget's own (level, levelId) scope, independent of whichever zone's page displays it.
+        public async Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId)
+        {
+            (SensorAverages averages, SensorTrend trend) = level switch
+            {
+                DashboardAggregationLevel.Farm => await BuildFarmAggregateAsync(levelId),
+                DashboardAggregationLevel.Unit => await BuildUnitAggregateAsync(levelId),
+                DashboardAggregationLevel.Zone => await BuildZoneAggregateAsync(levelId),
+                _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown dashboard aggregation level"),
+            };
+            return new DashboardAggregate { Averages = averages, Trend = trend };
+        }
+
+        private async Task<(SensorAverages Averages, SensorTrend Trend)> BuildZoneAggregateAsync(int idDeviceFarmUnitZone)
+        {
+            DeviceFarmUnitZoneDashboard? dashboard = await BuildZoneDashboardAsync(idDeviceFarmUnitZone);
+            return dashboard == null ? (new SensorAverages(), new SensorTrend()) : (dashboard.Averages, dashboard.Trend);
+        }
+
+        private async Task<(SensorAverages Averages, SensorTrend Trend)> BuildUnitAggregateAsync(int idDeviceFarmUnit)
+        {
+            IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit);
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
+            var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
+                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit && z.IDDeviceFarmUnitZone != 0)
+                .Select(z => z.IDDeviceFarmUnitZone)
+                .ToListAsync();
+            return (Average(snapshots), await BuildTrendAsync(zoneIds));
+        }
+
+        /// Rolls up every zone under every unit of the given farm - the one aggregation level that didn't already have an existing helper elsewhere in this file to reuse.
+        private async Task<(SensorAverages Averages, SensorTrend Trend)> BuildFarmAggregateAsync(int idDeviceFarm)
+        {
+            var unitIds = await db.DeviceFarmUnits.AsNoTracking()
+                .Where(u => u.DeviceFarmID == idDeviceFarm)
+                .Select(u => u.IDDeviceFarmUnit)
+                .ToListAsync();
+            IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking()
+                .Where(d => d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value));
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
+            var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
+                .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.IDDeviceFarmUnitZone != 0)
+                .Select(z => z.IDDeviceFarmUnitZone)
+                .ToListAsync();
+            return (Average(snapshots), await BuildTrendAsync(zoneIds));
+        }
+
         /// Single ServerConfig read shared by every dashboard aggregation call this request needs it in.
         private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync()
         {
