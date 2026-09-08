@@ -1,10 +1,12 @@
 @model Agrumy.Shared.Models.DeviceView
 @using Microsoft.AspNetCore.Html
+@using System.Text.Json
 
 @{
     ViewData["Title"] = "Sensor config";
     var sensorCfg = Model.DeviceConfigSensor!;
     string SensorField(string name) => $"{nameof(Model.DeviceConfigSensor)}.{name}";
+    string SensorFieldId(string name) => SensorField(name).Replace(".", "_");
 
     var sensorSlots = new (string Name, Func<DeviceTypeSensor, int?> SupportsFlag, int? Selected, string Tab)[]
     {
@@ -33,6 +35,16 @@
         var selectModel = new SelectFieldViewModel { Name = SensorField(slot.Name), Label = slot.Name, Items = items };
         return Html.PartialAsync("_SelectField", selectModel);
     }
+
+    // Lets sensor-detection.js turn a detected SensorTypeIds candidate straight into "which <select> field(s) can this go in" without duplicating the SupportsFlag capability rules in JavaScript.
+    var detectionSlotMap = Model.DeviceTypeSensor!.Where(s => s.IDDeviceTypeSensor.HasValue).ToDictionary(
+        s => s.IDDeviceTypeSensor!.Value.ToString(),
+        s => new
+        {
+            name = s.SensorName,
+            slots = sensorSlots.Where(slot => slot.SupportsFlag(s) == 1)
+                .Select(slot => new { fieldId = SensorFieldId(slot.Name), label = slot.Name }).ToArray(),
+        });
 }
 
 <div class="card">
@@ -46,6 +58,15 @@
                 <label asp-for="Device.IDDevice" class="form-label"></label>
                 <p class="form-control-plaintext">@Html.DisplayFor(m => m.Device!.IDDevice)</p>
                 @Html.HiddenFor(m => m.Device!.IDDevice)
+            </div>
+
+            <div class="mb-3" id="sensor-detect-panel" data-device-id="@Model.Device!.IDDevice">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-device-command
+                        data-target-type="@((int)CommandTargetType.Device)" data-target-id="@Model.Device!.IDDevice" data-action-type="@((int)CommandActionType.DetectSensors)">
+                    <i class="bi bi-search"></i> Detect now
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="sensor-detect-check-btn">Check result</button>
+                <div id="sensor-detect-results" class="mt-2"></div>
             </div>
 
             <ul class="nav nav-tabs" role="tablist">
@@ -166,4 +187,7 @@
     }
     <script src="~/js/battery-divider-designer.js"
             data-voltage-divider-id="@Agrumy.Shared.Models.SensorTypeIds.AnalogVoltage" data-sensor-battery-select-id="@sensorBatterySelectId"></script>
+
+    <script type="application/json" id="sensor-detect-slot-map">@Html.Raw(JsonSerializer.Serialize(detectionSlotMap))</script>
+    <script src="~/js/sensor-detection.js"></script>
 }

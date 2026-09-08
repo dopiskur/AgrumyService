@@ -89,6 +89,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Sets/clears the admin-triggered hard-reset flag - carried to the device via a normal authenticated config poll (DeviceConfigBuilder) AND, since that path may be exactly what's broken, via DeviceApiController.HardResetPending's apiId-only lookup.
         Task DeviceHardResetSetAsync(int deviceID, bool pending);
 
+        /// Persists the device's latest DetectSensors command result (JSON) plus when it was reported - null resultJson clears a stale/malformed result rather than leaving a previous scan's stale data displayed.
+        Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt);
+
         /// Generates a new random AES-256 key for LoRa private-protocol uplink encryption, stores it, resets LoRaLastUplinkCounter to null (a fresh key restarts replay tracking), and returns the raw hex - the ONLY time it's ever returned, the admin must copy it into the node's own provisioning now.
         Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID);
 

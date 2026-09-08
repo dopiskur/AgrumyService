@@ -306,6 +306,9 @@ namespace Agrumy.Dal.Entities
 
         public DateTimeOffset? LastFullConfigSentAt { get; set; } // See Agrumy.Shared.Models.Device.LastFullConfigSentAt.
 
+        public string? LastSensorDetectionResult { get; set; } // See Agrumy.Shared.Models.Device.LastSensorDetectionResult.
+        public DateTimeOffset? LastSensorDetectionAt { get; set; }
+
         // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
         // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.

@@ -8,6 +8,7 @@ namespace Agrumy.Shared.Models
         ScanForDevices = 4,
         ProvisionDevice = 5,
         UpdateWifiCredentials = 6,
+        DetectSensors = 7,
     }
 
     /// Device acknowledges before executing, so a command stuck at Acknowledged (never reaching Executed) means it took the command but crashed or lost power before confirming the outcome.
@@ -99,5 +100,19 @@ namespace Agrumy.Shared.Models
     {
         public string Ssid { get; set; } = "";
         public string WifiPassword { get; set; } = "";
+    }
+
+    /// One I2C address a DetectSensors scan found something answering at, with every SensorTypeIds constant whose driver's begin() also succeeded at that address - more than one candidate means a genuine ambiguous pair (e.g. Htu21Df/Si7021 both at 0x40), left for the admin to pick.
+    public class DetectedSensorAddress
+    {
+        public int Address { get; set; }
+        public List<int> Candidates { get; set; } = [];
+    }
+
+    /// Parsed from the device's CommandExecuted Message JSON for a DetectSensors command (see ServiceController::detectSensors) and persisted on Device.LastSensorDetectionResult; DetectedAt is set server-side at persist time, not device-reported, same reasoning as DeviceEvent.CreatedAt.
+    public class DeviceSensorDetectionResult
+    {
+        public DateTimeOffset DetectedAt { get; set; }
+        public List<DetectedSensorAddress> Addresses { get; set; } = [];
     }
 }

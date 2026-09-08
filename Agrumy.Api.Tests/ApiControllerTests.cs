@@ -15,6 +15,7 @@ using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -38,7 +39,7 @@ public class ApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings);
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance);
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings);
     private DeviceCommandApiController NewDeviceCommandController() =>
@@ -547,7 +548,7 @@ public class ApiControllerTests
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
-            Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }));
+            Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance);
     }
 
     [Fact]

@@ -31,7 +31,8 @@ public class DeviceFirmwareOtaTests
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
-            Microsoft.Extensions.Options.Options.Create(new AgrumySettings()));
+            Microsoft.Extensions.Options.Options.Create(new AgrumySettings()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DeviceApiController>.Instance);
         var result = controller.DeviceRegistration(new DeviceRegistration
         {
             Email = "owner@example.com",

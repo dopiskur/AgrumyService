@@ -248,14 +248,16 @@ namespace Agrumy.Api.Commands
             }
         }
 
-        /// Accepts either Pending or Acknowledged as the prior state - Pending covers Reboot, which has no "after" to ack from; same ownership check as AcknowledgeCommandAsync.
-        public async Task MarkExecutedAsync(int commandId, int deviceId)
+        /// Accepts either Pending or Acknowledged as the prior state - Pending covers Reboot, which has no "after" to ack from; same ownership check as AcknowledgeCommandAsync. Returns the command actually marked executed (null if the ownership/state check failed) so a caller can branch on its ActionType, e.g. DeviceApiController.PushEvent persisting a DetectSensors result.
+        public async Task<DeviceCommand?> MarkExecutedAsync(int commandId, int deviceId)
         {
             DeviceCommand? command = await commandRepo.GetCommandByIdAsync(commandId);
             if (command != null && command.Status is CommandStatus.Pending or CommandStatus.Acknowledged && command.DeviceID == deviceId)
             {
                 await commandRepo.SetCommandStatusAsync(commandId, CommandStatus.Executed, DateTime.UtcNow);
+                return command;
             }
+            return null;
         }
     }
 }

@@ -289,12 +289,25 @@ public class CommandQueueServiceTests
     {
         // Reboot has nothing to ack-then-execute on the same connection - MarkExecutedAsync must accept a straight Pending -> Executed transition.
         _commands.Setup(c => c.GetCommandByIdAsync(1))
-            .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 1, DeviceID = 500, Status = CommandStatus.Pending });
+            .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 1, DeviceID = 500, Status = CommandStatus.Pending, ActionType = CommandActionType.Reboot });
         _commands.Setup(c => c.SetCommandStatusAsync(1, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
-        await NewService().MarkExecutedAsync(1, 500);
+        DeviceCommand? executed = await NewService().MarkExecutedAsync(1, 500);
 
         _commands.Verify(c => c.SetCommandStatusAsync(1, CommandStatus.Executed, It.IsAny<DateTime>()), Times.Once);
+        Assert.Equal(CommandActionType.Reboot, executed?.ActionType);
+    }
+
+    [Fact]
+    public async Task MarkExecuted_ReturnsNull_ForACommandBelongingToADifferentDevice()
+    {
+        // DeviceApiController.PushEvent branches on the returned command's ActionType - a rejected mark-executed must not hand back a command from a different device.
+        _commands.Setup(c => c.GetCommandByIdAsync(1))
+            .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 1, DeviceID = 501, Status = CommandStatus.Pending, ActionType = CommandActionType.DetectSensors });
+
+        DeviceCommand? executed = await NewService().MarkExecutedAsync(1, 500);
+
+        Assert.Null(executed);
     }
 
     [Fact]

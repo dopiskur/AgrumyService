@@ -85,6 +85,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/Device/Sensor")]
         Task<DeviceConfigSensor> DeviceConfigSensorGet(int? deviceConfigSensorID);
 
+        [Get("/api/Device/SensorDetection")]
+        Task<DeviceSensorDetectionResult?> DeviceSensorDetectionResultGet(int idDevice);
+
         [Get("/api/Device/Controller")]
         Task<DeviceConfigController> DeviceConfigControllerGet(int? deviceConfigControllerID);
 

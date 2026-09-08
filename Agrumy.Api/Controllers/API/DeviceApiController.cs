@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Agrumy.Shared;
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/Device")]
-    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions, ILogger<DeviceApiController> logger) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
@@ -91,6 +92,27 @@ namespace Agrumy.Api.Controllers.API
             }
 
             return Ok(await deviceRepo.DeviceConfigSensorGetAsync(deviceConfigSensorID));
+        }
+
+        /// Latest result of a "Detect now" scan (null until the device reports one) - same authorization bar as the Sensor config GET above, since it's read alongside it on the same page.
+        [Authorize]
+        [HttpGet("SensorDetection")]
+        public async Task<ActionResult<DeviceSensorDetectionResult?>> DeviceSensorDetectionResultGet(int idDevice)
+        {
+            if (CallerIsDataReaderOnly)
+            {
+                return StatusCode(403, "Data Reader role cannot view device configuration.");
+            }
+            var (device, error) = await EnsureOwnedDeviceAsync(
+                () => deviceRepo.DeviceGetByIdAsync(idDevice), "Device", forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+
+            return Ok(string.IsNullOrEmpty(device!.LastSensorDetectionResult)
+                ? null
+                : JsonSerializer.Deserialize<DeviceSensorDetectionResult>(device.LastSensorDetectionResult));
         }
 
         [Authorize]
@@ -371,10 +393,37 @@ namespace Agrumy.Api.Controllers.API
             // The device's post-execution confirmation rides on this same event-push endpoint - CommandId links it back to the specific command row.
             if (eventType == DeviceEventType.CommandExecuted && value.CommandId is int commandId)
             {
-                await commandQueue.MarkExecutedAsync(commandId, device.IDDevice!.Value);
+                DeviceCommand? command = await commandQueue.MarkExecutedAsync(commandId, device.IDDevice!.Value);
+                if (command?.ActionType == CommandActionType.DetectSensors)
+                {
+                    await PersistSensorDetectionResultAsync(device.IDDevice!.Value, value.Message);
+                }
             }
 
             return Ok();
+        }
+
+        /// messageJson is device-supplied and unvalidated - a malformed/unexpected payload logs and no-ops rather than 500ing a device-facing endpoint over it.
+        private async Task PersistSensorDetectionResultAsync(int deviceId, string? messageJson)
+        {
+            DeviceSensorDetectionResult? result;
+            try
+            {
+                result = string.IsNullOrWhiteSpace(messageJson) ? null : JsonSerializer.Deserialize<DeviceSensorDetectionResult>(messageJson);
+            }
+            catch (JsonException ex)
+            {
+                logger.LogWarning(ex, "DetectSensors result for device {DeviceId} was not valid JSON, discarding.", deviceId);
+                return;
+            }
+
+            if (result is null)
+            {
+                return;
+            }
+
+            result.DetectedAt = DateTimeOffset.UtcNow;
+            await deviceRepo.DeviceSensorDetectionResultSetAsync(deviceId, JsonSerializer.Serialize(result), result.DetectedAt);
         }
 
         /// The device confirms receipt of the PendingCommand from its last Config poll response BEFORE executing it - a Reboot has nothing to report afterward on that connection, so ack-after-execute isn't an option.

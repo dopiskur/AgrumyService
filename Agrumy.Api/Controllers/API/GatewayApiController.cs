@@ -19,7 +19,7 @@ namespace Agrumy.Api.Controllers.API
     public class GatewayApiController(
         IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, ISensorDataRepository sensorDataRepo, IGatewayRepository gatewayRepo,
         IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue,
-        FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder)
+        FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, ILogger<GatewayApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         /// The caller's own device row, already confirmed to be a gateway - null (with the ActionResult already set) covers every failure mode, so every action below is one guard clause instead of repeating the same checks.
@@ -192,10 +192,37 @@ namespace Agrumy.Api.Controllers.API
 
             if (eventType == DeviceEventType.CommandExecuted && push.CommandId is int commandId)
             {
-                await commandQueue.MarkExecutedAsync(commandId, device.IDDevice!.Value);
+                DeviceCommand? command = await commandQueue.MarkExecutedAsync(commandId, device.IDDevice!.Value);
+                if (command?.ActionType == CommandActionType.DetectSensors)
+                {
+                    await PersistSensorDetectionResultAsync(device.IDDevice!.Value, push.Message);
+                }
             }
 
             return new GatewayBatchEntryResult { Success = true, StatusCode = 200 };
+        }
+
+        /// Same steps as DeviceApiController.PersistSensorDetectionResultAsync - messageJson is device-supplied and unvalidated, so a malformed payload logs and no-ops rather than failing the whole gateway batch.
+        private async Task PersistSensorDetectionResultAsync(int deviceId, string? messageJson)
+        {
+            DeviceSensorDetectionResult? result;
+            try
+            {
+                result = string.IsNullOrWhiteSpace(messageJson) ? null : JsonSerializer.Deserialize<DeviceSensorDetectionResult>(messageJson);
+            }
+            catch (JsonException ex)
+            {
+                logger.LogWarning(ex, "DetectSensors result for device {DeviceId} was not valid JSON, discarding.", deviceId);
+                return;
+            }
+
+            if (result is null)
+            {
+                return;
+            }
+
+            result.DetectedAt = DateTimeOffset.UtcNow;
+            await deviceRepo.DeviceSensorDetectionResultSetAsync(deviceId, JsonSerializer.Serialize(result), result.DetectedAt);
         }
 
         /// Same steps as DeviceApiController.AckCommand.

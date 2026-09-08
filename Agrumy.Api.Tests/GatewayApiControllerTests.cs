@@ -11,6 +11,7 @@ using Agrumy.Api.Security;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Agrumy.Api.Tests;
@@ -35,7 +36,7 @@ public class GatewayApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
         return new GatewayApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog));
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), NullLogger<GatewayApiController>.Instance);
     }
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User - same pattern as ApiControllerTests.SetCallerRoles.

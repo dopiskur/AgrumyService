@@ -81,6 +81,10 @@ namespace Agrumy.Shared.Models
         // Written only when GetConfig/RunConfigAsync actually sends a full DeviceConfig body - drives the ConfigHeartbeatHours periodic resend (see DeviceConfigBuilder.NeedsRefreshAsync); never exposed via DeviceDto, purely internal bookkeeping.
         public DateTimeOffset? LastFullConfigSentAt { get; set; }
 
+        // JSON-serialized DeviceSensorDetectionResult from the device's last DetectSensors command; never exposed via DeviceDto, read back through DeviceApiController's dedicated SensorDetection endpoint instead.
+        public string? LastSensorDetectionResult { get; set; }
+        public DateTimeOffset? LastSensorDetectionAt { get; set; }
+
         // Roadmap #409 - null means not deleted (the query filter means this is ALWAYS null on an ordinarily-fetched Device; only RecycleBinApiController's listing ever populates it).
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }

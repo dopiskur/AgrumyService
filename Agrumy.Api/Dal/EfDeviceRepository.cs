@@ -232,6 +232,12 @@ namespace Agrumy.Api.Dal
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.Reset, pending));
 
+        public Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt) =>
+            db.Devices.Where(d => d.IDDevice == deviceID)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.LastSensorDetectionResult, resultJson)
+                    .SetProperty(d => d.LastSensorDetectionAt, detectedAt));
+
         public async Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID)
         {
             string hex = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -289,6 +295,8 @@ namespace Agrumy.Api.Dal
             IsGateway = d.IsGateway,
             GatewayProfile = d.GatewayProfile is int p ? (GatewayProfile)p : null,
             LastFullConfigSentAt = d.LastFullConfigSentAt,
+            LastSensorDetectionResult = d.LastSensorDetectionResult,
+            LastSensorDetectionAt = d.LastSensorDetectionAt,
             DeletedAtUtc = d.DeletedAtUtc,
         };
 

@@ -346,6 +346,12 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
+        /// Polled by EditSensor.cshtml's "Check result" button after a Detect now command was issued - null Result means the device hasn't reported back yet.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpGet]
+        public async Task<ActionResult<DeviceSensorDetectionResult?>> SensorDetectionResult(int idDevice) =>
+            Ok(await api.DeviceSensorDetectionResultGet(idDevice));
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
