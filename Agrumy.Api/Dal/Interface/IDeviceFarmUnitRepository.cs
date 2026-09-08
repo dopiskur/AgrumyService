@@ -112,6 +112,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Every sensor-only device across every unit/zone under this farm.
         Task<IList<Device>> DeviceFarmGetSensorsAsync(int idDeviceFarm);
 
+        /// Every controller device across every unit/zone under this farm.
+        Task<IList<Device>> DeviceFarmGetControllersAsync(int idDeviceFarm);
+
         /// Every device under this unit regardless of role or zone assignment - roadmap #411.
         Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit);
 

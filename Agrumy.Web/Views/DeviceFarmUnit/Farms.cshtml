@@ -33,27 +33,30 @@
         <i class="bi bi-gear"></i> Manage Farms
     </button>
 </div>
-@* Rules/Scan for the sole farm (edit the sole farm's Rules when there's exactly one and so no per-farm card to host that button) - deliberately unobtrusive and collapsed by default, since these are rarer actions than just viewing unit status. *@
+@* Manual actuate/Automation rules/Scan for the sole farm - immediately visible, no scrolling and no expanding a collapsed section (roadmap correction - these used to sit inside "Manage Farms", collapsed by default). Multi-farm case gets the same three buttons per-card in _FarmsAndUnits.cshtml instead. *@
+@if (Model.Farms.Count == 1)
+{
+    <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+        <a asp-action="DeviceFarmManualActuate" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-hand-index-thumb"></i> Manual actuate
+        </a>
+        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-diagram-3"></i> Automation rules
+        </a>
+        <form asp-action="ScanFarm" method="post" class="d-inline">
+            <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+        </form>
+    </div>
+}
 <div class="collapse mt-2" id="manageFarmsCollapse">
     <div class="card">
         <div class="card-body">
-            <p class="text-secondary small">
+            <p class="text-secondary small mb-0">
                 Top-level grouping above the units above - a physical farm/site. A unit not yet assigned to
                 one stays fully valid ("unassigned"). Rules set here apply to every unit/zone assigned to
                 this farm unless a more specific unit/zone rule wins (Zone &gt; Unit &gt; Farm &gt; Global).
             </p>
-            @if (Model.Farms.Count == 1)
-            {
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-diagram-3"></i> Automation rules
-                    </a>
-                    <form asp-action="ScanFarm" method="post" class="d-inline">
-                        <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
-                        <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
-                    </form>
-                </div>
-            }
         </div>
     </div>
 </div>

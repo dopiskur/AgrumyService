@@ -76,6 +76,34 @@ namespace Agrumy.Api.Commands
             return await StartForTargetsAsync(targets, request);
         }
 
+        /// Fans out to every controller across every unit/zone under the farm - same "absent zones/units are fine" reasoning as StartForUnitAsync.
+        public async Task<ManualActuateResult> StartForFarmAsync(int idDeviceFarm, ManualActuateRequest request)
+        {
+            IList<Device> controllers = await unitRepo.DeviceFarmGetControllersAsync(idDeviceFarm);
+            if (controllers.Count == 0)
+            {
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Farm {idDeviceFarm} has no controllers across any of its units.");
+            }
+            var targets = new List<(int DeviceId, DeviceFarmUnitZone Zone)>();
+            foreach (Device controller in controllers)
+            {
+                if (controller.IDDevice is not int deviceId || controller.DeviceFarmUnitZoneID is not int idZone)
+                {
+                    continue;
+                }
+                DeviceFarmUnitZone? zone = await unitRepo.DeviceFarmUnitZoneGetByIdAsync(idZone);
+                if (zone != null)
+                {
+                    targets.Add((deviceId, zone));
+                }
+            }
+            if (targets.Count == 0)
+            {
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Farm {idDeviceFarm} has no controllers across any of its units.");
+            }
+            return await StartForTargetsAsync(targets, request);
+        }
+
         public async Task StopAsync(int idDeviceFarmUnitZone, RelayFunction relayFunction)
         {
             Device? controller = await unitRepo.DeviceFarmUnitZoneGetControllerAsync(idDeviceFarmUnitZone);

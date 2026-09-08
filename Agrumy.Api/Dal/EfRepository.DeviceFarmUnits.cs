@@ -101,6 +101,8 @@ namespace Agrumy.Api.Dal
 
         public Task<IList<Device>> DeviceFarmGetSensorsAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmGetSensorsAsync(idDeviceFarm);
 
+        public Task<IList<Device>> DeviceFarmGetControllersAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmGetControllersAsync(idDeviceFarm);
+
         public Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitGetDevicesAsync(idDeviceFarmUnit);
 
         public Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable) => deviceFarmUnitRepository.DeviceUnassignedGetAsync(tenantID, controllerCapable);

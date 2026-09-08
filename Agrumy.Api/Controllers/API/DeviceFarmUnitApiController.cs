@@ -590,6 +590,23 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Farm/ManualActuate")]
+        public async Task<ActionResult<IReadOnlyList<int>>> DeviceFarmManualActuateStart(int idDeviceFarm, [FromBody] ManualActuateRequest request)
+        {
+            var (farm, error) = await EnsureOwnedFarmAsync(idDeviceFarm, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            ManualActuateResult result = await manualActuate.StartForFarmAsync(idDeviceFarm, request);
+            if (result.Outcome == ManualActuateOutcome.Success)
+            {
+                await WriteAuditAsync("DeviceFarm.ManualActuateStarted", farm!.TenantID, "DeviceFarm", idDeviceFarm.ToString(), $"{request.RelayFunction}/{request.Mode}");
+            }
+            return ManualActuateResponse(result);
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Zone/ManualActuate/Stop")]
         public async Task<ActionResult> ZoneManualActuateStop(int idDeviceFarmUnitZone, RelayFunction relayFunction)
         {

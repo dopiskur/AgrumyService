@@ -197,6 +197,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/DeviceFarmUnit/Farm/All")]
         Task<IList<DeviceFarm>> DeviceFarmsGet();
 
+        [Get("/api/DeviceFarmUnit/Farm")]
+        Task<DeviceFarm> DeviceFarmGet(int? idDeviceFarm);
+
         [Post("/api/DeviceFarmUnit/Farm")]
         Task<DeviceFarm> DeviceFarmAdd([Body] DeviceFarm farm);
 
@@ -377,6 +380,9 @@ namespace Agrumy.Web.Dal.Interface
 
         [Post("/api/DeviceFarmUnit/Unit/ManualActuate")]
         Task<IReadOnlyList<int>> DeviceFarmUnitManualActuateStart(int idDeviceFarmUnit, [Body] ManualActuateRequest request);
+
+        [Post("/api/DeviceFarmUnit/Farm/ManualActuate")]
+        Task<IReadOnlyList<int>> DeviceFarmManualActuateStart(int idDeviceFarm, [Body] ManualActuateRequest request);
 
         [Post("/api/DeviceFarmUnit/Zone/ManualActuate/Stop")]
         Task DeviceFarmUnitZoneManualActuateStop(int idDeviceFarmUnitZone, RelayFunction relayFunction);

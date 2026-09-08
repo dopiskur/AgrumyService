@@ -758,6 +758,15 @@ namespace Agrumy.Api.Dal
             return rows.Select(EfDeviceRepository.ToDto).ToList();
         }
 
+        public async Task<IList<Device>> DeviceFarmGetControllersAsync(int idDeviceFarm)
+        {
+            var unitIds = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.DeviceFarmID == idDeviceFarm).Select(u => u.IDDeviceFarmUnit).ToListAsync();
+            var rows = await db.Devices.AsNoTracking()
+                .Where(d => d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value) && d.DeviceControllerEnabled == true)
+                .ToListAsync();
+            return rows.Select(EfDeviceRepository.ToDto).ToList();
+        }
+
         /// Every device under this unit regardless of role or zone assignment - roadmap #411's bulk WiFi switch fans out to all of these, not just controllers/sensors.
         public async Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit)
         {

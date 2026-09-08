@@ -2,10 +2,10 @@
 @using Agrumy.Shared.Utils
 @{
     string fid = $"manualActuate_{Model.RelayFunction}_{Model.ScopeId}";
-    string startAction = Model.IsUnitLevel ? "UnitManualActuateStart" : "ZoneManualActuateStart";
-    string scopeFieldName = Model.IsUnitLevel ? "idDeviceFarmUnit" : "idDeviceFarmUnitZone";
-    // Target mode is always offered at Unit level - individual zones lacking MaxRunSeconds are skipped server-side, not gated here (a Unit can span zones with different or no configured cap).
-    bool targetModeAvailable = Model.IsUnitLevel || Model.MaxRunSeconds is > 0;
+    string startAction = Model.IsFarmLevel ? "DeviceFarmManualActuateStart" : Model.IsUnitLevel ? "UnitManualActuateStart" : "ZoneManualActuateStart";
+    string scopeFieldName = Model.IsFarmLevel ? "idDeviceFarm" : Model.IsUnitLevel ? "idDeviceFarmUnit" : "idDeviceFarmUnitZone";
+    // Target mode is always offered at Unit/Farm level - individual zones lacking MaxRunSeconds are skipped server-side, not gated here (a Unit/Farm can span zones with different or no configured cap).
+    bool targetModeAvailable = Model.IsUnitLevel || Model.IsFarmLevel || Model.MaxRunSeconds is > 0;
 }
 
 <div class="d-flex flex-wrap align-items-start gap-3 py-2 border-bottom">
@@ -67,7 +67,7 @@
                 <input type="number" step="any" name="targetHysteresis" class="form-control form-control-sm" style="width:7rem" placeholder="hysteresis" value="2" />
                 <button type="submit" class="btn btn-sm btn-primary">Start</button>
             </div>
-            @if (!Model.IsUnitLevel && Model.MaxRunSeconds is > 0)
+            @if (!Model.IsUnitLevel && !Model.IsFarmLevel && Model.MaxRunSeconds is > 0)
             {
                 <span class="text-secondary small d-block">Safety cap: @Model.MaxRunSeconds s continuous run, either mode.</span>
             }

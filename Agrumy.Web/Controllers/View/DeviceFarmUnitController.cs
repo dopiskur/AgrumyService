@@ -146,6 +146,50 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        public async Task<ActionResult> DeviceFarmManualActuate(int idDeviceFarm)
+        {
+            DeviceFarm farm = await api.DeviceFarmGet(idDeviceFarm);
+            return View(new DeviceFarmManualActuateViewModel
+            {
+                Farm = farm,
+                Heating = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarm, IsFarmLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
+                    AllowedTargetMetrics = [SensorMetric.Temperature],
+                },
+                Ventilation = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarm, IsFarmLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
+                    AllowedTargetMetrics = [SensorMetric.Temperature, SensorMetric.Humidity],
+                },
+                Irrigation = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarm, IsFarmLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
+                    AllowedTargetMetrics = [SensorMetric.Moisture],
+                },
+            });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DeviceFarmManualActuateStart(int idDeviceFarm, RelayFunction relayFunction, ManualOverrideMode mode,
+            int? durationMinutes, SensorMetric? targetMetric, double? targetThreshold, double? targetHysteresis)
+        {
+            var request = new ManualActuateRequest(relayFunction, mode, durationMinutes is int m ? m * 60 : null, targetMetric, targetThreshold, targetHysteresis);
+            try
+            {
+                IReadOnlyList<int> affected = await api.DeviceFarmManualActuateStart(idDeviceFarm, request);
+                TempData["Message"] = $"{relayFunction} manually started across {affected.Count} zone(s).";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(DeviceFarmManualActuate), new { idDeviceFarm });
+        }
+
         /// Whole-object PUT semantics (same as UnitRename) - fetches the unit first so DeviceFarmUnitName isn't wiped by a partial payload. idDeviceFarm null unassigns.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
