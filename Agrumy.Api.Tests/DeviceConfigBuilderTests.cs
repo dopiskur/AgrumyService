@@ -40,7 +40,6 @@ public class DeviceConfigBuilderTests
             Reset = false,
             FirmwareUpdate = false, // keeps ResolveOfferAsync a no-DB-call short circuit - firmware-offer mapping is covered by FirmwareCatalogServiceTests, not this test's concern
             Enabled = true,
-            CommandVersion = 3,
         };
 
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
@@ -72,7 +71,6 @@ public class DeviceConfigBuilderTests
         Assert.Equal(device.Reset, config.Reset);
         Assert.Equal(device.FirmwareUpdate, config.FirmwareUpdate);
         Assert.Equal(device.Enabled, config.Enabled);
-        Assert.Equal(device.CommandVersion, config.CommandVersion);
         // Computed, not copied straight off Device - still required to actually be present, not left at their type default.
         Assert.NotNull(config.UtcOffsetSeconds);
         Assert.NotNull(config.ServerUtcEpoch);

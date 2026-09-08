@@ -36,7 +36,6 @@
     "simulationModeEnabled",
     "deviceConfigSensor",
     "deviceConfigController",
-    "commandVersion",
     "pendingCommand"
   ],
   "properties": {
@@ -240,13 +239,6 @@
           "$ref": "#/definitions/deviceConfigController"
         }
       ]
-    },
-    "commandVersion": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "description": "Roadmap #34. Separate counter from configVersion - bumped once per device whenever a new deviceCommand row is created for it. Firmware-side bookkeeping only (compare against what it last processed); the server's decision to send a non-empty response is driven by whether a pending command actually exists, not by this number."
     },
     "pendingCommand": {
       "description": "Roadmap #34. Null when there is nothing to do; present only for a real, unexpired Pending command.",

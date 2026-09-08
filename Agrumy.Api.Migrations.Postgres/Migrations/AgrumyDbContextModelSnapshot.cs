@@ -847,9 +847,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<bool?>("BatteryEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("CommandVersion")
-                        .HasColumnType("integer");
-
                     b.Property<int?>("ConfigVersion")
                         .HasColumnType("integer");
 

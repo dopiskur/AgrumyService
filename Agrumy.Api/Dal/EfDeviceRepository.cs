@@ -382,7 +382,6 @@ namespace Agrumy.Api.Dal
             FirmwareTargetVersion = d.FirmwareTargetVersion,
             Enabled = d.Enabled,
             ConfigVersion = d.ConfigVersion,
-            CommandVersion = d.CommandVersion,
             DateCreated = d.DateCreated,
             DateModified = d.DateModified,
             IsGateway = d.IsGateway,

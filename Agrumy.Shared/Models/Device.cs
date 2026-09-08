@@ -7,8 +7,6 @@ namespace Agrumy.Shared.Models
     public class Device
     {
         public int? ConfigVersion { get; set; } = 1;
-        // See Agrumy.Shared.Models.DeviceConfig.CommandVersion for the full story.
-        public int? CommandVersion { get; set; }
 
         [HiddenInput(DisplayValue = true)]
         public int? IDDevice { get; set; }
@@ -97,7 +95,6 @@ namespace Agrumy.Shared.Models
     public class DeviceDto
     {
         public int? ConfigVersion { get; set; } = 1;
-        public int? CommandVersion { get; set; }
         public int? IDDevice { get; set; }
         // Roadmap #406 - nullable, matching Device.TenantID above.
         public int? TenantID { get; set; }
@@ -159,7 +156,6 @@ namespace Agrumy.Shared.Models
         public static DeviceDto ToDto(this Device d) => new()
         {
             ConfigVersion = d.ConfigVersion,
-            CommandVersion = d.CommandVersion,
             IDDevice = d.IDDevice,
             TenantID = d.TenantID,
             DeviceRoleID = d.DeviceRoleID,
@@ -198,7 +194,6 @@ namespace Agrumy.Shared.Models
         public static Device ToDevice(this DeviceDto dto) => new()
         {
             ConfigVersion = dto.ConfigVersion,
-            CommandVersion = dto.CommandVersion,
             IDDevice = dto.IDDevice,
             TenantID = dto.TenantID,
             DeviceRoleID = dto.DeviceRoleID,
@@ -332,8 +327,6 @@ namespace Agrumy.Shared.Models
         public DeviceConfigSensor? DeviceConfigSensor { get; set; }
         public DeviceConfigController? DeviceConfigController { get; set; }
 
-        // Deliberately separate from ConfigVersion - a command must not force a full config re-apply, and GetConfig decides on whether a pending command exists, not by comparing this number.
-        public int? CommandVersion { get; set; }
         // Null when there's nothing to do - present only for a real, unexpired Pending command (DeviceApiController.GetConfig/BuildDeviceConfigAsync).
         public PendingCommand? PendingCommand { get; set; }
     }

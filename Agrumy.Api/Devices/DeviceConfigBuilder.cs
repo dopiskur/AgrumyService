@@ -58,7 +58,6 @@ namespace Agrumy.Api.Devices
                 FirmwareUpdate = device.FirmwareUpdate,
                 Enabled = device.Enabled,
                 EmergencyStop = tenant?.EmergencyStopActive == true,
-                CommandVersion = device.CommandVersion,
                 PendingCommand = pendingCommand,
                 SimulationModeEnabled = (await repo.DeviceSimulationGetAsync(device.IDDevice!.Value))?.Enabled == true,
             };

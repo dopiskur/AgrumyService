@@ -330,7 +330,6 @@ namespace Agrumy.Dal.Entities
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; } // See Agrumy.Shared.Models.Device.FirmwareTargetVersion.
         public int? ConfigVersion { get; set; }
-        public int CommandVersion { get; set; } // See Agrumy.Shared.Models.DeviceConfig.CommandVersion.
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
 

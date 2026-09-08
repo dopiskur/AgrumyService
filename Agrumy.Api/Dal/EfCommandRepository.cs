@@ -34,25 +34,14 @@ namespace Agrumy.Api.Dal
             };
             db.DeviceCommands.Add(row);
 
-            // CommandVersion is deliberately separate from ConfigVersion - bumped here and nowhere else.
-            var device = await db.Devices.FirstOrDefaultAsync(d => d.IDDevice == deviceId);
-            if (device != null)
-            {
-                device.CommandVersion++;
-            }
-
             try
             {
                 await db.SaveChangesAsync();
             }
             catch (DbUpdateException ex) when (DbExceptionClassifier.Classify(ex) == DbFailureKind.ConstraintViolation)
             {
-                // SaveChangesAsync runs both statements in one transaction, so nothing was actually persisted - detach/revert so a later SaveChangesAsync on this context doesn't retry either statement.
+                // Nothing was actually persisted - detach so a later SaveChangesAsync on this context doesn't retry it.
                 db.Entry(row).State = EntityState.Detached;
-                if (device != null)
-                {
-                    device.CommandVersion--;
-                }
                 return null;
             }
             return row.IDDeviceCommand;
