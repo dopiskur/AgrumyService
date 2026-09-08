@@ -33,14 +33,12 @@
         {
             @foreach (var farm in Model.Farms)
             {
-                var assignedUnits = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
-                var unassignedUnits = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
                 var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
-                <div class="border rounded p-3 mb-3">
-                    @* Roadmap #408 (3) - while this is the ONLY farm, it isn't shown as its own object, just its units directly (no name header/card chrome) - a farm becomes visible as a distinct thing only once a second one exists. *@
-                    @if (multipleFarms)
-                    {
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                @* Roadmap #429 - the per-farm unit list used to live here too, duplicating the Unit cubes below in a second visual style; assign/unassign now lives exclusively on those cubes. Point 3: while this is the ONLY farm, there's no wrapper at all (not just a hidden header) - a farm becomes its own bordered object only once a second one exists. *@
+                @if (multipleFarms)
+                {
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">@farm.DeviceFarmName</h5>
                             <div class="d-flex gap-2">
                                 <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
@@ -58,67 +56,14 @@
                                 }
                             </div>
                         </div>
-                    }
-                    else if (canManage)
-                    {
-                        <div class="d-flex justify-content-end gap-2 mb-2">
-                            <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
-                        </div>
-                    }
-                    @if (assignedUnits.Count == 0)
-                    {
-                        <p class="text-secondary small fst-italic mb-2">No units assigned.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-group list-group-flush mb-2">
-                            @foreach (var unit in assignedUnits)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                    <span>@unit.DeviceFarmUnitName</span>
-                                    @if (canManage)
-                                    {
-                                        <div class="d-flex gap-1">
-                                            @* Roadmap #408 (5) - moving a unit directly between farms only makes sense once a second farm exists. *@
-                                            @if (otherFarms.Count > 0)
-                                            {
-                                                <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-1">
-                                                    <input type="hidden" name="idDeviceFarmUnit" value="@unit.IDDeviceFarmUnit" />
-                                                    <select name="idDeviceFarm" class="form-select form-select-sm" style="width:auto" required
-                                                            onchange="this.form.requestSubmit()">
-                                                        <option value="" selected disabled>Move to...</option>
-                                                        @foreach (var other in otherFarms)
-                                                        {
-                                                            <option value="@other.IDDeviceFarm">@other.DeviceFarmName</option>
-                                                        }
-                                                    </select>
-                                                </form>
-                                            }
-                                            <form asp-action="UnitAssignFarm" method="post">
-                                                <input type="hidden" name="idDeviceFarmUnit" value="@unit.IDDeviceFarmUnit" />
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Unassign</button>
-                                            </form>
-                                        </div>
-                                    }
-                                </li>
-                            }
-                        </ul>
-                    }
-                    @if (canManage && unassignedUnits.Count > 0)
-                    {
-                        <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2">
-                            <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                            <select name="idDeviceFarmUnit" class="form-select form-select-sm" style="width:auto" required>
-                                <option value="">-- add unit --</option>
-                                @foreach (var unit in unassignedUnits)
-                                {
-                                    <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
-                                }
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
-                        </form>
-                    }
-                </div>
+                    </div>
+                }
+                else if (canManage)
+                {
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">Rules</a>
+                    </div>
+                }
             }
         }
     </div>

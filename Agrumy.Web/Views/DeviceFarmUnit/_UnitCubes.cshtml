@@ -1,11 +1,15 @@
-@model IList<Agrumy.Shared.Models.DeviceFarmUnitDashboard>
-@if (Model.Count == 0)
+@model Agrumy.Web.ViewModels.UnitCubesListViewModel
+@{
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+}
+@if (Model.Units.Count == 0)
 {
     <div class="col-12">
         <p class="text-secondary">No units yet. @(User.Identity!.IsAuthenticated ? "Add one above to start organizing devices by physical space." : "")</p>
     </div>
 }
-@foreach (var u in Model)
+@foreach (var u in Model.Units)
 {
     <div class="col-md-4 col-sm-6 mb-3">
         <a asp-action="Zones" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="text-decoration-none text-reset">
@@ -18,5 +22,29 @@
                 <div class="small-box-icon"><i class="bi bi-house-door"></i></div>
             </div>
         </a>
+        @* Roadmap #429 - assign/unassign now lives on the cube itself instead of a second, separate unit list on the Farms page; only a unit already assigned to a farm gets these (an unassigned unit is picked up via that farm's own "add unit" control instead). *@
+        @if (canManage && u.DeviceFarmID != null)
+        {
+            var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != u.DeviceFarmID).ToList();
+            <div class="d-flex gap-1 mt-1">
+                @if (otherFarms.Count > 0)
+                {
+                    <form asp-action="UnitAssignFarm" method="post" class="flex-grow-1">
+                        <input type="hidden" name="idDeviceFarmUnit" value="@u.IDDeviceFarmUnit" />
+                        <select name="idDeviceFarm" class="form-select form-select-sm" required onchange="this.form.requestSubmit()">
+                            <option value="" selected disabled>Move to...</option>
+                            @foreach (var other in otherFarms)
+                            {
+                                <option value="@other.IDDeviceFarm">@other.DeviceFarmName</option>
+                            }
+                        </select>
+                    </form>
+                }
+                <form asp-action="UnitAssignFarm" method="post">
+                    <input type="hidden" name="idDeviceFarmUnit" value="@u.IDDeviceFarmUnit" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Unassign</button>
+                </form>
+            </div>
+        }
     </div>
 }
