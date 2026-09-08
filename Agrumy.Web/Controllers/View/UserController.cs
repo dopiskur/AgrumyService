@@ -66,6 +66,21 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idUser = userView.UserUpdate!.IDUser });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ToggleEnabled(int idUser, bool enabled)
+        {
+            try
+            {
+                await api.UserUpdate(new UserUpdate { IDUser = idUser, Enabled = enabled });
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
         [Authorize(Roles = RoleNames.Admins)]
         public async Task<ActionResult> Roles(int? idUser)
         {

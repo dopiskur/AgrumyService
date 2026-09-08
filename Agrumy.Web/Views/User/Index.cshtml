@@ -37,7 +37,13 @@
                         @Html.DisplayFor(modelItem => item.Username)
                     </td>
                     <td class="d-none d-md-table-cell">
-                        @Html.DisplayFor(modelItem => item.Enabled)
+                        <form asp-action="ToggleEnabled" method="post" class="d-inline">
+                            <input type="hidden" name="idUser" value="@item.IDUser" />
+                            <input type="hidden" name="enabled" value="@(!(item.Enabled ?? false))" />
+                            <button type="submit" class="btn btn-sm @((item.Enabled ?? false) ? "btn-success" : "btn-outline-secondary")" title="Click to @((item.Enabled ?? false) ? "disable" : "enable")">
+                                @((item.Enabled ?? false) ? "Enabled" : "Disabled")
+                            </button>
+                        </form>
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group" aria-label="User actions">
