@@ -41,37 +41,44 @@
     <div class="alert alert-danger" asp-validation-summary="ModelOnly"></div>
 }
 
+@* Always visible, no scrolling needed - separate from the Discovered devices card below (which only renders when there's something to show) so these controls never disappear along with an empty results list. *@
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Discovered devices</h3>
-            <div class="float-end d-flex gap-2">
-                @if (hasController)
-                {
-                    <a href="#ruleEditorCard" class="btn btn-sm btn-outline-primary text-nowrap">
-                        <i class="bi bi-diagram-3"></i> Automation rules
-                    </a>
-                }
-                <form asp-action="ScanZone" method="post">
-                    <input type="hidden" name="UnitID" value="@zone.IDDeviceFarmUnit" />
-                    <input type="hidden" name="ZoneID" value="@zone.IDDeviceFarmUnitZone" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
-                </form>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        @if (hasController)
+        {
+            <a href="#manualActuateCard" class="btn btn-sm btn-outline-primary text-nowrap">
+                <i class="bi bi-hand-index-thumb"></i> Manual actuate
+            </a>
+            <a href="#ruleEditorCard" class="btn btn-sm btn-outline-primary text-nowrap">
+                <i class="bi bi-diagram-3"></i> Automation rules
+            </a>
+        }
+        <form asp-action="ScanZone" method="post" class="d-inline">
+            <input type="hidden" name="UnitID" value="@zone.IDDeviceFarmUnit" />
+            <input type="hidden" name="ZoneID" value="@zone.IDDeviceFarmUnitZone" />
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+        </form>
+    </div>
+    @if (TempData["Message"] is string message)
+    {
+        <div class="alert alert-success">@message</div>
+    }
+    @if (TempData["Error"] is string discoveryError)
+    {
+        <div class="alert alert-warning">@discoveryError</div>
+    }
+    @if (Model.DiscoveredDevices.Count > 0)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Discovered devices</h3>
+            </div>
+            <div class="card-body">
+                <partial name="_DiscoveredDevicesRows" model="Model.DiscoveredDevices" />
             </div>
         </div>
-        <div class="card-body">
-            @if (TempData["Message"] is string message)
-            {
-                <div class="alert alert-success">@message</div>
-            }
-            @if (TempData["Error"] is string discoveryError)
-            {
-                <div class="alert alert-warning">@discoveryError</div>
-            }
-            <partial name="_DiscoveredDevicesRows" model="Model.DiscoveredDevices" />
-        </div>
-    </div>
+    }
 }
 
 <div class="card">
