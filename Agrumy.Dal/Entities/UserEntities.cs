@@ -26,17 +26,10 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? DateCreated { get; set; }
     }
 
-    public class UserRoleScopeRow
-    {
-        public int IDRoleScope { get; set; }
-        public string? RoleScopeName { get; set; }
-    }
-
     public class UserRoleRow
     {
         public int IDUserRole { get; set; }
         public string? RoleName { get; set; }
-        public int? RoleScopeID { get; set; }
     }
 
     /// A user can hold several roles at once - this many-to-many junction is the sole source of truth for authorization.

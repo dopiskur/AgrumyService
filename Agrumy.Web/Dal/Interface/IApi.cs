@@ -58,9 +58,6 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/User/DevicePin")]
         Task<DevicePinResult> DevicePinGenerate();
 
-        [Get("/api/User/Roles")]
-        Task<IEnumerable<UserRole>> UserRoleGet();
-
         /// The given user's composable role set (a user can hold several).
         [Get("/api/User/UserRoles")]
         Task<List<string>> UserRolesGet(int idUser);
@@ -187,9 +184,6 @@ namespace Agrumy.Web.Dal.Interface
 
         [Get("/api/DeviceFarmUnit/Farm/All")]
         Task<IList<DeviceFarm>> DeviceFarmsGet();
-
-        [Get("/api/DeviceFarmUnit/Farm")]
-        Task<DeviceFarm> DeviceFarmGet(int? idDeviceFarm);
 
         [Post("/api/DeviceFarmUnit/Farm")]
         Task<DeviceFarm> DeviceFarmAdd([Body] DeviceFarm farm);

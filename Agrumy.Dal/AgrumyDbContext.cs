@@ -20,7 +20,6 @@ namespace Agrumy.Dal
         public DbSet<UserRow> Users => Set<UserRow>();
         public DbSet<RefreshTokenRow> RefreshTokens => Set<RefreshTokenRow>();
         public DbSet<UserRoleRow> UserRoles => Set<UserRoleRow>();
-        public DbSet<UserRoleScopeRow> UserRoleScopes => Set<UserRoleScopeRow>();
         public DbSet<UserUserRoleRow> UserUserRoles => Set<UserUserRoleRow>();
         public DbSet<ServerConfigRow> ServerConfigs => Set<ServerConfigRow>();
 
@@ -55,7 +54,6 @@ namespace Agrumy.Dal
         public DbSet<SensorDataReportRow> SensorDataReports => Set<SensorDataReportRow>();
         public DbSet<EventTypeRow> EventTypes => Set<EventTypeRow>();
         public DbSet<EventDeviceRow> EventDevices => Set<EventDeviceRow>();
-        public DbSet<EventServiceRow> EventServices => Set<EventServiceRow>();
 
         public DbSet<AuditLogRow> AuditLogs => Set<AuditLogRow>();
 
@@ -84,21 +82,12 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_tenantWifiConfig_tenant");
             });
 
-            modelBuilder.Entity<UserRoleScopeRow>(e =>
-            {
-                e.ToTable("userRoleScope");
-                e.HasKey(x => x.IDRoleScope);
-                e.Property(x => x.IDRoleScope).ValueGeneratedOnAdd();
-                e.Property(x => x.RoleScopeName).HasMaxLength(45);
-            });
-
             modelBuilder.Entity<UserRoleRow>(e =>
             {
                 e.ToTable("userRole");
                 e.HasKey(x => x.IDUserRole);
                 e.Property(x => x.IDUserRole).ValueGeneratedOnAdd();
                 e.Property(x => x.RoleName).HasMaxLength(45);
-                e.HasOne<UserRoleScopeRow>().WithMany().HasForeignKey(x => x.RoleScopeID).OnDelete(DeleteBehavior.NoAction);
             });
 
             modelBuilder.Entity<UserUserRoleRow>(e =>
@@ -499,15 +488,6 @@ namespace Agrumy.Dal
                 e.Property(x => x.IDEventDevice).ValueGeneratedOnAdd();
                 e.HasIndex(x => new { x.DeviceID, x.Date }).HasDatabaseName("ix_eventDevice_device_date"); // Every device-events read/problem-alert scan filters DeviceID plus a Date range.
                 e.HasOne<EventTypeRow>().WithMany().HasForeignKey(x => x.EventID).OnDelete(DeleteBehavior.NoAction);
-            });
-
-            modelBuilder.Entity<EventServiceRow>(e =>
-            {
-                e.ToTable("eventService");
-                e.HasKey(x => x.IDEventService);
-                e.Property(x => x.IDEventService).ValueGeneratedOnAdd();
-                e.HasOne<EventTypeRow>().WithMany().HasForeignKey(x => x.EventID).OnDelete(DeleteBehavior.NoAction);
-                e.HasOne<DeviceTypeServiceRow>().WithMany().HasForeignKey(x => x.ServiceID).OnDelete(DeleteBehavior.NoAction);
             });
 
             modelBuilder.Entity<AuditLogRow>(e =>

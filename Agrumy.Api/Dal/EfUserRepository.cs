@@ -258,7 +258,7 @@ namespace Agrumy.Api.Dal
         public async Task<IList<UserRole>> UserRoleGetAsync()
         {
             return await db.UserRoles.AsNoTracking()
-                .Select(r => new UserRole { IDUserRole = r.IDUserRole, RoleName = r.RoleName, RoleScopeID = r.RoleScopeID })
+                .Select(r => new UserRole { IDUserRole = r.IDUserRole, RoleName = r.RoleName })
                 .ToListAsync();
         }
 

@@ -1196,35 +1196,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("eventDevice", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.EventServiceRow", b =>
-                {
-                    b.Property<int>("IDEventService")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDEventService"));
-
-                    b.Property<DateTimeOffset?>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EventID")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Message")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ServiceID")
-                        .HasColumnType("integer");
-
-                    b.HasKey("IDEventService");
-
-                    b.HasIndex("EventID");
-
-                    b.HasIndex("ServiceID");
-
-                    b.ToTable("eventService", (string)null);
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.EventTypeRow", b =>
                 {
                     b.Property<int>("IDEventType")
@@ -1806,31 +1777,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)");
 
-                    b.Property<int?>("RoleScopeID")
-                        .HasColumnType("integer");
-
                     b.HasKey("IDUserRole");
 
-                    b.HasIndex("RoleScopeID");
-
                     b.ToTable("userRole", (string)null);
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.UserRoleScopeRow", b =>
-                {
-                    b.Property<int>("IDRoleScope")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDRoleScope"));
-
-                    b.Property<string>("RoleScopeName")
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)");
-
-                    b.HasKey("IDRoleScope");
-
-                    b.ToTable("userRoleScope", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.UserRow", b =>
@@ -2208,21 +2157,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.EventServiceRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.EventTypeRow", null)
-                        .WithMany()
-                        .HasForeignKey("EventID")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Agrumy.Dal.Entities.DeviceTypeServiceRow", null)
-                        .WithMany()
-                        .HasForeignKey("ServiceID")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.GatewayDeviceMappingRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
@@ -2302,14 +2236,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("IDSimulationSession")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.UserRoleRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.UserRoleScopeRow", null)
-                        .WithMany()
-                        .HasForeignKey("RoleScopeID")
-                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.UserUserRoleRow", b =>

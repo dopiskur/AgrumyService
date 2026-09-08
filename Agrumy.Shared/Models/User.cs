@@ -182,7 +182,6 @@ namespace Agrumy.Shared.Models
         [Display(Name = "User Role")]
         public int? IDUserRole { get; set; }
         public string? RoleName { get; set; }
-        public int? RoleScopeID { get; set; }
     }
 
     /// Replaces a user's entire composable role set (not incremental) - see Agrumy.Shared.Security.RoleNames for the valid values.

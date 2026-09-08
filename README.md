@@ -40,10 +40,8 @@ AliExpress components, not a purpose-built appliance costing thousands.
 | `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
 | `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
 
-`db/` holds a historical schema dump (`agrumyDB-final.sql`, `agrumyDB-withData.sql`)
-and old deployment notes (`README.txt`), kept for reference only - the schema is now
-owned by the `AgrumyDbContext` model. `db/migrations/` holds a few hand-written SQL
-patches applied to the pre-existing legacy database, unrelated to EF.
+`db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
+is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
 
 ## How it works
 

@@ -45,7 +45,7 @@ namespace Agrumy.Dal.Entities
         public string? SensorData { get; set; }
     }
 
-    /// Catalog of Agrumy.Shared.Models.DeviceEventType values, seeded 1:1 from that enum - backs EventDeviceRow.EventID and EventServiceRow.EventID so a future event type has one source of truth instead of a magic-number agreement.
+    /// Catalog of Agrumy.Shared.Models.DeviceEventType values, seeded 1:1 from that enum - backs EventDeviceRow.EventID so a future event type has one source of truth instead of a magic-number agreement.
     public class EventTypeRow
     {
         public int IDEventType { get; set; }
@@ -63,12 +63,4 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? AcknowledgedAt { get; set; } // Set once an admin dismisses this alert, stopping it counting toward Unit/Zone Orange status even inside the expiry window.
     }
 
-    public class EventServiceRow
-    {
-        public int IDEventService { get; set; }
-        public int ServiceID { get; set; } // FKs to DeviceTypeServiceRow, the existing HTTP/HTTPS/MQTT catalog - this table has no live writer yet, but the naming already matches that catalog.
-        public int EventID { get; set; }
-        public DateTimeOffset? Date { get; set; }
-        public string? Message { get; set; }
-    }
 }
