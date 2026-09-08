@@ -13,7 +13,18 @@ namespace Agrumy.Api.Dal
 
         public Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice) => deviceRepository.DeviceRecycleBinGetByIdAsync(idDevice);
 
+        public Task<IList<Device>> DevicePendingPurgeGetAsync(int? tenantID) => deviceRepository.DevicePendingPurgeGetAsync(tenantID);
+
         public Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID) => deviceRepository.DeviceRestoreAsync(idDevice, tenantID);
+
+        public Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID) => deviceRepository.DeviceRecycleBinMarkPurgedAsync(idDevice, tenantID);
+
+        public Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct) =>
+            deviceRepository.DeviceRecycleBinMarkPurgedByRetentionAsync(serverDefaultRetentionDays, ct);
+
+        public Task<IList<(int IDDevice, int? TenantID)>> DevicePurgedIdsGetAsync() => deviceRepository.DevicePurgedIdsGetAsync();
+
+        public Task<bool> DeviceRecycleBinPurgeAsync(int idDevice, int? tenantID) => deviceRepository.DeviceRecycleBinPurgeAsync(idDevice, tenantID);
 
         public Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress) =>
             deviceRepository.DeviceGetAsync(tenantID, idDevice, apiId, macAddress);

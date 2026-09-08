@@ -460,6 +460,14 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("Purged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("PurgedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("TenantID")
                         .HasColumnType("integer");
 
@@ -875,6 +883,14 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<int?>("ManualDeviceTypeID")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Purged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("PurgedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool?>("Reboot")
                         .HasColumnType("boolean");
@@ -1719,6 +1735,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
+
+                    b.Property<int?>("RecycleBinRetentionDays")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ScheduleTimeZone")
                         .HasMaxLength(64)

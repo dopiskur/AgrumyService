@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Roadmap #409 - same confirm-phrase pattern as Purge Old Data above, but no threshold/shrink step (this always targets sensorData for already-deleted devices, cutoff is serverConfig.RecycleBinRetentionDays, not caller-chosen).
+    // Same confirm-phrase pattern as Purge Old Data above, but no threshold/shrink step - this forces the recycle bin's mark+reap purge cycle to run right now instead of waiting for its own schedule.
     const purgeOrphanedButton = document.getElementById('purgeOrphanedButton');
     if (purgeOrphanedButton) {
         const orphanedStatus = document.getElementById('purgeOrphanedStatus');
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
             purgeOrphanedButton.disabled = true;
             try {
                 await postJson('/ServerConfig/DataMaintenancePurgeOrphaned', { confirmationPhrase: 'PURGE' });
-                orphanedStatus.textContent = 'Purge started in the background - check back later; this page does not wait for it to finish.';
+                orphanedStatus.textContent = 'Purge cycle started in the background - check back later; this page does not wait for it to finish.';
                 orphanedStatus.className = 'mt-2 text-success';
             } catch (err) {
                 orphanedStatus.textContent = 'Purge failed to start: ' + err.message;

@@ -214,6 +214,23 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/RecycleBin/Farm/{idDeviceFarm}/Restore")]
         Task RecycleBinFarmRestore(int idDeviceFarm);
 
+        [Get("/api/RecycleBin/Device/PendingPurge")]
+        Task<IList<DeviceDto>> RecycleBinDevicesPendingPurgeGet();
+
+        [Get("/api/RecycleBin/Farm/PendingPurge")]
+        Task<IList<DeviceFarm>> RecycleBinFarmsPendingPurgeGet();
+
+        // ---- Recycle Bin permanent delete (roadmap #427) ----------
+
+        [Post("/api/RecycleBin/Device/{idDevice}/PurgeNow")]
+        Task RecycleBinDevicePurgeNow(int idDevice, [Body] RecycleBinPurgeRequest request);
+
+        [Post("/api/RecycleBin/Farm/{idDeviceFarm}/PurgeNow")]
+        Task RecycleBinFarmPurgeNow(int idDeviceFarm, [Body] RecycleBinPurgeRequest request);
+
+        [Post("/api/RecycleBin/Empty")]
+        Task<RecycleBinEmptyResult> RecycleBinEmpty([Body] RecycleBinPurgeRequest request);
+
         // ---- Unit/Zone -----------------------------------
 
         [Get("/api/DeviceFarmUnit/All")]
@@ -488,7 +505,7 @@ namespace Agrumy.Web.Dal.Interface
         Task DataMaintenancePurge([Body] DataPurgeRequest request);
 
         [Post("/api/DataMaintenance/PurgeOrphaned")]
-        Task DataMaintenancePurgeOrphaned([Body] DataPurgeOrphanedRequest request);
+        Task DataMaintenancePurgeOrphaned([Body] RecycleBinPurgeRequest request);
 
         // ---- Audit log --------------------------------------
 

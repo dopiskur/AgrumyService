@@ -175,7 +175,7 @@ namespace Agrumy.Web.Controllers.View
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> DataMaintenancePurgeOrphaned([FromBody] DataPurgeOrphanedRequest request)
+        public async Task<ActionResult> DataMaintenancePurgeOrphaned([FromBody] RecycleBinPurgeRequest request)
         {
             try
             {

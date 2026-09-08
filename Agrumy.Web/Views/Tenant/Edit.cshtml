@@ -52,6 +52,17 @@
                 </div>
             </div>
 
+            <div class="mb-3" style="max-width:12rem">
+                <label asp-for="RecycleBinRetentionDays" class="form-label"></label>
+                <input asp-for="RecycleBinRetentionDays" class="form-control" />
+                <span asp-validation-for="RecycleBinRetentionDays" class="text-danger"></span>
+                <div class="form-text">
+                    How many days a deleted Farm/Device stays restorable in this tenant's Recycle
+                    Bin before it's marked for permanent removal. Leave blank to use the
+                    server-wide default (Server Settings &rarr; Recycle Bin).
+                </div>
+            </div>
+
             <div class="mt-3">
                 <input type="submit" value="Save" class="btn btn-primary" />
                 <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>

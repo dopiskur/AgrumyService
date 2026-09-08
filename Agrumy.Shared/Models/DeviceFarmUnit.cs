@@ -11,6 +11,8 @@ namespace Agrumy.Shared.Models
         public string? DeviceFarmName { get; set; }
         // Roadmap #409 - null unless this came from the Recycle Bin listing.
         public DateTimeOffset? DeletedAtUtc { get; set; }
+        // Roadmap #427 - null unless this came from the pending-purge listing.
+        public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
     /// A physical/logical space (e.g. a greenhouse) containing DeviceFarmUnitZones; TenantID null only means the shared IDDeviceFarmUnit=0 "Default" sentinel every unzoned device points at.

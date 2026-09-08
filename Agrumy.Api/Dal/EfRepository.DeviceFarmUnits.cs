@@ -22,7 +22,18 @@ namespace Agrumy.Api.Dal
 
         public Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmRecycleBinGetByIdAsync(idDeviceFarm);
 
+        public Task<IList<DeviceFarm>> DeviceFarmPendingPurgeGetAsync(int? tenantID) => deviceFarmUnitRepository.DeviceFarmPendingPurgeGetAsync(tenantID);
+
         public Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID) => deviceFarmUnitRepository.DeviceFarmRestoreAsync(idDeviceFarm, tenantID);
+
+        public Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID) => deviceFarmUnitRepository.DeviceFarmRecycleBinMarkPurgedAsync(idDeviceFarm, tenantID);
+
+        public Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct) =>
+            deviceFarmUnitRepository.DeviceFarmRecycleBinMarkPurgedByRetentionAsync(serverDefaultRetentionDays, ct);
+
+        public Task<IList<(int IDDeviceFarm, int? TenantID)>> DeviceFarmPurgedIdsGetAsync() => deviceFarmUnitRepository.DeviceFarmPurgedIdsGetAsync();
+
+        public Task<bool> DeviceFarmRecycleBinPurgeAsync(int idDeviceFarm, int? tenantID) => deviceFarmUnitRepository.DeviceFarmRecycleBinPurgeAsync(idDeviceFarm, tenantID);
 
         public Task<IList<DeviceFarmUnit>> DeviceFarmUnitsGetAsync(int? tenantID) => deviceFarmUnitRepository.DeviceFarmUnitsGetAsync(tenantID);
 

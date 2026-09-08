@@ -168,6 +168,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.IDDeviceFarm).ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmName).HasMaxLength(100);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.Property(x => x.Purged).HasDefaultValue(false);
                 // Roadmap #409 - every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.
                 e.HasQueryFilter(x => !x.Deleted);
             });
@@ -340,7 +341,8 @@ namespace Agrumy.Dal
                 e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
-                // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController/EfRecycleBinRepository/PurgeOrphanedSensorDataAsync explicitly IgnoreQueryFilters() or use raw SQL.
+                e.Property(x => x.Purged).HasDefaultValue(false);
+                // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController explicitly IgnoreQueryFilters() for the recycle bin.
                 e.HasQueryFilter(x => !x.Deleted);
             });
 

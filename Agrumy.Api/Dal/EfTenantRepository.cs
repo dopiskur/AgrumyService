@@ -35,14 +35,14 @@ namespace Agrumy.Api.Dal
         {
             return await db.Tenants.AsNoTracking()
                 .OrderBy(t => t.TenantName)
-                .Select(t => new Tenant { IDTenant = t.IDTenant, TenantName = t.TenantName, ScheduleTimeZone = t.ScheduleTimeZone, Latitude = t.Latitude, Longitude = t.Longitude, EmergencyStopActive = t.EmergencyStopActive })
+                .Select(t => new Tenant { IDTenant = t.IDTenant, TenantName = t.TenantName, ScheduleTimeZone = t.ScheduleTimeZone, Latitude = t.Latitude, Longitude = t.Longitude, EmergencyStopActive = t.EmergencyStopActive, RecycleBinRetentionDays = t.RecycleBinRetentionDays })
                 .ToListAsync();
         }
 
         public async Task<Tenant?> TenantGetByIdAsync(int idTenant)
         {
             var row = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.IDTenant == idTenant);
-            return row == null ? null : new Tenant { IDTenant = row.IDTenant, TenantName = row.TenantName, ScheduleTimeZone = row.ScheduleTimeZone, Latitude = row.Latitude, Longitude = row.Longitude, EmergencyStopActive = row.EmergencyStopActive };
+            return row == null ? null : new Tenant { IDTenant = row.IDTenant, TenantName = row.TenantName, ScheduleTimeZone = row.ScheduleTimeZone, Latitude = row.Latitude, Longitude = row.Longitude, EmergencyStopActive = row.EmergencyStopActive, RecycleBinRetentionDays = row.RecycleBinRetentionDays };
         }
 
         public async Task TenantUpdateAsync(Tenant tenant)
@@ -56,6 +56,7 @@ namespace Agrumy.Api.Dal
             row.ScheduleTimeZone = tenant.ScheduleTimeZone;
             row.Latitude = tenant.Latitude;
             row.Longitude = tenant.Longitude;
+            row.RecycleBinRetentionDays = tenant.RecycleBinRetentionDays;
             // EmergencyStopActive deliberately NOT written here - TenantEmergencyStopSetAsync is its only writer, so a stale rename/timezone form post can't silently clear or set it.
             await db.SaveChangesAsync();
         }

@@ -28,14 +28,29 @@ namespace Agrumy.Api.Dal.Interface
         /// Roadmap #409 - soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
         Task DeviceDeleteAsync(int? idDevice, int? tenantID);
 
-        /// Every soft-deleted device still within serverConfig.RecycleBinRetentionDays (tenantID null = every tenant).
+        /// Every soft-deleted, not-yet-Purged device (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
         Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID);
 
-        /// Ownership-check lookup for a soft-deleted device (no tenant filter) - null if the device doesn't exist or isn't deleted.
+        /// Ownership-check lookup for a soft-deleted device (no tenant filter, Purged or not) - null if the device doesn't exist or isn't deleted.
         Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice);
 
-        /// Undoes DeviceDeleteAsync - false if the device doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Every Deleted AND Purged device (tenantID null = every tenant) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
+        Task<IList<Device>> DevicePendingPurgeGetAsync(int? tenantID);
+
+        /// Undoes DeviceDeleteAsync (or a pending DeviceRecycleBinMarkPurgedAsync) - clears BOTH Deleted and Purged, false if the device doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID);
+
+        /// Roadmap #427 - marks an already soft-deleted device for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceRestoreAsync until the purge cycle actually runs. False if it doesn't exist, isn't deleted, or belongs to a different tenant.
+        Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID);
+
+        /// The automatic half of marking - every Deleted, not-yet-Purged device whose OWNING TENANT's effective retention (its own override, falling back to serverDefaultRetentionDays) has elapsed. Returns how many were marked.
+        Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct);
+
+        /// Every device currently marked Purged, with its owning tenant - the reap step's worklist (DeviceRecycleBinPurgeAsync needs the tenant for its own ownership check).
+        Task<IList<(int IDDevice, int? TenantID)>> DevicePurgedIdsGetAsync();
+
+        /// The actual, irreversible removal: every row tied to this device INCLUDING SensorData - false if the device doesn't exist, isn't Deleted+Purged, or belongs to a different tenant. Only ever called once Purged is set (DeviceRecycleBinMarkPurgedAsync or the farm-wide cascade), never directly from an API action.
+        Task<bool> DeviceRecycleBinPurgeAsync(int idDevice, int? tenantID);
 
         /// The device matched by id / apiId / macAddress within the tenant, or null if none matches (or no key was given).
         Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress);

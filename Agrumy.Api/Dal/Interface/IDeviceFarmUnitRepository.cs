@@ -34,14 +34,29 @@ namespace Agrumy.Api.Dal.Interface
         /// Roadmap #408 - soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
         Task DeviceFarmDeleteAsync(int idDeviceFarm);
 
-        /// Every soft-deleted Farm still within serverConfig.RecycleBinRetentionDays (tenantID null = every tenant).
+        /// Every soft-deleted, not-yet-Purged Farm (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
         Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID);
 
-        /// Ownership-check lookup for a soft-deleted farm (no tenant filter) - null if the farm doesn't exist or isn't deleted.
+        /// Ownership-check lookup for a soft-deleted farm (no tenant filter, Purged or not) - null if the farm doesn't exist or isn't deleted.
         Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm);
 
-        /// Undoes DeviceFarmDeleteAsync's exact cascade - false if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Every Deleted AND Purged Farm (tenantID null = every tenant) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
+        Task<IList<DeviceFarm>> DeviceFarmPendingPurgeGetAsync(int? tenantID);
+
+        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged on the farm AND its cascade Units/Zones/Devices; false if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID);
+
+        /// Roadmap #427 - marks an already soft-deleted Farm (and its exact DeviceFarmDeleteAsync cascade of Units/Zones/Devices, matched by DeletedAtUtc) for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceFarmRestoreAsync until the purge cycle actually runs. False if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID);
+
+        /// The automatic half of marking - every Deleted, not-yet-Purged Farm whose OWNING TENANT's effective retention has elapsed. Returns how many were marked.
+        Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct);
+
+        /// Every farm currently marked Purged, with its owning tenant - the reap step's worklist (DeviceFarmRecycleBinPurgeAsync needs the tenant for its own ownership check).
+        Task<IList<(int IDDeviceFarm, int? TenantID)>> DeviceFarmPurgedIdsGetAsync();
+
+        /// The actual, irreversible removal of the farm and its exact cascade (Units/Zones/Devices, matched by DeletedAtUtc) - each device purged the same SensorData-included way as a standalone DeviceRecycleBinPurgeAsync. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        Task<bool> DeviceFarmRecycleBinPurgeAsync(int idDeviceFarm, int? tenantID);
 
         // ---- Unit CRUD -------------------------------------------------
 

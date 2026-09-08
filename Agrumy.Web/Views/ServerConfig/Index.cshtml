@@ -240,14 +240,15 @@
 
                     <h5>Recycle Bin</h5>
                     <p class="text-secondary">
-                        Roadmap #409 - a deleted Farm/Device (and its Units/Zones, if it's a Farm)
-                        stays restorable from the <a asp-controller="RecycleBin" asp-action="Index">Recycle Bin</a>
-                        for this many days. Its sensorData is never copied or moved - it stays
-                        attached to the (hidden) device the whole time, and is not affected by
-                        this setting at all.
+                        A deleted Farm/Device (and its Units/Zones, if it's a Farm) stays
+                        restorable from the <a asp-controller="RecycleBin" asp-action="Index">Recycle Bin</a>
+                        for this many days by default - individual tenants can set their own
+                        retention on their Tenant settings page instead. Past that, it's marked
+                        for permanent removal, but is STILL restorable until the purge cycle
+                        below actually runs.
                     </p>
                     <div class="mb-3" style="max-width:12rem">
-                        <label asp-for="RecycleBinRetentionDays" class="form-label"></label>
+                        <label asp-for="RecycleBinRetentionDays" class="form-label">Default retention (days)</label>
                         <input asp-for="RecycleBinRetentionDays" class="form-control" />
                         <span asp-validation-for="RecycleBinRetentionDays" class="text-danger"></span>
                     </div>
@@ -256,12 +257,13 @@
                         <label asp-for="PurgeOrphanedSensorDataScheduleEnabled" class="form-check-label"></label>
                     </div>
                     <p class="text-secondary">
-                        Deletes sensorData belonging to a device that has been deleted for at
-                        least the retention period above - independent of the schedule toggle,
-                        this can also be run manually right now. The device/farm row itself is
-                        never touched here, only its sensorData.
+                        Permanently removes every Farm/Device already marked for purge (Recycle
+                        Bin retention elapsed, or an admin's "Delete permanently now"/"Empty
+                        Recycle Bin" action) - including its sensorData, config, and everything
+                        else tied to it. Irreversible once this runs. Independent of the schedule
+                        toggle, this can also be run manually right now.
                     </p>
-                    <button type="button" id="purgeOrphanedButton" class="btn btn-outline-danger">Purge Orphaned Sensor Data</button>
+                    <button type="button" id="purgeOrphanedButton" class="btn btn-outline-danger">Run Recycle Bin Purge Cycle</button>
                     <div id="purgeOrphanedStatus" class="mt-2"></div>
 
                     <hr />
@@ -597,13 +599,14 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirm Purge Orphaned Sensor Data</h5>
+                <h5 class="modal-title">Confirm Recycle Bin Purge Cycle</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>
-                    This permanently deletes sensorData for every device that has been in the
-                    Recycle Bin for at least the configured retention period. This cannot be undone.
+                    This permanently deletes every Farm/Device already marked for purge (retention
+                    elapsed, or an admin's "Delete permanently now"/"Empty Recycle Bin" action) -
+                    including sensorData, config, and everything else tied to it. This cannot be undone.
                 </p>
                 <label class="form-label" for="purgeOrphanedConfirmPhrase">Type <code>PURGE</code> to confirm</label>
                 <input type="text" id="purgeOrphanedConfirmPhrase" class="form-control" autocomplete="off" />

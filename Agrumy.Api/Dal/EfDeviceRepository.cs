@@ -86,18 +86,10 @@ namespace Agrumy.Api.Dal
             await tx.CommitAsync();
         }
 
-        /// Roadmap #409 - every soft-deleted device still within serverConfig.RecycleBinRetentionDays (0/negative means nothing is ever listed - an explicit "no grace period" choice, not "unlimited").
+        /// Every soft-deleted, not-yet-Purged device (roadmap #427 - Purged items move to DevicePendingPurgeGetAsync instead).
         public async Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID)
         {
-            ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
-            int retentionDays = config.RecycleBinRetentionDays ?? 30;
-            if (retentionDays <= 0)
-            {
-                return [];
-            }
-            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
-
-            IQueryable<DeviceRow> q = db.Devices.IgnoreQueryFilters().AsNoTracking().Where(d => d.Deleted && d.DeletedAtUtc >= cutoff);
+            IQueryable<DeviceRow> q = db.Devices.IgnoreQueryFilters().AsNoTracking().Where(d => d.Deleted && !d.Purged);
             if (tenantID != null)
             {
                 q = q.Where(d => d.TenantID == tenantID);
@@ -106,20 +98,121 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDto).ToList();
         }
 
-        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceGetByIdAsync, but also sees soft-deleted rows - RecycleBinApiController uses this to resolve a device's owning tenant before calling DeviceRestoreAsync.
+        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a device's owning tenant before calling DeviceRestoreAsync/DeviceRecycleBinMarkPurgedAsync.
         public async Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice)
         {
             var row = await db.Devices.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.IDDevice == idDevice && d.Deleted);
             return row == null ? null : ToDto(row);
         }
 
-        /// False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant - same "caller's tenant must match" rule as DeviceDeleteAsync.
+        /// Roadmap #427 - marked for permanent removal, still restorable until the purge cycle actually reaps it.
+        public async Task<IList<Device>> DevicePendingPurgeGetAsync(int? tenantID)
+        {
+            IQueryable<DeviceRow> q = db.Devices.IgnoreQueryFilters().AsNoTracking().Where(d => d.Deleted && d.Purged);
+            if (tenantID != null)
+            {
+                q = q.Where(d => d.TenantID == tenantID);
+            }
+            var rows = await q.OrderByDescending(d => d.PurgedAtUtc).ToListAsync();
+            return rows.Select(ToDto).ToList();
+        }
+
+        /// False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant - same "caller's tenant must match" rule as DeviceDeleteAsync. Clears Purged too - a device pending permanent removal is still fully recoverable up until the purge cycle actually reaps it.
         public async Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID)
         {
             int updated = await db.Devices.IgnoreQueryFilters()
                 .Where(d => d.IDDevice == idDevice && d.TenantID == tenantID && d.Deleted)
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null));
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null)
+                    .SetProperty(d => d.Purged, false).SetProperty(d => d.PurgedAtUtc, (DateTimeOffset?)null));
             return updated > 0;
+        }
+
+        /// Roadmap #427 - the manual "delete permanently now" trigger; just flips the flag; the actual removal happens later, in DeviceRecycleBinPurgeAsync, once the purge cycle reaps it. False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant.
+        public async Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID)
+        {
+            int updated = await db.Devices.IgnoreQueryFilters()
+                .Where(d => d.IDDevice == idDevice && d.TenantID == tenantID && d.Deleted && !d.Purged)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Purged, true).SetProperty(d => d.PurgedAtUtc, DateTimeOffset.UtcNow));
+            return updated > 0;
+        }
+
+        /// The scheduled half of marking - evaluated per device's OWNING TENANT (its own RecycleBinRetentionDays override, falling back to serverDefaultRetentionDays), since #427 made retention a per-tenant setting. Materializes candidates client-side (recycle-bin volumes are small) rather than trying to push a per-row variable cutoff into a single translatable EF query.
+        public async Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
+        {
+            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+            var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant, t => t.RecycleBinRetentionDays, ct);
+
+            var candidates = await db.Devices.IgnoreQueryFilters().AsNoTracking()
+                .Where(d => d.Deleted && !d.Purged)
+                .Select(d => new { d.IDDevice, d.TenantID, d.DeletedAtUtc })
+                .ToListAsync(ct);
+
+            var idsToMark = candidates
+                .Where(c =>
+                {
+                    int retentionDays = c.TenantID != null && tenantRetentionDays.TryGetValue(c.TenantID.Value, out int? tenantOverride) && tenantOverride != null
+                        ? tenantOverride.Value : serverDefaultRetentionDays;
+                    return retentionDays > 0 && c.DeletedAtUtc != null && c.DeletedAtUtc <= nowUtc.AddDays(-retentionDays);
+                })
+                .Select(c => c.IDDevice)
+                .ToList();
+            if (idsToMark.Count == 0)
+            {
+                return 0;
+            }
+
+            return await db.Devices.IgnoreQueryFilters().Where(d => idsToMark.Contains(d.IDDevice))
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Purged, true).SetProperty(d => d.PurgedAtUtc, nowUtc), ct);
+        }
+
+        public async Task<IList<(int IDDevice, int? TenantID)>> DevicePurgedIdsGetAsync()
+        {
+            var rows = await db.Devices.IgnoreQueryFilters().AsNoTracking().Where(d => d.Deleted && d.Purged)
+                .Select(d => new { d.IDDevice, d.TenantID }).ToListAsync();
+            return rows.Select(d => (d.IDDevice, d.TenantID)).ToList();
+        }
+
+        /// The purge cycle's actual, irreversible removal - every row tied to this device INCLUDING SensorData, matching roadmap #427's "Deleted=1 means ready for purge" decision (SensorData is no longer preserved the way DeviceDeleteAsync's own soft-delete step preserves DeviceConfigSensor/DeviceConfigController for a possible restore - once Purged, there's no restore left to protect). False if the device doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        public async Task<bool> DeviceRecycleBinPurgeAsync(int idDevice, int? tenantID)
+        {
+            DeviceRow? row = await db.Devices.IgnoreQueryFilters().AsNoTracking()
+                .FirstOrDefaultAsync(d => d.IDDevice == idDevice && d.TenantID == tenantID && d.Deleted && d.Purged);
+            if (row is null)
+            {
+                return false;
+            }
+
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await PurgeDeviceChildRowsAsync(idDevice);
+            await db.Devices.IgnoreQueryFilters().Where(d => d.IDDevice == idDevice).ExecuteDeleteAsync();
+            // Device holds these FKs (not the other way around), so they only become safely deletable once the device row referencing them is already gone.
+            if (row.DeviceConfigControllerID != null)
+            {
+                await db.DeviceConfigControllers.Where(c => c.IDDeviceConfigController == row.DeviceConfigControllerID).ExecuteDeleteAsync();
+            }
+            if (row.DeviceConfigSensorID != null)
+            {
+                await db.DeviceConfigSensors.Where(c => c.IDDeviceConfigSensor == row.DeviceConfigSensorID).ExecuteDeleteAsync();
+            }
+            await tx.CommitAsync();
+            return true;
+        }
+
+        /// Every table with a real, non-cascading FK to Device, including SensorData (roadmap #427 - a Purged device's data goes with it, no orphaning).
+        private async Task PurgeDeviceChildRowsAsync(int idDevice)
+        {
+            await db.SensorData.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceCommands.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceManualOverrides.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceDiscoveryReports.Where(x => x.ScanningDeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceDiagnostics.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceSimulations.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceVirtuals.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.SimulationSessionDevices.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.ControllerData.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.SensorDataReports.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.GatewayDeviceMappings.Where(x => x.IDDevice == idDevice || x.IDGatewayDevice == idDevice).ExecuteDeleteAsync();
+            await db.EventDevices.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
         }
 
         public async Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress)
@@ -298,6 +391,7 @@ namespace Agrumy.Api.Dal
             LastSensorDetectionResult = d.LastSensorDetectionResult,
             LastSensorDetectionAt = d.LastSensorDetectionAt,
             DeletedAtUtc = d.DeletedAtUtc,
+            PurgedAtUtc = d.PurgedAtUtc,
         };
 
         // ---- Fixed device-type lookup lists -----------------------------

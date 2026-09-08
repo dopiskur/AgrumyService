@@ -9,6 +9,6 @@ namespace Agrumy.Api.BackgroundWorkers
         protected override TimeSpan Interval => TimeSpan.FromDays(1);
 
         protected override Task DoWorkAsync(IServiceProvider scopedProvider, CancellationToken ct) =>
-            scopedProvider.GetRequiredService<PurgeOrphanedSensorDataEvaluator>().RunOnceAsync(ct);
+            scopedProvider.GetRequiredService<PurgeOrphanedSensorDataEvaluator>().RunScheduledAsync(ct);
     }
 }

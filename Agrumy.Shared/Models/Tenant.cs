@@ -13,6 +13,9 @@ namespace Agrumy.Shared.Models
 
         // Tenant-wide fail-closed switch (roadmap #230) - forces every relay in this tenant off ahead of any rule, independent of a device's own RelayEnabled. Read-only here; the only writer is TenantEmergencyStopSetAsync via TenantApiController's dedicated endpoints, never TenantUpdateAsync's general rename/timezone path.
         public bool EmergencyStopActive { get; set; }
+
+        // Roadmap #427 - per-tenant override, null falls back to ServerConfig.RecycleBinRetentionDays, same cascade as ScheduleTimeZone/Latitude/Longitude above.
+        public int? RecycleBinRetentionDays { get; set; }
     }
 
     /// One saved WiFi AP a tenant's admin can hand to a newly discovered device instead of typing it in again on every Register; Password is omitted from any list response the UI uses just to pick one (see DiscoveryApiController.Register).

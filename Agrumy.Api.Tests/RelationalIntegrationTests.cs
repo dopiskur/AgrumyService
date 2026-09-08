@@ -1394,6 +1394,47 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
     }
 
+    // Roadmap #427 - marking a soft-deleted farm for purge cascades Purged onto its exact DeviceFarmDeleteAsync cascade (unit, zone, and the zone's device); reaping it then removes all of that plus the farm-scope rule the soft delete deliberately left dormant for restore - none of that restore path applies once permanently purged. A device still just Purged (not yet reaped) stays fully restorable.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmRecycleBinPurgeAsync_RemovesFarmCascadeAndFarmScopeRule(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (unit, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+
+        DeviceFarm farm = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Farm_" + U() });
+        unit.DeviceFarmID = farm.IDDeviceFarm;
+        await _repo.DeviceFarmUnitUpdateAsync(unit);
+
+        int farmRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Ventilation, Name = "Farm rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 },
+        });
+
+        await _repo.DeviceFarmDeleteAsync(farm.IDDeviceFarm!.Value);
+
+        // Not yet marked - reap must refuse (guards on Purged, not just Deleted).
+        Assert.False(await _repo.DeviceFarmRecycleBinPurgeAsync(farm.IDDeviceFarm!.Value, tenantId));
+
+        Assert.True(await _repo.DeviceFarmRecycleBinMarkPurgedAsync(farm.IDDeviceFarm!.Value, tenantId));
+        // Still fully restorable while only marked - nothing physically removed yet.
+        Assert.NotNull(await _repo.DeviceFarmRecycleBinGetByIdAsync(farm.IDDeviceFarm!.Value));
+
+        Assert.True(await _repo.DeviceFarmRecycleBinPurgeAsync(farm.IDDeviceFarm!.Value, tenantId));
+
+        await using var db = _fx.NewContext(t);
+        Assert.False(await db.DeviceFarms.IgnoreQueryFilters().AnyAsync(f => f.IDDeviceFarm == farm.IDDeviceFarm));
+        Assert.False(await db.DeviceFarmUnits.IgnoreQueryFilters().AnyAsync(u => u.IDDeviceFarmUnit == unit.IDDeviceFarmUnit));
+        Assert.False(await db.DeviceFarmUnitZones.IgnoreQueryFilters().AnyAsync(z => z.IDDeviceFarmUnitZone == zone.IDDeviceFarmUnitZone));
+        Assert.False(await db.Devices.IgnoreQueryFilters().AnyAsync(x => x.IDDevice == d.IDDevice));
+        Assert.Empty(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value));
+
+        Assert.False(await _repo.DeviceFarmRestoreAsync(farm.IDDeviceFarm.Value, tenantId));
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task Rule_ConditionTreeRoundTrip_PreservesNestedGroupShape(DbProviderKind provider)
     {
@@ -1518,6 +1559,74 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.True(await _repo.DeviceRestoreAsync(d.IDDevice!.Value, tenantId));
         Assert.NotNull(await _repo.DeviceGetByIdAsync(d.IDDevice));
+    }
+
+    // Roadmap #427 - MarkPurgedAsync just flips a flag (still fully restorable); PurgeAsync (the reap step) is what's actually irreversible, removing everything DeviceDelete's soft-delete left behind INCLUDING SensorData - "Deleted=1 means ready for purge" applies to all of it now, no orphaning.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceRecycleBinPurgeAsync_RemovesDeviceConfigAndSensorData(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 21.0 }], d.IDDevice!.Value, tenantId, 0, 0);
+        await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
+        await _repo.DeviceDeleteAsync(d.IDDevice, tenantId);
+
+        // Not yet marked - reap must refuse (guards on Purged, not just Deleted).
+        Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId));
+
+        Assert.False(await _repo.DeviceRecycleBinMarkPurgedAsync(d.IDDevice.Value, tenantId + 1)); // wrong tenant - no-op
+        Assert.True(await _repo.DeviceRecycleBinMarkPurgedAsync(d.IDDevice.Value, tenantId));
+        // Still fully restorable while only marked - nothing physically removed yet.
+        Assert.NotNull(await _repo.DeviceRecycleBinGetByIdAsync(d.IDDevice.Value));
+        Assert.Contains(await _repo.DevicePendingPurgeGetAsync(tenantId), x => x.IDDevice == d.IDDevice);
+
+        Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId + 1)); // wrong tenant - no-op
+        Assert.True(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId));
+
+        await using var db = _fx.NewContext(t);
+        Assert.False(await db.Devices.IgnoreQueryFilters().AnyAsync(x => x.IDDevice == d.IDDevice));
+        Assert.False(await db.DeviceConfigSensors.AnyAsync(c => c.IDDeviceConfigSensor == d.DeviceConfigSensorID));
+        Assert.False(await db.DeviceConfigControllers.AnyAsync(c => c.IDDeviceConfigController == d.DeviceConfigControllerID));
+        Assert.False(await db.EventDevices.AnyAsync(x => x.DeviceID == d.IDDevice));
+        Assert.False(await db.SensorData.AnyAsync(x => x.DeviceID == d.IDDevice));
+
+        // Already gone - a second purge or a restore attempt both find nothing to act on, not an error.
+        Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId));
+        Assert.False(await _repo.DeviceRestoreAsync(d.IDDevice.Value, tenantId));
+    }
+
+    // Roadmap #427 - the per-tenant retention override drives the automatic mark phase: a tenant with its own (shorter) override gets marked sooner than the server default would, and it doesn't affect other tenants still on the default.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceRecycleBinMarkPurgedByRetentionAsync_UsesPerTenantOverride(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (shortTenantId, _, _) = await MakeUser(t);
+        var (longTenantId, _, _) = await MakeUser(t);
+        var shortDevice = await MakeDevice(t, shortTenantId);
+        var longDevice = await MakeDevice(t, longTenantId);
+
+        Tenant shortTenant = (await _repo.TenantGetByIdAsync(shortTenantId))!;
+        shortTenant.RecycleBinRetentionDays = 1;
+        await _repo.TenantUpdateAsync(shortTenant);
+        // longTenantId deliberately left at null (falls back to the server default passed below).
+
+        await _repo.DeviceDeleteAsync(shortDevice.IDDevice, shortTenantId);
+        await _repo.DeviceDeleteAsync(longDevice.IDDevice, longTenantId);
+        await using (var db = _fx.NewContext(t))
+        {
+            DateTimeOffset threeDaysAgo = DateTimeOffset.UtcNow.AddDays(-3);
+            await db.Devices.IgnoreQueryFilters().Where(d => d.IDDevice == shortDevice.IDDevice || d.IDDevice == longDevice.IDDevice)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.DeletedAtUtc, threeDaysAgo));
+        }
+
+        // Server default (30d) hasn't elapsed for either - but shortTenantId's own 1-day override has.
+        int marked = await _repo.DeviceRecycleBinMarkPurgedByRetentionAsync(30, CancellationToken.None);
+
+        Assert.Equal(1, marked);
+        Assert.Contains(await _repo.DevicePendingPurgeGetAsync(shortTenantId), x => x.IDDevice == shortDevice.IDDevice);
+        Assert.DoesNotContain(await _repo.DevicePendingPurgeGetAsync(longTenantId), x => x.IDDevice == longDevice.IDDevice);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

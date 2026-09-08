@@ -13,7 +13,7 @@ namespace Agrumy.Api.Controllers.API
     [Route("api/DataMaintenance")]
     [Authorize(Roles = RoleNames.GlobalAdmin)]
     public class DataMaintenanceApiController(
-        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, AgrumyDbContext db, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger, IServerConfigRepository serverConfigRepo)
+        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, AgrumyDbContext db, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         /// Lets Agrumy.Web decide whether to show the MariaDB-only "shrink files on disk?" dialog before confirming a Purge - Postgres/TimescaleDB reclaims disk space automatically.
@@ -94,37 +94,26 @@ namespace Agrumy.Api.Controllers.API
             return Accepted();
         }
 
-        /// Roadmap #409 - manual trigger for "Purge orphaned sensor data" (the recycle bin's SensorData cleanup). Cutoff is always serverConfig.RecycleBinRetentionDays, not caller-chosen - a device only ever qualifies once it's already left the Recycle Bin listing.
+        /// Roadmap #427 - manual trigger for the same recycle-bin purge cycle PurgeOrphanedSensorDataBackgroundService runs on a schedule; forces PurgeOrphanedSensorDataEvaluator.RunOnceAsync regardless of PurgeOrphanedSensorDataScheduleEnabled, since an explicit admin click is not "the schedule". Marks anything newly past its tenant's retention AND reaps everything already Purged (including finalizing any #427 "Delete permanently now"/"Empty Recycle Bin" actions instead of waiting for the next scheduled tick).
         [HttpPost("PurgeOrphaned")]
-        public async Task<ActionResult> PurgeOrphaned([FromBody] DataPurgeOrphanedRequest request)
+        public ActionResult PurgeOrphaned([FromBody] RecycleBinPurgeRequest request)
         {
             if (!CallerIsGlobalAdmin)
             {
                 return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
             }
-            if (request.ConfirmationPhrase != DataPurgeOrphanedRequest.RequiredPhrase)
+            if (request.ConfirmationPhrase != RecycleBinPurgeRequest.RequiredPhrase)
             {
-                return BadRequest($"Type \"{DataPurgeOrphanedRequest.RequiredPhrase}\" to confirm this destructive action.");
-            }
-
-            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
-            int retentionDays = config.RecycleBinRetentionDays ?? 30;
-            if (retentionDays <= 0)
-            {
-                return BadRequest("Recycle bin retention is 0 - there is nothing to purge.");
+                return BadRequest($"Type \"{RecycleBinPurgeRequest.RequiredPhrase}\" to confirm this destructive action.");
             }
 
             jobQueue.Enqueue(async (services, ct) =>
             {
                 if (logger.IsEnabled(LogLevel.Information))
                 {
-                    logger.LogInformation("Purge Orphaned Sensor Data started (retention {Days}d).", retentionDays);
+                    logger.LogInformation("Recycle bin purge cycle started (manual trigger).");
                 }
-                long deleted = await services.GetRequiredService<ISensorDataRepository>().PurgeOrphanedSensorDataAsync(retentionDays, ct);
-                if (logger.IsEnabled(LogLevel.Information))
-                {
-                    logger.LogInformation("Purge Orphaned Sensor Data finished ({Count} row(s) deleted).", deleted);
-                }
+                await services.GetRequiredService<PurgeOrphanedSensorDataEvaluator>().RunOnceAsync(ct);
             });
 
             return Accepted();

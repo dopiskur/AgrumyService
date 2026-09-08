@@ -11,6 +11,9 @@ namespace Agrumy.Dal.Entities
         public double? Longitude { get; set; } // See Agrumy.Shared.Models.Tenant.Longitude.
         public bool EmergencyStopActive { get; set; } // See Agrumy.Shared.Models.Tenant.EmergencyStopActive.
         public DateTimeOffset? DateCreated { get; set; }
+
+        // Roadmap #427 - per-tenant override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
+        public int? RecycleBinRetentionDays { get; set; }
     }
 
     /// See Agrumy.Shared.Models.TenantWifiConfig.

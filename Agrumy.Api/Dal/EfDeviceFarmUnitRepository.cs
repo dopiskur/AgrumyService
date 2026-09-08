@@ -122,18 +122,10 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, true).SetProperty(f => f.DeletedAtUtc, now));
         }
 
-        /// Every soft-deleted Farm still within serverConfig.RecycleBinRetentionDays (0/negative disables the recycle bin entirely, same "no grace period" reading as DeviceRecycleBinGetAsync).
+        /// Every soft-deleted, not-yet-Purged Farm (roadmap #427 - Purged farms move to DeviceFarmPendingPurgeGetAsync instead).
         public async Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID)
         {
-            ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
-            int retentionDays = config.RecycleBinRetentionDays ?? 30;
-            if (retentionDays <= 0)
-            {
-                return [];
-            }
-            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
-
-            IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && f.DeletedAtUtc >= cutoff);
+            IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && !f.Purged);
             if (tenantID != null)
             {
                 q = q.Where(f => f.TenantID == tenantID);
@@ -142,14 +134,42 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoFarm).ToList();
         }
 
-        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceFarmGetByIdAsync, but also sees soft-deleted rows - RecycleBinApiController uses this to resolve a farm's owning tenant before calling DeviceFarmRestoreAsync.
+        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceFarmGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a farm's owning tenant before calling DeviceFarmRestoreAsync/DeviceFarmRecycleBinMarkPurgedAsync.
         public async Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm)
         {
             var row = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.Deleted);
             return row == null ? null : ToDtoFarm(row);
         }
 
-        /// Undoes DeviceFarmDeleteAsync's exact cascade - only Units/Zones/Devices stamped with THIS farm's own DeletedAtUtc come back; anything deleted independently (e.g. a device deleted on its own before or after the farm) stays deleted. False if the farm doesn't exist, isn't soft-deleted, or belongs to a different tenant.
+        /// Roadmap #427 - marked for permanent removal, still restorable until the purge cycle actually reaps it.
+        public async Task<IList<DeviceFarm>> DeviceFarmPendingPurgeGetAsync(int? tenantID)
+        {
+            IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && f.Purged);
+            if (tenantID != null)
+            {
+                q = q.Where(f => f.TenantID == tenantID);
+            }
+            var rows = await q.OrderByDescending(f => f.PurgedAtUtc).ToListAsync();
+            return rows.Select(ToDtoFarm).ToList();
+        }
+
+        /// Only Units/Zones/Devices stamped with THIS farm's own DeletedAtUtc - anything deleted independently (e.g. a device deleted on its own before or after the farm) is left alone. Shared by Restore/MarkPurged/Purge, all three of which need the exact same cascade membership.
+        private async Task<(List<int> UnitIds, List<int> ZoneIds, List<int> DeviceIds)> ResolveFarmCascadeAsync(int idDeviceFarm, DateTimeOffset deletedAt)
+        {
+            var unitIds = await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking()
+                .Where(u => u.DeviceFarmID == idDeviceFarm && u.Deleted && u.DeletedAtUtc == deletedAt)
+                .Select(u => u.IDDeviceFarmUnit).ToListAsync();
+            var zoneIds = await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking()
+                .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.Deleted && z.DeletedAtUtc == deletedAt)
+                .Select(z => z.IDDeviceFarmUnitZone).ToListAsync();
+            var deviceIds = await db.Devices.IgnoreQueryFilters().AsNoTracking()
+                .Where(d => d.Deleted && d.DeletedAtUtc == deletedAt
+                    && ((d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value)) || (d.DeviceFarmUnitZoneID != null && zoneIds.Contains(d.DeviceFarmUnitZoneID.Value))))
+                .Select(d => d.IDDevice).ToListAsync();
+            return (unitIds, zoneIds, deviceIds);
+        }
+
+        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged. False if the farm doesn't exist, isn't soft-deleted, or belongs to a different tenant.
         public async Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID)
         {
             var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
@@ -158,19 +178,11 @@ namespace Agrumy.Api.Dal
             {
                 return false;
             }
-            DateTimeOffset deletedAt = farm.DeletedAtUtc!.Value;
+            var (unitIds, zoneIds, deviceIds) = await ResolveFarmCascadeAsync(idDeviceFarm, farm.DeletedAtUtc!.Value);
 
-            var unitIds = await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking()
-                .Where(u => u.DeviceFarmID == idDeviceFarm && u.Deleted && u.DeletedAtUtc == deletedAt)
-                .Select(u => u.IDDeviceFarmUnit).ToListAsync();
-            var zoneIds = await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking()
-                .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.Deleted && z.DeletedAtUtc == deletedAt)
-                .Select(z => z.IDDeviceFarmUnitZone).ToListAsync();
-
-            await db.Devices.IgnoreQueryFilters()
-                .Where(d => d.Deleted && d.DeletedAtUtc == deletedAt
-                    && ((d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value)) || (d.DeviceFarmUnitZoneID != null && zoneIds.Contains(d.DeviceFarmUnitZoneID.Value))))
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null));
+            await db.Devices.IgnoreQueryFilters().Where(d => deviceIds.Contains(d.IDDevice))
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Deleted, false).SetProperty(d => d.DeletedAtUtc, (DateTimeOffset?)null)
+                    .SetProperty(d => d.Purged, false).SetProperty(d => d.PurgedAtUtc, (DateTimeOffset?)null));
 
             await db.DeviceFarmUnitZones.IgnoreQueryFilters().Where(z => zoneIds.Contains(z.IDDeviceFarmUnitZone))
                 .ExecuteUpdateAsync(s => s.SetProperty(z => z.Deleted, false).SetProperty(z => z.DeletedAtUtc, (DateTimeOffset?)null));
@@ -179,7 +191,106 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(u => u.Deleted, false).SetProperty(u => u.DeletedAtUtc, (DateTimeOffset?)null));
 
             await db.DeviceFarms.IgnoreQueryFilters().Where(f => f.IDDeviceFarm == idDeviceFarm)
-                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, false).SetProperty(f => f.DeletedAtUtc, (DateTimeOffset?)null));
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, false).SetProperty(f => f.DeletedAtUtc, (DateTimeOffset?)null)
+                    .SetProperty(f => f.Purged, false).SetProperty(f => f.PurgedAtUtc, (DateTimeOffset?)null));
+            return true;
+        }
+
+        /// Roadmap #427 - the manual "delete permanently now" trigger; just flips the flag on the farm AND its exact soft-delete cascade of devices (so DeviceRecycleBinPurgeAsync's own Purged guard passes once the reap cycle gets to them) - the actual removal happens later.
+        public async Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID)
+        {
+            var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
+                .FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.TenantID == tenantID && f.Deleted && !f.Purged);
+            if (farm == null)
+            {
+                return false;
+            }
+            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+            var (_, _, deviceIds) = await ResolveFarmCascadeAsync(idDeviceFarm, farm.DeletedAtUtc!.Value);
+
+            if (deviceIds.Count > 0)
+            {
+                await db.Devices.IgnoreQueryFilters().Where(d => deviceIds.Contains(d.IDDevice))
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.Purged, true).SetProperty(d => d.PurgedAtUtc, nowUtc));
+            }
+            await db.DeviceFarms.IgnoreQueryFilters().Where(f => f.IDDeviceFarm == idDeviceFarm)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Purged, true).SetProperty(f => f.PurgedAtUtc, nowUtc));
+            return true;
+        }
+
+        /// The scheduled half of marking - same per-tenant-retention logic as DeviceRecycleBinMarkPurgedByRetentionAsync, cascading Purged onto the farm's devices the same way DeviceFarmRecycleBinMarkPurgedAsync does for the manual trigger.
+        public async Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
+        {
+            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+            var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant, t => t.RecycleBinRetentionDays, ct);
+
+            var candidates = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
+                .Where(f => f.Deleted && !f.Purged)
+                .Select(f => new { f.IDDeviceFarm, f.TenantID, f.DeletedAtUtc })
+                .ToListAsync(ct);
+
+            var idsToMark = candidates
+                .Where(c =>
+                {
+                    int retentionDays = c.TenantID != null && tenantRetentionDays.TryGetValue(c.TenantID.Value, out int? tenantOverride) && tenantOverride != null
+                        ? tenantOverride.Value : serverDefaultRetentionDays;
+                    return retentionDays > 0 && c.DeletedAtUtc != null && c.DeletedAtUtc <= nowUtc.AddDays(-retentionDays);
+                })
+                .ToList();
+            if (idsToMark.Count == 0)
+            {
+                return 0;
+            }
+
+            foreach (var c in idsToMark)
+            {
+                var (_, _, deviceIds) = await ResolveFarmCascadeAsync(c.IDDeviceFarm, c.DeletedAtUtc!.Value);
+                if (deviceIds.Count > 0)
+                {
+                    await db.Devices.IgnoreQueryFilters().Where(d => deviceIds.Contains(d.IDDevice))
+                        .ExecuteUpdateAsync(s => s.SetProperty(d => d.Purged, true).SetProperty(d => d.PurgedAtUtc, nowUtc), ct);
+                }
+            }
+            var farmIds = idsToMark.Select(c => c.IDDeviceFarm).ToList();
+            return await db.DeviceFarms.IgnoreQueryFilters().Where(f => farmIds.Contains(f.IDDeviceFarm))
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Purged, true).SetProperty(f => f.PurgedAtUtc, nowUtc), ct);
+        }
+
+        public async Task<IList<(int IDDeviceFarm, int? TenantID)>> DeviceFarmPurgedIdsGetAsync()
+        {
+            var rows = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && f.Purged)
+                .Select(f => new { f.IDDeviceFarm, f.TenantID }).ToListAsync();
+            return rows.Select(f => (f.IDDeviceFarm, f.TenantID)).ToList();
+        }
+
+        /// The purge cycle's actual, irreversible removal of the farm and its exact cascade. Devices are purged first via DeviceRecycleBinPurgeAsync (SensorData included, same as a standalone device purge), then the now-empty Zone/Unit-scope rules and the Zone/Unit/Farm rows themselves. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        public async Task<bool> DeviceFarmRecycleBinPurgeAsync(int idDeviceFarm, int? tenantID)
+        {
+            var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
+                .FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.TenantID == tenantID && f.Deleted && f.Purged);
+            if (farm == null)
+            {
+                return false;
+            }
+            var (unitIds, zoneIds, deviceIds) = await ResolveFarmCascadeAsync(idDeviceFarm, farm.DeletedAtUtc!.Value);
+
+            foreach (int deviceId in deviceIds)
+            {
+                await deviceRepository.DeviceRecycleBinPurgeAsync(deviceId, tenantID);
+            }
+
+            // Farm/Unit/Zone-scope rules were left untouched by the original soft delete (a restore needed them intact) - a permanent purge has no restore to protect, so they're genuinely orphaned now and go too.
+            var ruleIds = await db.DeviceFarmUnitZoneRules.AsNoTracking()
+                .Where(r => r.DeviceFarmID == idDeviceFarm
+                    || (r.DeviceFarmUnitZoneID != null && zoneIds.Contains(r.DeviceFarmUnitZoneID.Value))
+                    || (r.DeviceFarmUnitID != null && unitIds.Contains(r.DeviceFarmUnitID.Value) && r.DeviceFarmUnitZoneID == null))
+                .Select(r => r.IDDeviceFarmUnitZoneRule).ToListAsync();
+            await db.RuleNotificationStates.Where(s => ruleIds.Contains(s.RuleID) || zoneIds.Contains(s.DeviceFarmUnitZoneID)).ExecuteDeleteAsync();
+            await db.DeviceFarmUnitZoneRules.Where(r => ruleIds.Contains(r.IDDeviceFarmUnitZoneRule)).ExecuteDeleteAsync();
+
+            await db.DeviceFarmUnitZones.IgnoreQueryFilters().Where(z => zoneIds.Contains(z.IDDeviceFarmUnitZone)).ExecuteDeleteAsync();
+            await db.DeviceFarmUnits.IgnoreQueryFilters().Where(u => unitIds.Contains(u.IDDeviceFarmUnit)).ExecuteDeleteAsync();
+            await db.DeviceFarms.IgnoreQueryFilters().Where(f => f.IDDeviceFarm == idDeviceFarm).ExecuteDeleteAsync();
             return true;
         }
 
@@ -1130,6 +1241,7 @@ namespace Agrumy.Api.Dal
             TenantID = f.TenantID,
             DeviceFarmName = f.DeviceFarmName,
             DeletedAtUtc = f.DeletedAtUtc,
+            PurgedAtUtc = f.PurgedAtUtc,
         };
 
         private static DeviceFarmUnitZone ToDtoZone(DeviceFarmUnitZoneRow z) => new()

@@ -27,8 +27,5 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Deletes rows older than cutoffUtc outright (drop_chunks() on TimescaleDB, plain DELETE otherwise) - shrinkAfterPurge also runs OPTIMIZE TABLE on MariaDB/MySQL, whose DELETE never shrinks the .ibd file.
         Task PurgeOldSensorDataAsync(DateTime cutoffUtc, bool shrinkAfterPurge, CancellationToken ct);
-
-        /// Roadmap #409 - deletes SensorData belonging to any device soft-deleted at least retentionDays ago (independent of the Recycle Bin listing itself, which just stops SHOWING those devices past this same cutoff - the device/farm rows themselves are never touched here). Batched (PurgeBatchSize rows/pass, short pause between passes) same as PurgeOldSensorDataAsync; returns the total row count deleted.
-        Task<long> PurgeOrphanedSensorDataAsync(int retentionDays, CancellationToken ct);
     }
 }

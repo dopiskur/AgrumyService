@@ -1,7 +1,17 @@
+@using Agrumy.Shared.Security
 @model Agrumy.Web.ViewModels.RecycleBinViewModel
 @{
     ViewData["Title"] = "Recycle Bin";
+    bool canPurge = User.IsInRole(RoleNames.GlobalAdmin);
 }
+
+@if (canPurge && (Model.Farms.Any() || Model.Devices.Any()))
+{
+    <div class="d-flex justify-content-end mb-3">
+        <button type="button" id="recycleBinEmptyButton" class="btn btn-outline-danger">Empty Recycle Bin</button>
+    </div>
+}
+<div id="recycleBinStatus" class="mb-3"></div>
 
 <div class="card mb-3">
     <div class="card-header">
@@ -10,8 +20,12 @@
     <div class="card-body">
         <p class="text-secondary small">
             A deleted farm's units/zones/devices went with it - restoring the farm brings all of
-            them back together. Retention: @Model.RecycleBinRetentionDays day(s), configurable in
-            <a asp-controller="ServerConfig" asp-action="Index">Server Settings</a>.
+            them back together. Default retention: @Model.RecycleBinRetentionDays day(s) (a tenant
+            can set its own on its Tenant settings page), configurable server-wide in
+            <a asp-controller="ServerConfig" asp-action="Index">Server Settings</a>. "Delete
+            permanently now" only marks a farm for removal - it's still restorable (see Pending
+            Permanent Deletion below) until the purge cycle actually runs, which then also removes
+            its sensor data.
         </p>
         @if (!Model.Farms.Any())
         {
@@ -27,11 +41,18 @@
                         <tr>
                             <td>@farm.DeviceFarmName</td>
                             <td>@farm.DeletedAtUtc?.ToString("u")</td>
-                            <td>
+                            <td class="d-flex gap-2">
                                 <form asp-action="RecycleBinRestoreFarm" method="post">
                                     <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
                                 </form>
+                                @if (canPurge)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-recycle-bin-purge
+                                            data-kind="farm" data-id="@farm.IDDeviceFarm" data-name="@farm.DeviceFarmName">
+                                        Delete permanently now
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
@@ -41,7 +62,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card mb-3">
     <div class="card-header">
         <h3 class="card-title">Devices</h3>
     </div>
@@ -61,11 +82,18 @@
                             <td>@device.DeviceName</td>
                             <td>@device.MacAddress</td>
                             <td>@device.DeletedAtUtc?.ToString("u")</td>
-                            <td>
+                            <td class="d-flex gap-2">
                                 <form asp-action="RecycleBinRestoreDevice" method="post">
                                     <input type="hidden" name="idDevice" value="@device.IDDevice" />
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
                                 </form>
+                                @if (canPurge)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-recycle-bin-purge
+                                            data-kind="device" data-id="@device.IDDevice" data-name="@device.DeviceName">
+                                        Delete permanently now
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
@@ -74,3 +102,90 @@
         }
     </div>
 </div>
+
+@if (canPurge && (Model.PendingPurgeFarms.Any() || Model.PendingPurgeDevices.Any()))
+{
+    <div class="card mb-3 border-danger">
+        <div class="card-header">
+            <h3 class="card-title">Pending Permanent Deletion</h3>
+        </div>
+        <div class="card-body">
+            <p class="text-secondary small">
+                Marked for permanent removal - still fully restorable below until the next purge
+                cycle actually runs (scheduled, or manually triggered from
+                <a asp-controller="ServerConfig" asp-action="Index">Server Settings</a>). Once
+                that happens, this is gone for good, sensor data included.
+            </p>
+            @if (Model.PendingPurgeFarms.Any())
+            {
+                <table class="table table-sm">
+                    <thead><tr><th>Farm</th><th>Marked</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var farm in Model.PendingPurgeFarms)
+                        {
+                            <tr>
+                                <td>@farm.DeviceFarmName</td>
+                                <td>@farm.PurgedAtUtc?.ToString("u")</td>
+                                <td>
+                                    <form asp-action="RecycleBinRestoreFarm" method="post">
+                                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (Model.PendingPurgeDevices.Any())
+            {
+                <table class="table table-sm">
+                    <thead><tr><th>Device</th><th>MAC</th><th>Marked</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var device in Model.PendingPurgeDevices)
+                        {
+                            <tr>
+                                <td>@device.DeviceName</td>
+                                <td>@device.MacAddress</td>
+                                <td>@device.PurgedAtUtc?.ToString("u")</td>
+                                <td>
+                                    <form asp-action="RecycleBinRestoreDevice" method="post">
+                                        <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@if (canPurge)
+{
+    <div class="modal fade" id="recycleBinPurgeConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recycleBinPurgeConfirmTitle">Confirm permanent delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="recycleBinPurgeConfirmBody"></p>
+                    <label class="form-label" for="recycleBinPurgeConfirmPhrase">Type <code>PURGE</code> to confirm</label>
+                    <input type="text" id="recycleBinPurgeConfirmPhrase" class="form-control" autocomplete="off" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="recycleBinPurgeConfirmSubmit" class="btn btn-danger" disabled>Mark for permanent deletion</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/recycle-bin.js"></script>
+}

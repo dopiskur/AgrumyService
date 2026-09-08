@@ -11,6 +11,10 @@ namespace Agrumy.Dal.Entities
         // Roadmap #408/#409 - soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
+
+        // Roadmap #427 - still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceFarmUnitRepository.DeviceFarmRecycleBinPurgeAsync).
+        public bool Purged { get; set; }
+        public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
     public class DeviceFarmUnitRow
@@ -314,9 +318,13 @@ namespace Agrumy.Dal.Entities
         // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.
         public long? LoRaLastUplinkCounter { get; set; }
 
-        // Roadmap #409 - soft delete, see AgrumyDbContext's HasQueryFilter on this entity. SensorData/etc keep pointing at IDDevice unchanged; only RecycleBinApiController/EfRecycleBinRepository ever see a Deleted row (IgnoreQueryFilters), plus PurgeOrphanedSensorDataAsync's own raw SQL.
+        // Roadmap #409 - soft delete, see AgrumyDbContext's HasQueryFilter on this entity. Only RecycleBinApiController ever sees a Deleted row directly (IgnoreQueryFilters).
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
+
+        // Roadmap #427 - still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceRepository.DeviceRecycleBinPurgeAsync).
+        public bool Purged { get; set; }
+        public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
     /// One LoRaWAN end-device's DevEUI mapped to the Agrumy device (ApiId/ApiKey) a LoRaGateway acts on behalf of for that DevEUI's uplinks.
