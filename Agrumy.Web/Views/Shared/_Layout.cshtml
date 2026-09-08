@@ -151,15 +151,15 @@
                 <nav class="mt-2" aria-label="Main navigation">
                     <ul class="nav sidebar-menu flex-column" id="navigation">
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                                 <i class="nav-icon bi bi-house-door"></i>
-                                <p>@Localizer["Dashboard"]</p>
+                                <p>@Localizer[farmCount > 1 ? "Farms" : "Farm"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                <i class="nav-icon bi bi-map"></i>
-                                <p>@Localizer[farmCount > 1 ? "Farms" : "Farm"]</p>
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
+                                <i class="nav-icon bi bi-sliders"></i>
+                                <p>@Localizer["Build Dashboard"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
