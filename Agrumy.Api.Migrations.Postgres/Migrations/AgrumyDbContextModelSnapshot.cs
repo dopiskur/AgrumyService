@@ -1734,7 +1734,7 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasKey("IDTenant");
 
-                    b.ToTable("tenantQuota", (string)null);
+                    b.ToTable("tenantConfigQuota", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantRow", b =>
@@ -1809,9 +1809,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasKey("IDTenantWifiConfig");
 
                     b.HasIndex("TenantID")
-                        .HasDatabaseName("ix_tenantWifiConfig_tenant");
+                        .HasDatabaseName("ix_tenantConfigWifi_tenant");
 
-                    b.ToTable("tenantWifiConfig", (string)null);
+                    b.ToTable("tenantConfigWifi", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.UserRoleRow", b =>
