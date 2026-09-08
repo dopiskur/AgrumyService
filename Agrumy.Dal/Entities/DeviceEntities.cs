@@ -413,6 +413,8 @@ namespace Agrumy.Dal.Entities
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
+        // Set by SensorDataApiController.Post on every accepted push (not the config-poll heartbeat, which runs on a different cadence) - TenantQuotaEnforcer.CheckSensorPushIntervalAsync compares this against MinSensorIntervalMinutes to catch a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its tenant's quota allows.
+        public DateTimeOffset? LastSensorPushAt { get; set; }
         // Minimum ever recorded since boot (ESP.getMinFreeHeap()), largest single allocatable block (ESP.getMaxAllocHeap(), low value flags fragmentation even when FreeHeapBytes looks fine), and the loop task's unused stack margin (uxTaskGetStackHighWaterMark, low value flags an approaching stack overflow).
         public long? MinFreeHeapBytes { get; set; }
         public long? MaxAllocHeapBytes { get; set; }

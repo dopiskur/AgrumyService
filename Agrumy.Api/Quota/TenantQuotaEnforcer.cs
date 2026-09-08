@@ -4,13 +4,25 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Quota
 {
     /// Hard-block guard for TenantQuota - every check returns null when allowed, else the exact message the caller surfaces; ingest-volume limits only, never a feature gate (rule engine/notifications/dashboard/sensor catalog stay fully open regardless of quota). A count-based check here is only race-free if the caller runs it inside the SAME Serializable transaction as the resource's own insert - see QuotaGuard for that shared, reusable shape, used by every repository Add method a TenantQuota check gates.
-    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, ISimulationRepository simulationRepo)
+    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, ISimulationRepository simulationRepo, IDeviceRepository deviceRepo)
     {
         public const string LimitMessage = "Limit for the current tier reached, please contact support.";
 
         /// IDTenant=0 (the default/bootstrap tenant) is exempt without ever reaching the repository - a pure business rule, not something that needs a DB round trip.
         private Task<TenantQuota?> GetQuotaAsync(int? tenantId) =>
             tenantId is int id and not 0 ? tenantRepo.TenantQuotaGetAsync(id) : Task.FromResult<TenantQuota?>(null);
+
+        /// Checked at Register, the one real device-creation choke point (Discovery provisioning only queues a ProvisionDevice command consumed by that same call) - the only quota that directly costs telemetry rows/broker connections/LoRa slots.
+        public async Task<string?> CheckCanAddDeviceAsync(int? tenantId)
+        {
+            TenantQuota? quota = await GetQuotaAsync(tenantId);
+            if (quota == null)
+            {
+                return null;
+            }
+            int current = (await deviceRepo.DevicesGetAsync(tenantId)).Count;
+            return current >= quota.MaxDevices ? LimitMessage : null;
+        }
 
         public async Task<string?> CheckCanAddFarmAsync(int? tenantId)
         {
@@ -77,6 +89,18 @@ namespace Agrumy.Api.Quota
                 return null;
             }
             return seconds < quota.MinSensorIntervalMinutes * 60 ? LimitMessage : null;
+        }
+
+        /// Separate from CheckMinSensorIntervalAsync above - that one only gates the CONFIGURED sleepSeconds value (an admin trying to set too short an interval), it does nothing to stop a device that just ignores its own configured interval and pushes telemetry faster anyway. This checks the ACTUAL elapsed time since the device's last accepted push.
+        public async Task<string?> CheckSensorPushIntervalAsync(int? tenantId, int deviceId)
+        {
+            TenantQuota? quota = await GetQuotaAsync(tenantId);
+            if (quota == null || quota.MinSensorIntervalMinutes <= 0)
+            {
+                return null;
+            }
+            bool allowed = await deviceRepo.DeviceCheckAndRecordSensorPushAsync(deviceId, TimeSpan.FromMinutes(quota.MinSensorIntervalMinutes));
+            return allowed ? null : LimitMessage;
         }
 
         public async Task<bool> IsMqttAllowedAsync(int? tenantId) => (await GetQuotaAsync(tenantId)) is null or { MqttEnabled: true };

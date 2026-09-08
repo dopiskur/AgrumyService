@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/SensorData")]
-    public class SensorDataController(ISensorDataRepository sensorDataRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class SensorDataController(ISensorDataRepository sensorDataRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Bounds SensorDataGetAsync's unbounded ToListAsync() and keeps DateTime.AddXxx clear of overflow.
         private static bool IsWithinMaxTimeRange(int? timeMDMY, int timeRange) => timeMDMY switch
@@ -54,6 +54,12 @@ namespace Agrumy.Api.Controllers.API
             if (device is null)
             {
                 return Unauthorized();
+            }
+
+            // Catches a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its tenant's quota allows - separate from DeviceUpdate's CheckMinSensorIntervalAsync, which only gates the CONFIGURED value.
+            if (await quotaEnforcer.CheckSensorPushIntervalAsync(device.TenantID, device.IDDevice!.Value) is string intervalLimitError)
+            {
+                return StatusCode(403, intervalLimitError);
             }
 
             await sensorDataRepo.SensorDataPushAsync(readings, device.IDDevice!.Value, device.TenantID ?? 0,

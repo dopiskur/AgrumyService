@@ -37,7 +37,7 @@ public class ApiControllerTests
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     // CommandQueueService is a plain sealed class (not mocked); IRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
-    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object);
+    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
 
     private DeviceApiController NewDeviceController()
     {
@@ -326,7 +326,7 @@ public class ApiControllerTests
         var obj = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(401, obj.StatusCode);
         Assert.Equal("Wrong user or pin", obj.Value);
-        _repo.Verify(r => r.DeviceAddAsync(It.IsAny<Device>()), Times.Never);
+        _repo.Verify(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()), Times.Never);
     }
 
 
@@ -491,7 +491,7 @@ public class ApiControllerTests
         var obj = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(401, obj.StatusCode);
         Assert.Equal("Wrong user or pin", obj.Value); // an expired PIN must not confirm the email exists
-        _repo.Verify(r => r.DeviceAddAsync(It.IsAny<Device>()), Times.Never);
+        _repo.Verify(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()), Times.Never);
     }
 
     [Fact]
@@ -563,9 +563,9 @@ public class ApiControllerTests
         StubOwner("ABC234", DateTime.UtcNow.AddHours(1));
         _repo.Setup(r => r.DeviceGetAsync(1, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
         Device? captured = null;
-        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
-             .Callback<Device>(d => captured = d)
-             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<Device, Func<Task<string?>>?>((d, _) => captured = d)
+             .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
         _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
@@ -593,9 +593,9 @@ public class ApiControllerTests
         StubOwner("ABC234", DateTime.UtcNow.AddHours(1));
         _repo.Setup(r => r.DeviceGetAsync(1, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
         Device? captured = null;
-        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
-             .Callback<Device>(d => captured = d)
-             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<Device, Func<Task<string?>>?>((d, _) => captured = d)
+             .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
         _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
@@ -623,9 +623,9 @@ public class ApiControllerTests
         StubOwner("ABC234", DateTime.UtcNow.AddHours(1));
         _repo.Setup(r => r.DeviceGetAsync(1, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
         Device? captured = null;
-        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
-             .Callback<Device>(d => captured = d)
-             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<Device, Func<Task<string?>>?>((d, _) => captured = d)
+             .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
         _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
@@ -650,9 +650,9 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.DeviceGetAsync(1, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
         Device? c = null;
-        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
-             .Callback<Device>(d => c = d)
-             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<Device, Func<Task<string?>>?>((d, _) => c = d)
+             .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
         _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
@@ -669,9 +669,9 @@ public class ApiControllerTests
              .ReturnsAsync(new User { IDUser = 77, TenantID = null, DevicePin = "ABC234", DevicePinExpires = DateTime.UtcNow.AddHours(1) });
         _repo.Setup(r => r.DeviceGetAsync(null, null, null, "AABBCCDDEEFF")).ReturnsAsync((Device?)null);
         Device? captured = null;
-        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>()))
-             .Callback<Device>(d => captured = d)
-             .ReturnsAsync((Device d) => { d.IDDevice = 900; return d; });
+        _repo.Setup(r => r.DeviceAddAsync(It.IsAny<Device>(), It.IsAny<Func<Task<string?>>?>()))
+             .Callback<Device, Func<Task<string?>>?>((d, _) => captured = d)
+             .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
@@ -1703,7 +1703,7 @@ public class ApiControllerTests
 
 
     private ServerConfigApiController NewServerConfigController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>());
-    private SensorDataController NewSensorDataController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object);
+    private SensorDataController NewSensorDataController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, NewQuotaEnforcer());
 
     [Fact]
     public async Task DeviceUpdate_TenantDevice_OwnTenant_Succeeds()

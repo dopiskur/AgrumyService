@@ -20,6 +20,7 @@ namespace Agrumy.Dal.Entities
     public class TenantQuotaRow
     {
         public int IDTenant { get; set; }
+        public int MaxDevices { get; set; }
         public int MaxFarms { get; set; }
         public int MaxUnits { get; set; }
         public int MaxZones { get; set; }

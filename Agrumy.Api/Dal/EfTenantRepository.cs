@@ -94,6 +94,7 @@ namespace Agrumy.Api.Dal
                 row = new TenantQuotaRow { IDTenant = quota.IDTenant };
                 db.TenantQuotas.Add(row);
             }
+            row.MaxDevices = quota.MaxDevices;
             row.MaxFarms = quota.MaxFarms;
             row.MaxUnits = quota.MaxUnits;
             row.MaxZones = quota.MaxZones;
@@ -113,6 +114,7 @@ namespace Agrumy.Api.Dal
         private static TenantQuota ToDto(TenantQuotaRow row) => new()
         {
             IDTenant = row.IDTenant,
+            MaxDevices = row.MaxDevices,
             MaxFarms = row.MaxFarms,
             MaxUnits = row.MaxUnits,
             MaxZones = row.MaxZones,

@@ -36,6 +36,12 @@ spec:
           volumeMounts:
             - name: firmware-store
               mountPath: /app/firmware-store
+            # Without this, each of the 2 replicas' passwords-are-encrypted-then-decrypted-elsewhere ring is
+            # private to that pod - a secret (SMTP/MQTT/WiFi password) encrypted on one pod throws on the
+            # other. See pvc.yaml's own remarks; DataProtection__KeyPath (/keys) already comes from
+            # configmap.yaml, shared with Agrumy.Web.
+            - name: api-keys
+              mountPath: /keys
           resources:
             requests:
               cpu: 100m
@@ -64,6 +70,9 @@ spec:
         - name: firmware-store
           persistentVolumeClaim:
             claimName: agrumy-firmware-store
+        - name: api-keys
+          persistentVolumeClaim:
+            claimName: agrumy-api-keys
 ---
 apiVersion: v1
 kind: Service
@@ -78,7 +87,9 @@ spec:
 ---
 # Optional - delete this whole Deployment/HorizontalPodAutoscaler pairing (or just this object) if you'd
 # rather scale by hand; requires metrics-server (or another metrics.k8s.io provider) running in the
-# cluster, which most distributions ship by default but not all.
+# cluster, which most distributions ship by default but not all. Doubly make sure pvc.yaml's
+# agrumy-api-keys/agrumy-firmware-store claims are actually on ReadWriteMany storage before letting
+# this scale past 1 replica - same caveat as web.yaml's HPA.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

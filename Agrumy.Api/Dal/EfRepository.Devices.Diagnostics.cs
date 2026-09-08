@@ -8,6 +8,8 @@ namespace Agrumy.Api.Dal
     {
         public Task DeviceDiagnosticUpsertAsync(int deviceID, int tenantID, DeviceConfigPoll poll) => deviceRepository.DeviceDiagnosticUpsertAsync(deviceID, tenantID, poll);
 
+        public Task<bool> DeviceCheckAndRecordSensorPushAsync(int deviceID, TimeSpan minInterval) => deviceRepository.DeviceCheckAndRecordSensorPushAsync(deviceID, minInterval);
+
         public Task<IList<DeviceFleetStatus>> DeviceFleetGetAsync(int? tenantID) => deviceRepository.DeviceFleetGetAsync(tenantID);
 
         public Task InvalidateFleetCacheAsync(int? tenantID) => deviceRepository.InvalidateFleetCacheAsync(tenantID);

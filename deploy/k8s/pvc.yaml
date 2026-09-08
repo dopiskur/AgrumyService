@@ -3,6 +3,11 @@
 # replica - every pod needs to see the SAME files, not its own private copy:
 #   - agrumy-firmware-store: Agrumy.Api's Local-source firmware .bin uploads (roadmap #94's firmware
 #     catalog) - a device could get routed to a pod that never received the upload otherwise.
+#   - agrumy-api-keys: Agrumy.Api's own DataProtection key ring (SecretProtector-encrypted SMTP/MQTT/
+#     WiFi secrets) - same "one pod's key can't decrypt another pod's ciphertext" hazard as
+#     agrumy-web-keys below, just on the Api side. Without this, api.yaml has no volume for it at all
+#     and every pod falls back to an ephemeral in-memory key ring (docker-compose.yml's api-keys
+#     volume is the equivalent fix for that stack).
 #   - agrumy-web-keys: Agrumy.Web's DataProtection key ring (cookie auth + antiforgery). A cookie
 #     encrypted by one pod's key can't be decrypted by another - without a shared key ring, requests
 #     start failing unpredictably depending which pod happens to serve them.
@@ -23,6 +28,17 @@ spec:
   resources:
     requests:
       storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agrumy-api-keys
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

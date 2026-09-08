@@ -68,18 +68,25 @@ namespace Agrumy.Api.Dal
             }
 
             await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'device'";
+            // MySQL's information_schema.tables spans EVERY database on the server, not just the connected one - unscoped, a second database elsewhere with its own "device" table (e.g. an old agrumyapi alongside a new one) gives a false positive here. Postgres already scopes information_schema.tables to the connected database by connection design, but a non-default schema could still collide, so the same current_schema() filter is applied there too.
+            command.CommandText = db.Database.IsMySql()
+                ? "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'device' AND table_schema = DATABASE()"
+                : "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'device' AND table_schema = current_schema()";
             var deviceTableExists = Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
             if (!deviceTableExists)
             {
                 return;
             }
 
-            var baselineMigrationId = db.Database.GetMigrations().First();
+            // ALL currently-known migrations, not just the first: EnsureCreatedAsync always builds from the model snapshot as of whatever code version last ran it, so a legacy DB detected here already has every column every migration up to that point would have added - marking only the first (InitialBeta) leaves every later migration to run ADD COLUMN against columns that already exist.
+            var allMigrationIds = db.Database.GetMigrations().ToList();
             var productVersion = typeof(DbContext).Assembly.GetName().Version?.ToString() ?? "9.0.0";
             await db.Database.ExecuteSqlRawAsync(historyRepository.GetCreateIfNotExistsScript());
-            await db.Database.ExecuteSqlRawAsync(historyRepository.GetInsertScript(new HistoryRow(baselineMigrationId, productVersion)));
-            logger.LogWarning("Legacy EnsureCreated schema detected (device table exists, no migrations history) - marked {MigrationId} as already applied", baselineMigrationId);
+            foreach (var migrationId in allMigrationIds)
+            {
+                await db.Database.ExecuteSqlRawAsync(historyRepository.GetInsertScript(new HistoryRow(migrationId, productVersion)));
+            }
+            logger.LogWarning("Legacy EnsureCreated schema detected (device table exists, no migrations history) - marked {Count} migrations up to {LastMigrationId} as already applied", allMigrationIds.Count, allMigrationIds[^1]);
         }
 
         /// TimescaleDB requires the partitioning column in every unique constraint including the PK, so this widens dataSensor's PK from IDSensorData alone to (IDSensorData, DateCreated) - no-op on MySQL/Pomelo.

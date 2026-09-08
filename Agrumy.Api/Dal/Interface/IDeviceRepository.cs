@@ -22,8 +22,8 @@ namespace Agrumy.Api.Dal.Interface
     /// Device facet of the data layer: device CRUD, sensor/controller configs, firmware (OTA), the fixed type lists, and device events.
     public interface IDeviceRepository
     {
-        /// Returns the created device (with its generated IDDevice) directly - callers don't need a follow-up DeviceGetAsync.
-        Task<Device> DeviceAddAsync(Device device);
+        /// Returns the created device (with its generated IDDevice) directly - callers don't need a follow-up DeviceGetAsync. Null quotaCheckAsync (e.g. a virtual/simulation device, or admin data import) skips the quota check and its Serializable transaction entirely - see QuotaGuard.
+        Task<Device> DeviceAddAsync(Device device, Func<Task<string?>>? quotaCheckAsync = null);
 
         /// Roadmap #409 - soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
         Task DeviceDeleteAsync(int? idDevice, int? tenantID);
@@ -97,6 +97,9 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Records the diagnostics from a device's config poll - LastSeenAt is set to the server clock, making the poll itself the heartbeat; null fields still bump LastSeenAt without erasing earlier values.
         Task DeviceDiagnosticUpsertAsync(int deviceID, int tenantID, DeviceConfigPoll poll);
+
+        /// Atomically checks-and-stamps LastSensorPushAt in one guarded UPDATE (the WHERE clause IS the too-frequent check, same shape as DeviceLoRaUplinkCounterSetAsync) - true (and stamped) only when enough time has passed since the last accepted push; a concurrent push for the same device can't both slip through the way a plain read-then-write would allow.
+        Task<bool> DeviceCheckAndRecordSensorPushAsync(int deviceID, TimeSpan minInterval);
 
         /// Stamps the device row with when a full DeviceConfig body was actually sent - drives DeviceConfigBuilder.NeedsRefreshAsync's periodic heartbeat resend (ServerConfig.ConfigHeartbeatHours).
         Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc);

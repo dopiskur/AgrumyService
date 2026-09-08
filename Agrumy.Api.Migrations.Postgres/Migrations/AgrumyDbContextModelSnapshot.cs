@@ -434,6 +434,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("LastSensorPushAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset?>("LowBatteryNotifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -846,6 +849,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDevice"));
 
+                    b.Property<string>("ActiveMacAddress")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasComputedColumnSql("(CASE WHEN NOT \"Deleted\" THEN \"MacAddress\" ELSE NULL END)", true);
+
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1004,9 +1013,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasIndex("TenantID")
                         .HasDatabaseName("ix_device_tenant");
 
-                    b.HasIndex("MacAddress", "TenantID")
+                    b.HasIndex("ActiveMacAddress", "TenantID")
                         .IsUnique()
-                        .HasDatabaseName("MacAddress_TenantID_UNIQUE");
+                        .HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE");
 
                     b.ToTable("device", (string)null);
                 });
@@ -1943,6 +1952,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxDataRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxDevices")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxFarms")

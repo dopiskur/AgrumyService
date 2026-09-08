@@ -337,7 +337,15 @@ namespace Agrumy.Dal
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.Property(x => x.DateModified).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.HasIndex(x => x.ApiId).IsUnique().HasDatabaseName("ApiID_UNIQUE");
-                e.HasIndex(x => new { x.MacAddress, x.TenantID }).IsUnique().HasDatabaseName("MacAddress_TenantID_UNIQUE"); // Composite, not a bare MacAddress unique - a device can be legitimately resold across tenants.
+                // Neither MySQL/MariaDB nor (for provider-parity, though Postgres could use a real partial index) this codebase's Postgres path support a WHERE clause on CREATE INDEX directly - a generated column that collapses to NULL for a soft-deleted row is the standard cross-provider workaround, since a unique index never treats two NULLs as a collision. Without this, a soft-deleted device still blocks re-registering the same physical MAC until an admin explicitly purges it from the Recycle Bin - the constraint violation surfaces as a raw 500, not "this device is in the Recycle Bin".
+                e.Property<string?>("ActiveMacAddress")
+                    .HasMaxLength(64)
+                    .HasComputedColumnSql(
+                        Database.IsNpgsql()
+                            ? "(CASE WHEN NOT \"Deleted\" THEN \"MacAddress\" ELSE NULL END)"
+                            : "(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)",
+                        stored: true);
+                e.HasIndex("ActiveMacAddress", nameof(DeviceRow.TenantID)).IsUnique().HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE"); // Composite, not a bare MacAddress unique - a device can be legitimately resold across tenants.
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_device_tenant"); // TenantID is the second column of the unique index above, so it can't be used as a prefix for a plain WHERE TenantID = x.
                 // Legacy device FKs (fk_device_*). DeviceFarmUnitZoneID has no FK on device.
                 e.HasOne<DeviceConfigControllerRow>().WithMany().HasForeignKey(x => x.DeviceConfigControllerID).OnDelete(DeleteBehavior.NoAction);

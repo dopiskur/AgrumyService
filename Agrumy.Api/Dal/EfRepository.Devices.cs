@@ -5,7 +5,7 @@ namespace Agrumy.Api.Dal
     /// IDeviceRepository core CRUD members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged. ToDto(DeviceRow) moved to EfDeviceRepository.ToDto - EfRepository.DeviceFarmUnits.cs (not yet extracted) now calls that directly.
     internal partial class EfRepository
     {
-        public Task<Device> DeviceAddAsync(Device device) => deviceRepository.DeviceAddAsync(device);
+        public Task<Device> DeviceAddAsync(Device device, Func<Task<string?>>? quotaCheckAsync = null) => deviceRepository.DeviceAddAsync(device, quotaCheckAsync);
 
         public Task DeviceDeleteAsync(int? idDevice, int? tenantID) => deviceRepository.DeviceDeleteAsync(idDevice, tenantID);
 

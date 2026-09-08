@@ -11,9 +11,10 @@ public class TenantQuotaEnforcerTests
     private readonly Mock<IDeviceFarmUnitRepository> _deviceFarmUnitRepo = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepo = new(MockBehavior.Strict);
     private readonly Mock<ISimulationRepository> _simulationRepo = new(MockBehavior.Strict);
+    private readonly Mock<IDeviceRepository> _deviceRepo = new(MockBehavior.Strict);
 
     private TenantQuotaEnforcer NewEnforcer() =>
-        new(_tenantRepo.Object, _deviceFarmUnitRepo.Object, _userRepo.Object, _simulationRepo.Object);
+        new(_tenantRepo.Object, _deviceFarmUnitRepo.Object, _userRepo.Object, _simulationRepo.Object, _deviceRepo.Object);
 
     [Fact]
     public async Task DefaultTenant_NeverConsultsQuota()
@@ -133,5 +134,47 @@ public class TenantQuotaEnforcerTests
         _simulationRepo.Setup(r => r.SimulationSessionsGetAsync(5)).ReturnsAsync(new List<SimulationSession> { new() });
 
         Assert.Equal(TenantQuotaEnforcer.LimitMessage, await NewEnforcer().CheckCanAddSimulationAsync(5));
+    }
+
+    [Fact]
+    public async Task MaxDevices_AtLimit_Blocked()
+    {
+        TenantQuota quota = TenantQuota.Default(5);
+        quota.MaxDevices = 2;
+        _tenantRepo.Setup(r => r.TenantQuotaGetAsync(5)).ReturnsAsync(quota);
+        _deviceRepo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device> { new(), new() });
+
+        Assert.Equal(TenantQuotaEnforcer.LimitMessage, await NewEnforcer().CheckCanAddDeviceAsync(5));
+    }
+
+    [Fact]
+    public async Task MaxDevices_UnderLimit_Allowed()
+    {
+        TenantQuota quota = TenantQuota.Default(5);
+        quota.MaxDevices = 2;
+        _tenantRepo.Setup(r => r.TenantQuotaGetAsync(5)).ReturnsAsync(quota);
+        _deviceRepo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device> { new() });
+
+        Assert.Null(await NewEnforcer().CheckCanAddDeviceAsync(5));
+    }
+
+    [Fact]
+    public async Task SensorPushInterval_TooFrequent_Blocked()
+    {
+        TenantQuota quota = TenantQuota.Default(5); // MinSensorIntervalMinutes = 5
+        _tenantRepo.Setup(r => r.TenantQuotaGetAsync(5)).ReturnsAsync(quota);
+        _deviceRepo.Setup(r => r.DeviceCheckAndRecordSensorPushAsync(42, TimeSpan.FromMinutes(quota.MinSensorIntervalMinutes))).ReturnsAsync(false);
+
+        Assert.Equal(TenantQuotaEnforcer.LimitMessage, await NewEnforcer().CheckSensorPushIntervalAsync(5, 42));
+    }
+
+    [Fact]
+    public async Task SensorPushInterval_EnoughTimePassed_Allowed()
+    {
+        TenantQuota quota = TenantQuota.Default(5);
+        _tenantRepo.Setup(r => r.TenantQuotaGetAsync(5)).ReturnsAsync(quota);
+        _deviceRepo.Setup(r => r.DeviceCheckAndRecordSensorPushAsync(42, TimeSpan.FromMinutes(quota.MinSensorIntervalMinutes))).ReturnsAsync(true);
+
+        Assert.Null(await NewEnforcer().CheckSensorPushIntervalAsync(5, 42));
     }
 }

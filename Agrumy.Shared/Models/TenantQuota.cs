@@ -4,6 +4,8 @@ namespace Agrumy.Shared.Models
     public class TenantQuota
     {
         public int IDTenant { get; set; }
+        // Tenant-wide, not per-Farm/Unit/Zone - the only limit that directly costs (telemetry rows, broker connections, LoRa slots), checked at Register (a device becomes real the moment it lands in the devices table, not when an admin later assigns it a Farm/Unit/Zone).
+        public int MaxDevices { get; set; }
         public int MaxFarms { get; set; }
         public int MaxUnits { get; set; }
         public int MaxZones { get; set; }
@@ -24,6 +26,7 @@ namespace Agrumy.Shared.Models
         public static TenantQuota Default(int idTenant) => new()
         {
             IDTenant = idTenant,
+            MaxDevices = 5,
             MaxFarms = 1,
             MaxUnits = 1,
             MaxZones = 3,

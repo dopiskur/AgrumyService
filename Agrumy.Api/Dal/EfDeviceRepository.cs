@@ -3,6 +3,7 @@ using Agrumy.Shared;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,57 +16,57 @@ namespace Agrumy.Api.Dal
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
-        public async Task<Device> DeviceAddAsync(Device device)
+        public async Task<Device> DeviceAddAsync(Device device, Func<Task<string?>>? quotaCheckAsync = null)
         {
-            // Read (and possibly auto-generate) BEFORE the transaction below starts - ServerConfigGetAsync's own seed SaveChangesAsync must auto-commit before this method's explicit transaction opens, so the two never nest.
+            // Read (and possibly auto-generate) BEFORE QuotaGuard's own transaction below opens - ServerConfigGetAsync's own seed SaveChangesAsync must auto-commit first, so the two never nest.
             ServerConfig serverConfig = await serverConfigRepository.ServerConfigGetAsync(1);
 
-            await using var tx = await db.Database.BeginTransactionAsync();
-
-            var sensorCfg = new DeviceConfigSensorRow();
-            var controllerCfg = new DeviceConfigControllerRow
+            return await QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                // Hysteresis starts at the server-wide default, overridable per device under Device -> Controller - WaterPump limits below follow the same rule.
-                WaterLevelHysteresis = serverConfig.WaterLevelHysteresis,
-                TemperatureHysteresis = serverConfig.TemperatureHysteresis,
-                HumidityHysteresis = serverConfig.HumidityHysteresis,
-                LightHysteresis = serverConfig.LightHysteresis,
-                WaterPumpMaxRunSeconds = serverConfig.WaterPumpMaxRunSeconds,
-                WaterPumpCooldownSeconds = serverConfig.WaterPumpCooldownSeconds,
-            };
-            db.DeviceConfigSensors.Add(sensorCfg);
-            db.DeviceConfigControllers.Add(controllerCfg);
-            await db.SaveChangesAsync();
+                var sensorCfg = new DeviceConfigSensorRow();
+                var controllerCfg = new DeviceConfigControllerRow
+                {
+                    // Hysteresis starts at the server-wide default, overridable per device under Device -> Controller - WaterPump limits below follow the same rule.
+                    WaterLevelHysteresis = serverConfig.WaterLevelHysteresis,
+                    TemperatureHysteresis = serverConfig.TemperatureHysteresis,
+                    HumidityHysteresis = serverConfig.HumidityHysteresis,
+                    LightHysteresis = serverConfig.LightHysteresis,
+                    WaterPumpMaxRunSeconds = serverConfig.WaterPumpMaxRunSeconds,
+                    WaterPumpCooldownSeconds = serverConfig.WaterPumpCooldownSeconds,
+                };
+                db.DeviceConfigSensors.Add(sensorCfg);
+                db.DeviceConfigControllers.Add(controllerCfg);
+                await db.SaveChangesAsync();
 
-            var row = new DeviceRow
-            {
-                TenantID = device.TenantID,
-                DeviceRoleID = device.DeviceRoleID,
-                DeviceFarmUnitID = device.DeviceFarmUnitID,
-                DeviceFarmUnitZoneID = device.DeviceFarmUnitZoneID,
-                DeviceName = device.DeviceName,
-                MacAddress = device.MacAddress,
-                ManualDeviceTypeID = device.ManualDeviceTypeID,
-                ApiId = device.ApiId ?? "",
-                ApiKey = device.ApiKey ?? "",
-                ServicePoint = device.ServicePoint,
-                DeviceTypeServiceID = device.DeviceTypeServiceID,
-                DeviceSensorEnabled = device.DeviceSensorEnabled,
-                DeviceConfigSensorID = sensorCfg.IDDeviceConfigSensor,
-                DeviceControllerEnabled = device.DeviceControllerEnabled,
-                DeviceConfigControllerID = controllerCfg.IDDeviceConfigController,
-                BatteryEnabled = device.BatteryEnabled,
-                Enabled = device.Enabled,
-                ConfigVersion = device.ConfigVersion,
-                IsGateway = device.IsGateway,
-                GatewayProfile = (int?)device.GatewayProfile,
-            };
-            db.Devices.Add(row);
-            await db.SaveChangesAsync();
-            await tx.CommitAsync();
+                var row = new DeviceRow
+                {
+                    TenantID = device.TenantID,
+                    DeviceRoleID = device.DeviceRoleID,
+                    DeviceFarmUnitID = device.DeviceFarmUnitID,
+                    DeviceFarmUnitZoneID = device.DeviceFarmUnitZoneID,
+                    DeviceName = device.DeviceName,
+                    MacAddress = device.MacAddress,
+                    ManualDeviceTypeID = device.ManualDeviceTypeID,
+                    ApiId = device.ApiId ?? "",
+                    ApiKey = device.ApiKey ?? "",
+                    ServicePoint = device.ServicePoint,
+                    DeviceTypeServiceID = device.DeviceTypeServiceID,
+                    DeviceSensorEnabled = device.DeviceSensorEnabled,
+                    DeviceConfigSensorID = sensorCfg.IDDeviceConfigSensor,
+                    DeviceControllerEnabled = device.DeviceControllerEnabled,
+                    DeviceConfigControllerID = controllerCfg.IDDeviceConfigController,
+                    BatteryEnabled = device.BatteryEnabled,
+                    Enabled = device.Enabled,
+                    ConfigVersion = device.ConfigVersion,
+                    IsGateway = device.IsGateway,
+                    GatewayProfile = (int?)device.GatewayProfile,
+                };
+                db.Devices.Add(row);
+                await db.SaveChangesAsync();
 
-            // row.IDDevice is populated by SaveChangesAsync above - no need for a caller round-trip Get.
-            return ToDto(row);
+                // row.IDDevice is populated by SaveChangesAsync above - no need for a caller round-trip Get.
+                return ToDto(row);
+            });
         }
 
         // Roadmap #409 - soft delete, replacing the old hard ExecuteDeleteAsync. SensorData/DeviceConfigSensor/DeviceConfigController rows are left untouched (a restore needs its config back exactly as it was); Diagnostics/ControllerData/Simulation are live operational state, not history worth keeping, so those are still hard-deleted - a restored device just rebuilds them on its next config poll.
@@ -677,6 +678,16 @@ namespace Agrumy.Api.Dal
             row.Board = poll.Board ?? row.Board;
             row.DeviceTypeID = deviceTypeId ?? row.DeviceTypeID;
             await db.SaveChangesAsync();
+        }
+
+        public async Task<bool> DeviceCheckAndRecordSensorPushAsync(int deviceID, TimeSpan minInterval)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset cutoff = now - minInterval;
+            int rows = await db.DeviceDiagnostics
+                .Where(d => d.DeviceID == deviceID && (d.LastSensorPushAt == null || d.LastSensorPushAt <= cutoff))
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastSensorPushAt, now));
+            return rows > 0;
         }
 
         /// deviceDiagnostic.DeviceTypeID has a real FK to deviceType.IDDeviceType - an unrecognized Kit string must never block the device's own heartbeat write because of it, so it's auto-registered here (ControllerCapable=false) in its own save, BEFORE the diagnostic row; a concurrent duplicate insert from another device reporting the same brand-new kit is tolerated by re-fetching the winner's id, not retried.

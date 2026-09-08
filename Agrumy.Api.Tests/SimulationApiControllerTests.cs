@@ -22,7 +22,7 @@ public class SimulationApiControllerTests
     private SimulationApiController NewController()
     {
         var controller = new SimulationApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _httpClientFactory.Object,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object),
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
             new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
             Microsoft.Extensions.Options.Options.Create(new Agrumy.Shared.AgrumySettings()));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };

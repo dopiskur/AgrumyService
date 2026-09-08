@@ -20,6 +20,11 @@
 
             <div class="row g-3" style="max-width:36rem">
                 <div class="col-6">
+                    <label asp-for="MaxDevices" class="form-label"></label>
+                    <input asp-for="MaxDevices" type="number" min="0" class="form-control" />
+                    <div class="form-text">Tenant-wide, checked when a new device registers.</div>
+                </div>
+                <div class="col-6">
                     <label asp-for="MaxFarms" class="form-label"></label>
                     <input asp-for="MaxFarms" type="number" min="0" class="form-control" />
                 </div>

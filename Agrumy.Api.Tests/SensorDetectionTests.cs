@@ -40,7 +40,7 @@ public class SensorDetectionTests
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()), NullLogger<DeviceApiController>.Instance,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object));
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         controller.HttpContext.Items[DeviceAuth.ApiIdItemKey] = "api-guid";
         return controller;

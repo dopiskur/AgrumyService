@@ -491,25 +491,32 @@ namespace Agrumy.Api.Controllers.API
                 // This mac may be the target of an earlier Discovery/Register call whose queued ProvisionDevice command carries the DeviceName/Zone the admin picked then.
                 DiscoveryProvisionPayload? provision = await commandQueue.ConsumePendingProvisionAsync(value.MacAddress);
 
-                device = await deviceRepo.DeviceAddAsync(new Device
+                try
                 {
-                    ConfigVersion = 1,
-                    // Roadmap #406 - no longer collapsed to 0: a device registered under a genuinely tenant-less user now stays genuinely tenant-less too, instead of silently landing in the bootstrap tenant.
-                    TenantID = user.TenantID,
-                    // Discovery-provisioned name (admin, pre-registration) beats the captive-portal one (device owner, at setup) beats the generic default.
-                    DeviceName = !string.IsNullOrWhiteSpace(provision?.DeviceName) ? provision.DeviceName
-                        : !string.IsNullOrWhiteSpace(value.DisplayName) ? value.DisplayName
-                        : "Agrumy_" + value.MacAddress.ToUpper(),
-                    MacAddress = value.MacAddress,
-                    ApiId = Guid.NewGuid().ToString(), // identifier, not a secret - Guid is fine
-                    ApiKey = AuthenticationProvider.GetSecureToken(), // credential - needs a CSPRNG source, not Guid
-                    ServicePoint = value.ServicePoint,
-                    DeviceSensorEnabled = false,
-                    DeviceControllerEnabled = false,
-                    IsGateway = provenGateway,
-                    GatewayProfile = provenGateway ? value.GatewayProfile : null,
-                    ManualDeviceTypeID = provision?.ManualDeviceTypeID,
-                });
+                    device = await deviceRepo.DeviceAddAsync(new Device
+                    {
+                        ConfigVersion = 1,
+                        // Not collapsed to 0: a device registered under a genuinely tenant-less user stays genuinely tenant-less too, instead of silently landing in the bootstrap tenant.
+                        TenantID = user.TenantID,
+                        // Discovery-provisioned name (admin, pre-registration) beats the captive-portal one (device owner, at setup) beats the generic default.
+                        DeviceName = !string.IsNullOrWhiteSpace(provision?.DeviceName) ? provision.DeviceName
+                            : !string.IsNullOrWhiteSpace(value.DisplayName) ? value.DisplayName
+                            : "Agrumy_" + value.MacAddress.ToUpper(),
+                        MacAddress = value.MacAddress,
+                        ApiId = Guid.NewGuid().ToString(), // identifier, not a secret - Guid is fine
+                        ApiKey = AuthenticationProvider.GetSecureToken(), // credential - needs a CSPRNG source, not Guid
+                        ServicePoint = value.ServicePoint,
+                        DeviceSensorEnabled = false,
+                        DeviceControllerEnabled = false,
+                        IsGateway = provenGateway,
+                        GatewayProfile = provenGateway ? value.GatewayProfile : null,
+                        ManualDeviceTypeID = provision?.ManualDeviceTypeID,
+                    }, () => quotaEnforcer.CheckCanAddDeviceAsync(user.TenantID));
+                }
+                catch (Agrumy.Api.Quota.QuotaLimitExceededException ex)
+                {
+                    return StatusCode(403, ex.Message);
+                }
 
                 if (provision?.ZoneID is int zoneId)
                 {

@@ -33,7 +33,7 @@ public class DeviceFirmwareOtaTests
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DeviceApiController>.Instance,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object));
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         var result = controller.DeviceRegistration(new DeviceRegistration
         {
             Email = "owner@example.com",
