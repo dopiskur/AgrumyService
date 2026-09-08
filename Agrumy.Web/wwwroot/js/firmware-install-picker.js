@@ -34,3 +34,64 @@ document.addEventListener('closed', function (ev) {
         ' - reconnect the device and check its reported firmware version to confirm the install succeeded.';
     banner.hidden = false;
 });
+
+// This page's CSP has no 'unsafe-inline' for script-src, which also governs inline event handler
+// attributes - an onclick="..." on the dismiss button would be silently dropped by the browser
+// (no console error unless devtools happen to be open), leaving the banner stuck with a
+// dead close button. addEventListener isn't inline markup, so it isn't subject to that rule.
+document.addEventListener('DOMContentLoaded', function () {
+    var closeButton = document.getElementById('flashResultBannerClose');
+    if (closeButton) {
+        closeButton.addEventListener('click', function () {
+            document.getElementById('flashResultBanner').hidden = true;
+        });
+    }
+});
+
+// esp-web-tools' own "board not supported" error screen (install-dialog.ts's _renderInstall,
+// ERROR branch) offers only a "Back" button that re-runs Improv detection and loops forever -
+// the board genuinely has no Improv support, so there's nothing to detect. That branch also
+// hardcodes allowClosing=false, so there's no X either - "Back" is the only way out, and it
+// doesn't lead anywhere. Detected via the same internal _installState property
+// firmware-provisioning.js already reads (esp-web-tools exposes no public state API); the fix
+// runs entirely from our own code, not by patching the vendored library - a capture-phase click
+// listener on the same button intercepts before Lit's own bound handler fires (stopImmediatePropagation),
+// then closes exactly like a real close (synthetic "closed" event - connect.js's own listener on
+// this same element reacts to it just like the real thing, releasing the serial port).
+(function () {
+    function fixNotSupportedScreen(dialog) {
+        var state = dialog._installState;
+        if (!state || state.details?.error !== 'not_supported') {
+            return;
+        }
+        var buttons = dialog.shadowRoot.querySelectorAll('[slot="actions"] ew-text-button');
+        buttons.forEach(function (button) {
+            if (button.dataset.agrumyFixed) {
+                return;
+            }
+            button.dataset.agrumyFixed = 'true';
+            button.textContent = 'Close';
+            button.addEventListener('click', function (event) {
+                event.stopImmediatePropagation();
+                dialog.dispatchEvent(new CustomEvent('closed', { bubbles: true, composed: true }));
+                dialog.remove();
+            }, { capture: true });
+        });
+    }
+
+    var shadowObserver = new MutationObserver(function () {
+        var dialog = document.querySelector('ewt-install-dialog');
+        if (dialog && dialog.shadowRoot) {
+            fixNotSupportedScreen(dialog);
+        }
+    });
+
+    new MutationObserver(function () {
+        var dialog = document.querySelector('ewt-install-dialog');
+        if (dialog && dialog.shadowRoot && !dialog._agrumyShadowObserved) {
+            dialog._agrumyShadowObserved = true;
+            fixNotSupportedScreen(dialog);
+            shadowObserver.observe(dialog.shadowRoot, { childList: true, subtree: true });
+        }
+    }).observe(document.body, { childList: true });
+})();
