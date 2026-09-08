@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agrumy.Api.Migrations.MySql
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agrumy.Api.Migrations.Postgres", "Agrumy.Api.Migrations.Postgres\Agrumy.Api.Migrations.Postgres.csproj", "{C8A5B06A-5B37-4858-88A3-1B9BA215F4DB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agrumy.Rules", "Agrumy.Rules\Agrumy.Rules.csproj", "{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -125,6 +127,18 @@ Global
 		{C8A5B06A-5B37-4858-88A3-1B9BA215F4DB}.Release|x64.Build.0 = Release|Any CPU
 		{C8A5B06A-5B37-4858-88A3-1B9BA215F4DB}.Release|x86.ActiveCfg = Release|Any CPU
 		{C8A5B06A-5B37-4858-88A3-1B9BA215F4DB}.Release|x86.Build.0 = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|x64.Build.0 = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Debug|x86.Build.0 = Debug|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|x64.ActiveCfg = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|x64.Build.0 = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|x86.ActiveCfg = Release|Any CPU
+		{76E93D2A-8DA3-4777-9CB7-2ACB026E8C8D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

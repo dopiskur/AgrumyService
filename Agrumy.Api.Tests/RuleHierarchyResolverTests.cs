@@ -1,4 +1,4 @@
-using Agrumy.Api.Devices;
+using Agrumy.Rules;
 using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests;

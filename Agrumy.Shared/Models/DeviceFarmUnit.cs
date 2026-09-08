@@ -178,7 +178,7 @@ namespace Agrumy.Shared.Models
         Interval = 2,
         Schedule = 3,
         Group = 4,
-        /// Never reaches evaluation as-is on either action path - Agrumy.Api.Devices.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date first (Relay: before the device config is sent; Notification: roadmap #398(2), resolved server-side each tick).
+        /// Never reaches evaluation as-is on either action path - Agrumy.Rules.AstronomicalRuleResolver compiles every occurrence (anywhere in the tree) into an effective Schedule node for today's local date first (Relay: before the device config is sent; Notification: resolved server-side each tick).
         Astronomical = 5,
         /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
         RuleTriggered = 6,
@@ -255,7 +255,7 @@ namespace Agrumy.Shared.Models
         public string? ScopeConflictWarning { get; set; }
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Api.Devices.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule
     {
         [HiddenInput(DisplayValue = true)]

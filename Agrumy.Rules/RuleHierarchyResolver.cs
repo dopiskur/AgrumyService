@@ -1,6 +1,6 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Devices
+namespace Agrumy.Rules
 {
     /// Resolves the CSS-cascade-style Simulation>Experiment>Zone>Unit>Farm>Global(per-tenant) rule precedence for one zone's rules (the Simulation/Experiment tiers only ever have candidates for a device currently in scope of an active session/experiment, empty otherwise; Simulation outranks Experiment since Simulation's whole purpose is a consequence-free sandbox even for a device also under a long-running Experiment) - a scope's rules for a function/name fully replace (not merge with) a less specific scope's, they never combine, UNLESS a rule is IsSafetyRule which always survives regardless of scope. ResolveRelayRules groups by RelayFunction (called from DeviceConfigBuilder, output goes to firmware); ResolveNotificationRules groups by Name, not SensorMetric (a rule's conditions can now span several metrics, so metric is no longer a meaningful override key; called from Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator, server-side only).
     public static class RuleHierarchyResolver

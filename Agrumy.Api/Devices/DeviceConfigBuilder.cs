@@ -1,5 +1,6 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
+using Agrumy.Rules;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Utils;
 

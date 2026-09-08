@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Agrumy.Rules</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Pure rule-tree logic - no EF Core, no ASP.NET Core, matching AgrumyFirmware's RelayLogic.cpp/ActuatorController on the wire but reimplemented in C# (a genuinely separate runtime). Only depends on the model types (Agrumy.Shared) and the NOAA solar math (Agrumy.Shared.Utils.SolarCalculator) it evaluates against. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Agrumy.Shared\Agrumy.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Agrumy.Api.Tests" />
+  </ItemGroup>
+
+</Project>

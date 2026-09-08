@@ -1,5 +1,6 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Devices;
+using Agrumy.Rules;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
 using Agrumy.Shared.Utils;

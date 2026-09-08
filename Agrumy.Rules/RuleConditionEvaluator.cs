@@ -1,7 +1,7 @@
 using System.Linq;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Devices
+namespace Agrumy.Rules
 {
     /// Server-side evaluation of one rule's ConditionNode tree (roadmap #396(4)), mirroring AgrumyFirmware's
     /// RelayLogic.cpp/ActuatorController semantics exactly (same GT/LT dead-zone math, same grid-aligned

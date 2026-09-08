@@ -26,6 +26,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Agrumy.Shared\Agrumy.Shared.csproj" />
+    <!-- Pure rule-tree evaluation/hierarchy/astronomical resolution - extracted out of Agrumy.Api.Devices since it has zero EF Core/ASP.NET Core dependencies of its own. -->
+    <ProjectReference Include="..\Agrumy.Rules\Agrumy.Rules.csproj" />
     <!-- DbContext + entities + provider selection (EF Core packages come transitively). -->
     <ProjectReference Include="..\Agrumy.Dal\Agrumy.Dal.csproj" />
     <!-- MigrationsAssembly targets referenced by name (DbOptionsFactory) - both must be loadable at runtime for MigrateAsync to find them. -->
