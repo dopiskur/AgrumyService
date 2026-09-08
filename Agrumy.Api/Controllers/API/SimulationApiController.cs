@@ -380,5 +380,120 @@ namespace Agrumy.Api.Controllers.API
             await WriteAuditAsync("DeviceFarmUnitZoneRule.Deleted", rule.TenantID, "DeviceFarmUnitZoneRule", idRule.ToString(), $"simulation session {idSimulationSession}, {rule.ActionType}/{rule.RelayFunction} \"{rule.Name}\"");
             return true;
         }
+
+        // ---- Simulation groups - a whole Unit/Zone added together, one override value set fanned out to every member device. ----
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpGet("Session/{idSimulationSession}/Group")]
+        public async Task<ActionResult<IList<SimulationGroup>>> SessionGroupsGet(int idSimulationSession)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await simulationRepo.SimulationGroupsGetAsync(session!.IDSimulationSession!.Value));
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpPost("Session/{idSimulationSession}/Group")]
+        public async Task<ActionResult<SimulationGroup>> SessionGroupAdd(int idSimulationSession, [FromBody] SimulationGroup group)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            if (session!.StoppedAtUtc != null || session.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+            {
+                return BadRequest("This session has already ended.");
+            }
+
+            ActionResult? scopeError = group.Scope switch
+            {
+                SimulationGroupScope.Unit => (await EnsureOwnedUnitAsync(group.ScopeID)).Error,
+                SimulationGroupScope.Zone => (await EnsureOwnedZoneAsync(group.ScopeID)).Error,
+                _ => BadRequest("Unknown group scope."),
+            };
+            if (scopeError != null)
+            {
+                return scopeError;
+            }
+
+            group.IDSimulationGroup = null;
+            group.IDSimulationSession = idSimulationSession;
+            SimulationGroup created = await simulationRepo.SimulationGroupAddAsync(group);
+            await WriteAuditAsync("Simulation.GroupAdded", session.TenantID, "SimulationGroup", created.IDSimulationGroup.ToString()!, $"session {idSimulationSession}, {group.Scope} {group.ScopeID} ({created.MemberDeviceCount} device(s))");
+            return Ok(created);
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpPut("Session/{idSimulationSession}/Group/{idGroup}")]
+        public async Task<ActionResult> SessionGroupUpdate(int idSimulationSession, int idGroup, [FromBody] SimulationGroup group)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            SimulationGroup? existing = await simulationRepo.SimulationGroupGetByIdAsync(idGroup);
+            if (existing == null || existing.IDSimulationSession != idSimulationSession)
+            {
+                return NotFound();
+            }
+
+            group.IDSimulationGroup = idGroup;
+            group.IDSimulationSession = idSimulationSession;
+            group.Scope = existing.Scope;
+            group.ScopeID = existing.ScopeID;
+            await simulationRepo.SimulationGroupUpdateAsync(group);
+            await WriteAuditAsync("Simulation.GroupUpdated", session!.TenantID, "SimulationGroup", idGroup.ToString(), $"session {idSimulationSession}, {existing.Scope} {existing.ScopeID}");
+            return Ok();
+        }
+
+        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [HttpDelete("Session/{idSimulationSession}/Group/{idGroup}")]
+        public async Task<ActionResult> SessionGroupDelete(int idSimulationSession, int idGroup)
+        {
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            if (error != null)
+            {
+                return error;
+            }
+            SimulationGroup? existing = await simulationRepo.SimulationGroupGetByIdAsync(idGroup);
+            if (existing == null || existing.IDSimulationSession != idSimulationSession)
+            {
+                return NotFound();
+            }
+
+            await simulationRepo.SimulationGroupDeleteAsync(idGroup);
+            await WriteAuditAsync("Simulation.GroupDeleted", session!.TenantID, "SimulationGroup", idGroup.ToString(), $"session {idSimulationSession}, {existing.Scope} {existing.ScopeID}");
+            return Ok();
+        }
+
+        /// Same shape as DeviceFarmUnitApiController's own EnsureOwnedUnitAsync/EnsureOwnedZoneAsync - kept local since this controller doesn't otherwise need the rest of that controller's ownership surface.
+        private async Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int idDeviceFarmUnit)
+        {
+            DeviceFarmUnit? unit = await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit);
+            if (unit == null)
+            {
+                return (null, NotFound("Unit not found."));
+            }
+            return unit.TenantID != CallerTenantId && !CallerManagesUsersGlobally
+                ? (null, StatusCode(403, "Unit belongs to a different tenant"))
+                : (unit, null);
+        }
+
+        private async Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone)
+        {
+            DeviceFarmUnitZone? zone = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone);
+            if (zone == null)
+            {
+                return (null, NotFound("Zone not found."));
+            }
+            return zone.TenantID != CallerTenantId && !CallerManagesUsersGlobally
+                ? (null, StatusCode(403, "Zone belongs to a different tenant"))
+                : (zone, null);
+        }
     }
 }

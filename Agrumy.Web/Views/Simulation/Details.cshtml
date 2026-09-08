@@ -17,6 +17,22 @@
         Rules = (IList<DeviceFarmUnitZoneRule>)ViewBag.Rules,
         RedirectActionName = "Details",
     };
+    var groups = (IList<SimulationGroup>)ViewBag.Groups;
+    var units = (IList<DeviceFarmUnit>)ViewBag.Units;
+    var zones = (IList<DeviceFarmUnitZone>)ViewBag.Zones;
+
+    // One number input per overridable metric, blank = no override for that metric - same 13 fields DeviceSimulation itself has, just without the per-device slider (a group covers several devices at once, a single slider position wouldn't mean the same thing for all of them).
+    Microsoft.AspNetCore.Html.IHtmlContent GroupMetricField(string name, string label, string unit, (double Min, double Max) range, double? current = null, string formId = "groupAddForm")
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"""
+        <div class="col-auto">
+            <label class="form-label small mb-0">{label} <span class="text-secondary">({unit})</span></label>
+            <input type="number" step="any" min="{range.Min}" max="{range.Max}" name="{name}" form="{formId}" class="form-control form-control-sm" style="width:8rem" value="{current}" placeholder="off" />
+        </div>
+        """);
+        return new Microsoft.AspNetCore.Html.HtmlString(sb.ToString());
+    }
 }
 
 <h1>@Model.Name</h1>
@@ -38,6 +54,10 @@
 @if (TempData["Error"] is string error)
 {
     <div class="alert alert-warning">@error</div>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="alert alert-info">@info</div>
 }
 
 @if (running)
@@ -106,6 +126,130 @@ else
         }
     </tbody>
 </table>
+
+<h4 class="mt-4">Whole Units/Zones in this simulation</h4>
+<p class="text-secondary small">
+    One override value set fanned out to every device that belonged to the Unit/Zone at the moment
+    it was added - a bulk alternative to adding devices one at a time below. A device added to the
+    Unit/Zone afterward is not swept in automatically; add it individually if you need it too.
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Scope</th>
+            <th>Devices</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var g in groups)
+        {
+            string editFormId = $"groupEditForm{g.IDSimulationGroup}";
+            <tr>
+                <td>@g.Scope: @g.ScopeName</td>
+                <td>@g.MemberDeviceCount</td>
+                <td>
+                    <details class="d-inline">
+                        <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">Edit values</summary>
+                        <form id="@editFormId" asp-action="SessionGroupUpdate" method="post" class="row g-2 align-items-end mt-2 p-2 border rounded">
+                            <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" form="@editFormId" />
+                            <input type="hidden" name="idGroup" value="@g.IDSimulationGroup" form="@editFormId" />
+                        </form>
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            @GroupMetricField("Temperature", "Temperature", "&deg;C", SimulationMetricRange.Temperature, g.Temperature, editFormId)
+                            @GroupMetricField("SoilTemperature", "Soil temp", "&deg;C", SimulationMetricRange.SoilTemperature, g.SoilTemperature, editFormId)
+                            @GroupMetricField("Humidity", "Humidity", "%", SimulationMetricRange.Humidity, g.Humidity, editFormId)
+                            @GroupMetricField("Battery", "Battery", "%", SimulationMetricRange.Battery, g.Battery, editFormId)
+                            @GroupMetricField("Moisture", "Moisture", "%", SimulationMetricRange.Moisture, g.Moisture, editFormId)
+                            @GroupMetricField("Light", "Light", "lux", SimulationMetricRange.Light, g.Light, editFormId)
+                            @GroupMetricField("Co2", "CO2", "ppm", SimulationMetricRange.Co2, g.Co2, editFormId)
+                            @GroupMetricField("Tvoc", "TVOC", "ppb", SimulationMetricRange.Tvoc, g.Tvoc, editFormId)
+                            @GroupMetricField("Barometer", "Barometer", "Pa", SimulationMetricRange.Barometer, g.Barometer, editFormId)
+                            @GroupMetricField("LiquidPH", "Liquid pH", "pH", SimulationMetricRange.LiquidPH, g.LiquidPH, editFormId)
+                            @GroupMetricField("RainLevel", "Rain level", "", SimulationMetricRange.RainLevel, g.RainLevel, editFormId)
+                            @GroupMetricField("WaterLevel", "Water level", "", SimulationMetricRange.WaterLevel, g.WaterLevel, editFormId)
+                            @GroupMetricField("Wind", "Wind", "", SimulationMetricRange.Wind, g.Wind, editFormId)
+                            <div class="col-auto">
+                                <button type="submit" form="@editFormId" class="btn btn-sm btn-primary">Save</button>
+                            </div>
+                        </div>
+                    </details>
+                    <form asp-action="SessionGroupDelete" method="post" class="d-inline" onsubmit="return confirm('Remove this group? Every member device it added returns to its real readings.');">
+                        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                        <input type="hidden" name="idGroup" value="@g.IDSimulationGroup" />
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (groups.Count == 0)
+        {
+            <tr><td colspan="3" class="text-muted">No whole Units/Zones added yet.</td></tr>
+        }
+    </tbody>
+</table>
+
+<details class="mb-3">
+    <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">+ Add whole Unit/Zone</summary>
+    <form id="groupAddForm" asp-action="SessionGroupAdd" method="post" class="mt-2 p-2 border rounded">
+        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+    </form>
+    <div class="row g-2 align-items-end mt-2">
+        <div class="col-auto">
+            <label class="form-label small mb-0">Scope</label>
+            <select name="Scope" form="groupAddForm" id="groupScopeSelect" class="form-select form-select-sm">
+                <option value="@((int)SimulationGroupScope.Unit)">Whole Unit</option>
+                <option value="@((int)SimulationGroupScope.Zone)" selected>Whole Zone</option>
+            </select>
+        </div>
+        <div class="col-auto" id="groupUnitTargetWrap" style="display:none">
+            <label class="form-label small mb-0">Unit</label>
+            <select name="ScopeID" form="groupAddForm" id="groupUnitTargetSelect" class="form-select form-select-sm" disabled>
+                @foreach (var u in units)
+                {
+                    <option value="@u.IDDeviceFarmUnit">@u.DeviceFarmUnitName</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto" id="groupZoneTargetWrap">
+            <label class="form-label small mb-0">Zone</label>
+            <select name="ScopeID" form="groupAddForm" id="groupZoneTargetSelect" class="form-select form-select-sm">
+                @foreach (var z in zones)
+                {
+                    <option value="@z.IDDeviceFarmUnitZone">@z.DeviceFarmUnitZoneName</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        @GroupMetricField("Temperature", "Temperature", "&deg;C", SimulationMetricRange.Temperature)
+        @GroupMetricField("SoilTemperature", "Soil temp", "&deg;C", SimulationMetricRange.SoilTemperature)
+        @GroupMetricField("Humidity", "Humidity", "%", SimulationMetricRange.Humidity)
+        @GroupMetricField("Battery", "Battery", "%", SimulationMetricRange.Battery)
+        @GroupMetricField("Moisture", "Moisture", "%", SimulationMetricRange.Moisture)
+        @GroupMetricField("Light", "Light", "lux", SimulationMetricRange.Light)
+        @GroupMetricField("Co2", "CO2", "ppm", SimulationMetricRange.Co2)
+        @GroupMetricField("Tvoc", "TVOC", "ppb", SimulationMetricRange.Tvoc)
+        @GroupMetricField("Barometer", "Barometer", "Pa", SimulationMetricRange.Barometer)
+        @GroupMetricField("LiquidPH", "Liquid pH", "pH", SimulationMetricRange.LiquidPH)
+        @GroupMetricField("RainLevel", "Rain level", "", SimulationMetricRange.RainLevel)
+        @GroupMetricField("WaterLevel", "Water level", "", SimulationMetricRange.WaterLevel)
+        @GroupMetricField("Wind", "Wind", "", SimulationMetricRange.Wind)
+        <div class="col-auto">
+            <button type="submit" form="groupAddForm" class="btn btn-sm btn-primary">Add to simulation</button>
+        </div>
+    </div>
+</details>
+
+<script nonce="@Context.CspNonce()">
+    document.getElementById('groupScopeSelect')?.addEventListener('change', function () {
+        var isUnit = this.value === '@((int)SimulationGroupScope.Unit)';
+        document.getElementById('groupUnitTargetWrap').style.display = isUnit ? '' : 'none';
+        document.getElementById('groupZoneTargetWrap').style.display = isUnit ? 'none' : '';
+        document.getElementById('groupUnitTargetSelect').disabled = !isUnit;
+        document.getElementById('groupZoneTargetSelect').disabled = isUnit;
+    });
+</script>
 
 @* "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
 <form asp-action="CreateVirtualDevice" method="post" class="mb-3">

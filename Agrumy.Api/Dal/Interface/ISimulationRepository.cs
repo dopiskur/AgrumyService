@@ -50,5 +50,20 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Zone id -> the active session id owning at least one member device assigned to that zone, for every zone in tenantID - RuleNotificationEvaluator's per-zone "which simulation-scoped rules (if any) apply here" lookup. A zone with two overlapping sessions' devices (should not normally happen - AddDeviceToSession already rejects a device already active elsewhere) resolves to whichever session the query happens to return last, not both.
         Task<IDictionary<int, int>> ActiveSimulationSessionIdsByZoneAsync(int tenantID);
+
+        // ---- Simulation groups - a whole Unit/Zone added together, one override value set fanned out to every member device's own DeviceSimulation. ----
+
+        /// Persists the group then fans its override values out to every current member of ScopeID's Unit/Zone, adding each as a session member (or re-tagging an existing membership as belonging to this group) - a device already active in a DIFFERENT session is skipped, not a hard failure for the whole group.
+        Task<SimulationGroup> SimulationGroupAddAsync(SimulationGroup group);
+
+        Task<IList<SimulationGroup>> SimulationGroupsGetAsync(int idSimulationSession);
+
+        Task<SimulationGroup?> SimulationGroupGetByIdAsync(int idSimulationGroup);
+
+        /// Re-applies new override values to whichever devices currently belong to the group - does NOT re-resolve Unit/Zone membership, same snapshot-at-add-time convention as a single device's own add.
+        Task SimulationGroupUpdateAsync(SimulationGroup group);
+
+        /// Turns off every physical member's override first, then drops the membership rows and the group itself.
+        Task SimulationGroupDeleteAsync(int idSimulationGroup);
     }
 }

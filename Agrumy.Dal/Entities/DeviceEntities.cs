@@ -268,6 +268,31 @@ namespace Agrumy.Dal.Entities
     {
         public int IDSimulationSession { get; set; }
         public int DeviceID { get; set; }
+        /// Null for a device added individually; set when this membership came from a whole-Unit/Zone SimulationGroupRow add instead, so removing/editing that group only ever touches the devices it actually put here.
+        public int? IDSimulationGroup { get; set; }
+    }
+
+    /// A whole Unit or Zone added to a simulation session together (as opposed to one device at a time) - one set of override values fanned out to every member device's own DeviceSimulationRow, tracked here as a single editable/removable unit instead of per-device.
+    public class SimulationGroupRow
+    {
+        public int IDSimulationGroup { get; set; }
+        public int IDSimulationSession { get; set; }
+        /// 1=Unit, 2=Zone (Agrumy.Shared.Models.SimulationGroupScope) - which kind of id ScopeID below is.
+        public int Scope { get; set; }
+        public int ScopeID { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public int? Battery { get; set; }
+        public int? Moisture { get; set; }
+        public int? Light { get; set; }
+        public int? Co2 { get; set; }
+        public int? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public int? RainLevel { get; set; }
+        public int? WaterLevel { get; set; }
+        public int? Wind { get; set; }
     }
 
     public class DeviceRow

@@ -141,6 +141,18 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/Simulation/Session/{idSimulationSession}/Device/{idDevice}")]
         Task SimulationSessionDeviceRemove(int idSimulationSession, int idDevice);
 
+        [Get("/api/Simulation/Session/{idSimulationSession}/Group")]
+        Task<IList<SimulationGroup>> SessionGroupsGet(int idSimulationSession);
+
+        [Post("/api/Simulation/Session/{idSimulationSession}/Group")]
+        Task<SimulationGroup> SessionGroupAdd(int idSimulationSession, [Body] SimulationGroup group);
+
+        [Put("/api/Simulation/Session/{idSimulationSession}/Group/{idGroup}")]
+        Task SessionGroupUpdate(int idSimulationSession, int idGroup, [Body] SimulationGroup group);
+
+        [Delete("/api/Simulation/Session/{idSimulationSession}/Group/{idGroup}")]
+        Task SessionGroupDelete(int idSimulationSession, int idGroup);
+
         [Get("/api/Device/TypeService")]
         Task<IEnumerable<DeviceTypeService>> DeviceTypeServiceGet();
 

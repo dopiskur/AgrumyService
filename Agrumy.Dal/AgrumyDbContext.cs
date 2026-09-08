@@ -44,6 +44,7 @@ namespace Agrumy.Dal
         public DbSet<DeviceVirtualRow> DeviceVirtuals => Set<DeviceVirtualRow>();
         public DbSet<SimulationSessionRow> SimulationSessions => Set<SimulationSessionRow>();
         public DbSet<SimulationSessionDeviceRow> SimulationSessionDevices => Set<SimulationSessionDeviceRow>();
+        public DbSet<SimulationGroupRow> SimulationGroups => Set<SimulationGroupRow>();
         public DbSet<DeviceCommandRow> DeviceCommands => Set<DeviceCommandRow>();
         public DbSet<DeviceManualOverrideRow> DeviceManualOverrides => Set<DeviceManualOverrideRow>();
         public DbSet<GatewayDeviceMappingRow> GatewayDeviceMappings => Set<GatewayDeviceMappingRow>();
@@ -432,6 +433,17 @@ namespace Agrumy.Dal
                 e.HasKey(x => new { x.IDSimulationSession, x.DeviceID });
                 e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.IDSimulationSession).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
+                // SetNull, not Cascade - deleting the group must not also delete this row's OWN membership record; SimulationGroupDeleteAsync clears the membership itself (turning off the override first), this FK only guards against an orphaned reference if that cleanup is ever skipped.
+                e.HasOne<SimulationGroupRow>().WithMany().HasForeignKey(x => x.IDSimulationGroup).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+            });
+
+            modelBuilder.Entity<SimulationGroupRow>(e =>
+            {
+                e.ToTable("simulationGroup");
+                e.HasKey(x => x.IDSimulationGroup);
+                e.Property(x => x.IDSimulationGroup).ValueGeneratedOnAdd();
+                e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.IDSimulationSession).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(x => x.IDSimulationSession).HasDatabaseName("ix_simulationGroup_session");
             });
 
             modelBuilder.Entity<DeviceFirmwareRow>(e =>

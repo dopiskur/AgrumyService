@@ -34,5 +34,15 @@ namespace Agrumy.Api.Dal
         public Task<IList<SimulationSession>> SimulationSessionsExpiredButActiveGetAsync(DateTimeOffset nowUtc) => simulationRepository.SimulationSessionsExpiredButActiveGetAsync(nowUtc);
 
         public Task<IDictionary<int, int>> ActiveSimulationSessionIdsByZoneAsync(int tenantID) => simulationRepository.ActiveSimulationSessionIdsByZoneAsync(tenantID);
+
+        public Task<SimulationGroup> SimulationGroupAddAsync(SimulationGroup group) => simulationRepository.SimulationGroupAddAsync(group);
+
+        public Task<IList<SimulationGroup>> SimulationGroupsGetAsync(int idSimulationSession) => simulationRepository.SimulationGroupsGetAsync(idSimulationSession);
+
+        public Task<SimulationGroup?> SimulationGroupGetByIdAsync(int idSimulationGroup) => simulationRepository.SimulationGroupGetByIdAsync(idSimulationGroup);
+
+        public Task SimulationGroupUpdateAsync(SimulationGroup group) => simulationRepository.SimulationGroupUpdateAsync(group);
+
+        public Task SimulationGroupDeleteAsync(int idSimulationGroup) => simulationRepository.SimulationGroupDeleteAsync(idSimulationGroup);
     }
 }

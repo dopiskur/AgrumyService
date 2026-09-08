@@ -1362,6 +1362,88 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.DoesNotContain(zoneWithoutMember.IDDeviceFarmUnitZone!.Value, afterStart.Keys);
     }
 
+    // SimulationGroupAddAsync's fan-out: every device already in the target zone gets session membership (tagged with the group) plus its own DeviceSimulation override, in one call.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SimulationGroupAdd_FansOutToEveryDeviceInZone(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var d1 = await MakeDevice(t, tenantId);
+        var d2 = await MakeDevice(t, tenantId);
+        var outsider = await MakeDevice(t, tenantId); // not in the zone - must stay untouched
+        await _repo.DeviceAssignToZoneAsync(d1.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        await _repo.DeviceAssignToZoneAsync(d2.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
+
+        SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
+        {
+            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            Temperature = 31.5,
+        });
+
+        Assert.Equal(2, created.MemberDeviceCount);
+        Assert.Equal(zone.DeviceFarmUnitZoneName, created.ScopeName);
+        DeviceSimulation? sim1 = await _repo.DeviceSimulationGetAsync(d1.IDDevice!.Value);
+        Assert.True(sim1!.Enabled);
+        Assert.Equal(31.5, sim1.Temperature);
+        Assert.Null(await _repo.DeviceSimulationGetAsync(outsider.IDDevice!.Value));
+
+        SimulationGroup? fetched = Assert.Single(await _repo.SimulationGroupsGetAsync(session.IDSimulationSession!.Value));
+        Assert.Equal(created.IDSimulationGroup, fetched.IDSimulationGroup);
+    }
+
+    // A device already active in a DIFFERENT session is skipped, not a hard failure for the whole group add.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SimulationGroupAdd_SkipsDeviceAlreadyBusyInAnotherSession(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var busy = await MakeDevice(t, tenantId);
+        var free = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(busy.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        await _repo.DeviceAssignToZoneAsync(free.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+
+        var otherSession = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Other" });
+        Assert.True(await _repo.SimulationSessionDeviceAddAsync(otherSession.IDSimulationSession!.Value, busy.IDDevice!.Value));
+        await _repo.SimulationSessionStartAsync(otherSession.IDSimulationSession!.Value, 60);
+
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
+        SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
+        {
+            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            Humidity = 55,
+        });
+
+        Assert.Equal(1, created.MemberDeviceCount); // only "free" - "busy" belongs to otherSession
+        Assert.Equal(otherSession.IDSimulationSession, await _repo.DeviceActiveSimulationSessionIdGetAsync(busy.IDDevice!.Value));
+    }
+
+    // Editing a group re-applies new values to its current members; deleting one turns their override back off and drops the membership.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SimulationGroupUpdateThenDelete_ReappliesThenClearsMemberOverrides(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
+        SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
+        {
+            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            Temperature = 20,
+        });
+
+        await _repo.SimulationGroupUpdateAsync(new SimulationGroup { IDSimulationGroup = created.IDSimulationGroup, IDSimulationSession = session.IDSimulationSession, Temperature = 40 });
+        Assert.Equal(40, (await _repo.DeviceSimulationGetAsync(d.IDDevice!.Value))!.Temperature);
+
+        await _repo.SimulationGroupDeleteAsync(created.IDSimulationGroup!.Value);
+        Assert.False((await _repo.DeviceSimulationGetAsync(d.IDDevice!.Value))!.Enabled);
+        Assert.Empty(await _repo.SimulationGroupsGetAsync(session.IDSimulationSession!.Value));
+    }
+
     // The freshly-created farm scoops up a unit that already existed unassigned.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task EnsureFirstFarm_NoExistingFarm_CreatesOneAndSweepsUnassignedUnits(DbProviderKind provider)

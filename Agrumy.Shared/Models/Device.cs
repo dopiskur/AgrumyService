@@ -490,6 +490,38 @@ namespace Agrumy.Shared.Models
         public IList<DeviceDto> Devices { get; set; } = [];
     }
 
+    public enum SimulationGroupScope
+    {
+        Unit = 1,
+        Zone = 2,
+    }
+
+    /// A whole Unit or Zone added to a simulation session at once - one set of sensor-override values fanned out to every member device's own DeviceSimulation, editable/removable as a single unit instead of per-device. Same fields as DeviceSimulation (minus the per-device Enabled, implicit here) plus the group's own identity.
+    public class SimulationGroup
+    {
+        public int? IDSimulationGroup { get; set; }
+        public int? IDSimulationSession { get; set; }
+        public SimulationGroupScope Scope { get; set; }
+        public int ScopeID { get; set; }
+        /// Populated on read only (the Unit/Zone's own name) - never required on a write, resolved server-side from ScopeID.
+        public string? ScopeName { get; set; }
+        /// Populated on read only - how many devices this group actually fanned out to when it was created (not live-recomputed; a device added to the Unit/Zone afterward is not swept in automatically, same as the existing single-device add's own snapshot-at-add-time behavior).
+        public int MemberDeviceCount { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public int? Battery { get; set; }
+        public int? Moisture { get; set; }
+        public int? Light { get; set; }
+        public int? Co2 { get; set; }
+        public int? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public int? RainLevel { get; set; }
+        public int? WaterLevel { get; set; }
+        public int? Wind { get; set; }
+    }
+
     /// Body of POST /api/Simulation/Session - name only, no duration; a session starts un-started, Start below is a separate step.
     public class SimulationSessionCreateRequest
     {

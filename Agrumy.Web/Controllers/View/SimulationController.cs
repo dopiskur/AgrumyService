@@ -51,6 +51,15 @@ namespace Agrumy.Web.Controllers.View
             SimulationSession session = await api.SimulationSessionGet(idSimulationSession);
             ViewBag.Fleet = await api.DeviceFleetGet();
             ViewBag.Rules = await api.SessionRulesGet(idSimulationSession);
+            ViewBag.Groups = await api.SessionGroupsGet(idSimulationSession);
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            ViewBag.Units = units;
+            var zones = new List<DeviceFarmUnitZone>();
+            foreach (DeviceFarmUnit unit in units)
+            {
+                zones.AddRange(await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit));
+            }
+            ViewBag.Zones = zones;
             return View(session);
         }
 
@@ -164,6 +173,54 @@ namespace Agrumy.Web.Controllers.View
             try
             {
                 await api.SessionRuleDelete(idSimulationSession, idDeviceFarmUnitZoneRule);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
+        }
+
+        // ---- Simulation groups - a whole Unit/Zone added at once, one override value set fanned out to every member device. ----
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SessionGroupAdd(int idSimulationSession, SimulationGroup group)
+        {
+            try
+            {
+                SimulationGroup created = await api.SessionGroupAdd(idSimulationSession, group);
+                TempData["Info"] = $"Added {created.Scope} \"{created.ScopeName}\" - {created.MemberDeviceCount} device(s) now simulating.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SessionGroupUpdate(int idSimulationSession, int idGroup, SimulationGroup group)
+        {
+            try
+            {
+                await api.SessionGroupUpdate(idSimulationSession, idGroup, group);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Details), new { idSimulationSession });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SessionGroupDelete(int idSimulationSession, int idGroup)
+        {
+            try
+            {
+                await api.SessionGroupDelete(idSimulationSession, idGroup);
             }
             catch (ApiException ex)
             {

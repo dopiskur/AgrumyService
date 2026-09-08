@@ -134,6 +134,176 @@ namespace Agrumy.Api.Dal
         public async Task SimulationSessionDeviceRemoveAsync(int idSimulationSession, int deviceID) =>
             await db.SimulationSessionDevices.Where(sd => sd.IDSimulationSession == idSimulationSession && sd.DeviceID == deviceID).ExecuteDeleteAsync();
 
+        // ---- Simulation groups - a whole Unit/Zone added together, one override value set fanned out to every member device's own DeviceSimulation. ----
+
+        public async Task<SimulationGroup> SimulationGroupAddAsync(SimulationGroup group)
+        {
+            var row = ToRowGroup(group);
+            db.SimulationGroups.Add(row);
+            await db.SaveChangesAsync();
+
+            List<int> candidateIds = group.Scope == SimulationGroupScope.Unit
+                ? await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == group.ScopeID).Select(d => d.IDDevice).ToListAsync()
+                : await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync();
+
+            DeviceSimulation overrideValues = ToDeviceSimulation(group);
+            foreach (int deviceId in candidateIds)
+            {
+                // Already busy with a DIFFERENT active session - skip it, don't fail the whole group over one device someone else is already simulating.
+                if (await DeviceActiveSimulationSessionIdGetAsync(deviceId) is int existingId && existingId != row.IDSimulationSession)
+                {
+                    continue;
+                }
+                bool alreadyMember = await db.SimulationSessionDevices.AsNoTracking()
+                    .AnyAsync(sd => sd.IDSimulationSession == row.IDSimulationSession && sd.DeviceID == deviceId);
+                if (alreadyMember)
+                {
+                    // Was added individually (or by a different group) earlier - claim it for THIS group now, so editing/removing the group also covers it going forward.
+                    await db.SimulationSessionDevices.Where(sd => sd.IDSimulationSession == row.IDSimulationSession && sd.DeviceID == deviceId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(sd => sd.IDSimulationGroup, row.IDSimulationGroup));
+                }
+                else
+                {
+                    db.SimulationSessionDevices.Add(new SimulationSessionDeviceRow { IDSimulationSession = row.IDSimulationSession, DeviceID = deviceId, IDSimulationGroup = row.IDSimulationGroup });
+                }
+                if (!await db.DeviceVirtuals.AsNoTracking().AnyAsync(v => v.DeviceID == deviceId))
+                {
+                    await deviceRepository.DeviceSimulationSetAsync(deviceId, overrideValues);
+                }
+            }
+            await db.SaveChangesAsync();
+
+            return await WithNameAndCountAsync(row);
+        }
+
+        public async Task<IList<SimulationGroup>> SimulationGroupsGetAsync(int idSimulationSession)
+        {
+            var rows = await db.SimulationGroups.AsNoTracking().Where(g => g.IDSimulationSession == idSimulationSession).ToListAsync();
+            var result = new List<SimulationGroup>();
+            foreach (var row in rows)
+            {
+                result.Add(await WithNameAndCountAsync(row));
+            }
+            return result;
+        }
+
+        public async Task<SimulationGroup?> SimulationGroupGetByIdAsync(int idSimulationGroup)
+        {
+            var row = await db.SimulationGroups.AsNoTracking().FirstOrDefaultAsync(g => g.IDSimulationGroup == idSimulationGroup);
+            return row == null ? null : await WithNameAndCountAsync(row);
+        }
+
+        /// Re-applies the new override values to whichever devices currently belong to this group - does NOT re-resolve Unit/Zone membership, same "snapshot at add time" convention as a single device's own add.
+        public async Task SimulationGroupUpdateAsync(SimulationGroup group)
+        {
+            int idGroup = group.IDSimulationGroup!.Value;
+            var row = ToRowGroup(group);
+            await db.SimulationGroups.Where(g => g.IDSimulationGroup == idGroup)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(g => g.Temperature, row.Temperature).SetProperty(g => g.SoilTemperature, row.SoilTemperature)
+                    .SetProperty(g => g.Humidity, row.Humidity).SetProperty(g => g.Battery, row.Battery)
+                    .SetProperty(g => g.Moisture, row.Moisture).SetProperty(g => g.Light, row.Light)
+                    .SetProperty(g => g.Co2, row.Co2).SetProperty(g => g.Tvoc, row.Tvoc)
+                    .SetProperty(g => g.Barometer, row.Barometer).SetProperty(g => g.LiquidPH, row.LiquidPH)
+                    .SetProperty(g => g.RainLevel, row.RainLevel).SetProperty(g => g.WaterLevel, row.WaterLevel)
+                    .SetProperty(g => g.Wind, row.Wind));
+
+            List<int> memberIds = await db.SimulationSessionDevices.AsNoTracking().Where(sd => sd.IDSimulationGroup == idGroup).Select(sd => sd.DeviceID).ToListAsync();
+            DeviceSimulation overrideValues = ToDeviceSimulation(group);
+            foreach (int deviceId in memberIds)
+            {
+                if (!await db.DeviceVirtuals.AsNoTracking().AnyAsync(v => v.DeviceID == deviceId))
+                {
+                    await deviceRepository.DeviceSimulationSetAsync(deviceId, overrideValues);
+                }
+            }
+        }
+
+        /// Turns off every physical member's override (same cleanup a single device's own removal does) before dropping the membership rows and the group itself - a removed group must not leave a device stuck simulating.
+        public async Task SimulationGroupDeleteAsync(int idSimulationGroup)
+        {
+            List<int> memberIds = await db.SimulationSessionDevices.AsNoTracking().Where(sd => sd.IDSimulationGroup == idSimulationGroup).Select(sd => sd.DeviceID).ToListAsync();
+            foreach (int deviceId in memberIds)
+            {
+                if (!await db.DeviceVirtuals.AsNoTracking().AnyAsync(v => v.DeviceID == deviceId))
+                {
+                    await deviceRepository.DeviceSimulationSetAsync(deviceId, new DeviceSimulation { Enabled = false });
+                }
+            }
+            await db.SimulationSessionDevices.Where(sd => sd.IDSimulationGroup == idSimulationGroup).ExecuteDeleteAsync();
+            await db.SimulationGroups.Where(g => g.IDSimulationGroup == idSimulationGroup).ExecuteDeleteAsync();
+        }
+
+        private async Task<SimulationGroup> WithNameAndCountAsync(SimulationGroupRow row)
+        {
+            SimulationGroup dto = ToDtoGroup(row);
+            dto.MemberDeviceCount = await db.SimulationSessionDevices.AsNoTracking().CountAsync(sd => sd.IDSimulationGroup == row.IDSimulationGroup);
+            dto.ScopeName = (SimulationGroupScope)row.Scope == SimulationGroupScope.Unit
+                ? (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName
+                : (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName;
+            return dto;
+        }
+
+        private static SimulationGroupRow ToRowGroup(SimulationGroup g) => new()
+        {
+            IDSimulationGroup = g.IDSimulationGroup ?? 0,
+            IDSimulationSession = g.IDSimulationSession!.Value,
+            Scope = (int)g.Scope,
+            ScopeID = g.ScopeID,
+            Temperature = g.Temperature,
+            SoilTemperature = g.SoilTemperature,
+            Humidity = g.Humidity,
+            Battery = g.Battery,
+            Moisture = g.Moisture,
+            Light = g.Light,
+            Co2 = g.Co2,
+            Tvoc = g.Tvoc,
+            Barometer = g.Barometer,
+            LiquidPH = g.LiquidPH,
+            RainLevel = g.RainLevel,
+            WaterLevel = g.WaterLevel,
+            Wind = g.Wind,
+        };
+
+        private static SimulationGroup ToDtoGroup(SimulationGroupRow r) => new()
+        {
+            IDSimulationGroup = r.IDSimulationGroup,
+            IDSimulationSession = r.IDSimulationSession,
+            Scope = (SimulationGroupScope)r.Scope,
+            ScopeID = r.ScopeID,
+            Temperature = r.Temperature,
+            SoilTemperature = r.SoilTemperature,
+            Humidity = r.Humidity,
+            Battery = r.Battery,
+            Moisture = r.Moisture,
+            Light = r.Light,
+            Co2 = r.Co2,
+            Tvoc = r.Tvoc,
+            Barometer = r.Barometer,
+            LiquidPH = r.LiquidPH,
+            RainLevel = r.RainLevel,
+            WaterLevel = r.WaterLevel,
+            Wind = r.Wind,
+        };
+
+        private static DeviceSimulation ToDeviceSimulation(SimulationGroup g) => new()
+        {
+            Enabled = true,
+            Temperature = g.Temperature,
+            SoilTemperature = g.SoilTemperature,
+            Humidity = g.Humidity,
+            Battery = g.Battery,
+            Moisture = g.Moisture,
+            Light = g.Light,
+            Co2 = g.Co2,
+            Tvoc = g.Tvoc,
+            Barometer = g.Barometer,
+            LiquidPH = g.LiquidPH,
+            RainLevel = g.RainLevel,
+            WaterLevel = g.WaterLevel,
+            Wind = g.Wind,
+        };
+
         public async Task<int?> DeviceActiveSimulationSessionIdGetAsync(int deviceID)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;

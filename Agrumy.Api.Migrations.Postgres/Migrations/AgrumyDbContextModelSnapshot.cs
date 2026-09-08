@@ -1650,6 +1650,70 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("serverConfig", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.SimulationGroupRow", b =>
+                {
+                    b.Property<int>("IDSimulationGroup")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSimulationGroup"));
+
+                    b.Property<double?>("Barometer")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Battery")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Co2")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Humidity")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("IDSimulationSession")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Light")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("LiquidPH")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Moisture")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RainLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScopeID")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("SoilTemperature")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Temperature")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Tvoc")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Wind")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDSimulationGroup");
+
+                    b.HasIndex("IDSimulationSession")
+                        .HasDatabaseName("ix_simulationGroup_session");
+
+                    b.ToTable("simulationGroup", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.SimulationSessionDeviceRow", b =>
                 {
                     b.Property<int>("IDSimulationSession")
@@ -1658,9 +1722,14 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("DeviceID")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("IDSimulationGroup")
+                        .HasColumnType("integer");
+
                     b.HasKey("IDSimulationSession", "DeviceID");
 
                     b.HasIndex("DeviceID");
+
+                    b.HasIndex("IDSimulationGroup");
 
                     b.ToTable("simulationSessionDevice", (string)null);
                 });
@@ -2283,6 +2352,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.SimulationGroupRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.SimulationSessionRow", null)
+                        .WithMany()
+                        .HasForeignKey("IDSimulationSession")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.SimulationSessionDeviceRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
@@ -2290,6 +2368,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("DeviceID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.SimulationGroupRow", null)
+                        .WithMany()
+                        .HasForeignKey("IDSimulationGroup")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Agrumy.Dal.Entities.SimulationSessionRow", null)
                         .WithMany()
