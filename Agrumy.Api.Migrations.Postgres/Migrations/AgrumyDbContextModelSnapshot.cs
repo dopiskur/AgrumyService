@@ -418,6 +418,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<int?>("ConfigSchemaVersion")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("DeviceTypeID")
                         .HasColumnType("integer");
 
@@ -434,11 +437,20 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<DateTimeOffset?>("LowBatteryNotifiedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long?>("MaxAllocHeapBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("MinFreeHeapBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTimeOffset?>("OfflineNotifiedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("RssiDbm")
                         .HasColumnType("integer");
+
+                    b.Property<long?>("StackHighWaterMarkBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("TenantID")
                         .HasColumnType("integer");

@@ -36,7 +36,8 @@
     "simulationModeEnabled",
     "deviceConfigSensor",
     "deviceConfigController",
-    "pendingCommand"
+    "pendingCommand",
+    "schemaVersion"
   ],
   "properties": {
     "configVersion": {
@@ -250,6 +251,13 @@
           "$ref": "#/definitions/pendingCommand"
         }
       ]
+    },
+    "schemaVersion": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Roadmap #451(23). Which config wire-format version the server generated this response with (Agrumy.Shared.Models.ConfigSchemaVersions.Current) - firmware compares this against its own CONFIG_SCHEMA_VERSION (DeviceModel.h) and logs (does not reject) when the server is ahead, so a stale-firmware mismatch is visible during OTA rollback triage instead of a silently-ignored new field."
     }
   },
   "definitions": {

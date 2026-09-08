@@ -413,6 +413,12 @@ namespace Agrumy.Dal.Entities
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
+        // Minimum ever recorded since boot (ESP.getMinFreeHeap()), largest single allocatable block (ESP.getMaxAllocHeap(), low value flags fragmentation even when FreeHeapBytes looks fine), and the loop task's unused stack margin (uxTaskGetStackHighWaterMark, low value flags an approaching stack overflow).
+        public long? MinFreeHeapBytes { get; set; }
+        public long? MaxAllocHeapBytes { get; set; }
+        public long? StackHighWaterMarkBytes { get; set; }
+        // Which CONFIG_SCHEMA_VERSION the device's currently-running firmware understands; lets an admin spot a device whose firmware needs an OTA before the server's own schema moves further ahead.
+        public int? ConfigSchemaVersion { get; set; }
         public DateTimeOffset? OfflineNotifiedAt { get; set; } // When OfflineAlertBackgroundService last notified admins about the device's current offline streak; one notification per streak, not per tick.
         public DateTimeOffset? LowBatteryNotifiedAt { get; set; } // Same dedup-by-streak rule as OfflineNotifiedAt, but for LowBatteryAlertEvaluator.
         public string? FirmwareVersion { get; set; }

@@ -329,6 +329,15 @@ namespace Agrumy.Shared.Models
 
         // Null when there's nothing to do - present only for a real, unexpired Pending command (DeviceApiController.GetConfig/BuildDeviceConfigAsync).
         public PendingCommand? PendingCommand { get; set; }
+
+        // See ConfigSchemaVersions.Current; firmware logs (doesn't reject) when this is newer than its own CONFIG_SCHEMA_VERSION.
+        public int? SchemaVersion { get; set; } = ConfigSchemaVersions.Current;
+    }
+
+    /// Bumped alongside AgrumyFirmware's own CONFIG_SCHEMA_VERSION constant (DeviceModel.h) only when a wire-format change is significant enough that an old firmware silently ignoring a new field would matter.
+    public static class ConfigSchemaVersions
+    {
+        public const int Current = 1;
     }
 
     /// Body of POST /api/Device/Config - poll doubles as heartbeat, so all fields are nullable to keep older firmware sending only ConfigVersion binding cleanly.
@@ -338,11 +347,17 @@ namespace Agrumy.Shared.Models
         public long? Uptime { get; set; }
         public int? Rssi { get; set; }
         public long? FreeHeap { get; set; }
+        // See DeviceDiagnosticRow.MinFreeHeapBytes/MaxAllocHeapBytes/StackHighWaterMarkBytes; null from older firmware.
+        public long? MinFreeHeap { get; set; }
+        public long? MaxAllocHeap { get; set; }
+        public long? StackHighWaterMark { get; set; }
         public string? FirmwareVersion { get; set; }
         // PlatformIO environment the image was built for (AGRUMY_BOARD flag) - selects the right catalog .bin for OTA; null from older firmware.
         public string? Board { get; set; }
         // Commercial board this image was built for (AGRUMY_KIT flag, e.g. "KC868-A6"), separate from Board; empty on generic chip-target, null from older firmware.
         public string? Kit { get; set; }
+        // Which CONFIG_SCHEMA_VERSION this firmware build understands; null from older firmware, informational only (server doesn't currently act on a mismatch).
+        public int? ConfigSchemaVersion { get; set; }
     }
 
     /// One device's row on the fleet dashboard; Battery comes from the latest sensorData row, not the heartbeat, since the firmware's own battery sensor is a stub.
@@ -357,6 +372,10 @@ namespace Agrumy.Shared.Models
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
+        // See DeviceDiagnosticRow's own remarks.
+        public long? MinFreeHeapBytes { get; set; }
+        public long? MaxAllocHeapBytes { get; set; }
+        public long? StackHighWaterMarkBytes { get; set; }
         public string? FirmwareVersion { get; set; }
         // Catalog state for the Update button: LatestFirmwareVersion is the newest entry for this Board, FirmwareUpdateAvailable means it's newer than running, Pending/Target mirror Device.FirmwareUpdate/FirmwareTargetVersion.
         public string? Board { get; set; }

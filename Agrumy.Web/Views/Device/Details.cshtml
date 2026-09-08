@@ -121,6 +121,19 @@
             </dt>
             <dd class="col-sm-9">
                 @(ViewBag.FreeHeapBytes is long heap ? $"{heap / 1024} KB" : "-")
+                @(ViewBag.MinFreeHeapBytes is long minHeap ? $"(min {minHeap / 1024} KB)" : "")
+            </dd>
+            <dt class="col-sm-3">
+                Max allocatable block
+            </dt>
+            <dd class="col-sm-9">
+                @(ViewBag.MaxAllocHeapBytes is long maxAlloc ? $"{maxAlloc / 1024} KB" : "-")
+            </dd>
+            <dt class="col-sm-3">
+                Stack margin
+            </dt>
+            <dd class="col-sm-9">
+                @(ViewBag.StackHighWaterMarkBytes is long stackMargin ? $"{stackMargin} bytes" : "-")
             </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.DateCreated)

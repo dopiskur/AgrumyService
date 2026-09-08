@@ -25,6 +25,21 @@
       "minimum": 0,
       "description": "ESP.getFreeHeap() in bytes at the start of the config poll."
     },
+    "MinFreeHeap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Roadmap #451(22). ESP.getMinFreeHeap() - the lowest free-heap value ever recorded since boot; shows a transient dip FreeHeap alone would miss. Optional, absent from pre-#451 firmware."
+    },
+    "MaxAllocHeap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Roadmap #451(22). ESP.getMaxAllocHeap() - the largest single allocatable block; a low value flags heap fragmentation even when FreeHeap looks fine. Optional, absent from pre-#451 firmware."
+    },
+    "StackHighWaterMark": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Roadmap #451(22). uxTaskGetStackHighWaterMark(NULL) in bytes - the loop task's unused stack margin; a low value flags an approaching stack overflow. Optional, absent from pre-#451 firmware."
+    },
     "FirmwareVersion": {
       "type": "string",
       "maxLength": 20,
@@ -39,6 +54,11 @@
       "type": "string",
       "maxLength": 64,
       "description": "Roadmap #149: which commercial physical board this image was built for (AGRUMY_KIT build flag, e.g. \"KC868-A6\" or \"ESP32-S3-Relay-6CH\"), separate from Board above - Board picks the OTA binary, Kit is what the server's deviceTypeKit lookup matches against to auto-detect relay-hardware capability. Empty string on every generic chip-target environment (esp32dev/esp32s3usbotg), always present since this field was introduced (unlike Board, no pre-this-feature firmware to special-case). Stored in deviceDiagnostic.Kit."
+    },
+    "ConfigSchemaVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Roadmap #451(23). AgrumyFirmware's own CONFIG_SCHEMA_VERSION constant (DeviceModel.h) - which config wire-format version this running firmware understands. Informational only, server doesn't currently act on a mismatch. Optional, absent from pre-#451 firmware."
     }
   },
   "$comment": "Required request headers (contract record only): 'apiId': device ApiId GUID; 'Authorization': apiAuth token from POST /api/Device/Authenticate."

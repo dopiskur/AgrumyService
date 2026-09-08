@@ -137,6 +137,9 @@ namespace Agrumy.Web.Controllers.View
 
             DeviceFleetStatus? status = await api.DeviceFleetStatusGet(idDevice!.Value);
             ViewBag.FreeHeapBytes = status?.FreeHeapBytes;
+            ViewBag.MinFreeHeapBytes = status?.MinFreeHeapBytes;
+            ViewBag.MaxAllocHeapBytes = status?.MaxAllocHeapBytes;
+            ViewBag.StackHighWaterMarkBytes = status?.StackHighWaterMarkBytes;
             ViewBag.ControllerCapable = status?.ControllerCapable ?? true;
             ViewBag.Kit = status?.Kit;
 

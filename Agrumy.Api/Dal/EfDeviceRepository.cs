@@ -669,6 +669,10 @@ namespace Agrumy.Api.Dal
             row.UptimeSeconds = poll.Uptime ?? row.UptimeSeconds;
             row.RssiDbm = poll.Rssi ?? row.RssiDbm;
             row.FreeHeapBytes = poll.FreeHeap ?? row.FreeHeapBytes;
+            row.MinFreeHeapBytes = poll.MinFreeHeap ?? row.MinFreeHeapBytes;
+            row.MaxAllocHeapBytes = poll.MaxAllocHeap ?? row.MaxAllocHeapBytes;
+            row.StackHighWaterMarkBytes = poll.StackHighWaterMark ?? row.StackHighWaterMarkBytes;
+            row.ConfigSchemaVersion = poll.ConfigSchemaVersion ?? row.ConfigSchemaVersion;
             row.FirmwareVersion = poll.FirmwareVersion ?? row.FirmwareVersion;
             row.Board = poll.Board ?? row.Board;
             row.DeviceTypeID = deviceTypeId ?? row.DeviceTypeID;
@@ -808,6 +812,9 @@ namespace Agrumy.Api.Dal
                     UptimeSeconds = r.Diag?.UptimeSeconds,
                     RssiDbm = r.Diag?.RssiDbm,
                     FreeHeapBytes = r.Diag?.FreeHeapBytes,
+                    MinFreeHeapBytes = r.Diag?.MinFreeHeapBytes,
+                    MaxAllocHeapBytes = r.Diag?.MaxAllocHeapBytes,
+                    StackHighWaterMarkBytes = r.Diag?.StackHighWaterMarkBytes,
                     FirmwareVersion = r.Diag?.FirmwareVersion,
                     Board = r.Diag?.Board,
                     Kit = r.Diag?.DeviceTypeID is int diagTypeId && deviceTypesById.TryGetValue(diagTypeId, out var diagType) ? diagType.Kit : null,
