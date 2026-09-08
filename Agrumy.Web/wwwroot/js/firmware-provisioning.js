@@ -1,4 +1,4 @@
-// Once a flash actually finishes (esp-web-tools exposes no public success event, but its install-dialog element leaves its internal `_installState`/`port` as plain, still-readable properties after removal from the DOM), this reopens that same SerialPort to send one provisioning JSON line, then listens on it for the device's own confirmation once it registers - see AgrumyFirmware's DeviceController::tryReadSerialProvisioning and the "agrumyRegistered" echo at the end of registerDevice().
+// WiFi credentials are collected by the wizard before the flash even starts; once a flash actually finishes (esp-web-tools exposes no public success event, but its install-dialog element leaves its internal `_installState`/`port` as plain, still-readable properties after removal from the DOM), those already-collected credentials are sent immediately over that same reopened SerialPort, then this listens on it for the device's own confirmation once it registers - see AgrumyFirmware's DeviceController::tryReadSerialProvisioning and the "agrumyRegistered" echo at the end of registerDevice().
 
 (function () {
     var PROVISION_SEND_TYPE = 'agrumyProvision';
@@ -6,10 +6,11 @@
     // Generous - covers WiFi association, DHCP, TLS handshake and the server round trip, not just the write itself.
     var REGISTRATION_WAIT_MS = 60000;
 
-    var panel, wifiStep, wifiSelect, wifiSsidInput, wifiPasswordInput, sendButton;
+    var wifiStep, wifiSelect, wifiSsidInput, wifiPasswordInput, continueButton, flashStep;
     var statusEl, assignStep, farmSelect, unitSelect, zoneSelect, assignButton, skipButton;
     var farmTree = null;
     var provisionedDeviceId = null;
+    var pendingCredentials = null;
 
     function antiForgeryToken() {
         return document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
@@ -215,6 +216,25 @@
         });
     }
 
+    async function onContinueClick() {
+        continueButton.disabled = true;
+        try {
+            var credentials = await resolveWifiCredentials();
+            if (!credentials.ssid) {
+                setStatus('Enter a WiFi network first.');
+                continueButton.disabled = false;
+                return;
+            }
+            pendingCredentials = credentials;
+            wifiStep.hidden = true;
+            flashStep.hidden = false;
+            setStatus("WiFi ready - click Install and pick the device's USB port to flash.");
+        } catch (err) {
+            setStatus('Could not resolve WiFi credentials: ' + err.message);
+            continueButton.disabled = false;
+        }
+    }
+
     async function onFlashClosed(ev) {
         if (!ev.target || ev.target.tagName !== 'EWT-INSTALL-DIALOG') {
             return;
@@ -224,19 +244,34 @@
             return; // cancelled, errored, or never got far enough - nothing to provision
         }
         var port = ev.target.port;
-        if (!port) {
+        if (!port || !pendingCredentials) {
             return;
         }
 
-        panel = document.getElementById('provisionPanel');
-        if (!panel) {
-            return;
+        setStatus('Sending WiFi and login to the device…');
+        try {
+            var deviceId = await sendProvisioning(port, pendingCredentials);
+            if (deviceId === null) {
+                setStatus('No confirmation from the device - it may still be trying in the background, or it fell through to its own Agrumy_<mac> WiFi setup network. Check the Fleet page shortly.');
+                return;
+            }
+            provisionedDeviceId = deviceId;
+            setStatus('Device registered (#' + deviceId + ').');
+            assignStep.hidden = false;
+            wireAssignPicker();
+            await loadAssignPicker();
+        } catch (err) {
+            setStatus('Provisioning failed: ' + err.message);
         }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
         wifiStep = document.getElementById('provisionWifiStep');
         wifiSelect = document.getElementById('provisionWifiSelect');
         wifiSsidInput = document.getElementById('provisionWifiSsid');
         wifiPasswordInput = document.getElementById('provisionWifiPassword');
-        sendButton = document.getElementById('provisionSendButton');
+        continueButton = document.getElementById('provisionContinueButton');
+        flashStep = document.getElementById('provisionFlashStep');
         statusEl = document.getElementById('provisionStatus');
         assignStep = document.getElementById('provisionAssignStep');
         farmSelect = document.getElementById('provisionFarmSelect');
@@ -244,37 +279,15 @@
         zoneSelect = document.getElementById('provisionZoneSelect');
         assignButton = document.getElementById('provisionAssignButton');
         skipButton = document.getElementById('provisionSkipButton');
+        if (!wifiStep || !continueButton || !flashStep) {
+            return;
+        }
 
-        panel.hidden = false;
         wifiSelect.addEventListener('change', toggleWifiManualFields);
-        await loadWifiOptions();
+        loadWifiOptions();
 
-        sendButton.addEventListener('click', async function () {
-            sendButton.disabled = true;
-            setStatus('Sending WiFi and login to the device…');
-            try {
-                var credentials = await resolveWifiCredentials();
-                if (!credentials.ssid) {
-                    setStatus('Enter a WiFi network first.');
-                    sendButton.disabled = false;
-                    return;
-                }
-                setStatus('Sent - waiting for the device to connect and register (this can take up to a minute)…');
-                var deviceId = await sendProvisioning(port, credentials);
-                if (deviceId === null) {
-                    setStatus('No confirmation from the device - it may still be trying in the background, or it fell through to its own Agrumy_<mac> WiFi setup network. Check the Fleet page shortly.');
-                    return;
-                }
-                provisionedDeviceId = deviceId;
-                wifiStep.hidden = true;
-                setStatus('Device registered (#' + deviceId + ').');
-                assignStep.hidden = false;
-                wireAssignPicker();
-                await loadAssignPicker();
-            } catch (err) {
-                setStatus('Provisioning failed: ' + err.message);
-                sendButton.disabled = false;
-            }
+        continueButton.addEventListener('click', function () {
+            onContinueClick().catch(function () { /* onContinueClick already reports its own errors via setStatus */ });
         });
 
         assignButton.addEventListener('click', async function () {
@@ -295,7 +308,7 @@
             setStatus('Added to the fleet, unassigned. Find it on the Fleet page.');
             assignStep.hidden = true;
         });
-    }
+    });
 
     document.addEventListener('closed', function (ev) {
         onFlashClosed(ev).catch(function () { /* best-effort - the static flashResultBanner still covers the fallback case */ });

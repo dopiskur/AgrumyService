@@ -58,32 +58,13 @@
                 else
                 {
                     <p class="text-secondary small mb-2">Flashes a brand-new, never-programmed board straight from the browser - no PlatformIO, no USB toolchain.</p>
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <select id="flashBoardSelect" class="form-select" style="width:auto">
-                            @foreach (var f in Model.InstallableBoards)
-                            {
-                                <option value="@Url.Action("InstallManifest", new { board = f.Board })">@f.Board (@f.Version)</option>
-                            }
-                        </select>
-                        <esp-web-install-button id="flashInstallButton" manifest="@Url.Action("InstallManifest", new { board = Model.InstallableBoards[0].Board })">
-                            <button type="button" slot="activate" class="btn btn-outline-primary"><i class="bi bi-usb-symbol"></i> Install</button>
-                            <span slot="unsupported" class="text-secondary small">This browser does not support Web Serial - use Chrome or Edge on desktop.</span>
-                            <span slot="not-allowed" class="text-secondary small">Web Serial requires HTTPS.</span>
-                        </esp-web-install-button>
-                    </div>
-                    @* Populated by firmware-install-picker.js when the flasher's popup closes - esp-web-tools' own confirmation only lives inside that transient popup, so without this the page looks identical to before flashing the moment it's closed. *@
-                    <div id="flashResultBanner" class="alert alert-info d-flex align-items-center gap-2 mt-2" role="status" hidden>
-                        <i class="bi bi-info-circle"></i>
-                        <span id="flashResultText"></span>
-                        <button type="button" class="btn-close ms-auto" aria-label="Dismiss" onclick="document.getElementById('flashResultBanner').hidden = true"></button>
-                    </div>
 
-                    @* Shown by firmware-provisioning.js only after a flash that actually finished (esp-web-tools' internal state, not just the dialog closing); reopens the same serial port to send WiFi+login+PIN, then offers Assign-to-farm/Skip once the device confirms it registered. *@
-                    <div id="provisionPanel" class="card mt-2" hidden>
+                    @* WiFi step of the provisioning wizard - shown before flashing so the credentials are already collected and ready to send the instant the flash finishes; see firmware-provisioning.js. *@
+                    <div id="provisionPanel" class="card mb-2">
                         <div class="card-header py-2"><h6 class="card-title mb-0">Provision this device</h6></div>
                         <div class="card-body">
                             <div id="provisionWifiStep">
-                                <p class="text-secondary small mb-2">Sent directly to the device over the same USB connection - no captive portal, no separate app.</p>
+                                <p class="text-secondary small mb-2">Sent to the device over USB right after flashing - no captive portal, no separate app.</p>
                                 <div class="mb-2" style="max-width:24rem">
                                     <label class="form-label small">WiFi network</label>
                                     <select id="provisionWifiSelect" class="form-select form-select-sm mb-2">
@@ -94,7 +75,7 @@
                                         <input type="password" id="provisionWifiPassword" class="form-control form-control-sm" placeholder="Password" />
                                     </div>
                                 </div>
-                                <button type="button" id="provisionSendButton" class="btn btn-sm btn-primary">Send to device</button>
+                                <button type="button" id="provisionContinueButton" class="btn btn-sm btn-primary">Continue to flash</button>
                             </div>
                             <div id="provisionStatus" class="text-secondary small mt-2"></div>
                             <div id="provisionAssignStep" class="mt-2" hidden>
@@ -107,6 +88,29 @@
                                 <button type="button" id="provisionAssignButton" class="btn btn-sm btn-primary">Assign to farm</button>
                                 <button type="button" id="provisionSkipButton" class="btn btn-sm btn-outline-secondary">Skip</button>
                             </div>
+                        </div>
+                    </div>
+
+                    @* Revealed only once the WiFi step above is completed - see firmware-provisioning.js onContinueClick. *@
+                    <div id="provisionFlashStep" hidden>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <select id="flashBoardSelect" class="form-select" style="width:auto">
+                                @foreach (var f in Model.InstallableBoards)
+                                {
+                                    <option value="@Url.Action("InstallManifest", new { board = f.Board })">@f.Board (@f.Version)</option>
+                                }
+                            </select>
+                            <esp-web-install-button id="flashInstallButton" manifest="@Url.Action("InstallManifest", new { board = Model.InstallableBoards[0].Board })">
+                                <button type="button" slot="activate" class="btn btn-outline-primary"><i class="bi bi-usb-symbol"></i> Install</button>
+                                <span slot="unsupported" class="text-secondary small">This browser does not support Web Serial - use Chrome or Edge on desktop.</span>
+                                <span slot="not-allowed" class="text-secondary small">Web Serial requires HTTPS.</span>
+                            </esp-web-install-button>
+                        </div>
+                        @* Populated by firmware-install-picker.js when the flasher's popup closes - esp-web-tools' own confirmation only lives inside that transient popup, so without this the page looks identical to before flashing the moment it's closed. *@
+                        <div id="flashResultBanner" class="alert alert-info d-flex align-items-center gap-2 mt-2" role="status" hidden>
+                            <i class="bi bi-info-circle"></i>
+                            <span id="flashResultText"></span>
+                            <button type="button" class="btn-close ms-auto" aria-label="Dismiss" onclick="document.getElementById('flashResultBanner').hidden = true"></button>
                         </div>
                     </div>
                 }
