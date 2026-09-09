@@ -449,6 +449,7 @@
         "relayEnabled",
         "relays",
         "skipWaterPumpForRain",
+        "heatingFailSafePolicy",
         "manualOverrides"
       ],
       "properties": {
@@ -516,6 +517,13 @@
         "skipWaterPumpForRain": {
           "type": "boolean",
           "description": "Roadmap #11. Final AND-NOT veto over WaterPump, computed server-side (DeviceApiController.BuildDeviceConfigAsync) from the assigned zone's SkipWaterPumpWhenRainPredicted AND the install-wide ServerConfig.WeatherRainPredicted - applied by AgrumyFirmware's ActuatorController::initController AFTER the OR of all WaterPump rules, same architectural slot as waterPumpMaxRunSeconds/waterPumpCooldownSeconds above."
+        },
+        "heatingFailSafePolicy": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "What a Heating rule does once its temperature reading has been stale (NaN) for longer than AgrumyFirmware's MAX_HEATING_SENSOR_STALE_SECONDS - copied from the assigned zone's own field (api.Models.HeatingFailSafePolicyType: 0=Hold, 1=Off, 2=ScheduleOnly). Null (zone never set one) and any unrecognized value both fall back to Hold, AgrumyFirmware's ActuatorController::evaluateRule."
         },
         "manualOverrides": {
           "type": "array",

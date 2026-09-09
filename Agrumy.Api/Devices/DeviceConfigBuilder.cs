@@ -115,6 +115,7 @@ namespace Agrumy.Api.Devices
                     controller.WaterLevelRawFull = zone?.WaterLevelRawFull;
                     // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks.
                     controller.SkipWaterPumpForRain = zone?.SkipWaterPumpWhenRainPredicted == true && serverConfig.WeatherRainPredicted;
+                    controller.HeatingFailSafePolicy = zone?.HeatingFailSafePolicy;
 
                     // Roadmap #219 - only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.
                     IList<DeviceManualOverride> activeOverrides = await repo.ManualOverridesActiveForDeviceAsync(device.IDDevice!.Value);

@@ -643,6 +643,9 @@ namespace Agrumy.Shared.Models
         // Final AND-NOT veto over WaterPump (BuildDeviceConfigAsync, from SkipWaterPumpWhenRainPredicted && WeatherRainPredicted) - not a Rule, since OR-combined rules can only add a run reason, never suppress one.
         public bool SkipWaterPumpForRain { get; set; }
 
+        // Copied from the assigned zone's own field - null (device default: Hold) when the zone never set one.
+        public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
+
         // Roadmap #219 - at most one per manually-triggerable RelayFunction, populated from IManualOverrideRepository.ManualOverridesActiveForDeviceAsync, empty when none are active.
         public IList<DeviceManualOverridePush> ManualOverrides { get; set; } = [];
 

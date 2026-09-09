@@ -111,6 +111,14 @@
                 <input type="number" min="0" name="heatingMaxRunSeconds" class="form-control form-control-sm" style="width:10rem" value="@Model.Zone.HeatingMaxRunSeconds" />
             </div>
             <div>
+                <label class="form-label small mb-0">Heating stale-sensor fail-safe</label>
+                <select name="heatingFailSafePolicy" class="form-select form-select-sm" style="width:12rem">
+                    <option value="@HeatingFailSafePolicyType.Hold" selected="@(Model.Zone.HeatingFailSafePolicy is null or HeatingFailSafePolicyType.Hold)">Hold, then force off (default)</option>
+                    <option value="@HeatingFailSafePolicyType.Off" selected="@(Model.Zone.HeatingFailSafePolicy == HeatingFailSafePolicyType.Off)">Force off immediately</option>
+                    <option value="@HeatingFailSafePolicyType.ScheduleOnly" selected="@(Model.Zone.HeatingFailSafePolicy == HeatingFailSafePolicyType.ScheduleOnly)">Fall back to schedule only</option>
+                </select>
+            </div>
+            <div>
                 <label class="form-label small mb-0">Ventilation max run seconds</label>
                 <input type="number" min="0" name="ventilationMaxRunSeconds" class="form-control form-control-sm" style="width:10rem" value="@Model.Zone.VentilationMaxRunSeconds" />
             </div>

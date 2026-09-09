@@ -61,6 +61,9 @@ namespace Agrumy.Dal.Entities
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
 
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone.HeatingFailSafePolicy - stored as HeatingFailSafePolicyType's own int value, null means Hold (the device's own default).
+        public int? HeatingFailSafePolicy { get; set; }
+
         // See Agrumy.Shared.Models.DeviceFarmUnitZone.DashboardWidgets (roadmap #238) - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
         public string? DashboardWidgetsJson { get; set; }
     }

@@ -57,6 +57,9 @@ namespace Agrumy.Shared.Models
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
 
+        /// What a Heating rule does while its temperature reading is stale (sensor absent/disabled/failed) - null means Hold, the long-standing device-side default (see AgrumyFirmware's ActuatorController::evaluateRule).
+        public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
+
         // Roadmap #238 - admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
     }
@@ -199,6 +202,17 @@ namespace Agrumy.Shared.Models
         Equal = 5,
         /// Inclusive both ends: Value1 &lt;= reading &lt;= Value2.
         Between = 6,
+    }
+
+    /// What a Heating-targeting rule does while its temperature reading is stale, past the point AgrumyFirmware's own MAX_HEATING_SENSOR_STALE_SECONDS grace window closes - per-zone instead of one fixed device-wide constant, since a frost-sensitive greenhouse and a tolerant one want different tradeoffs.
+    public enum HeatingFailSafePolicyType
+    {
+        /// Today's long-standing default: hold the last on/off state through the grace window, then force off. Risks staying on too long if the sensor genuinely failed, but never leaves a real cold snap unheated over a brief NTP/I2C hiccup.
+        Hold = 0,
+        /// Forces off the instant the reading goes stale, no grace window - the conservative choice for a zone where a stuck-on heater is the worse failure mode (e.g. no one on-site to notice).
+        Off = 1,
+        /// Falls back to the rule's Schedule/Interval nodes only (a Comparison node naturally evaluates false on a NaN reading, the same generic behavior every non-Heating function already gets) - for a zone whose Heating rule already has a schedule fallback baked in.
+        ScheduleOnly = 2,
     }
 
     /// Recursive rule-condition tree (roadmap #396(4)) - replaces the old flat Conditions[]+left-to-right-fold entirely (alfa phase, no backward compat). GroupNode.Children recurse arbitrarily, enabling real grouping ("(A AND B) OR (C AND D)"); every other Type is a leaf. A ComparisonNode's Metric is explicit and independent per condition - the old model forced every condition in a Relay rule to read the same metric its RelayFunction implied.

@@ -1155,6 +1155,28 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(120, overridden.WaterPumpCooldownSeconds);
     }
 
+    // Per-zone Heating fail-safe policy: null (never set) on a fresh zone, round-trips through DeviceFarmUnitZoneUpdateAsync once set, and reaches the wire DTO DeviceConfigBuilder actually sends.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZone_HeatingFailSafePolicy_DefaultNull_ThenRoundTrips_IntoDeviceConfig(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        Assert.Null(zone.HeatingFailSafePolicy);
+
+        zone.HeatingFailSafePolicy = HeatingFailSafePolicyType.ScheduleOnly;
+        await _repo.DeviceFarmUnitZoneUpdateAsync(zone);
+        var updated = await _repo.DeviceFarmUnitZoneGetByIdAsync(zone.IDDeviceFarmUnitZone);
+        Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, updated!.HeatingFailSafePolicy);
+
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
+        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, FirmwareTestSupport.NewCatalog(_repo));
+        DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
+        Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);
+    }
+
     // Roadmap #238 - the widget list round-trips through the real JSON column, and saves independently of the zone's other fields (no ConfigVersion bump, no interference with WaterPump limits set moments earlier).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitZone_DashboardWidgets_DefaultEmpty_ThenRoundTrips(DbProviderKind provider)

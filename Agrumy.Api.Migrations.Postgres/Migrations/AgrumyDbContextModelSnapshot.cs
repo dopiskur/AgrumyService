@@ -595,6 +595,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<int?>("HeatingFailSafePolicy")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("HeatingMaxRunSeconds")
                         .HasColumnType("integer");
 

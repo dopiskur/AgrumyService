@@ -423,6 +423,7 @@ namespace Agrumy.Api.Dal
                     // Same reasoning as Tank* above - no server-wide default, always taken from the caller.
                     HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds,
                     VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds,
+                    HeatingFailSafePolicy = (int?)zone.HeatingFailSafePolicy,
                 };
                 db.DeviceFarmUnitZones.Add(row);
                 try
@@ -455,6 +456,7 @@ namespace Agrumy.Api.Dal
             row.WaterPumpMinLevel = zone.WaterPumpMinLevel;
             row.HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds;
             row.VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds;
+            row.HeatingFailSafePolicy = (int?)zone.HeatingFailSafePolicy;
             await db.SaveChangesAsync();
             await DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone: row.IDDeviceFarmUnitZone);
         }
@@ -1405,6 +1407,7 @@ namespace Agrumy.Api.Dal
             WaterPumpMinLevel = z.WaterPumpMinLevel,
             HeatingMaxRunSeconds = z.HeatingMaxRunSeconds,
             VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
+            HeatingFailSafePolicy = (HeatingFailSafePolicyType?)z.HeatingFailSafePolicy,
             DashboardWidgets = string.IsNullOrEmpty(z.DashboardWidgetsJson)
                 ? []
                 : JsonSerializer.Deserialize<List<DashboardWidget>>(z.DashboardWidgetsJson, ConditionConfigJson.Options) ?? [],

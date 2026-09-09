@@ -724,7 +724,7 @@ namespace Agrumy.Web.Controllers.View
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SafetyLimitsUpdate(int idDeviceFarmUnitZone, int? waterPumpMaxRunSeconds, int? waterPumpCooldownSeconds, bool skipWaterPumpWhenRainPredicted,
-            int? heatingMaxRunSeconds, int? ventilationMaxRunSeconds)
+            int? heatingMaxRunSeconds, int? ventilationMaxRunSeconds, HeatingFailSafePolicyType? heatingFailSafePolicy)
         {
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             zone.WaterPumpMaxRunSeconds = waterPumpMaxRunSeconds;
@@ -732,6 +732,7 @@ namespace Agrumy.Web.Controllers.View
             zone.SkipWaterPumpWhenRainPredicted = skipWaterPumpWhenRainPredicted;
             zone.HeatingMaxRunSeconds = heatingMaxRunSeconds;
             zone.VentilationMaxRunSeconds = ventilationMaxRunSeconds;
+            zone.HeatingFailSafePolicy = heatingFailSafePolicy;
             try
             {
                 await api.DeviceFarmUnitZoneUpdate(zone);
