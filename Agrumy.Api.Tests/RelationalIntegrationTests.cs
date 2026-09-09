@@ -3263,6 +3263,16 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains(all, d => d.IDDevice == deviceB.IDDevice);
     }
 
+    // Roadmap gap this closes: nothing caught "changed an entity but forgot `dotnet ef migrations add`" until CI actually deployed the drifted schema. Use() above already ran Migrate() against a freshly-created empty database for this provider, so both checks below are true regression guards, not tautologies.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public void Migrations_LeaveNoPendingFiles_AndModelHasNoUncapturedChanges(DbProviderKind provider)
+    {
+        Use(provider);
+
+        Assert.Empty(_db!.Database.GetPendingMigrations());
+        Assert.False(_db.Database.HasPendingModelChanges(), "EF model has changes not captured by a migration - run `dotnet ef migrations add` for both Agrumy.Api.Migrations.MySql and .Postgres.");
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task TenantUsageSnapshotRecordAsync_SameDayRerun_UpsertsRatherThanDuplicates(DbProviderKind provider)
     {
