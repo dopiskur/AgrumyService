@@ -269,16 +269,18 @@ namespace Agrumy.Api.Controllers.API
 
             await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID ?? 0, value);
 
-            // The heartbeat is also how the server learns an OTA actually took - the first poll reporting the requested version fulfils the request (flags cleared, event logged).
-            if (await firmwareCatalog.NoteHeartbeatAsync(device, value.FirmwareVersion, value.Board))
+            // Compared against the device row read above (not a stale/absent session-cache copy) - config-unchanged alone is no longer enough to skip the response, since a pending command must ride along on this same poll.
+            PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice.Value);
+
+            // The heartbeat is also how the server learns an OTA actually took - the first poll reporting the requested version fulfils the request (flags cleared, event logged). A still-pending ForceOTA keeps the offer alive even when the running version already matches: that command exists to re-flash regardless, and needs firmwareUrl in this same response.
+            bool forceOtaPending = pendingCommand?.ActionType == CommandActionType.ForceOTA;
+            if (!forceOtaPending && await firmwareCatalog.NoteHeartbeatAsync(device, value.FirmwareVersion, value.Board))
             {
                 device.FirmwareUpdate = false;
                 device.FirmwareTargetVersion = null;
                 await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID ?? 0, DeviceEventType.FirmwareUpdated, "version=" + value.FirmwareVersion);
             }
 
-            // Compared against the device row read above (not a stale/absent session-cache copy) - config-unchanged alone is no longer enough to skip the response, since a pending command must ride along on this same poll.
-            PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice.Value);
             if (!await configBuilder.NeedsRefreshAsync(device, value.ConfigVersion, pendingCommand))
             {
                 return Ok(); // device is up to date, nothing is queued for it, and no heartbeat resend is due - do nothing
