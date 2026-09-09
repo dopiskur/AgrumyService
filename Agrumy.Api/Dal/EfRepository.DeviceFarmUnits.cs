@@ -56,7 +56,7 @@ namespace Agrumy.Api.Dal
 
         public Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone) => deviceFarmUnitRepository.DeviceFarmUnitZoneUpdateAsync(zone);
 
-        public Task DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitZoneMigrateAsync(idDeviceFarmUnitZone, idTargetDeviceFarmUnit);
+        public Task<bool> DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitZoneMigrateAsync(idDeviceFarmUnitZone, idTargetDeviceFarmUnit);
 
         public Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets) => deviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
 

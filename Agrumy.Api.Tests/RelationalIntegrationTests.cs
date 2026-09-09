@@ -1636,6 +1636,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal("First farm", Assert.Single(farms).DeviceFarmName);
     }
 
+    // The zone's own FK move alone leaves DeviceRow's denormalized DeviceFarmUnitID (DeviceAssignToZoneAsync's own copy, read by DeviceConfigBuilder's unit-scope rule lookup and every DeviceFarmUnitID-filtered query) pointing at the source unit unless it's moved too.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitZoneMigrateAsync_MovesZoneToTargetUnit_AndBumpsItsDevicesConfigVersion(DbProviderKind provider)
     {
@@ -1643,17 +1644,36 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (tenantId, _, _) = await MakeUser(t);
         var (sourceUnit, zone) = await MakeUnitAndZone(tenantId);
         var targetUnit = await _repo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = tenantId, DeviceFarmUnitName = "Target_" + U() });
-        var d = await MakeDevice(t, tenantId);
-        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        int configVersionBeforeMigrate = (await _repo.DeviceGetByIdAsync(d.IDDevice))!.ConfigVersion!.Value;
+        var d1 = await MakeDevice(t, tenantId);
+        var d2 = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d1.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        await _repo.DeviceAssignToZoneAsync(d2.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
 
-        await _repo.DeviceFarmUnitZoneMigrateAsync(zone.IDDeviceFarmUnitZone!.Value, targetUnit.IDDeviceFarmUnit!.Value);
+        // RuleAddAsync's own unit-scope ConfigVersion bump (below) is incidental to this test - captured after it, not before, so it isn't mistaken for the migrate bump this test actually asserts on.
+        int sourceUnitRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+        {
+            TenantID = tenantId, DeviceFarmUnitID = sourceUnit.IDDeviceFarmUnit!.Value, RelayFunction = RelayFunction.Heating, Name = "Source unit rule",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 1, Hysteresis = 1 },
+        });
+        int configVersionBeforeMigrate = (await _repo.DeviceGetByIdAsync(d1.IDDevice))!.ConfigVersion!.Value;
+
+        Assert.True(await _repo.DeviceFarmUnitZoneMigrateAsync(zone.IDDeviceFarmUnitZone!.Value, targetUnit.IDDeviceFarmUnit!.Value));
 
         var migrated = await _repo.DeviceFarmUnitZoneGetByIdAsync(zone.IDDeviceFarmUnitZone);
         Assert.Equal(targetUnit.IDDeviceFarmUnit, migrated!.DeviceFarmUnitID);
         Assert.NotEqual(sourceUnit.IDDeviceFarmUnit, migrated.DeviceFarmUnitID);
-        var deviceAfterMigrate = await _repo.DeviceGetByIdAsync(d.IDDevice);
-        Assert.Equal(configVersionBeforeMigrate + 1, deviceAfterMigrate!.ConfigVersion);
+
+        // Both zone members' own denormalized copy moved too, not just the zone row.
+        foreach (var d in new[] { d1, d2 })
+        {
+            var deviceAfterMigrate = await _repo.DeviceGetByIdAsync(d.IDDevice);
+            Assert.Equal(targetUnit.IDDeviceFarmUnit, deviceAfterMigrate!.DeviceFarmUnitID);
+        }
+        Assert.Equal(configVersionBeforeMigrate + 1, (await _repo.DeviceGetByIdAsync(d1.IDDevice))!.ConfigVersion);
+
+        // Same DeviceFarmUnitID-driven lookup DeviceConfigBuilder.BuildAsync uses to resolve unit-scope rules - the source unit's rule must no longer surface for a device that just left it.
+        int migratedDeviceUnitId = (await _repo.DeviceGetByIdAsync(d1.IDDevice))!.DeviceFarmUnitID!.Value;
+        Assert.DoesNotContain(await _repo.RulesGetForUnitAsync(migratedDeviceUnitId), r => r.IDDeviceFarmUnitZoneRule == sourceUnitRuleId);
     }
 
     // Roadmap #384 - Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).

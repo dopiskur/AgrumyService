@@ -459,16 +459,22 @@ namespace Agrumy.Api.Dal
             await DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone: row.IDDeviceFarmUnitZone);
         }
 
-        public async Task DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit)
+        public async Task<bool> DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit)
         {
             var row = await db.DeviceFarmUnitZones.FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
             if (row == null)
             {
-                return;
+                return false;
             }
+            int? tenantID = row.TenantID;
             row.DeviceFarmUnitID = idTargetDeviceFarmUnit;
             await db.SaveChangesAsync();
+            // DeviceFarmUnitID is denormalized onto DeviceRow (DeviceAssignToZoneAsync's own copy) - the zone's own FK above isn't what unit-scope rule resolution reads, this is.
+            await db.Devices.Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.DeviceFarmUnitID, idTargetDeviceFarmUnit));
             await DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone);
+            await deviceRepository.InvalidateFleetCacheAsync(tenantID);
+            return true;
         }
 
         /// Bumps ConfigVersion for every device in the zone (bulk update, not fetch-then-loop) so the next poll picks up a zone-level rule/safety-limit change.

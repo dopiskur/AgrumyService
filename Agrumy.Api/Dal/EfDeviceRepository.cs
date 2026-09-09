@@ -297,7 +297,7 @@ namespace Agrumy.Api.Dal
                 return;
             }
 
-            // Does not set MacAddress, config-id columns, DeviceFarmUnitID/DeviceFarmUnitZoneID (written exclusively by DeviceAssignToZoneAsync/DeviceUnassignFromZoneAsync to stay consistent), or ApiId/ApiKey (omitting them would wipe a device's real credential).
+            // Does not set MacAddress, config-id columns, DeviceFarmUnitID/DeviceFarmUnitZoneID (written exclusively by DeviceAssignToZoneAsync/DeviceUnassignFromZoneAsync/DeviceFarmUnitZoneMigrateAsync to stay consistent), or ApiId/ApiKey (omitting them would wipe a device's real credential).
             row.TenantID = device.TenantID;
             row.DeviceRoleID = device.DeviceRoleID;
             row.DeviceTypeServiceID = device.DeviceTypeServiceID;
