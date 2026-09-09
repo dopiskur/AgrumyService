@@ -5,28 +5,54 @@
   "description": "Body built by AgrumyFirmware DeviceController::registerDevice() (payload[...] lines). This is the unauthenticated bootstrap call - identity is proven by email + devicePin in the body, NOT by headers. Server model: api.Models.DeviceRegistration.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["macAddress", "email", "devicePin", "serviceType"],
+  "$comment": "properties = every key the server binds (generated from DeviceRegistration); required = what the firmware always sends. Firmware does NOT send 'servicePoint' (it only uses it as the URL host, the server defaults it to \"api.agrumy.com\"), nor the isGateway/gatewayProfile/gatewayRegistrationSecret trio, which only Agrumy.Gateway's own registration sends.",
+  "required": [
+    "macAddress",
+    "email",
+    "devicePin",
+    "serviceType",
+    "displayName"
+  ],
   "properties": {
     "macAddress": {
-      "type": "string",
+      "type": ["string", "null"],
       "minLength": 1,
       "description": "Uppercase hex with no separators, from WiFi.macAddress() (e.g. \"240AC4040AF8\"). Binds to DeviceRegistration.MacAddress; the server also builds DeviceName as \"Agrumy_\" + macAddress.ToUpper()."
     },
     "email": {
-      "type": "string",
+      "type": ["string", "null"],
       "minLength": 1,
       "description": "User account e-mail (firmware sends config[\"userLogin\"]). Binds to DeviceRegistration.Email; the server looks the user up by it and checks the PIN."
     },
     "devicePin": {
-      "type": "string",
+      "type": ["string", "null"],
       "pattern": "^[0-9A-Za-z]{1,7}$",
       "description": "The user's device PIN. Firmware sends it as a STRING (char devicePin[8], so at most 7 chars); since roadmap #70 the server generates a 6-char uppercase alphanumeric code (no O/I/0/1), compares case-insensitively, and expires it after 24h - it is reusable for multiple registrations in that window, not consumed by the first one. The server property is string? (DeviceRegistration.DevicePin)."
     },
+    "servicePoint": {
+      "type": ["string", "null"],
+      "description": "Not sent by firmware - server default \"api.agrumy.com\" applies when absent."
+    },
     "serviceType": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "enum": [0, 1, 2],
-      "description": "Echoed from DeviceDefaults.serviceType (0 http, 1 https, 2 mqtt). Binds to DeviceRegistration.ServiceType; the server stores but does not currently act on it."
+      "description": "Echoed from DeviceDefaults.serviceType (0 http, 1 https, 2 mqtt - ServiceTypeIds / DeviceServiceTypeIds). Binds to DeviceRegistration.ServiceType; the server stores but does not currently act on it."
+    },
+    "displayName": {
+      "type": ["string", "null"],
+      "description": "Operator-facing label typed on the captive portal, \"\" when none - only used as DeviceName when the device has no Discovery-provisioned name queued; the AP SSID stays Agrumy_<mac> regardless."
+    },
+    "isGateway": {
+      "type": "boolean",
+      "description": "Agrumy.Gateway only; firmware never sends it. Honored only together with a matching gatewayRegistrationSecret, silently dropped otherwise."
+    },
+    "gatewayProfile": {
+      "type": ["integer", "string", "null"],
+      "description": "Agrumy.Gateway only - api.Models.GatewayProfile (0=WiFiRepeater, 1=LoRaGateway, 2=LoRaPrivateProtocol)."
+    },
+    "gatewayRegistrationSecret": {
+      "type": ["string", "null"],
+      "description": "Agrumy.Gateway only - must equal the server's Gateway:RegistrationSecret for isGateway to be honored."
     }
-  },
-  "$comment": "Firmware does NOT send 'servicePoint' in this body (it only uses it as the URL host). The server model has a ServicePoint property that defaults to \"api.agrumy.com\" when the key is absent, which is why additionalProperties is false here - if the firmware starts sending it, that is a deliberate contract change and this schema should be updated."
+  }
 }

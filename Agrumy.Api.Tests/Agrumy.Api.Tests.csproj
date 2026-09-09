@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Agrumy.Rules\Agrumy.Rules.csproj" />
     <ProjectReference Include="..\Agrumy.Web\Agrumy.Web.csproj" />
     <ProjectReference Include="..\Agrumy.Gateway\Agrumy.Gateway.csproj" />
+    <ProjectReference Include="..\tools\Agrumy.ContractGen\Agrumy.ContractGen.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -188,9 +188,9 @@ public class ContractTests
     [Fact]
     public void RegisterRequest_FirmwareShapedPayload_MatchesSchemaAndBinds()
     {
-        // registerDevice(): macAddress/email/devicePin/serviceType, devicePin as a 6-char alphanumeric STRING.
+        // registerDevice(): macAddress/email/devicePin/serviceType/displayName, devicePin as a 6-char alphanumeric STRING.
         const string payload =
-            """{"macAddress":"240AC4040AF8","email":"admin@agrumy.local","devicePin":"AB23CD","serviceType":1}""";
+            """{"macAddress":"240AC4040AF8","email":"admin@agrumy.local","devicePin":"AB23CD","serviceType":1,"displayName":""}""";
 
         AssertValid("register.request.schema.json", payload);
 

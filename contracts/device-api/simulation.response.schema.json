@@ -6,29 +6,65 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "enabled", "temperature", "soilTemperature", "humidity", "battery", "moisture",
-    "light", "co2", "tvoc", "barometer", "liquidPH", "rainLevel", "waterLevel", "wind"
+    "enabled",
+    "temperature",
+    "soilTemperature",
+    "humidity",
+    "battery",
+    "moisture",
+    "light",
+    "co2",
+    "tvoc",
+    "barometer",
+    "liquidPH",
+    "rainLevel",
+    "waterLevel",
+    "wind"
   ],
   "properties": {
     "enabled": {
       "type": "boolean",
       "description": "Always true on this response - the endpoint returns 204 instead of enabled:false."
     },
-    "temperature": { "type": ["number", "null"] },
-    "soilTemperature": { "type": ["number", "null"] },
-    "humidity": { "type": ["number", "null"] },
-    "battery": { "type": ["integer", "null"] },
-    "moisture": { "type": ["integer", "null"] },
-    "light": { "type": ["integer", "null"] },
-    "co2": { "type": ["integer", "null"] },
-    "tvoc": { "type": ["integer", "null"] },
-    "barometer": { "type": ["number", "null"] },
+    "temperature": {
+      "type": ["number", "null"]
+    },
+    "soilTemperature": {
+      "type": ["number", "null"]
+    },
+    "humidity": {
+      "type": ["number", "null"]
+    },
+    "battery": {
+      "type": ["integer", "null"]
+    },
+    "moisture": {
+      "type": ["integer", "null"]
+    },
+    "light": {
+      "type": ["integer", "null"]
+    },
+    "co2": {
+      "type": ["integer", "null"]
+    },
+    "tvoc": {
+      "type": ["integer", "null"]
+    },
+    "barometer": {
+      "type": ["number", "null"]
+    },
     "liquidPH": {
       "type": ["number", "null"],
       "description": "C# property is 'LiquidPH'; camelCase leaves the 'PH' suffix uppercase -> 'liquidPH', same as deviceConfigSensor.sensorPH in config.response.schema.json."
     },
-    "rainLevel": { "type": ["integer", "null"] },
-    "waterLevel": { "type": ["integer", "null"] },
-    "wind": { "type": ["integer", "null"] }
+    "rainLevel": {
+      "type": ["integer", "null"]
+    },
+    "waterLevel": {
+      "type": ["integer", "null"]
+    },
+    "wind": {
+      "type": ["integer", "null"]
+    }
   }
 }

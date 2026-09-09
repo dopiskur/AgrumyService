@@ -9,36 +9,87 @@
     "type": "object",
     "additionalProperties": false,
     "required": [
-      "deviceID", "tenantID", "deviceFarmUnitID", "deviceFarmUnitZoneID",
-      "temperature", "soilTemperature", "humidity", "battery", "moisture", "light",
-      "co2", "tvoc", "barometer", "liquidPH", "rainLevel", "waterLevel", "wind", "dateCreated"
+      "deviceID",
+      "tenantID",
+      "deviceFarmUnitID",
+      "deviceFarmUnitZoneID",
+      "temperature",
+      "soilTemperature",
+      "humidity",
+      "battery",
+      "moisture",
+      "light",
+      "co2",
+      "tvoc",
+      "barometer",
+      "liquidPH",
+      "rainLevel",
+      "waterLevel",
+      "wind",
+      "dateCreated"
     ],
     "properties": {
-      "deviceID": { "type": ["integer", "null"] },
-      "tenantID": { "type": ["integer", "null"] },
-      "deviceFarmUnitID": { "type": ["integer", "null"] },
-      "deviceFarmUnitZoneID": { "type": ["integer", "null"] },
-      "temperature": { "type": ["number", "string", "null"] },
+      "deviceID": {
+        "type": ["integer", "string", "null"]
+      },
+      "tenantID": {
+        "type": ["integer", "string", "null"]
+      },
+      "deviceFarmUnitID": {
+        "type": ["integer", "string", "null"]
+      },
+      "deviceFarmUnitZoneID": {
+        "type": ["integer", "string", "null"]
+      },
+      "battery": {
+        "type": ["integer", "string", "null"]
+      },
+      "temperature": {
+        "type": ["number", "string", "null"]
+      },
       "soilTemperature": {
         "type": ["number", "string", "null"],
         "description": "Firmware sends the key 'soilTemperature'. Note the DeviceModel.h SensorData field is named 'temperatureSoil' - the wire key does not match the struct field name."
       },
-      "humidity": { "type": ["number", "string", "null"] },
-      "battery": { "type": ["number", "string", "null"] },
-      "moisture": { "type": ["number", "string", "null"] },
-      "light": { "type": ["number", "string", "null"] },
-      "co2": { "type": ["number", "string", "null"] },
-      "tvoc": { "type": ["number", "string", "null"] },
-      "barometer": { "type": ["number", "string", "null"] },
-      "liquidPH": { "type": ["number", "string", "null"] },
+      "humidity": {
+        "type": ["number", "string", "null"]
+      },
+      "moisture": {
+        "type": ["integer", "string", "null"]
+      },
+      "light": {
+        "type": ["integer", "string", "null"]
+      },
+      "co2": {
+        "type": ["integer", "string", "null"]
+      },
+      "tvoc": {
+        "type": ["integer", "string", "null"]
+      },
+      "barometer": {
+        "type": ["number", "string", "null"]
+      },
+      "liquidPH": {
+        "type": ["number", "string", "null"]
+      },
       "rainLevel": {
-        "type": ["number", "string", "null"],
+        "type": ["integer", "string", "null"],
         "description": "Rain sensor reading. The SensorDataPush stored procedure reads it via JSON_TABLE PATH '$.rainLevel', which matches this key - it is stored, not dropped."
       },
-      "waterLevel": { "type": ["number", "string", "null"] },
-      "wind": { "type": ["number", "string", "null"] },
-      "ec": { "type": ["number", "string", "null"], "description": "Roadmap #416." },
-      "weight": { "type": ["number", "string", "null"], "description": "Roadmap #416." },
+      "waterLevel": {
+        "type": ["integer", "string", "null"]
+      },
+      "wind": {
+        "type": ["integer", "string", "null"]
+      },
+      "ec": {
+        "type": ["number", "string", "null"],
+        "description": "Roadmap #416."
+      },
+      "weight": {
+        "type": ["number", "string", "null"],
+        "description": "Roadmap #416."
+      },
       "dateCreated": {
         "type": ["string", "null"],
         "description": "Firmware-side timestamp (device.getDateTime()) recorded when the reading was buffered; null when the clock is not yet set."

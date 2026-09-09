@@ -40,180 +40,98 @@
   ],
   "properties": {
     "configVersion": {
-      "type": [
-        "integer",
-        "null"
-      ]
+      "type": ["integer", "null"]
     },
     "tenantID": {
-      "type": [
-        "integer",
-        "null"
-      ]
+      "type": ["integer", "null"]
     },
     "deviceID": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": ["integer", "null"],
       "description": "Lowercase 'd' - the C# property is literally 'deviceID', so camelCase serialization leaves it unchanged. Firmware reads config[\"deviceID\"]."
     },
     "deviceFarmUnitID": {
-      "type": [
-        "integer",
-        "null"
-      ]
+      "type": ["integer", "null"]
     },
     "deviceFarmUnitZoneID": {
-      "type": [
-        "integer",
-        "null"
-      ]
+      "type": ["integer", "null"]
     },
     "deviceTypeServiceID": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": ["integer", "null"],
       "description": "0 http, 1 https, 2 mqtt. Drives DeviceController::serviceType() in steady-state operation."
     },
     "apiId": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
     "apiKey": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
     "servicePoint": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
     "servicePublicKey": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "description": "Pinned CA/self-signed cert for self-hosted deployments; null => firmware validates the TLS chain against its embedded CA bundle."
     },
     "sleepSeconds": {
-      "type": [
-        "integer",
-        "null"
-      ]
+      "type": ["integer", "null"]
     },
     "sleepDeep": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "loRaGatewayEnabled": {
-      "type": [
-        "boolean",
-        "null"
-      ],
+      "type": ["boolean", "null"],
       "description": "Roadmap #383. Lets an ordinary, already-registered device also relay LoRa private-protocol uplinks via its own WiFi/HTTP connection; firmware only actually starts listening if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise."
     },
     "utcOffsetSeconds": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": ["integer", "null"],
       "description": "Roadmap #39. Current UTC offset in seconds (positive east of UTC) for ServerConfig.ScheduleTimeZone, computed fresh on every response via TimeZoneHelper.GetUtcOffsetSeconds. 0 when no schedule timezone is configured. Firmware adds this to the NTP epoch and feeds the result to gmtime() to get local calendar fields with no on-device timezone database."
     },
     "serverUtcEpoch": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": ["integer", "null"],
       "description": "Roadmap #381. Server wall-clock (Unix seconds) at response time, sent on every poll. Firmware seeds its epoch from this value only while NTP has never synced (fully offline self-hosted install) - DeviceController::applyServerEpochFallback is a no-op once real NTP time is available."
     },
     "deviceSensorEnabled": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "deviceControllerEnabled": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "batteryEnabled": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "debug": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "reset": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "firmwareUpdate": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "firmwareVersion": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "description": "Roadmap #3 (OTA). The newest published firmware version for this device's type; non-null only when firmwareUpdate is true and a deviceFirmware row exists. The firmware compares it against its compiled-in version before downloading."
     },
     "firmwareUrl": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "description": "Roadmap #3 (OTA). HTTP(S) URL of the .bin to flash; paired with firmwareVersion, same null conditions."
     },
     "firmwareSha256": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "description": "Roadmap #131. Lowercase hex SHA-256 of the .bin at firmwareUrl (DeviceFirmware.Sha256), when the catalog has one - OtaController hashes the download while streaming it to flash and aborts before Update.end() on a mismatch. Null whenever the source has no manifest hash to offer (e.g. a Custom repository without one); the firmware then skips verification rather than failing closed."
     },
     "enabled": {
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "type": ["boolean", "null"]
     },
     "emergencyStop": {
-      "type": [
-        "boolean",
-        "null"
-      ],
+      "type": ["boolean", "null"],
       "description": "Roadmap #230. Tenant-wide fail-closed switch (Tenant.EmergencyStopActive) - true forces every relay off ahead of any rule, independent of deviceConfigController's own relayEnabled."
     },
     "simulationModeEnabled": {
-      "type": [
-        "boolean",
-        "null"
-      ],
+      "type": ["boolean", "null"],
       "description": "Roadmap #251 modality A. True tells firmware to start polling GET /api/Device/Simulation every 5s (or on every wake if sleepDeep) for per-metric sensor-reading overrides, applying them before local controller logic runs - same table/principle for a real device as for a fully virtual one (roadmap #343)."
     },
     "deviceConfigSensor": {
-      "description": "Populated only when deviceSensorEnabled is true; otherwise serialized as null (System.Text.Json keeps the key).",
       "oneOf": [
         {
           "type": "null"
@@ -221,10 +139,10 @@
         {
           "$ref": "#/definitions/deviceConfigSensor"
         }
-      ]
+      ],
+      "description": "Populated only when deviceSensorEnabled is true; otherwise serialized as null (System.Text.Json keeps the key)."
     },
     "deviceConfigController": {
-      "description": "Populated only when deviceControllerEnabled is true; otherwise serialized as null.",
       "oneOf": [
         {
           "type": "null"
@@ -232,10 +150,10 @@
         {
           "$ref": "#/definitions/deviceConfigController"
         }
-      ]
+      ],
+      "description": "Populated only when deviceControllerEnabled is true; otherwise serialized as null."
     },
     "pendingCommand": {
-      "description": "Roadmap #34. Null when there is nothing to do; present only for a real, unexpired Pending command.",
       "oneOf": [
         {
           "type": "null"
@@ -243,13 +161,11 @@
         {
           "$ref": "#/definitions/pendingCommand"
         }
-      ]
+      ],
+      "description": "Roadmap #34. Null when there is nothing to do; present only for a real, unexpired Pending command."
     },
     "schemaVersion": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": ["integer", "null"],
       "description": "Roadmap #451(23). Which config wire-format version the server generated this response with (Agrumy.Shared.Models.ConfigSchemaVersions.Current) - firmware compares this against its own CONFIG_SCHEMA_VERSION (DeviceModel.h) and logs (does not reject) when the server is ahead, so a stale-firmware mismatch is visible during OTA rollback triage instead of a silently-ignored new field."
     }
   },
@@ -284,145 +200,79 @@
       ],
       "properties": {
         "idDeviceConfigSensor": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorBattery": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #12. FK into deviceTypeSensor: 0/null=Disabled(None), 1009=MAX17048 (I2C fuel gauge, recommended), 2001=Analog voltage (VoltageDivider, fallback/necessity)."
         },
         "batteryDividerR1": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #12. VoltageDivider only (sensorBattery=2001): the actual R1 resistor wired, in ohms. V_battery = V_measured * (R1+R2)/R2. Ignored by MAX17048."
         },
         "batteryDividerR2": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #12. VoltageDivider only (sensorBattery=2001): the actual R2 resistor wired, in ohms."
         },
         "sensorTemp": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorTempSoil": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorHumid": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorMoist": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorLight": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorCo2": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorTvoc": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorBarometer": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorPH": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "C# property is 'SensorPH'; camelCase leaves the 'PH' suffix uppercase -> 'sensorPH'."
         },
         "sensorRainLevel": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorWaterLevel": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorWind": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "sensorEc": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #416. FK into deviceTypeSensor: 1030=Ads1115Ec."
         },
         "sensorWeight": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #416. FK into deviceTypeSensor: 1037=Hx711."
         },
         "weightCalibrationFactor": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #416. HX711 set_scale() divisor - raw counts per real-world unit, calibrated per install."
         },
         "weightTareOffset": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "HX711 set_offset() raw reading with the scale empty, applied every boot instead of tare()ing whatever's currently on the scale."
         },
         "ecCalibrationSlope": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #416. No universal analog-EC-probe formula exists - identity default (1.0) reports raw millivolts until calibrated against known-EC reference solutions."
         },
         "ecCalibrationOffset": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #416. Paired with ecCalibrationSlope above."
         }
       }
@@ -439,18 +289,15 @@
         "waterPumpMinLevel",
         "waterLevelRawEmpty",
         "waterLevelRawFull",
-        "relayEnabled",
-        "relays",
         "skipWaterPumpForRain",
         "heatingFailSafePolicy",
-        "manualOverrides"
+        "manualOverrides",
+        "relayEnabled",
+        "relays"
       ],
       "properties": {
         "idDeviceConfigController": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "rules": {
           "type": "array",
@@ -460,62 +307,31 @@
           "description": "Roadmap #21. Every automation rule for the zone this device is assigned to - empty when unassigned. Several rules may target the SAME relayFunction: OR semantics, any rule that evaluates on wins (AgrumyFirmware's ActuatorController::evaluateRule/initController)."
         },
         "waterPumpMaxRunSeconds": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #21/#36. Hard ceiling (seconds) on continuous WaterPump run time, enforced device-side AFTER any rule decides the pump should run - AgrumyFirmware's ActuatorController::applyWaterPumpSafetyLimits. Copied from the assigned zone (api.Models.DeviceFarmUnitZone), not this row. 0/null disables it."
         },
         "waterPumpCooldownSeconds": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #21/#36. Minimum OFF time (seconds) before the next WaterPump attempt is allowed, same enforcement point as waterPumpMaxRunSeconds. Copied from the assigned zone. 0/null disables it."
         },
         "waterPumpMinLevel": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Roadmap #393. Dry-run protection - blocks WaterPump (Interval/Schedule/Manual included, not just Threshold) below this fill percent, evaluated device-side against waterLevelRawEmpty/waterLevelRawFull (AgrumyFirmware's RelayLogic::waterPumpBlockedByLowTank). Copied from the assigned zone. <=0/null, or waterLevelRawEmpty==waterLevelRawFull, disables it."
         },
         "waterLevelRawEmpty": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #234/#393. Raw sensorData.WaterLevel reading when the tank is empty - same calibration api.Utils.TankCalculator uses server-side, sent here so waterPumpMinLevel can be evaluated on-device."
         },
         "waterLevelRawFull": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #234/#393. Raw sensorData.WaterLevel reading when the tank is full - see waterLevelRawEmpty."
-        },
-        "relayEnabled": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "relays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/deviceRelaySlot"
-          },
-          "description": "Roadmap #309. One entry per physically-wired relay slot with a function assigned - a slot with no entry is unassigned/disabled. Replaces the old fixed relay1..relay8 keys, removing the hardcoded 8-slot ceiling from the wire format itself (AgrumyFirmware's own MAX_RELAY_SLOTS still caps how many a given firmware build can hold)."
         },
         "skipWaterPumpForRain": {
           "type": "boolean",
           "description": "Roadmap #11. Final AND-NOT veto over WaterPump, computed server-side (DeviceApiController.BuildDeviceConfigAsync) from the assigned zone's SkipWaterPumpWhenRainPredicted AND the install-wide ServerConfig.WeatherRainPredicted - applied by AgrumyFirmware's ActuatorController::initController AFTER the OR of all WaterPump rules, same architectural slot as waterPumpMaxRunSeconds/waterPumpCooldownSeconds above."
         },
         "heatingFailSafePolicy": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "What a Heating rule does once its temperature reading has been stale (NaN) for longer than AgrumyFirmware's MAX_HEATING_SENSOR_STALE_SECONDS - copied from the assigned zone's own field (api.Models.HeatingFailSafePolicyType: 0=Hold, 1=Off, 2=ScheduleOnly). Null (zone never set one) and any unrecognized value both fall back to Hold, AgrumyFirmware's ActuatorController::evaluateRule."
         },
         "manualOverrides": {
@@ -524,70 +340,16 @@
             "$ref": "#/definitions/deviceManualOverridePush"
           },
           "description": "Roadmap #219. Only what's still active (not yet past expiresAtEpoch) - a naturally-expired command simply stops appearing here on the next poll, no explicit stop message needed. Applied by AgrumyFirmware's ActuatorController::initController AFTER the rules' OR and the WaterPump rain veto, winning over both."
-        }
-      }
-    },
-    "deviceManualOverridePush": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Roadmap #219. camelCase serialization of api.Models.DeviceManualOverridePush.",
-      "required": [
-        "relayFunction",
-        "mode",
-        "expiresAtEpoch"
-      ],
-      "properties": {
-        "relayFunction": {
-          "type": "integer",
-          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - only Ventilation/Heating/WaterPump are ever actually sent, Light cannot be manually actuated."
         },
-        "mode": {
-          "type": "integer",
-          "description": "1=Duration (unconditional while inside the window), 2=Target (reuses the same dead-zone threshold math as an automated Threshold condition) - api.Models.ManualOverrideMode."
+        "relayEnabled": {
+          "type": ["boolean", "null"]
         },
-        "expiresAtEpoch": {
-          "type": "integer",
-          "description": "Unix seconds. Hard safety cap regardless of mode - past this, the override no longer applies this tick even if a Target-mode condition would otherwise say to force on."
-        },
-        "targetMetric": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "description": "Target mode only - 1=Temperature, 3=Humidity, 5=Moisture (api.Models.SensorMetric's numeric values, only this subset is valid here). Null for Duration mode."
-        },
-        "targetThreshold": {
-          "type": [
-            "number",
-            "null"
-          ],
-          "description": "Target mode only, null for Duration mode."
-        },
-        "targetHysteresis": {
-          "type": [
-            "number",
-            "null"
-          ],
-          "description": "Target mode only, null for Duration mode."
-        }
-      }
-    },
-    "deviceRelaySlot": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Roadmap #309. camelCase serialization of api.Models.DeviceRelaySlot - one physically-wired relay position and the function assigned to it.",
-      "required": [
-        "slot",
-        "relayFunction"
-      ],
-      "properties": {
-        "slot": {
-          "type": "integer",
-          "description": "1-based physical relay position on this device's board - AgrumyFirmware indexes ConfigPin.RELAY_PINS[slot-1] to find the actual GPIO/expander pin."
-        },
-        "relayFunction": {
-          "type": "integer",
-          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - never 0/Disabled, a disabled slot is simply omitted from the relays array rather than sent with this value."
+        "relays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/deviceRelaySlot"
+          },
+          "description": "Roadmap #309. One entry per physically-wired relay slot with a function assigned - a slot with no entry is unassigned/disabled. Replaces the old fixed relay1..relay8 keys, removing the hardcoded 8-slot ceiling from the wire format itself (AgrumyFirmware's own MAX_RELAY_SLOTS still caps how many a given firmware build can hold)."
         }
       }
     },
@@ -605,107 +367,84 @@
         "experimentID",
         "actionType",
         "relayFunction",
-        "targetPercent",
         "name",
         "description",
         "root",
+        "targetPercent",
         "isSafetyRule",
         "notificationSubject",
         "notificationBody"
       ],
       "properties": {
         "idDeviceFarmUnitZoneRule": {
-          "type": [
-            "integer",
-            "null"
-          ]
+          "type": ["integer", "null"]
         },
         "tenantID": {
           "type": "integer",
           "description": "Admin-API/DB concern only - firmware has no notion of tenant."
         },
         "deviceFarmID": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Roadmap #384. Set only for a Farm-scope rule - never seen here, since a rule reaching a device is already resolved to a specific Zone (RuleHierarchyResolver)."
         },
         "deviceFarmUnitID": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Set only for a Unit-scope rule - never seen here, since a rule reaching a device is already resolved to a specific Zone (RuleHierarchyResolver)."
         },
+        "deviceFarmUnitZoneID": {
+          "type": ["integer", "null"],
+          "description": "Which zone this rule belongs to - redundant with the top-level deviceConfig.deviceFarmUnitZoneID (the device already knows its own zone). Never actually null on a rule that reached a device (a rule only reaches firmware after RuleHierarchyResolver has already pinned it to this specific zone), the type stays nullable here only because it mirrors the same always-present-class as the Unit/Global-scope rows the admin-API CRUD side also serializes with this definition."
+        },
         "simulationSessionID": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Set only for a Simulation-scope rule - a rule reaching a device is already resolved to a specific Zone (RuleHierarchyResolver) regardless of which scope originally won, so this stays null on the wire just like deviceFarmID/deviceFarmUnitID above."
         },
         "experimentID": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Set only for an Experiment-scope rule - same always-null-on-the-wire reasoning as simulationSessionID above, a resolved rule carries no scope marker."
-        },
-        "relayFunction": {
-          "type": "integer",
-          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump, 5=Screen, 6=Vent (api.Models.RelayFunction) - which of the device's relay slots this rule targets, resolved device-side against its OWN relays[]/pwmSlots[] mapping above (the rule itself carries no slot number)."
-        },
-        "targetPercent": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "description": "Only meaningful when relayFunction is positional (Screen=5/Vent=6) - the 0-100 position this rule commands while root evaluates true; several simultaneously-true rules for the same function fold to the HIGHEST targetPercent among them, not on/off OR. Null for every other function."
         },
         "actionType": {
           "type": "integer",
           "description": "1=Relay, 2=Notification (api.Models.ActionType) - always 1 here, a Notification-action rule is never sent to a device (api.BackgroundWorkers.RuleNotificationEvaluator evaluates those server-side instead)."
+        },
+        "relayFunction": {
+          "type": ["integer", "null"],
+          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump, 5=Screen, 6=Vent (api.Models.RelayFunction) - which of the device's relay slots this rule targets, resolved device-side against its OWN relays[]/pwmSlots[] mapping above (the rule itself carries no slot number)."
         },
         "name": {
           "type": "string",
           "description": "Roadmap #396(4). Admin-facing label, required - never read by firmware, only used server-side for Notification-rule hierarchy override-by-name (api.Devices.RuleHierarchyResolver)."
         },
         "description": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "Roadmap #396(4). Optional admin-facing note - never read by firmware."
         },
         "root": {
-          "$ref": "#/definitions/conditionNode",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/conditionNode"
+            }
+          ],
           "description": "Roadmap #396(4). Recursive condition tree replacing the old flat conditions[] array - a GroupNode's children may nest arbitrarily (AgrumyFirmware's RelayLogic::evaluateNode), up to MAX_NODES_PER_RULE(8) total nodes and MAX_CHILDREN_PER_GROUP(4) per group."
+        },
+        "targetPercent": {
+          "type": ["integer", "null"],
+          "description": "Only meaningful when relayFunction is positional (Screen=5/Vent=6) - the 0-100 position this rule commands while root evaluates true; several simultaneously-true rules for the same function fold to the HIGHEST targetPercent among them, not on/off OR. Null for every other function."
         },
         "isSafetyRule": {
           "type": "boolean",
           "description": "Roadmap #396(5). Survives RuleHierarchyResolver's normal scope-override even when a more specific scope has its own rule(s) for the same relayFunction - ORs in alongside whichever rule 'won'. Not read by firmware itself, already resolved into the final rule set server-side."
         },
         "notificationSubject": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "Notification-action only - always null here."
         },
         "notificationBody": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "Notification-action only - always null here."
-        },
-        "deviceFarmUnitZoneID": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "description": "Which zone this rule belongs to - redundant with the top-level deviceConfig.deviceFarmUnitZoneID (the device already knows its own zone). Never actually null on a rule that reached a device (a rule only reaches firmware after RuleHierarchyResolver has already pinned it to this specific zone), the type stays nullable here only because it mirrors the same always-present-class as the Unit/Global-scope rows the admin-API CRUD side also serializes with this definition."
         }
       }
     },
@@ -742,145 +481,143 @@
           "description": "1=Comparison, 2=Interval, 3=Schedule, 4=Group (api.Models.NodeType) - selects which of the fields below are meaningful. 5=Astronomical/6=RuleTriggered never reach this wire shape, see this definition's own remarks."
         },
         "metric": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Comparison only. 1-13=RAW (a real sensor reading), 14+=DERIVED (computed on-the-fly by AgrumyFirmware's RelayLogic::readMetric, never stored) - api.Models.SensorMetric's numeric values exactly."
         },
         "operator": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Comparison only. 1=GT, 2=LT (both carry the old Threshold condition's dead-zone latch via hysteresis), 3=GTE, 4=LTE, 5=EQ, 6=BETWEEN (all three stateless, no latch) - api.Models.ComparisonOperator."
         },
         "value1": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Comparison only."
         },
         "value2": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Comparison, BETWEEN operator only."
         },
         "hysteresis": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "Comparison, GT/LT operators only - dead-zone margin, must not be negative (enforced server-side, DeviceFarmUnitApiController.NodeConfigError)."
         },
         "interval": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Interval only."
         },
         "intervalLength": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Interval only. Must not exceed interval (enforced server-side)."
         },
         "daysOfWeek": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Schedule only. 7-bit mask, bit 0 = Sunday .. bit 6 = Saturday (matches C's tm_wday - see AgrumyFirmware's RelayLogic::evaluateNode)."
         },
         "start": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Schedule only. Seconds since LOCAL midnight (DeviceConfig.utcOffsetSeconds resolves 'local'), 0-86399."
         },
         "duration": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Schedule only. Seconds. start+duration must not exceed 86400 (no crossing local midnight in v1) - enforced server-side, DeviceFarmUnitApiController.NodeConfigError."
         },
         "sunriseOffsetMinutes": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Astronomical only - never present here, see this definition's own remarks."
         },
         "sunsetOffsetMinutes": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Astronomical only - never present here, see this definition's own remarks."
         },
         "referencedRuleId": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "RuleTriggered only - never present here, see this definition's own remarks."
         },
         "groupOperator": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Group only. 1=AND, 2=OR (api.Models.LogicalOperator) - folds children strictly left-to-right, never re-associated."
         },
         "children": {
           "type": "array",
-          "maxItems": 4,
           "items": {
             "$ref": "#/definitions/conditionNode"
           },
+          "maxItems": 4,
           "description": "Group only, empty array otherwise - up to MAX_CHILDREN_PER_GROUP(4) direct children, each recursively any node type including another Group."
         },
         "windowHours": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "RateOfChange only - never present here, see this definition's own remarks."
         },
         "changeThreshold": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "RateOfChange only - never present here, see this definition's own remarks."
         },
         "nightWindowHours": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "DifDisruption only - never present here, see this definition's own remarks."
         },
         "dayWindowHours": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "DifDisruption only - never present here, see this definition's own remarks."
         },
         "minDifDegrees": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "description": "DifDisruption only - never present here, see this definition's own remarks."
+        }
+      }
+    },
+    "deviceManualOverridePush": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Roadmap #219. camelCase serialization of api.Models.DeviceManualOverridePush.",
+      "required": [
+        "relayFunction",
+        "mode",
+        "expiresAtEpoch",
+        "targetMetric",
+        "targetThreshold",
+        "targetHysteresis"
+      ],
+      "properties": {
+        "relayFunction": {
+          "type": "integer",
+          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - only Ventilation/Heating/WaterPump are ever actually sent, Light cannot be manually actuated."
+        },
+        "mode": {
+          "type": "integer",
+          "description": "1=Duration (unconditional while inside the window), 2=Target (reuses the same dead-zone threshold math as an automated Threshold condition) - api.Models.ManualOverrideMode."
+        },
+        "expiresAtEpoch": {
+          "type": "integer",
+          "description": "Unix seconds. Hard safety cap regardless of mode - past this, the override no longer applies this tick even if a Target-mode condition would otherwise say to force on."
+        },
+        "targetMetric": {
+          "type": ["integer", "null"],
+          "description": "Target mode only - 1=Temperature, 3=Humidity, 5=Moisture (api.Models.SensorMetric's numeric values, only this subset is valid here). Null for Duration mode."
+        },
+        "targetThreshold": {
+          "type": ["number", "null"],
+          "description": "Target mode only, null for Duration mode."
+        },
+        "targetHysteresis": {
+          "type": ["number", "null"],
+          "description": "Target mode only, null for Duration mode."
+        }
+      }
+    },
+    "deviceRelaySlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Roadmap #309. camelCase serialization of api.Models.DeviceRelaySlot - one physically-wired relay position and the function assigned to it.",
+      "required": ["slot", "relayFunction"],
+      "properties": {
+        "slot": {
+          "type": "integer",
+          "description": "1-based physical relay position on this device's board - AgrumyFirmware indexes ConfigPin.RELAY_PINS[slot-1] to find the actual GPIO/expander pin."
+        },
+        "relayFunction": {
+          "type": "integer",
+          "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - never 0/Disabled, a disabled slot is simply omitted from the relays array rather than sent with this value."
         }
       }
     },
@@ -888,11 +625,7 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Roadmap #34. camelCase serialization of api.Models.PendingCommand - the one oldest, unexpired Pending deviceCommand row for this device, if any.",
-      "required": [
-        "idDeviceCommand",
-        "actionType",
-        "expiresAt"
-      ],
+      "required": ["idDeviceCommand", "actionType", "expiresAt", "payload"],
       "properties": {
         "idDeviceCommand": {
           "type": "integer",
@@ -905,6 +638,10 @@
         "expiresAt": {
           "type": "string",
           "description": "ISO 8601 UTC timestamp. A command not acked/executed by this time must not be acted on if somehow still received - matches the server's own lazy-expiry check."
+        },
+        "payload": {
+          "type": ["string", "null"],
+          "description": "JSON string for ProvisionDevice/UpdateWifiCredentials (api.Models.DiscoveryProvisionPayload / WifiUpdatePayload), null for every other actionType."
         }
       }
     }

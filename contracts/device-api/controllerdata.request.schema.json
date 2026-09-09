@@ -11,7 +11,7 @@
     "required": ["relayFunction", "isOn", "dateCreated"],
     "properties": {
       "relayFunction": {
-        "type": "integer",
+        "type": ["integer", "string"],
         "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump, 5=Screen, 6=Vent (api.Models.RelayFunction) - same convention as deviceFarmUnitZoneRule.relayFunction in config.response.schema.json."
       },
       "isOn": {
@@ -19,7 +19,7 @@
         "description": "The relay's new state after this transition - for a positional function (Screen/Vent) this is percent>0, not an independent decision."
       },
       "percent": {
-        "type": ["integer", "null"],
+        "type": ["integer", "string", "null"],
         "description": "Only meaningful for a positional function (Screen/Vent) - the actual 0-100 position driven to. Absent/null for a binary function."
       },
       "dateCreated": {

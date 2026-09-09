@@ -5,66 +5,74 @@
   "description": "Body built by ServiceController::apiConfig(). 'ConfigVersion' - PascalCase, unlike every other firmware payload - is the device's current config version sent as a STRING (String(deviceConfig.configVersion)). Since roadmap #7 the poll doubles as the heartbeat and also carries live diagnostics: 'Uptime' (seconds since boot, from esp_timer_get_time), 'Rssi' (WiFi.RSSI() dBm, negative), 'FreeHeap' (ESP.getFreeHeap() bytes) and 'FirmwareVersion' (the RUNNING image's version string, not the offered OTA one). The server binds the body to api.Models.DeviceConfigPoll via System.Text.Json case-insensitive matching plus NumberHandling.AllowReadingFromString, and upserts the diagnostics into deviceDiagnostic with LastSeenAt = server clock. Credentials travel as HTTP HEADERS: 'apiId' (device GUID) and 'Authorization' (the apiAuth token from /Authenticate).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["ConfigVersion", "Uptime", "Rssi", "FreeHeap", "FirmwareVersion", "Board", "Kit"],
+  "$comment": "Required request headers (contract record only): 'apiId': device ApiId GUID; 'Authorization': apiAuth token from POST /api/Device/Authenticate.",
+  "required": [
+    "ConfigVersion",
+    "Uptime",
+    "Rssi",
+    "FreeHeap",
+    "FirmwareVersion",
+    "Board",
+    "Kit"
+  ],
   "properties": {
     "ConfigVersion": {
-      "type": ["string", "integer"],
+      "type": ["integer", "string", "null"],
       "description": "Firmware sends a string (e.g. \"66\"); an integer is also accepted by the server. If the value differs from the server's stored ConfigVersion, the response is the full config object (config.response.schema.json). If it is equal, the server returns HTTP 200 with an EMPTY body."
     },
     "Uptime": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Seconds since the device booted (64-bit microsecond timer divided down, so it does not wrap at the 49-day millis() boundary)."
     },
     "Rssi": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "description": "WiFi.RSSI() of the current association, in dBm - typically -30 (excellent) to -90 (unusable)."
     },
     "FreeHeap": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "ESP.getFreeHeap() in bytes at the start of the config poll."
     },
     "MinFreeHeap": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Roadmap #451(22). ESP.getMinFreeHeap() - the lowest free-heap value ever recorded since boot; shows a transient dip FreeHeap alone would miss. Optional, absent from pre-#451 firmware."
     },
     "MaxAllocHeap": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Roadmap #451(22). ESP.getMaxAllocHeap() - the largest single allocatable block; a low value flags heap fragmentation even when FreeHeap looks fine. Optional, absent from pre-#451 firmware."
     },
     "StackHighWaterMark": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Roadmap #451(22). uxTaskGetStackHighWaterMark(NULL) in bytes - the loop task's unused stack margin; a low value flags an approaching stack overflow. Optional, absent from pre-#451 firmware."
     },
     "NetworkStackHighWaterMark": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "uxTaskGetStackHighWaterMark of the persistent network task, in bytes - same meaning as StackHighWaterMark but for the task that owns WiFiClientSecure/HTTPClient. Optional, absent from firmware built before the network task existed."
     },
     "FirmwareVersion": {
-      "type": "string",
+      "type": ["string", "null"],
       "maxLength": 20,
       "description": "Version string of the image currently RUNNING (main.cpp's 'firmware' constant) - lets the server verify an OTA actually took, independent of the offered firmwareVersion in the response. Since roadmap #94 this is derived from the git tag at build time (tools/firmware_version.py -> FIRMWARE_VERSION define), 'x.y.z' without the leading 'v'."
     },
     "Board": {
-      "type": "string",
+      "type": ["string", "null"],
       "maxLength": 40,
       "description": "Roadmap #94: the PlatformIO environment the running image was built for (AGRUMY_BOARD build flag, e.g. \"esp32dev\" or \"esp32s3usbotg\") - selects which release .bin (agrumy-<board>-v<version>.bin) the server offers for OTA. Stored in deviceDiagnostic.Board."
     },
     "Kit": {
-      "type": "string",
+      "type": ["string", "null"],
       "maxLength": 64,
       "description": "Roadmap #149: which commercial physical board this image was built for (AGRUMY_KIT build flag, e.g. \"KC868-A6\" or \"ESP32-S3-Relay-6CH\"), separate from Board above - Board picks the OTA binary, Kit is what the server's deviceTypeKit lookup matches against to auto-detect relay-hardware capability. Empty string on every generic chip-target environment (esp32dev/esp32s3usbotg), always present since this field was introduced (unlike Board, no pre-this-feature firmware to special-case). Stored in deviceDiagnostic.Kit."
     },
     "ConfigSchemaVersion": {
-      "type": "integer",
+      "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Roadmap #451(23). AgrumyFirmware's own CONFIG_SCHEMA_VERSION constant (DeviceModel.h) - which config wire-format version this running firmware understands. Informational only, server doesn't currently act on a mismatch. Optional, absent from pre-#451 firmware."
     }
-  },
-  "$comment": "Required request headers (contract record only): 'apiId': device ApiId GUID; 'Authorization': apiAuth token from POST /api/Device/Authenticate."
+  }
 }
