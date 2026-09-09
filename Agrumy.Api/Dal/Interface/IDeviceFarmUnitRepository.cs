@@ -78,6 +78,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Cascade-deletes every Zone under this Unit first (devices unassigned via DeviceUnassignFromZoneAsync), then the Unit row - a no-op if the id doesn't exist.
         Task DeviceFarmUnitDeleteAsync(int idDeviceFarmUnit);
 
+        /// Sets DisplayOrder to each id's index in orderedUnitIds, scoped to whatever subset the caller drags (one farm's units, or the unassigned bucket) - same convention as DeviceFarmsReorderAsync.
+        Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds);
+
         // ---- Zone CRUD ------------------------------------------------
 
         /// Every Zone belonging to this Unit - never includes the IDDeviceFarmUnitZone=0 "Disabled" sentinel.

@@ -26,6 +26,7 @@ namespace Agrumy.Dal.Entities
         public bool? ZoneEnabled { get; set; }
         // Roadmap #384 - optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
+        public int DisplayOrder { get; set; }
 
         // Roadmap #408 - set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }

@@ -7,5 +7,7 @@ namespace Agrumy.Web.ViewModels
     {
         public IList<DeviceFarmUnitDashboard> Units { get; init; } = [];
         public IList<DeviceFarm> Farms { get; init; } = [];
+        // Drag-reorder container id, unique per grouping (a farm's units vs the unassigned bucket) so each gets its own Sortable instance and search filter.
+        public string ContainerId { get; init; } = "unitCubes";
     }
 }

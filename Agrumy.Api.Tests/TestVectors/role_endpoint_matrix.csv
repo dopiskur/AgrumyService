@@ -70,6 +70,7 @@ POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant adm
 POST,api/DeviceFarmUnit/Farm/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device

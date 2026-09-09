@@ -614,6 +614,23 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone });
         }
 
+        /// Called via fetch from units-reorder.js right after a drag ends, not a form post - same reasoning as FarmsReorder above (the Farms page is a 10s live-refresh target).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitsReorder([FromBody] List<int> orderedUnitIds)
+        {
+            try
+            {
+                await api.DeviceFarmUnitsReorder(orderedUnitIds);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

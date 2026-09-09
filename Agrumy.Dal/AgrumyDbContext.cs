@@ -217,6 +217,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.IDDeviceFarmUnit).ValueGeneratedNever();
                 e.Property(x => x.DeviceFarmUnitName).HasMaxLength(100);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.DeviceFarmID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasQueryFilter(x => !x.Deleted);
             });

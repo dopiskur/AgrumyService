@@ -158,6 +158,27 @@ public class SimulationApiControllerTests
     }
 
     [Fact]
+    public async Task DeleteSession_VirtualMember_CascadesToRecycleBin_NeverJustUnlinked()
+    {
+        _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession
+        {
+            IDSimulationSession = 5, TenantID = 1, Name = "Test",
+            Devices = [new DeviceDto { IDDevice = 9 }],
+        });
+        _repo.Setup(r => r.VirtualDeviceIdsGetAsync(1)).ReturnsAsync(new List<int> { 9 });
+        _repo.Setup(r => r.VirtualDeviceDeleteAsync(9, 1)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SimulationSessionDeleteAsync(5)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        var controller = NewController();
+        SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.DeleteSession(5);
+
+        Assert.IsType<OkResult>(result);
+        // MockBehavior.Strict: DeviceSimulationSetAsync has no setup, proving the virtual member went through VirtualDeviceDeleteAsync (soft-delete/Recycle Bin) instead of the physical-override "turn off" path.
+    }
+
+    [Fact]
     public async Task DeleteSession_ForeignTenant_Returns403_NeverDeletes()
     {
         _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 99 });

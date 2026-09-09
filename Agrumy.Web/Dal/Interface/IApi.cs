@@ -269,6 +269,10 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit")]
         Task DeviceFarmUnitDelete(int? idDeviceFarmUnit);
 
+        /// Persists the Farms page's drag-and-drop unit cube order - full replacement of every listed unit's DisplayOrder by index, not a partial patch.
+        [Post("/api/DeviceFarmUnit/Reorder")]
+        Task DeviceFarmUnitsReorder([Body] List<int> orderedUnitIds);
+
         [Get("/api/DeviceFarmUnit/Zone")]
         Task<IList<DeviceFarmUnitZone>> DeviceFarmUnitZonesGet(int? idDeviceFarmUnit);
 

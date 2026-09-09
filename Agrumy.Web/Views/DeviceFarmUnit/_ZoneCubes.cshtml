@@ -7,7 +7,7 @@
 }
 @foreach (var z in Model)
 {
-    <div class="col-md-4 col-sm-6 mb-3">
+    <div class="col-md-4 col-sm-6 mb-3 zone-cube" data-filter-value="@z.DeviceFarmUnitZoneName?.ToLowerInvariant()">
         <a asp-action="Zone" asp-route-idDeviceFarmUnitZone="@z.IDDeviceFarmUnitZone" class="text-decoration-none text-reset">
             <div class="small-box text-bg-info h-100">
                 <div class="inner">

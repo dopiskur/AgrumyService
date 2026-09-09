@@ -177,6 +177,36 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
+        /// The Farms page's drag-and-drop unit cube order, same convention as DeviceFarmsReorder - full replacement of every listed unit's DisplayOrder by index. Every id must resolve to an owned unit AND belong to the same tenant, or the whole request is rejected.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Reorder")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitsReorder([FromBody] List<int> orderedUnitIds)
+        {
+            if (orderedUnitIds is null or [])
+            {
+                return BadRequest("orderedUnitIds is required.");
+            }
+
+            int? tenantId = null;
+            foreach (int id in orderedUnitIds)
+            {
+                var (unit, error) = await EnsureOwnedUnitAsync(id, forWrite: true);
+                if (error != null)
+                {
+                    return error;
+                }
+                tenantId ??= unit!.TenantID;
+                if (unit!.TenantID != tenantId)
+                {
+                    return BadRequest("All units in one reorder request must belong to the same tenant.");
+                }
+            }
+
+            await deviceFarmUnitRepo.DeviceFarmUnitsReorderAsync(tenantId!.Value, orderedUnitIds);
+            await WriteAuditAsync("DeviceFarmUnit.Reordered", tenantId, "DeviceFarmUnit", string.Join(",", orderedUnitIds), null);
+            return true;
+        }
+
         /// Roadmap #411 - reuses #355's per-device IssueWifiUpdateCommandAsync (verify-then-persist runs on the device itself, unchanged) across every device under the unit; a device that already has one pending is skipped, not retried.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("{idDeviceFarmUnit}/WifiUpdate")]

@@ -5,29 +5,52 @@
 }
 @if (Model.Units.Count == 0)
 {
-    <div class="col-12">
-        <p class="text-secondary">No units yet. @(User.Identity!.IsAuthenticated ? "Add one above to start organizing devices by physical space." : "")</p>
-    </div>
+    <p class="text-secondary">No units yet. @(User.Identity!.IsAuthenticated ? "Add one above to start organizing devices by physical space." : "")</p>
 }
-@foreach (var u in Model.Units)
+else
 {
-    <div class="col-md-4 col-sm-6 mb-3">
-        <div class="small-box text-bg-primary h-100 position-relative">
-            <div class="inner">
-                <h3 class="fs-4">@u.DeviceFarmUnitName <partial name="_ZoneStatusBadge" model="(u.Status, u.ProblemAlerts)" /></h3>
-                <p class="mb-2">@u.ZoneCount zone@(u.ZoneCount == 1 ? "" : "s") &middot; @u.DeviceCount device@(u.DeviceCount == 1 ? "" : "s")</p>
-                <partial name="_SensorAverages" model="new SensorSummaryViewModel { Averages = u.Averages, Trend = u.Trend }" />
+    @* Vertical widget stack, drag-reorderable same as the Farm cards above - id'd so units-reorder.js can find it after every live-refresh re-render. *@
+    <div id="@Model.ContainerId" class="unit-cube-stack" data-unit-cube-container>
+    @foreach (var u in Model.Units)
+    {
+        <div class="card mb-3 unit-cube" data-id-device-farm-unit="@u.IDDeviceFarmUnit" data-filter-value="@u.DeviceFarmUnitName?.ToLowerInvariant()">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    @if (canManage)
+                    {
+                        <i class="bi bi-grip-vertical unit-drag-handle me-1" title="Drag to reorder" style="cursor:grab"></i>
+                        <a asp-action="UnitAlertRules" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-bell"></i> Alert rules
+                        </a>
+                        <a asp-action="UnitManualActuate" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-hand-index-thumb"></i> Manual actuate
+                        </a>
+                        <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-diagram-3"></i> Automation rules
+                        </a>
+                        <form asp-action="ScanUnit" method="post" class="d-inline">
+                            <input type="hidden" name="UnitID" value="@u.IDDeviceFarmUnit" />
+                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                        </form>
+                    }
+                    @{ var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != u.DeviceFarmID).ToList(); }
+                    @if (canManage && u.DeviceFarmID != null && otherFarms.Count > 0)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-bs-toggle="modal" data-bs-target="#unitMigrateModal-@u.IDDeviceFarmUnit" title="Migrate to another farm">
+                            <i class="bi bi-signpost-split"></i> Migrate
+                        </button>
+                    }
+                </div>
+                <div class="small-box text-bg-primary position-relative">
+                    <div class="inner">
+                        <h3 class="fs-4">@u.DeviceFarmUnitName <partial name="_ZoneStatusBadge" model="(u.Status, u.ProblemAlerts)" /></h3>
+                        <p class="mb-2">@u.ZoneCount zone@(u.ZoneCount == 1 ? "" : "s") &middot; @u.DeviceCount device@(u.DeviceCount == 1 ? "" : "s")</p>
+                        <partial name="_SensorAverages" model="new SensorSummaryViewModel { Averages = u.Averages, Trend = u.Trend }" />
+                    </div>
+                    <div class="small-box-icon"><i class="bi bi-house-door"></i></div>
+                    <a asp-action="Zones" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="stretched-link" aria-label="Open @u.DeviceFarmUnitName"></a>
+                </div>
             </div>
-            <div class="small-box-icon"><i class="bi bi-house-door"></i></div>
-            @* Migrate lives on the cube itself instead of a second, separate unit list on the Farms page; only a unit already assigned to a farm gets this (an unassigned unit is picked up via that farm's own "add unit" control instead). Positioned above the stretched-link below (z-index 2 > Bootstrap's stretched-link::after at 1) so it stays clickable on its own, not swallowed by the card-wide navigation link. *@
-            @{ var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != u.DeviceFarmID).ToList(); }
-            @if (canManage && u.DeviceFarmID != null && otherFarms.Count > 0)
-            {
-                <button type="button" class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2" style="z-index:2" data-bs-toggle="modal" data-bs-target="#unitMigrateModal-@u.IDDeviceFarmUnit" title="Migrate to another farm">
-                    <i class="bi bi-signpost-split"></i> Migrate
-                </button>
-            }
-            <a asp-action="Zones" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="stretched-link" aria-label="Open @u.DeviceFarmUnitName"></a>
         </div>
         @if (canManage && u.DeviceFarmID != null && otherFarms.Count > 0)
         {
@@ -58,5 +81,6 @@
                 </div>
             </div>
         }
+    }
     </div>
 }

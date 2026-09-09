@@ -49,6 +49,8 @@ namespace Agrumy.Api.Dal
 
         public Task DeviceFarmUnitDeleteAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitDeleteAsync(idDeviceFarmUnit);
 
+        public Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds) => deviceFarmUnitRepository.DeviceFarmUnitsReorderAsync(tenantId, orderedUnitIds);
+
         public Task<IList<DeviceFarmUnitZone>> DeviceFarmUnitZonesGetAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitZonesGetAsync(idDeviceFarmUnit);
 
         public Task<DeviceFarmUnitZone?> DeviceFarmUnitZoneGetByIdAsync(int? idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone);

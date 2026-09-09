@@ -27,6 +27,8 @@ namespace Agrumy.Shared.Models
         public string? DeviceFarmUnitName { get; set; }
         // Roadmap #384 - optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
+        // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
+        public int DisplayOrder { get; set; }
     }
 
     /// A growing zone within one DeviceFarmUnit - "one zone = one controller" at most, may be sensor-only; TenantID is denormalized from DeviceFarmUnit so a zone query needs no join to check ownership.
@@ -531,6 +533,8 @@ namespace Agrumy.Shared.Models
         public string? DeviceFarmUnitName { get; set; }
         // Null means unassigned; only used to group units by farm on the dashboard once a tenant has a second farm.
         public int? DeviceFarmID { get; set; }
+        // Same drag-and-drop reorder field as DeviceFarmUnit.DisplayOrder - carried here too since this is the DTO the Farm page's cubes actually render.
+        public int DisplayOrder { get; set; }
         public int ZoneCount { get; set; }
         public int DeviceCount { get; set; }
         public SensorAverages Averages { get; set; } = new();

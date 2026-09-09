@@ -41,7 +41,11 @@
             <td>@(item.DeviceFarmUnitZoneName ?? "-")</td>
         }
         <td>
-            @if (item.IsVirtual)
+            @if (item.Enabled != true)
+            {
+                <span class="badge border bg-white text-dark" style="border-left: 20px solid @FleetRowDisplay.DisabledStripeColor(item);" title="Disabled (@(item.IsVirtual ? "virtual" : item.Online ? "online" : "offline"))">Disabled</span>
+            }
+            else if (item.IsVirtual)
             {
                 <span class="badge text-bg-primary" title="Simulated device - no real WiFi/poll cycle, always considered running">Virtual</span>
             }
@@ -53,20 +57,23 @@
             {
                 <span class="badge text-bg-danger">Offline</span>
             }
-            @if (item.Enabled != true)
-            {
-                <span class="badge text-bg-light border ms-1">Disabled</span>
-            }
         </td>
         <td class="d-none d-md-table-cell">@(item.LastSeenAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
         <td class="d-none d-md-table-cell">
-            <span class="@signalCss">@signalLabel</span>
-            @if (item.RssiDbm is int rssi)
+            @if (FleetRowDisplay.IsOffline(item))
             {
-                <span class="text-secondary small">(@rssi dBm)</span>
+                <span class="text-secondary">-</span>
+            }
+            else
+            {
+                <span class="@signalCss">@signalLabel</span>
+                @if (item.RssiDbm is int rssi)
+                {
+                    <span class="text-secondary small">(@rssi dBm)</span>
+                }
             }
         </td>
-        <td class="d-none d-md-table-cell">@Uptime(item.UptimeSeconds)</td>
+        <td class="d-none d-md-table-cell">@(FleetRowDisplay.IsOffline(item) ? "-" : Uptime(item.UptimeSeconds))</td>
         <td class="d-none d-md-table-cell">
             @(item.FirmwareVersion ?? "-")
             @if (item.FirmwareUpdatePending)

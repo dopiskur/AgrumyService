@@ -5,20 +5,21 @@
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
     var unassigned = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
+    const string allUnitsContainerId = "unitCubes-all";
+    const string unassignedUnitsContainerId = "unitCubes-unassigned";
 }
 @if (!multipleFarms)
 {
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Units</h3>
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
+            <h3 class="card-title mb-0">Units</h3>
+            <input type="search" class="form-control form-control-sm ms-auto unit-search" data-filter-target="unitCubes-all" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
             @if (canManage)
             {
-                <div class="float-end">
-                    <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
-                        <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
-                    </form>
-                </div>
+                <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
+                    <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                </form>
             }
         </div>
         <div class="card-body">
@@ -40,9 +41,7 @@
                     <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
                 </form>
             }
-            <div class="row">
-                <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = Model.Units, Farms = Model.Farms }" />
-            </div>
+            <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = Model.Units, Farms = Model.Farms, ContainerId = allUnitsContainerId }" />
         </div>
     </div>
 }
@@ -54,6 +53,7 @@ else
     {
         var unitsInFarm = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
         var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
+        string farmUnitsContainerId = $"unitCubes-farm-{farm.IDDeviceFarm}";
         <div class="card mb-3" data-id-device-farm="@farm.IDDeviceFarm">
             <div class="card-header">
                 @if (canManage)
@@ -91,6 +91,9 @@ else
                 </div>
             </div>
             <div class="card-body">
+                <div class="d-flex justify-content-end mb-2">
+                    <input type="search" class="form-control form-control-sm unit-search" data-filter-target="@farmUnitsContainerId" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
+                </div>
                 @if (canManage && unassigned.Count > 0)
                 {
                     <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
@@ -111,9 +114,7 @@ else
                 }
                 else
                 {
-                    <div class="row">
-                        <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unitsInFarm, Farms = Model.Farms }" />
-                    </div>
+                    <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unitsInFarm, Farms = Model.Farms, ContainerId = farmUnitsContainerId }" />
                 }
             </div>
         </div>
@@ -122,16 +123,15 @@ else
 
     @* Always rendered (not just when non-empty) - a newly created unit lands here, so this is where "Add Unit" has to live once units are no longer grouped under one single "Units" card. *@
     <div class="card mb-3">
-        <div class="card-header">
-            <h3 class="card-title">Unassigned Units</h3>
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
+            <h3 class="card-title mb-0">Unassigned Units</h3>
+            <input type="search" class="form-control form-control-sm ms-auto unit-search" data-filter-target="unitCubes-unassigned" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
             @if (canManage)
             {
-                <div class="float-end">
-                    <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
-                        <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
-                    </form>
-                </div>
+                <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
+                    <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                </form>
             }
         </div>
         <div class="card-body">
@@ -141,9 +141,7 @@ else
             }
             else
             {
-                <div class="row">
-                    <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unassigned, Farms = Model.Farms }" />
-                </div>
+                <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unassigned, Farms = Model.Farms, ContainerId = unassignedUnitsContainerId }" />
             }
         </div>
     </div>

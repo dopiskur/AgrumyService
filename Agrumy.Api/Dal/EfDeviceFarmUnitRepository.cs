@@ -321,7 +321,7 @@ namespace Agrumy.Api.Dal
             {
                 q = q.Where(u => u.TenantID == tenantID);
             }
-            var rows = await q.OrderBy(u => u.DeviceFarmUnitName).ToListAsync();
+            var rows = await q.OrderBy(u => u.DisplayOrder).ThenBy(u => u.DeviceFarmUnitName).ToListAsync();
             return rows.Select(ToDtoUnit).ToList();
         }
 
@@ -344,7 +344,8 @@ namespace Agrumy.Api.Dal
             {
                 // IgnoreQueryFilters (roadmap #409) - a soft-deleted row's id is still physically present in the table (unique constraint doesn't care that it's hidden), so computing next-id from the FILTERED max would immediately collide with it.
                 int nextId = Math.Max((await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking().Select(u => (int?)u.IDDeviceFarmUnit).MaxAsync() ?? 0) + 1, 1);
-                var row = new DeviceFarmUnitRow { IDDeviceFarmUnit = nextId, TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID };
+                int nextOrder = await db.DeviceFarmUnits.Where(u => u.TenantID == unit.TenantID).Select(u => (int?)u.DisplayOrder).MaxAsync() ?? -1;
+                var row = new DeviceFarmUnitRow { IDDeviceFarmUnit = nextId, TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID, DisplayOrder = nextOrder + 1 };
                 db.DeviceFarmUnits.Add(row);
                 try
                 {
@@ -369,6 +370,21 @@ namespace Agrumy.Api.Dal
             // TenantID intentionally not overwritten - same "payload cannot move to another tenant" rule as DeviceUpdateAsync.
             row.DeviceFarmUnitName = unit.DeviceFarmUnitName;
             row.DeviceFarmID = unit.DeviceFarmID;
+            await db.SaveChangesAsync();
+        }
+
+        /// Scoped to whatever subset the caller drags (one farm's units, or the unassigned bucket) - reused 0..N-1 indices across different farms never collide because DeviceFarmUnitDashboardGetAsync's consumers always filter by DeviceFarmID before comparing DisplayOrder.
+        public async Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds)
+        {
+            var rows = await db.DeviceFarmUnits.Where(u => u.TenantID == tenantId && orderedUnitIds.Contains(u.IDDeviceFarmUnit)).ToListAsync();
+            var byId = rows.ToDictionary(u => u.IDDeviceFarmUnit);
+            for (int i = 0; i < orderedUnitIds.Count; i++)
+            {
+                if (byId.TryGetValue(orderedUnitIds[i], out DeviceFarmUnitRow? row))
+                {
+                    row.DisplayOrder = i;
+                }
+            }
             await db.SaveChangesAsync();
         }
 
@@ -867,7 +883,7 @@ namespace Agrumy.Api.Dal
             {
                 units = units.Where(u => u.TenantID == tenantID);
             }
-            var unitRows = await units.ToListAsync();
+            var unitRows = await units.OrderBy(u => u.DisplayOrder).ThenBy(u => u.DeviceFarmUnitName).ToListAsync();
 
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking()
                 .Where(d => d.DeviceFarmUnitID != null);
@@ -900,6 +916,7 @@ namespace Agrumy.Api.Dal
                     IDDeviceFarmUnit = u.IDDeviceFarmUnit,
                     DeviceFarmUnitName = u.DeviceFarmUnitName,
                     DeviceFarmID = u.DeviceFarmID,
+                    DisplayOrder = u.DisplayOrder,
                     ZoneCount = zoneIds.Count,
                     DeviceCount = scoped.Count,
                     Averages = Average(scoped),
@@ -1396,6 +1413,7 @@ namespace Agrumy.Api.Dal
             TenantID = u.TenantID,
             DeviceFarmUnitName = u.DeviceFarmUnitName,
             DeviceFarmID = u.DeviceFarmID,
+            DisplayOrder = u.DisplayOrder,
         };
 
         private static DeviceFarm ToDtoFarm(DeviceFarmRow f) => new()
