@@ -26,7 +26,10 @@
     class RuleTreeBuilder {
         constructor(root) {
             this.root = root;
-            this.metrics = JSON.parse(root.dataset.metrics || '[]');
+            this.simpleMode = root.dataset.simpleMode === 'true';
+            const allMetrics = JSON.parse(root.dataset.metrics || '[]');
+            // Simple mode (roadmap #399) hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor.
+            this.metrics = this.simpleMode ? allMetrics.filter(m => !m.derived) : allMetrics;
             this.referenceableRules = JSON.parse(root.dataset.referenceableRules || '[]');
             this.isNotification = root.dataset.notification === 'true';
             this.treeContainer = root.querySelector('.rule-tree-container');
@@ -55,6 +58,10 @@
         }
 
         allowedTypes() {
+            // Simple mode (roadmap #399) - a rule is one flat "if metric compares to value" comparison, no grouping/schedule/astronomical/rate-of-change/other node types.
+            if (this.simpleMode) {
+                return NODE_TYPES.filter(([value]) => value === 'comparison');
+            }
             return NODE_TYPES.filter(([value]) => {
                 // Roadmap #398(2) - astronomical is now valid on both action types (AstronomicalRuleResolver runs on both paths), ruleTriggered/rateOfChange/difDisruption stay Notification-only.
                 if (value === 'ruleTriggered' || value === 'rateOfChange' || value === 'difDisruption') return this.isNotification;
@@ -83,7 +90,10 @@
                 const replacement = this.buildNodeEl(typeSelect.value);
                 el.replaceWith(replacement);
             });
-            header.appendChild(typeSelect);
+            // Simple mode only ever allows one type - a single-option dropdown is just clutter, not a real choice.
+            if (!this.simpleMode) {
+                header.appendChild(typeSelect);
+            }
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';

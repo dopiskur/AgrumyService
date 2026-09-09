@@ -123,6 +123,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 claims.Add(new Claim(UserClaims.TimeZone, result.TimeZone));
             }
+            claims.Add(new Claim(UserClaims.UIMode, result.UIMode.ToString()));
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
             var props = new AuthenticationProperties

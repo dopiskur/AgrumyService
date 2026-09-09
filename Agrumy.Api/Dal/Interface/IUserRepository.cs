@@ -14,8 +14,8 @@ namespace Agrumy.Api.Dal.Interface
             string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles,
             Func<int?, Task<string?>>? quotaCheckAsync = null);
 
-        /// Self-service profile write - only FirstName/LastName/TimeZone, never any authorization-bearing column. False if no such user.
-        Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone);
+        /// Self-service profile write - only FirstName/LastName/TimeZone/UIMode, never any authorization-bearing column. False if no such user.
+        Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone, UIMode uiMode);
 
         /// Sole writer of the device-registration PIN - a value+expiry (re)issues it, explicit nulls clear it; not called after a successful registration since the PIN is multi-use within its expiry.
         Task<bool> UserSetDevicePinAsync(int idUser, string? devicePin, DateTime? expiresAtUtc);

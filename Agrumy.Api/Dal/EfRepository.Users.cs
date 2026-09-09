@@ -15,8 +15,8 @@ namespace Agrumy.Api.Dal
 
         public Task UserUpdateAsync(User user) => userRepository.UserUpdateAsync(user);
 
-        public Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone) =>
-            userRepository.UserProfileSetAsync(email, firstName, lastName, timeZone);
+        public Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone, UIMode uiMode) =>
+            userRepository.UserProfileSetAsync(email, firstName, lastName, timeZone, uiMode);
 
         public Task<bool> UserSetDevicePinAsync(int idUser, string? devicePin, DateTime? expiresAtUtc) =>
             userRepository.UserSetDevicePinAsync(idUser, devicePin, expiresAtUtc);

@@ -2459,6 +2459,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<DateTimeOffset?>("TokensValidAfterUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("UIMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Username")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");

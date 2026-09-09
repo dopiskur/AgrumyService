@@ -285,7 +285,7 @@ namespace Agrumy.Api.Controllers.API
             var (refreshToken, refreshTokenHash) = GenerateOpaqueToken();
             await refreshTokenRepo.RefreshTokenAddAsync(user.IDUser!.Value, refreshTokenHash, DateTime.UtcNow.AddDays(RefreshTokenDays));
 
-            return (new UserLoginResult { IDUser = user.IDUser, Email = user.Email, Token = token, RefreshToken = refreshToken, TimeZone = user.TimeZone }, null);
+            return (new UserLoginResult { IDUser = user.IDUser, Email = user.Email, Token = token, RefreshToken = refreshToken, TimeZone = user.TimeZone, UIMode = user.UIMode }, null);
         }
 
         /// Redeems a refresh token for a new access token, rotating it in the same call (single-use) - anonymous by design, since the refresh token itself is the credential, same model as Login next to it.
@@ -476,7 +476,7 @@ namespace Agrumy.Api.Controllers.API
                 timeZone = iana;
             }
 
-            return await userRepository.UserProfileSetAsync(name, value.FirstName, value.LastName, timeZone)
+            return await userRepository.UserProfileSetAsync(name, value.FirstName, value.LastName, timeZone, value.UIMode)
                 ? Ok(true)
                 : NotFound();
         }

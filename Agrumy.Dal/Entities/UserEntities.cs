@@ -96,6 +96,8 @@ namespace Agrumy.Dal.Entities
 
         public string? TimeZone { get; set; } // IANA zone id, not a raw UTC offset, so TimeZoneInfo resolves it correctly across DST; null = presented as UTC (see Agrumy.Shared.Utils.TimeZoneHelper).
 
+        public int UIMode { get; set; } // See Agrumy.Shared.Models.UIMode.
+
         public bool MustChangePassword { get; set; } // See Agrumy.Shared.Models.User.MustChangePassword.
 
         public DateTimeOffset? TokensValidAfterUtc { get; set; } // See Agrumy.Shared.Models.User.TokensValidAfterUtc.

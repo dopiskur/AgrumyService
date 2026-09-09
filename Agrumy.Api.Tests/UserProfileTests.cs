@@ -167,7 +167,7 @@ public class UserProfileTests
     [Fact]
     public async Task UserProfileSet_Writes_Own_Row_With_Normalized_Zone()
     {
-        _repo.Setup(r => r.UserProfileSetAsync("me@x.com", "Ana", "Anić", "Europe/Zagreb")).ReturnsAsync(true);
+        _repo.Setup(r => r.UserProfileSetAsync("me@x.com", "Ana", "Anić", "Europe/Zagreb", UIMode.Simple)).ReturnsAsync(true);
 
         var result = await NewController("me@x.com").UserProfileSet(
             new UserProfileUpdate { FirstName = "Ana", LastName = "Anić", TimeZone = "Europe/Zagreb" });
@@ -186,13 +186,13 @@ public class UserProfileTests
         Assert.Contains("Unknown time zone", bad.Value!.ToString());
         // MockBehavior.Strict: any repo call would already have thrown - verify for clarity.
 
-        _repo.Verify(r => r.UserProfileSetAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
+        _repo.Verify(r => r.UserProfileSetAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<UIMode>()), Times.Never);
     }
 
     [Fact]
     public async Task UserProfileSet_NullZone_Stores_Null()
     {
-        _repo.Setup(r => r.UserProfileSetAsync("me@x.com", "Ana", null, null)).ReturnsAsync(true);
+        _repo.Setup(r => r.UserProfileSetAsync("me@x.com", "Ana", null, null, UIMode.Simple)).ReturnsAsync(true);
 
         var result = await NewController("me@x.com").UserProfileSet(
             new UserProfileUpdate { FirstName = "Ana", TimeZone = null });
@@ -213,7 +213,7 @@ public class UserProfileTests
     public void UserProfileUpdate_Carries_No_Authorization_Fields()
     {
         var names = typeof(UserProfileUpdate).GetProperties().Select(p => p.Name).ToList();
-        Assert.Equal(new[] { "FirstName", "LastName", "TimeZone" }.OrderBy(n => n), names.OrderBy(n => n));
+        Assert.Equal(new[] { "FirstName", "LastName", "TimeZone", "UIMode" }.OrderBy(n => n), names.OrderBy(n => n));
     }
 
 

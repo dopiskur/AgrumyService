@@ -5,6 +5,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Agrumy.Shared.Models
 {
+    /// A user's own choice of interface complexity - Simple hides multi-condition rule grouping/derived metrics/rate-of-change conditions and a few Advanced-only nav items; Advanced is the full, unrestricted UI. Purely a display preference, never enforced server-side (the API accepts whatever a client sends regardless of the caller's UIMode).
+    public enum UIMode
+    {
+        Simple = 0,
+        Advanced = 1,
+    }
+
     public class User
     {
         public int? IDUser { get; set; }
@@ -27,6 +34,8 @@ namespace Agrumy.Shared.Models
 
         // IANA time zone id (e.g. "Europe/Zagreb") for display conversion of stored-UTC timestamps; null = show UTC.
         public string? TimeZone { get; set; }
+
+        public UIMode UIMode { get; set; }
 
         // Set only by tenant import - the imported hash is portable but unproven on this server, so login is blocked (UserApiController.UserLogin's 428 gate) until ForceChangePassword clears it.
         public bool MustChangePassword { get; set; }
@@ -119,6 +128,7 @@ namespace Agrumy.Shared.Models
         public string? RefreshToken { get; set; }
         public string? Token { get; set; }
         public string? TimeZone { get; set; }
+        public UIMode UIMode { get; set; }
     }
 
     /// Body of POST /api/User/ChangePassword - no Login field on purpose, identity comes only from the caller's JWT, so this can never be used as an unauthenticated password-guessing oracle.
@@ -157,6 +167,8 @@ namespace Agrumy.Shared.Models
         public string? LastName { get; set; }
         [Display(Name = "Time Zone")]
         public string? TimeZone { get; set; }
+        [Display(Name = "Interface mode")]
+        public UIMode UIMode { get; set; }
     }
 
     /// Response of POST /api/User/DevicePin - the freshly generated PIN and when it stops being accepted. Valid for repeated registrations until that expiry (not consumed by the first one), so bulk sensor setup needs only one PIN.

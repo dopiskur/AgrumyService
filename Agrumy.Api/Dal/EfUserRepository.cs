@@ -105,8 +105,8 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// Self-service profile write - deliberately touches only the three profile columns, so the endpoint can't alter Enabled/TenantID even if the controller mis-binds.
-        public async Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone)
+        /// Self-service profile write - deliberately touches only these profile columns, so the endpoint can't alter Enabled/TenantID even if the controller mis-binds.
+        public async Task<bool> UserProfileSetAsync(string email, string? firstName, string? lastName, string? timeZone, UIMode uiMode)
         {
             var row = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (row == null)
@@ -117,6 +117,7 @@ namespace Agrumy.Api.Dal
             row.FirstName = firstName;
             row.LastName = lastName;
             row.TimeZone = timeZone;
+            row.UIMode = (int)uiMode;
             await db.SaveChangesAsync();
             return true;
         }
@@ -427,6 +428,7 @@ namespace Agrumy.Api.Dal
             DateModified = u.DateModified,
             EmailVerified = u.EmailVerified,
             TimeZone = u.TimeZone,
+            UIMode = (UIMode)u.UIMode,
             MustChangePassword = u.MustChangePassword,
             TokensValidAfterUtc = u.TokensValidAfterUtc,
         };

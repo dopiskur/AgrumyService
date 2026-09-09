@@ -42,6 +42,7 @@ namespace Agrumy.Web.Controllers.View
             }
 
             await RefreshTimeZoneClaimAsync(value.Profile.TimeZone);
+            await RefreshUIModeClaimAsync(value.Profile.UIMode);
             TempData["ProfileMessage"] = "Profile saved.";
             return RedirectToAction(nameof(Index));
         }
@@ -108,6 +109,7 @@ namespace Agrumy.Web.Controllers.View
                 FirstName = self.FirstName,
                 LastName = self.LastName,
                 TimeZone = self.TimeZone,
+                UIMode = self.UIMode,
             },
             TimeZones = TimeZoneOptions(self.TimeZone),
             DevicePin = self.DevicePin,
@@ -145,6 +147,22 @@ namespace Agrumy.Web.Controllers.View
             {
                 claims.Add(new Claim(UserClaims.TimeZone, timeZone));
             }
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)), auth.Properties);
+        }
+
+        // Same "re-issue the cookie right now" reasoning as RefreshTimeZoneClaimAsync above - the nav menu and rule builder read this claim on every page render, not just after the next token refresh.
+        private async Task RefreshUIModeClaimAsync(UIMode uiMode)
+        {
+            var auth = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (!auth.Succeeded || auth.Principal is null || auth.Properties is null)
+            {
+                return;
+            }
+
+            var claims = auth.Principal.Claims.Where(c => c.Type != UserClaims.UIMode).ToList();
+            claims.Add(new Claim(UserClaims.UIMode, uiMode.ToString()));
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)), auth.Properties);

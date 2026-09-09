@@ -28,6 +28,9 @@
         (Agrumy.Shared.Models.SensorMetric.Wind, "Wind"),
         (Agrumy.Shared.Models.SensorMetric.Ec, "Ec"), (Agrumy.Shared.Models.SensorMetric.Weight, "Weight"),
     ];
+    // Computed from other readings, not a raw sensor value - hidden from the metric picker in Simple mode along with every non-comparison node type (see rule-builder.js's allowedTypes()).
+    HashSet<Agrumy.Shared.Models.SensorMetric> derivedMetrics = [Agrumy.Shared.Models.SensorMetric.Vpd, Agrumy.Shared.Models.SensorMetric.DewPoint, Agrumy.Shared.Models.SensorMetric.DewPointSpread];
+    bool simpleUIMode = User.GetUIMode() == UIMode.Simple;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     string SummarizeTree(Agrumy.Shared.Models.ConditionNode? node)
@@ -63,10 +66,10 @@
 
     IHtmlContent TreeBuilder(string idSuffix, bool isNotification, IList<Agrumy.Shared.Models.DeviceFarmUnitZoneRule> referenceable)
     {
-        string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label }), jsonOpts).Replace("\"", "&quot;");
+        string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label, derived = derivedMetrics.Contains(m.Value) }), jsonOpts).Replace("\"", "&quot;");
         string rulesJson = JsonSerializer.Serialize(referenceable.Select(r => new { id = r.IDDeviceFarmUnitZoneRule, name = r.Name }), jsonOpts).Replace("\"", "&quot;");
         var html = $"""
-        <div class="rule-tree-builder" data-metrics="{metricsJson}" data-referenceable-rules="{rulesJson}" data-notification="{(isNotification ? "true" : "false")}">
+        <div class="rule-tree-builder" data-metrics="{metricsJson}" data-referenceable-rules="{rulesJson}" data-notification="{(isNotification ? "true" : "false")}" data-simple-mode="{(simpleUIMode ? "true" : "false")}">
             <input type="hidden" name="RootConditionJson" />
             <div class="rule-tree-container mb-2"></div>
         </div>
@@ -87,6 +90,14 @@
             positional instead: the highest target percent among the currently-true rules wins. A safety
             rule always survives being overridden by a more specific scope.
         </p>
+        @if (simpleUIMode)
+        {
+            <p class="text-secondary small">
+                <i class="bi bi-info-circle"></i> Simple mode - new rules are a single "if metric compares to
+                value" condition. <a asp-controller="Profile" asp-action="Index">Switch to Advanced</a> for
+                condition groups, derived metrics, schedules, and more.
+            </p>
+        }
         @foreach (var (function, label) in functions)
         {
             var rules = rulesByFunction.GetValueOrDefault(function, []);
@@ -185,6 +196,14 @@
             in this same scope from this form (the API itself allows any Notification rule in the
             tenant, including cross-zone).
         </p>
+        @if (simpleUIMode)
+        {
+            <p class="text-secondary small">
+                <i class="bi bi-info-circle"></i> Simple mode - new rules are a single "if metric compares to
+                value" condition. <a asp-controller="Profile" asp-action="Index">Switch to Advanced</a> for
+                condition groups, derived metrics, schedules, and more.
+            </p>
+        }
         @if (notificationRules.Count > 0)
         {
             <ul class="list-group list-group-flush mb-2">

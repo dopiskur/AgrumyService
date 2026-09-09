@@ -774,21 +774,22 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal("h", normalSecret!.PwdHash);
     }
 
-    /// UserProfileSetAsync must write ONLY FirstName/LastName/TimeZone, never authorization fields.
+    /// UserProfileSetAsync must write ONLY FirstName/LastName/TimeZone/UIMode, never authorization fields.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task UserProfileSet_Writes_Only_Profile_Fields(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, userId, email) = await MakeUser(t);
 
-        Assert.True(await _repo.UserProfileSetAsync(email, "NewFirst", "NewLast", "Europe/Zagreb"));
-        Assert.False(await _repo.UserProfileSetAsync("missing_" + U() + "@x.com", "X", "Y", null));
+        Assert.True(await _repo.UserProfileSetAsync(email, "NewFirst", "NewLast", "Europe/Zagreb", UIMode.Advanced));
+        Assert.False(await _repo.UserProfileSetAsync("missing_" + U() + "@x.com", "X", "Y", null, UIMode.Simple));
 
         var back = await _repo.UserGetAsync(userId, null, null);
         Assert.NotNull(back);
         Assert.Equal("NewFirst", back.FirstName);
         Assert.Equal("NewLast", back.LastName);
         Assert.Equal("Europe/Zagreb", back.TimeZone);
+        Assert.Equal(UIMode.Advanced, back.UIMode);
 
         Assert.Equal(tenantId, back.TenantID);
         Assert.True(back.Enabled);
@@ -796,8 +797,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotNull(secret);
         Assert.Equal("h", secret.PwdHash);
 
-        Assert.True(await _repo.UserProfileSetAsync(email, "NewFirst", "NewLast", null));
-        Assert.Null((await _repo.UserGetAsync(userId, null, null))!.TimeZone);
+        Assert.True(await _repo.UserProfileSetAsync(email, "NewFirst", "NewLast", null, UIMode.Simple));
+        var back2 = await _repo.UserGetAsync(userId, null, null);
+        Assert.Null(back2!.TimeZone);
+        Assert.Equal(UIMode.Simple, back2.UIMode);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
