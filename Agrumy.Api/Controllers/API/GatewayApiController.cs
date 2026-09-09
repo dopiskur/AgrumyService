@@ -172,10 +172,20 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Same steps as SensorDataController.Post.
-        private async Task<GatewayBatchEntryResult> RunSensorDataAsync(Device device, JsonElement payload)
+        /// loRaRssiDbm/loRaSnrDb come from the relaying gateway's own radio measurement (RelayUplink), never from the node's payload itself - a LoRa transmitter has no way to know its own reception quality at the far end.
+        private async Task<GatewayBatchEntryResult> RunSensorDataAsync(Device device, JsonElement payload, int? loRaRssiDbm = null, int? loRaSnrDb = null)
         {
             List<SensorDataPushReading> readings = payload.Deserialize<List<SensorDataPushReading>>()
                 ?? throw new JsonException("SensorData payload must be a JSON array.");
+
+            if (loRaRssiDbm is not null || loRaSnrDb is not null)
+            {
+                foreach (SensorDataPushReading reading in readings)
+                {
+                    reading.LoRaRssiDbm = loRaRssiDbm;
+                    reading.LoRaSnrDb = loRaSnrDb;
+                }
+            }
 
             await sensorDataRepo.SensorDataPushAsync(readings, device.IDDevice!.Value, device.TenantID ?? 0,
                 device.DeviceFarmUnitID, device.DeviceFarmUnitZoneID);
@@ -341,7 +351,7 @@ namespace Agrumy.Api.Controllers.API
                 GatewayBatchEntryResult result = entryType switch
                 {
                     GatewayEntryType.Config => await RunConfigAsync(device, payload),
-                    GatewayEntryType.SensorData => await RunSensorDataAsync(device, payload),
+                    GatewayEntryType.SensorData => await RunSensorDataAsync(device, payload, request.Rssi, request.Snr),
                     GatewayEntryType.Event => await RunEventAsync(device, payload),
                     GatewayEntryType.CommandAck => await RunCommandAckAsync(device, payload),
                     _ => new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = $"Unrecognized envelope type: {entryTypeTag}" },

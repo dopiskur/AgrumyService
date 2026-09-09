@@ -46,6 +46,9 @@ namespace Agrumy.Api.Dal
                 Wind = r.Wind,
                 Ec = r.Ec,
                 Weight = r.Weight,
+                WifiRssiDbm = r.WifiRssiDbm,
+                LoRaRssiDbm = r.LoRaRssiDbm,
+                LoRaSnrDb = r.LoRaSnrDb,
                 // A missing/unparseable/blank timestamp becomes "now" (UTC - device timestamps are UTC).
                 DateCreated = ReadDateTime(r.DateCreated) ?? DateTime.UtcNow,
             });
@@ -391,6 +394,9 @@ namespace Agrumy.Api.Dal
                 Wind = s.Wind,
                 Ec = s.Ec,
                 Weight = s.Weight,
+                WifiRssiDbm = s.WifiRssiDbm,
+                LoRaRssiDbm = s.LoRaRssiDbm,
+                LoRaSnrDb = s.LoRaSnrDb,
                 DateCreated = s.DateCreated ?? default,
             }).ToListAsync();
         }
@@ -418,6 +424,9 @@ namespace Agrumy.Api.Dal
                 Wind = (int?)r.Wind, // SensorDataRow.Wind is int, Agrumy.Shared.Models.SensorData.Wind is double
                 Ec = r.Ec,
                 Weight = r.Weight,
+                WifiRssiDbm = r.WifiRssiDbm,
+                LoRaRssiDbm = r.LoRaRssiDbm,
+                LoRaSnrDb = r.LoRaSnrDb,
                 DateCreated = r.DateCreated,
             }));
             await db.SaveChangesAsync();

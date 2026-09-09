@@ -86,5 +86,8 @@ namespace Agrumy.Shared.Models
         public ushort SourceAddress { get; set; }
         /// Base64 of the frame's raw encrypted payload bytes (Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto's wire format: counter + AES-256-GCM ciphertext + tag) - untouched by the relaying gateway, which never holds the decryption key. GatewayApiController.RelayUplink decrypts this into the {"t":"sensor","d":[...]} JSON envelope the sensor node actually built (Logic/LoRaPayloadLogic).
         public string Payload { get; set; } = "";
+        // The relaying gateway's own radio measurement for this uplink (RadioLib getRSSI()/getSNR()), null from firmware that doesn't report it yet (the two-board serial-bridge path only carries Rssi today, see AgrumySerialFrame - Snr needs a wire-format bump, deferred).
+        public sbyte? Rssi { get; set; }
+        public sbyte? Snr { get; set; }
     }
 }

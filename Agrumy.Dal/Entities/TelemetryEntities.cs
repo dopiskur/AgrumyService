@@ -22,6 +22,10 @@ namespace Agrumy.Dal.Entities
         public int? Wind { get; set; }
         public double? Ec { get; set; }
         public double? Weight { get; set; }
+        // Signal quality alongside the reading, not just a point-in-time diagnostic snapshot.
+        public int? WifiRssiDbm { get; set; }
+        public int? LoRaRssiDbm { get; set; }
+        public int? LoRaSnrDb { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
     }
 

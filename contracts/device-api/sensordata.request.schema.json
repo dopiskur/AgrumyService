@@ -90,6 +90,15 @@
         "type": ["number", "string", "null"],
         "description": "Roadmap #416."
       },
+      "wifiRssiDbm": {
+        "type": ["integer", "string", "null"]
+      },
+      "loRaRssiDbm": {
+        "type": ["integer", "string", "null"]
+      },
+      "loRaSnrDb": {
+        "type": ["integer", "string", "null"]
+      },
       "dateCreated": {
         "type": ["string", "null"],
         "description": "Firmware-side timestamp (device.getDateTime()) recorded when the reading was buffered; null when the clock is not yet set."

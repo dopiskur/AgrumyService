@@ -163,6 +163,8 @@ namespace Agrumy.Gateway.LoRaPrivate
             {
                 SourceAddress = uplink.SourceAddress,
                 Payload = Convert.ToBase64String(uplink.Payload),
+                // Snr stays null here: the two-board serial-bridge frame (AgrumySerialFrame) only carries Rssi today, adding Snr needs a wire-format bump on both the radio-frontend firmware and this decoder together, deferred.
+                Rssi = uplink.Rssi,
             };
             GatewayBatchEntryResult result = await client.RelayUplinkAsync(request, CancellationToken.None);
 

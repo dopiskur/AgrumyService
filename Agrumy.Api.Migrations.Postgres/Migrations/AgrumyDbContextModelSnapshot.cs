@@ -1766,6 +1766,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<double?>("LiquidPH")
                         .HasColumnType("double precision");
 
+                    b.Property<int?>("LoRaRssiDbm")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("LoRaSnrDb")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("Moisture")
                         .HasColumnType("integer");
 
@@ -1789,6 +1795,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<double?>("Weight")
                         .HasColumnType("double precision");
+
+                    b.Property<int?>("WifiRssiDbm")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("Wind")
                         .HasColumnType("integer");

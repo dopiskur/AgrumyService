@@ -42,6 +42,12 @@ namespace Agrumy.Shared.Models
         public double? Ec { get; set; }
         [JsonConverter(typeof(LenientDoubleConverter))]
         public double? Weight { get; set; }
+        // WiFi RSSI at push time (device's own WiFi.RSSI()), null for a LoRa-relayed reading with no WiFi radio.
+        [JsonConverter(typeof(LenientIntConverter))]
+        public int? WifiRssiDbm { get; set; }
+        // Never set by the node itself (a LoRa transmitter can't know its own reception quality); GatewayApiController.RunSensorDataAsync fills these in from the relaying gateway's own radio measurement.
+        public int? LoRaRssiDbm { get; set; }
+        public int? LoRaSnrDb { get; set; }
         // Device-side timestamp string (device.getDateTime()'s "yyyy-MM-dd HH:mm:ss", assumed UTC) - kept as a raw string here, parsed by EfSensorDataRepository the same way it always was.
         public string? DateCreated { get; set; }
     }
@@ -68,6 +74,9 @@ namespace Agrumy.Shared.Models
         public double? Wind { get; set; }
         public double? Ec { get; set; }
         public double? Weight { get; set; }
+        public int? WifiRssiDbm { get; set; }
+        public int? LoRaRssiDbm { get; set; }
+        public int? LoRaSnrDb { get; set; }
         public DateTimeOffset DateCreated { get; set; }
 
 

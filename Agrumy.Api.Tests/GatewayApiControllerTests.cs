@@ -244,6 +244,40 @@ public class GatewayApiControllerTests
         Assert.Equal(200, result.StatusCode);
     }
 
+    /// The node's own JSON payload can't carry its LoRa signal quality (only the receiving gateway knows it), so RunSensorDataAsync must stamp it on from the relay request instead.
+    [Fact]
+    public async Task RelayUplink_SensorDataEntry_AttachesGatewayRssiAndSnr()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        _repo.Setup(r => r.DeviceLoRaUplinkCounterSetAsync(2, 1)).ReturnsAsync(true);
+        List<SensorDataPushReading>? pushed = null;
+        _repo.Setup(r => r.SensorDataPushAsync(It.IsAny<IReadOnlyList<SensorDataPushReading>>(), 2, 1, null, null))
+            .Callback<IReadOnlyList<SensorDataPushReading>, int, int, int?, int?>((readings, _, _, _, _) => pushed = readings.ToList())
+            .Returns(Task.CompletedTask);
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWire(TestLoRaKey, 1, "{\"t\":\"sensor\",\"d\":[{\"temperature\":21.5}]}"),
+            Rssi = -87,
+            Snr = 6,
+        });
+
+        Assert.True(Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).Success);
+        var reading = Assert.Single(pushed!);
+        Assert.Equal(21.5, reading.Temperature);
+        Assert.Equal(-87, reading.LoRaRssiDbm);
+        Assert.Equal(6, reading.LoRaSnrDb);
+        Assert.Null(reading.WifiRssiDbm); // never set by a LoRa-only node
+    }
+
     [Fact]
     public async Task RelayUplink_UnmappedAddress_Returns404_NeverDispatches()
     {
