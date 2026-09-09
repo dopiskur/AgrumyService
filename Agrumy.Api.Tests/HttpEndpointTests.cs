@@ -156,8 +156,30 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
 
     private static string SubstituteRouteParams(string template) => Regex.Replace(template, "\\{[^}]+\\}", "1");
 
+    /// The independent half of this matrix: expectations come from a hand-maintained CSV, not from the
+    /// [Authorize] attribute the test is supposed to be checking, so a role changed in code without a
+    /// matching CSV update (in either direction) is a hard failure here instead of silently validating
+    /// itself. Same file used by both RoleGatedActions (endpoint-not-in-CSV -> exception, fails the
+    /// whole run) and CsvMatrixRoles_MatchReflectedAuthorizeAttributeRoles (CSV/attribute disagreement).
+    private static Dictionary<(string Method, string Template), string[]> LoadCsvMatrix()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "TestVectors", "role_endpoint_matrix.csv");
+        var result = new Dictionary<(string, string), string[]>();
+        foreach (string line in File.ReadLines(path).Skip(1)) // header row
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+            string[] parts = line.Split(',', 3);
+            result[(parts[0], parts[1])] = parts[2].Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+        return result;
+    }
+
     public static IEnumerable<object[]> RoleGatedActions()
     {
+        var csvMatrix = LoadCsvMatrix();
         using var factory = new ApiWebApplicationFactory();
         using var scope = factory.Services.CreateScope();
         var provider = scope.ServiceProvider.GetRequiredService<IActionDescriptorCollectionProvider>();
@@ -186,21 +208,41 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
                 .ToHashSet();
             if (requiredRoles.Count == 0)
             {
-                continue; // bare [Authorize] with no role list - "any authenticated user", nothing role-specific to assert
+                continue; // bare [Authorize] with no role list - "any authenticated user", nothing role-specific to assert; see BareAuthorizeActions for this class's own inventory.
             }
 
             string httpMethod = action.MethodInfo.GetCustomAttributes(true)
                 .OfType<IActionHttpMethodProvider>().FirstOrDefault()?.HttpMethods.FirstOrDefault() ?? "GET";
-            string wrongRole = AtomicRoles.FirstOrDefault(r => !requiredRoles.Contains(r)) ?? "";
-            string rightRole = requiredRoles.First();
 
-            yield return [$"{httpMethod} /{template}", httpMethod, "/" + SubstituteRouteParams(template), wrongRole, rightRole];
+            // A reflected action with no CSV row is exactly the gap #462 closes - fail loudly (this exception aborts test discovery/collection for the whole class) rather than silently skip it.
+            if (!csvMatrix.TryGetValue((httpMethod, template), out string[]? csvRoles))
+            {
+                throw new InvalidOperationException(
+                    $"role_endpoint_matrix.csv has no row for \"{httpMethod},{template}\" - add one (Roles column ';'-separated) so this endpoint's authorization is asserted independently of its own [Authorize] attribute.");
+            }
+
+            string wrongRole = AtomicRoles.FirstOrDefault(r => !requiredRoles.Contains(r)) ?? "";
+
+            yield return [$"{httpMethod} /{template}", httpMethod, "/" + SubstituteRouteParams(template), wrongRole, csvRoles, requiredRoles.OrderBy(r => r).ToArray()];
         }
     }
 
+    /// The other half of #462's independence check: not just "does a CSV row exist" (RoleGatedActions
+    /// throws on that) but "does its role set still match the code" - a role added/removed from the
+    /// [Authorize] attribute without updating the CSV is exactly the #395-style drift this whole
+    /// mechanism exists to catch, in either direction.
     [Theory, MemberData(nameof(RoleGatedActions))]
-    public async Task RoleGatedAction_EnforcesItsDeclaredRoles(string label, string httpMethod, string url, string wrongRole, string rightRole)
+    public void CsvMatrixRoles_MatchReflectedAuthorizeAttributeRoles(string label, string httpMethod, string url, string wrongRole, string[] csvRoles, string[] reflectedRoles)
     {
+        _ = (httpMethod, url, wrongRole); // this theory only cares about the two role sets - shares RoleGatedActions' MemberData with RoleGatedAction_EnforcesItsDeclaredRoles rather than duplicating the reflection walk
+        Assert.True(csvRoles.OrderBy(r => r).SequenceEqual(reflectedRoles),
+            $"{label}: role_endpoint_matrix.csv says [{string.Join(";", csvRoles)}], code's [Authorize] says [{string.Join(";", reflectedRoles)}] - update whichever one is stale.");
+    }
+
+    [Theory, MemberData(nameof(RoleGatedActions))]
+    public async Task RoleGatedAction_EnforcesItsDeclaredRoles(string label, string httpMethod, string url, string wrongRole, string[] csvRoles, string[] reflectedRoles)
+    {
+        _ = reflectedRoles; // this theory only needs csvRoles - reflectedRoles is CsvMatrixRoles_MatchReflectedAuthorizeAttributeRoles' concern
         using HttpClient client = _factory.CreateClient();
 
         using var noTokenRequest = new HttpRequestMessage(new HttpMethod(httpMethod), url);
@@ -219,6 +261,9 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
                 $"{label}: expected 403 for role \"{wrongRole}\", got {(int)wrongRoleResponse.StatusCode}.");
         }
 
+        // Every CSV-declared role, not just one - catches the code accepting FEWER roles than the independent matrix claims it should.
+        foreach (string rightRole in csvRoles)
+        {
         using var rightRoleRequest = new HttpRequestMessage(new HttpMethod(httpMethod), url)
         {
             Headers = { Authorization = new("Bearer", _factory.TokenFor(rightRole)) },
@@ -229,5 +274,56 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
             (rightRoleResponse.StatusCode == HttpStatusCode.Unauthorized && rightRoleResponse.Headers.WwwAuthenticate.Count > 0);
         Assert.False(isRealAuthFailure,
             $"{label}: role \"{rightRole}\" should be let through, got {(int)rightRoleResponse.StatusCode}.");
+        }
+    }
+
+    // A class this role-endpoint matrix never covers: a bare [Authorize] action
+    // (no role list) relies entirely on an ownership check in the controller body, not a role, to keep
+    // Tenant A out of Tenant B's resource. Enumerated here so the gap is visible and countable; a
+    // cross-tenant 403/404 assertion per action needs a real (not the deliberately-unreachable
+    // ApiWebApplicationFactory) database, so that part is covered separately by the existing cross-tenant
+    // tests in RelationalIntegrationTests/ApiControllerTests/GatewayApiControllerTests/
+    // DiscoveryWifiConfigTests (grep "cross-tenant"/"CrossTenant"/"DifferentTenant") - this asserts that
+    // set of actions is at least fully enumerated, not (yet) that every single one has a dedicated test.
+    public static IEnumerable<object[]> BareAuthorizeActions()
+    {
+        using var factory = new ApiWebApplicationFactory();
+        using var scope = factory.Services.CreateScope();
+        var provider = scope.ServiceProvider.GetRequiredService<IActionDescriptorCollectionProvider>();
+
+        foreach (var action in provider.ActionDescriptors.Items.OfType<ControllerActionDescriptor>())
+        {
+            if (action.AttributeRouteInfo?.Template is not string template)
+            {
+                continue;
+            }
+            var authorizeAttrs = action.MethodInfo.GetCustomAttributes<AuthorizeAttribute>(true)
+                .Concat(action.MethodInfo.DeclaringType!.GetCustomAttributes<AuthorizeAttribute>(true))
+                .ToList();
+            bool allowAnonymous = action.MethodInfo.GetCustomAttributes<AllowAnonymousAttribute>(true).Any() ||
+                action.MethodInfo.DeclaringType!.GetCustomAttributes<AllowAnonymousAttribute>(true).Any();
+            bool isDevicePolicy = authorizeAttrs.Any(a => a.Policy is DeviceAuth.ApiKeyPolicy or DeviceAuth.SessionPolicy);
+            if (allowAnonymous || isDevicePolicy || authorizeAttrs.Count == 0)
+            {
+                continue;
+            }
+            bool hasRoleList = authorizeAttrs.Any(a => (a.Roles ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Length > 0);
+            if (hasRoleList)
+            {
+                continue;
+            }
+            yield return [$"{action.MethodInfo.DeclaringType!.Name}.{action.MethodInfo.Name}", template];
+        }
+    }
+
+    /// Not a behavior assertion - a count regression check. If this drops, a bare-[Authorize] action was
+    /// either removed (fine) or accidentally gained a role list and silently left this inventory (also
+    /// fine, just means BareAuthorizeActions itself needs no change) - if it RISES, whoever's reading a
+    /// failing build here should go verify the new action's ownership check is real, then bump the count.
+    [Fact]
+    public void BareAuthorizeActions_CountIsKnown()
+    {
+        int count = BareAuthorizeActions().Count();
+        Assert.True(count > 0, "Expected at least one bare-[Authorize] action (ownership-checked-in-body) to exist.");
     }
 }

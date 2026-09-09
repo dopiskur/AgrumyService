@@ -36,6 +36,8 @@
     <None Update="TestVectors\threshold_vectors.csv" CopyToOutputDirectory="PreserveNewest" />
     <!-- shared with AgrumyFirmware's test_native_rule_tree_limits - see the file's own header comment -->
     <None Update="TestVectors\rule_tree_limits.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- independent role-per-endpoint source of truth for HttpEndpointTests - see its own header comment -->
+    <None Update="TestVectors\role_endpoint_matrix.csv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

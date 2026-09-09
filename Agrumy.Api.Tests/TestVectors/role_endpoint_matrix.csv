@@ -1,0 +1,130 @@
+HttpMethod,RouteTemplate,Roles
+DELETE,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/Device/FirmwareUpdate,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/Firmware,Global admin
+DELETE,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/HorticultureCatalog,Global admin
+DELETE,api/SensorData,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/Simulation/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
+DELETE,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin
+DELETE,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
+DELETE,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
+DELETE,api/Simulation/Session/{idSimulationSession}/Rule/{idRule},Global admin;Simulation administrator;Tenant admin
+DELETE,api/User,Global admin;Global User;Tenant admin;Tenant User
+GET,api/AuditLog,Global admin;Tenant admin
+GET,api/DataMaintenance/Provider,Global admin
+GET,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenant admin
+GET,api/DeviceCommand/{idDeviceCommand},Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/DeviceFarmUnit/Unassigned,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Discovery/WifiConfigs/{idTenantWifiConfig}/Reveal,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Experiment/{idExperiment},Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Experiment/{idExperiment}/ControllerData,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Experiment/{idExperiment}/SensorData,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Firmware,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Firmware/DownloadZip,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Firmware/Fetch,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Firmware/Manifest,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Gateway/All,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Gateway/DeviceMapping/All,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/RecycleBin/Device,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/RecycleBin/Farm/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/ServerConfig,Global admin
+GET,api/ServerConfig/Health,Global admin
+GET,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
+GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin
+GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin
+GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin
+GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin
+GET,api/Tenant,Global admin;Global reader
+GET,api/Tenant/All,Global admin;Global reader
+GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Tenant/Export,Global admin;Tenant admin
+GET,api/TenantQuota,Global admin
+GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
+GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
+POST,api/DataMaintenance/Optimize,Global admin
+POST,api/DataMaintenance/Purge,Global admin
+POST,api/DataMaintenance/PurgeOrphaned,Global admin
+POST,api/Device/FirmwareUpdate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Device/HardReset,Global admin
+POST,api/Device/LoRaPrivateKey/Generate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Device/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceCommand,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unit/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Discovery/Register,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Discovery/Scan,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Discovery/WifiConfigs,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Experiment/{idExperiment}/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Firmware/Import,Global admin
+POST,api/Firmware/Sync,Global admin
+POST,api/Firmware/Upload,Global admin
+POST,api/Firmware/UploadZip,Global admin
+POST,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/HorticultureCatalog,Global admin
+POST,api/RecycleBin/Device/{idDevice}/PurgeNow,Global admin
+POST,api/RecycleBin/Device/{idDevice}/Restore,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/RecycleBin/Empty,Global admin
+POST,api/RecycleBin/Farm/{idDeviceFarm}/PurgeNow,Global admin
+POST,api/RecycleBin/Farm/{idDeviceFarm}/Restore,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/ServerConfig/ArchiveSettings,Global admin
+POST,api/ServerConfig/TestArchiveDatabase,Global admin
+POST,api/ServerConfig/TestEmail,Global admin
+POST,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session/{idSimulationSession}/Start,Global admin;Simulation administrator;Tenant admin
+POST,api/Simulation/Session/{idSimulationSession}/Stop,Global admin;Simulation administrator;Tenant admin
+POST,api/Tenant,Global admin
+POST,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Tenant/EmergencyStop/Clear,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/Tenant/Import,Global admin
+POST,api/User,Global admin;Global User;Tenant admin;Tenant User
+PUT,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/Device/Controller,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/Device/Event/{idEventDevice}/Acknowledge,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/Device/Sensor,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenant admin
+PUT,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/HorticultureCatalog,Global admin
+PUT,api/ServerConfig,Global admin
+PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
+PUT,api/Tenant,Global admin
+PUT,api/TenantQuota,Global admin
+PUT,api/User,Global admin;Global User;Tenant admin;Tenant User
+PUT,api/User/UserRoles,Global admin;Tenant admin
