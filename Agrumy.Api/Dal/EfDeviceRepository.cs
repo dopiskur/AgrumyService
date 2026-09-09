@@ -712,12 +712,9 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        // Short absolute-TTL cache so any number of concurrently open admin tabs share one real fleet query per window instead of each re-running the full per-device scan.
-        private static readonly TimeSpan FleetCacheTtl = TimeSpan.FromSeconds(6);
-
         public async Task<IList<DeviceFleetStatus>> DeviceFleetGetAsync(int? tenantID)
         {
-            string cacheKey = $"fleet:{tenantID?.ToString() ?? "global"}";
+            string cacheKey = CacheKeys.Fleet(tenantID);
             List<DeviceFleetStatus>? cached = await cache.GetAsync<List<DeviceFleetStatus>>(cacheKey);
             if (cached != null)
             {
@@ -736,14 +733,14 @@ namespace Agrumy.Api.Dal
                 .ThenByDescending(d => d.IDDevice)
                 .ToList();
 
-            await cache.SetAsync(cacheKey, result, FleetCacheTtl);
+            await cache.SetAsync(cacheKey, result, CacheKeys.FleetTtl);
             return result;
         }
 
-        /// A write that changes a device's fleet row (e.g. zone assignment) must drop both its own-tenant and the GlobalAdmin's cached snapshot, or the next Fleet read can still serve the pre-write result for up to FleetCacheTtl. Public (not private) since EfRepository.DeviceFarmUnits.cs (not yet extracted) also calls it after assign/unassign.
+        /// A write that changes a device's fleet row (e.g. zone assignment) must drop both its own-tenant and the GlobalAdmin's cached snapshot, or the next Fleet read can still serve the pre-write result for up to CacheKeys.FleetTtl. Public (not private) since EfRepository.DeviceFarmUnits.cs (not yet extracted) also calls it after assign/unassign.
         public Task InvalidateFleetCacheAsync(int? tenantID) => Task.WhenAll(
-            cache.RemoveAsync("fleet:global"),
-            tenantID != null ? cache.RemoveAsync($"fleet:{tenantID}") : Task.CompletedTask);
+            cache.RemoveAsync(CacheKeys.Fleet(null)),
+            tenantID != null ? cache.RemoveAsync(CacheKeys.Fleet(tenantID)) : Task.CompletedTask);
 
         /// Same status one row of DeviceFleetGetAsync would carry, without loading the rest of the fleet - for a single-device detail page. Not cached (DeviceFleetGetAsync's cache exists to share one whole-fleet scan across concurrent Fleet page tabs, not relevant to a one-row lookup).
         public async Task<DeviceFleetStatus?> DeviceFleetStatusGetAsync(int deviceID, int? tenantID)

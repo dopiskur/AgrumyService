@@ -12,11 +12,6 @@ namespace Agrumy.Api.Security
     /// AddJwtBearer's OnTokenValidated hook - rejects a structurally valid, unexpired token if the caller's password changed or account was disabled after it was issued. See Agrumy.Shared.Security.TokenRevocationCheck for the actual decision.
     public static class TokenRevocationValidator
     {
-        // Roadmap #397(4) - this hook ran a DB query on every authenticated request. 30s is a deliberate trade-off (user's own call): a revoked token can still pass for up to this long, in exchange for cutting DB load on every single API call.
-        private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
-        /// Public so EfUserRepository.RevokeUserTokensAsync can invalidate the exact key this hook reads, instead of duplicating the format string and risking the two drifting apart.
-        public static string CacheKey(string email) => $"tokenRevocation:{email}";
-
         public static async Task ValidateAsync(TokenValidatedContext context)
         {
             if (context.Principal?.Identity?.Name is not string email ||
@@ -26,7 +21,7 @@ namespace Agrumy.Api.Security
             }
 
             ICache cache = context.HttpContext.RequestServices.GetRequiredService<ICache>();
-            string cacheKey = CacheKey(email);
+            string cacheKey = Agrumy.Api.Dal.CacheKeys.TokenRevocation(email);
             CachedRevocationState? state = await cache.GetAsync<CachedRevocationState>(cacheKey);
             if (state is null)
             {
@@ -37,7 +32,7 @@ namespace Agrumy.Api.Security
                     return; // unreachable for a token that passed signature validation, but nothing to cache either way
                 }
                 state = new CachedRevocationState(user.TokensValidAfterUtc);
-                await cache.SetAsync(cacheKey, state, CacheTtl);
+                await cache.SetAsync(cacheKey, state, Agrumy.Api.Dal.CacheKeys.TokenRevocationTtl);
             }
 
             if (TokenRevocationCheck.IsRevoked(DateTime.SpecifyKind(jwt.IssuedAt, DateTimeKind.Utc), state.TokensValidAfterUtc))

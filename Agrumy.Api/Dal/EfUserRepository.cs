@@ -241,7 +241,7 @@ namespace Agrumy.Api.Dal
             string? email = await db.Users.AsNoTracking().Where(u => u.IDUser == idUser).Select(u => u.Email).FirstOrDefaultAsync();
             if (email != null)
             {
-                await cache.RemoveAsync(Agrumy.Api.Security.TokenRevocationValidator.CacheKey(email));
+                await cache.RemoveAsync(CacheKeys.TokenRevocation(email));
             }
         }
 

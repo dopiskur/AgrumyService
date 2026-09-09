@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Agrumy.Api.Commands;
+using Agrumy.Api.Dal;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Devices;
 using Agrumy.Api.Firmware;
@@ -49,7 +50,6 @@ namespace Agrumy.Api.Controllers.API
 
         // Same 1-minute window as the "device-data" IP limiter, ~1/3 of its 60/min ceiling per leaf - generous for a single node's own telemetry cadence, but nowhere near enough for one bad node to starve every other leaf sharing the gateway's IP budget.
         private const int RelayPerLeafPermitLimit = 20;
-        private static readonly TimeSpan RelayPerLeafWindow = TimeSpan.FromMinutes(1);
 
         // Internal, not private, so GatewayApiControllerTests can construct a mocked cache entry directly.
         internal sealed class RelayRateCounter
@@ -61,12 +61,12 @@ namespace Agrumy.Api.Controllers.API
         /// True and increments if idDevice (the RESOLVED leaf, not the gateway) is still under its own per-minute relay ceiling - best-effort (read-modify-write, not atomic), acceptable for a noisy-neighbor guard rather than a hard security boundary.
         private async Task<bool> IsLeafWithinRateLimitAsync(int idDevice)
         {
-            string key = $"relay-rate:{idDevice}";
+            string key = CacheKeys.RelayRate(idDevice);
             DateTimeOffset now = DateTimeOffset.UtcNow;
             RelayRateCounter? counter = await Cache.GetAsync<RelayRateCounter>(key);
-            if (counter is null || now - counter.WindowStart >= RelayPerLeafWindow)
+            if (counter is null || now - counter.WindowStart >= CacheKeys.RelayRateWindow)
             {
-                await Cache.SetAsync(key, new RelayRateCounter { WindowStart = now, Count = 1 }, RelayPerLeafWindow);
+                await Cache.SetAsync(key, new RelayRateCounter { WindowStart = now, Count = 1 }, CacheKeys.RelayRateWindow);
                 return true;
             }
             if (counter.Count >= RelayPerLeafPermitLimit)
@@ -74,7 +74,7 @@ namespace Agrumy.Api.Controllers.API
                 return false;
             }
             counter.Count++;
-            await Cache.SetAsync(key, counter, RelayPerLeafWindow - (now - counter.WindowStart));
+            await Cache.SetAsync(key, counter, CacheKeys.RelayRateWindow - (now - counter.WindowStart));
             return true;
         }
 

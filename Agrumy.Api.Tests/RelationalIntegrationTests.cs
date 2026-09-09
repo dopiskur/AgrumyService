@@ -725,7 +725,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (_, userId, email) = await MakeUser(t);
 
         ICache cache = new CacheRepository(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())), NullLogger<CacheRepository>.Instance);
-        string cacheKey = TokenRevocationValidator.CacheKey(email);
+        string cacheKey = CacheKeys.TokenRevocation(email);
         await cache.SetAsync(cacheKey, new CachedRevocationState(null), TimeSpan.FromSeconds(30));
 
         IUserRepository userRepo = new EfUserRepository(_db!, new Mock<ITenantRepository>().Object, new Mock<IDeviceFarmUnitRepository>().Object, new EfRefreshTokenRepository(_db!), cache);
