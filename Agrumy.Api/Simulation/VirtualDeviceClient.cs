@@ -18,7 +18,7 @@ namespace Agrumy.Api.Simulation
                 MacAddress = macAddress,
                 Email = email,
                 DevicePin = devicePin,
-                ServiceType = 1,
+                ServiceType = DeviceServiceTypeIds.Https,
                 DisplayName = displayName,
             }, JsonOptions);
             response.EnsureSuccessStatusCode();

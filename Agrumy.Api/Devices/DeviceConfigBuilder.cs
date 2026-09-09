@@ -54,7 +54,6 @@ namespace Agrumy.Api.Devices
                 DeviceControllerEnabled = device.DeviceControllerEnabled,
                 BatteryEnabled = device.BatteryEnabled,
                 Debug = device.Debug,
-                Reboot = device.Reboot,
                 Reset = device.Reset,
                 FirmwareUpdate = device.FirmwareUpdate,
                 Enabled = device.Enabled,

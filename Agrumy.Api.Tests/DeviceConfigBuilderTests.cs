@@ -36,7 +36,6 @@ public class DeviceConfigBuilderTests
             DeviceControllerEnabled = false,
             BatteryEnabled = true,
             Debug = true,
-            Reboot = false,
             Reset = false,
             FirmwareUpdate = false, // keeps ResolveOfferAsync a no-DB-call short circuit - firmware-offer mapping is covered by FirmwareCatalogServiceTests, not this test's concern
             Enabled = true,
@@ -67,7 +66,6 @@ public class DeviceConfigBuilderTests
         Assert.Equal(device.DeviceControllerEnabled, config.DeviceControllerEnabled);
         Assert.Equal(device.BatteryEnabled, config.BatteryEnabled);
         Assert.Equal(device.Debug, config.Debug);
-        Assert.Equal(device.Reboot, config.Reboot);
         Assert.Equal(device.Reset, config.Reset);
         Assert.Equal(device.FirmwareUpdate, config.FirmwareUpdate);
         Assert.Equal(device.Enabled, config.Enabled);

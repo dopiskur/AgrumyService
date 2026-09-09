@@ -185,9 +185,9 @@ namespace Agrumy.Api.Dal
             if (!await db.DeviceTypeServices.AnyAsync())
             {
                 db.DeviceTypeServices.AddRange(
-                    new DeviceTypeServiceRow { IDDeviceTypeService = 0, ServiceType = "HTTP" },
-                    new DeviceTypeServiceRow { IDDeviceTypeService = 1, ServiceType = "HTTPS" },
-                    new DeviceTypeServiceRow { IDDeviceTypeService = 2, ServiceType = "MQTT" });
+                    new DeviceTypeServiceRow { IDDeviceTypeService = DeviceServiceTypeIds.Http, ServiceType = "HTTP" },
+                    new DeviceTypeServiceRow { IDDeviceTypeService = DeviceServiceTypeIds.Https, ServiceType = "HTTPS" },
+                    new DeviceTypeServiceRow { IDDeviceTypeService = DeviceServiceTypeIds.Mqtt, ServiceType = "MQTT" });
             }
 
             // Per-row (not "if table empty") so a NEW RelayFunction value (Screen/Vent) reaches an already-seeded live DB the next time this runs (every startup, not just first boot) without a migration data-seed - a migration's InsertData would run BEFORE this method and make the "table empty" guard skip a truly fresh DB's rows 0-4 entirely.

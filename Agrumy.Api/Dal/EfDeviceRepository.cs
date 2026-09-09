@@ -377,7 +377,6 @@ namespace Agrumy.Api.Dal
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,
             Debug = d.Debug,
-            Reboot = d.Reboot,
             Reset = d.Reset,
             FirmwareUpdate = d.FirmwareUpdate,
             FirmwareTargetVersion = d.FirmwareTargetVersion,

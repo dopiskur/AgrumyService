@@ -25,7 +25,6 @@
     "deviceControllerEnabled",
     "batteryEnabled",
     "debug",
-    "reboot",
     "reset",
     "firmwareUpdate",
     "firmwareVersion",
@@ -155,12 +154,6 @@
       ]
     },
     "debug": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "reboot": {
       "type": [
         "boolean",
         "null"

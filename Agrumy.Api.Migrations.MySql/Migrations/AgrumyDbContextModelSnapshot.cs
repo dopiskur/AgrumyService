@@ -981,9 +981,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<DateTimeOffset?>("PurgedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<bool?>("Reboot")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<bool?>("Reset")
                         .HasColumnType("tinyint(1)");
 
@@ -1029,36 +1026,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE");
 
                     b.ToTable("device", (string)null);
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceScheduleSlotRow", b =>
-                {
-                    b.Property<int>("IDDeviceScheduleSlot")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceScheduleSlot"));
-
-                    b.Property<int>("DaysOfWeek")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DeviceConfigControllerID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Duration")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RelayFunction")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Start")
-                        .HasColumnType("int");
-
-                    b.HasKey("IDDeviceScheduleSlot");
-
-                    b.HasIndex("DeviceConfigControllerID");
-
-                    b.ToTable("deviceScheduleSlot", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceSimulationRow", b =>
@@ -2742,15 +2709,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .WithMany()
                         .HasForeignKey("TenantID")
                         .OnDelete(DeleteBehavior.NoAction);
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceScheduleSlotRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.DeviceConfigControllerRow", null)
-                        .WithMany()
-                        .HasForeignKey("DeviceConfigControllerID")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceSimulationRow", b =>

@@ -90,7 +90,6 @@ public class ContractTests
         DeviceControllerEnabled = true,
         BatteryEnabled = false,
         Debug = true,
-        Reboot = false,
         Reset = false,
         FirmwareUpdate = true,
         FirmwareVersion = "0.1.2",

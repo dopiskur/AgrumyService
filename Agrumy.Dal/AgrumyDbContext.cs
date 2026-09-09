@@ -38,7 +38,6 @@ namespace Agrumy.Dal
         public DbSet<DeviceConfigSensorRow> DeviceConfigSensors => Set<DeviceConfigSensorRow>();
         public DbSet<DeviceConfigControllerRow> DeviceConfigControllers => Set<DeviceConfigControllerRow>();
         public DbSet<DeviceConfigControllerRelayRow> DeviceConfigControllerRelays => Set<DeviceConfigControllerRelayRow>();
-        public DbSet<DeviceScheduleSlotRow> DeviceScheduleSlots => Set<DeviceScheduleSlotRow>();
         public DbSet<DeviceFirmwareRow> DeviceFirmwares => Set<DeviceFirmwareRow>();
         public DbSet<DeviceDiagnosticRow> DeviceDiagnostics => Set<DeviceDiagnosticRow>();
         public DbSet<DeviceSimulationRow> DeviceSimulations => Set<DeviceSimulationRow>();
@@ -348,14 +347,6 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceTypeSensorRow>().WithMany().HasForeignKey(x => x.SensorWeight).OnDelete(DeleteBehavior.NoAction);
             });
 
-            // Real one-to-many, replacing the old flat Schedule* columns.
-            modelBuilder.Entity<DeviceScheduleSlotRow>(e =>
-            {
-                e.ToTable("deviceScheduleSlot");
-                e.HasKey(x => x.IDDeviceScheduleSlot);
-                e.Property(x => x.IDDeviceScheduleSlot).ValueGeneratedOnAdd();
-                e.HasOne<DeviceConfigControllerRow>().WithMany().HasForeignKey(x => x.DeviceConfigControllerID).OnDelete(DeleteBehavior.NoAction);
-            });
 
             modelBuilder.Entity<DeviceRow>(e =>
             {

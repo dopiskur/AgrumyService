@@ -66,7 +66,6 @@ namespace Agrumy.Shared.Models
         public bool? BatteryEnabled { get; set; } = false;
 
         public bool? Debug { get; set; } = true;
-        public bool? Reboot { get; set; }
         public bool? Reset { get; set; } = false;
         public bool? FirmwareUpdate { get; set; }
         // Null = latest-for-board when FirmwareUpdate is set; a specific version pins rollback/downgrade. Both cleared by DeviceApiController.GetConfig once the heartbeat confirms that version.
@@ -120,7 +119,6 @@ namespace Agrumy.Shared.Models
         public bool? DeviceControllerEnabled { get; set; } = false;
         public bool? BatteryEnabled { get; set; } = false;
         public bool? Debug { get; set; } = true;
-        public bool? Reboot { get; set; }
         public bool? Reset { get; set; } = false;
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; }
@@ -179,7 +177,6 @@ namespace Agrumy.Shared.Models
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,
             Debug = d.Debug,
-            Reboot = d.Reboot,
             Reset = d.Reset,
             FirmwareUpdate = d.FirmwareUpdate,
             FirmwareTargetVersion = d.FirmwareTargetVersion,
@@ -217,7 +214,6 @@ namespace Agrumy.Shared.Models
             DeviceControllerEnabled = dto.DeviceControllerEnabled,
             BatteryEnabled = dto.BatteryEnabled,
             Debug = dto.Debug,
-            Reboot = dto.Reboot,
             Reset = dto.Reset,
             FirmwareUpdate = dto.FirmwareUpdate,
             FirmwareTargetVersion = dto.FirmwareTargetVersion,
@@ -272,7 +268,7 @@ namespace Agrumy.Shared.Models
         // String, not int - the firmware always sends it as a string (char devicePin[8]).
         public string? DevicePin { get; set; }
         public string? ServicePoint { get; set; } = "api.agrumy.com";
-        public int? ServiceType { get; set; } = 1;
+        public int? ServiceType { get; set; } = DeviceServiceTypeIds.Https;
         // Entered on the captive portal at first setup - only used as DeviceName when a new device has no Discovery-provisioned name already queued.
         public string? DisplayName { get; set; }
 
@@ -311,7 +307,6 @@ namespace Agrumy.Shared.Models
         public bool? DeviceControllerEnabled { get; set; } = false;
         public bool? BatteryEnabled { get; set; } = false;
         public bool? Debug { get; set; }
-        public bool? Reboot { get; set; }
         public bool? Reset { get; set; }
         public bool? FirmwareUpdate { get; set; }
         // Populated by BuildDeviceConfigAsync from the newest deviceFirmware row only when FirmwareUpdate is true; null otherwise.
@@ -655,16 +650,6 @@ namespace Agrumy.Shared.Models
         public IList<DeviceRelaySlot> Relays { get; set; } = [];
     }
 
-    /// One wall-clock window in one of DeviceConfigController's per-function schedule lists - no RelayFunction/Enabled fields, since list membership itself means both.
-    public class DeviceScheduleSlot
-    {
-        /// 7-bit mask, bit 0 = Sunday .. bit 6 = Saturday (C's tm_wday convention).
-        public int DaysOfWeek { get; set; }
-        /// Seconds since local midnight, 0-86399.
-        public int Start { get; set; }
-        /// Seconds; Start + Duration must not exceed 86400 (no crossing local midnight).
-        public int Duration { get; set; }
-    }
 
     public class DeviceRole()
     {

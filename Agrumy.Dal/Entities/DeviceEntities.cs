@@ -192,16 +192,6 @@ namespace Agrumy.Dal.Entities
         public int RelayFunction { get; set; }
     }
 
-    /// One wall-clock window for one relay function (RelayFunction = deviceTypeRelay's seed IDs, same convention as ActuatorController::RelayFunctionType) - a row's mere presence means it is active, there is no separate Enabled column.
-    public class DeviceScheduleSlotRow
-    {
-        public int IDDeviceScheduleSlot { get; set; }
-        public int DeviceConfigControllerID { get; set; }
-        public int RelayFunction { get; set; }
-        public int DaysOfWeek { get; set; }
-        public int Start { get; set; }
-        public int Duration { get; set; }
-    }
 
     public class DeviceConfigSensorRow
     {
@@ -329,7 +319,6 @@ namespace Agrumy.Dal.Entities
         public bool? BatteryEnabled { get; set; }
         public bool? Enabled { get; set; }
         public bool? Debug { get; set; }
-        public bool? Reboot { get; set; }
         public bool? Reset { get; set; }
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; } // See Agrumy.Shared.Models.Device.FirmwareTargetVersion.
