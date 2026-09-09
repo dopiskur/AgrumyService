@@ -414,6 +414,9 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After auth resolves apiId/TenantID, so every log line the endpoint emits during this request carries them without each call site passing them explicitly.
+app.UseMiddleware<Agrumy.Api.Diagnostics.LoggingScopeMiddleware>();
 app.MapControllers();
 
 // Under /api/ (roadmap #396(11)) - #387's path-based nginx/Apache templates route everything else to Agrumy.Web, so a root-level /health or /metrics would have been silently misrouted to the wrong service under that deploy mode. Unauthenticated on purpose: restart/deploy probes and external uptime monitors need to reach this without a JWT; it exposes only up/down + which dependency, nothing sensitive.
