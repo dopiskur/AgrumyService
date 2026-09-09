@@ -1,6 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using System.Text.RegularExpressions;
+using Agrumy.Api.Security;
 using Agrumy.Shared.Security;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -134,5 +141,93 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.StartsWith("text/plain", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    // Every [Authorize(Roles=...)]-gated action, driven by reflection instead of one hand-written test
+    // per endpoint - a controller whose Roles attribute is missing or wrong shows up here without
+    // anyone remembering to add a case for it. Device-communication endpoints (DeviceAuth.ApiKeyPolicy/
+    // SessionPolicy) authenticate by apiId/apiKey, not a JWT role, so they're out of scope for this matrix.
+    private static readonly string[] AtomicRoles =
+    [
+        RoleNames.GlobalAdmin, RoleNames.GlobalReader, RoleNames.TenantAdmin, RoleNames.TenantReader,
+        RoleNames.GlobalUser, RoleNames.GlobalDevice, RoleNames.TenantUser, RoleNames.TenantDevice,
+        RoleNames.GlobalDataReader, RoleNames.TenantDataReader, RoleNames.SimulationAdministrator,
+    ];
+
+    private static string SubstituteRouteParams(string template) => Regex.Replace(template, "\\{[^}]+\\}", "1");
+
+    public static IEnumerable<object[]> RoleGatedActions()
+    {
+        using var factory = new ApiWebApplicationFactory();
+        using var scope = factory.Services.CreateScope();
+        var provider = scope.ServiceProvider.GetRequiredService<IActionDescriptorCollectionProvider>();
+
+        foreach (var action in provider.ActionDescriptors.Items.OfType<ControllerActionDescriptor>())
+        {
+            if (action.AttributeRouteInfo?.Template is not string template)
+            {
+                continue;
+            }
+
+            var authorizeAttrs = action.MethodInfo.GetCustomAttributes<AuthorizeAttribute>(true)
+                .Concat(action.MethodInfo.DeclaringType!.GetCustomAttributes<AuthorizeAttribute>(true))
+                .ToList();
+            bool allowAnonymous = action.MethodInfo.GetCustomAttributes<AllowAnonymousAttribute>(true).Any() ||
+                action.MethodInfo.DeclaringType!.GetCustomAttributes<AllowAnonymousAttribute>(true).Any();
+            bool isDevicePolicy = authorizeAttrs.Any(a => a.Policy is DeviceAuth.ApiKeyPolicy or DeviceAuth.SessionPolicy);
+
+            if (allowAnonymous || isDevicePolicy || authorizeAttrs.Count == 0)
+            {
+                continue;
+            }
+
+            var requiredRoles = authorizeAttrs
+                .SelectMany(a => (a.Roles ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .ToHashSet();
+            if (requiredRoles.Count == 0)
+            {
+                continue; // bare [Authorize] with no role list - "any authenticated user", nothing role-specific to assert
+            }
+
+            string httpMethod = action.MethodInfo.GetCustomAttributes(true)
+                .OfType<IActionHttpMethodProvider>().FirstOrDefault()?.HttpMethods.FirstOrDefault() ?? "GET";
+            string wrongRole = AtomicRoles.FirstOrDefault(r => !requiredRoles.Contains(r)) ?? "";
+            string rightRole = requiredRoles.First();
+
+            yield return [$"{httpMethod} /{template}", httpMethod, "/" + SubstituteRouteParams(template), wrongRole, rightRole];
+        }
+    }
+
+    [Theory, MemberData(nameof(RoleGatedActions))]
+    public async Task RoleGatedAction_EnforcesItsDeclaredRoles(string label, string httpMethod, string url, string wrongRole, string rightRole)
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using var noTokenRequest = new HttpRequestMessage(new HttpMethod(httpMethod), url);
+        HttpResponseMessage noTokenResponse = await client.SendAsync(noTokenRequest);
+        Assert.True(noTokenResponse.StatusCode == HttpStatusCode.Unauthorized,
+            $"{label}: expected 401 with no token, got {(int)noTokenResponse.StatusCode}.");
+
+        if (!string.IsNullOrEmpty(wrongRole))
+        {
+            using var wrongRoleRequest = new HttpRequestMessage(new HttpMethod(httpMethod), url)
+            {
+                Headers = { Authorization = new("Bearer", _factory.TokenFor(wrongRole)) },
+            };
+            HttpResponseMessage wrongRoleResponse = await client.SendAsync(wrongRoleRequest);
+            Assert.True(wrongRoleResponse.StatusCode == HttpStatusCode.Forbidden,
+                $"{label}: expected 403 for role \"{wrongRole}\", got {(int)wrongRoleResponse.StatusCode}.");
+        }
+
+        using var rightRoleRequest = new HttpRequestMessage(new HttpMethod(httpMethod), url)
+        {
+            Headers = { Authorization = new("Bearer", _factory.TokenFor(rightRole)) },
+        };
+        HttpResponseMessage rightRoleResponse = await client.SendAsync(rightRoleRequest);
+        // Same distinction Agrumy.Web's ApiException.IsAuthChallenge relies on - only a WWW-Authenticate-bearing 401 comes from the JWT bearer challenge itself; an action returning a bare Unauthorized(...) as its own business result (e.g. UserApiController.Delete's "can't delete the default account") isn't an auth-framework rejection.
+        bool isRealAuthFailure = rightRoleResponse.StatusCode == HttpStatusCode.Forbidden ||
+            (rightRoleResponse.StatusCode == HttpStatusCode.Unauthorized && rightRoleResponse.Headers.WwwAuthenticate.Count > 0);
+        Assert.False(isRealAuthFailure,
+            $"{label}: role \"{rightRole}\" should be let through, got {(int)rightRoleResponse.StatusCode}.");
     }
 }
