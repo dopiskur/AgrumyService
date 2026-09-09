@@ -351,6 +351,7 @@ namespace Agrumy.Shared.Models
         public long? MinFreeHeap { get; set; }
         public long? MaxAllocHeap { get; set; }
         public long? StackHighWaterMark { get; set; }
+        public long? NetworkStackHighWaterMark { get; set; } // uxTaskGetStackHighWaterMark of the persistent network task; null from firmware built before it existed.
         public string? FirmwareVersion { get; set; }
         // PlatformIO environment the image was built for (AGRUMY_BOARD flag) - selects the right catalog .bin for OTA; null from older firmware.
         public string? Board { get; set; }
@@ -376,6 +377,7 @@ namespace Agrumy.Shared.Models
         public long? MinFreeHeapBytes { get; set; }
         public long? MaxAllocHeapBytes { get; set; }
         public long? StackHighWaterMarkBytes { get; set; }
+        public long? NetworkStackHighWaterMarkBytes { get; set; }
         public string? FirmwareVersion { get; set; }
         // Catalog state for the Update button: LatestFirmwareVersion is the newest entry for this Board, FirmwareUpdateAvailable means it's newer than running, Pending/Target mirror Device.FirmwareUpdate/FirmwareTargetVersion.
         public string? Board { get; set; }

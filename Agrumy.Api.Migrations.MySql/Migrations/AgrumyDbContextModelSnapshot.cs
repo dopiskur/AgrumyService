@@ -446,6 +446,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<long?>("MinFreeHeapBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("NetworkStackHighWaterMarkBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTimeOffset?>("OfflineNotifiedAt")
                         .HasColumnType("datetime(6)");
 

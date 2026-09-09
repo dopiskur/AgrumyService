@@ -419,6 +419,7 @@ namespace Agrumy.Dal.Entities
         public long? MinFreeHeapBytes { get; set; }
         public long? MaxAllocHeapBytes { get; set; }
         public long? StackHighWaterMarkBytes { get; set; }
+        public long? NetworkStackHighWaterMarkBytes { get; set; } // Same as StackHighWaterMarkBytes but for the persistent network task's own stack, not the loop task's.
         // Which CONFIG_SCHEMA_VERSION the device's currently-running firmware understands; lets an admin spot a device whose firmware needs an OTA before the server's own schema moves further ahead.
         public int? ConfigSchemaVersion { get; set; }
         public DateTimeOffset? OfflineNotifiedAt { get; set; } // When OfflineAlertBackgroundService last notified admins about the device's current offline streak; one notification per streak, not per tick.

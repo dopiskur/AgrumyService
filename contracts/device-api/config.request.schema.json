@@ -40,6 +40,11 @@
       "minimum": 0,
       "description": "Roadmap #451(22). uxTaskGetStackHighWaterMark(NULL) in bytes - the loop task's unused stack margin; a low value flags an approaching stack overflow. Optional, absent from pre-#451 firmware."
     },
+    "NetworkStackHighWaterMark": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "uxTaskGetStackHighWaterMark of the persistent network task, in bytes - same meaning as StackHighWaterMark but for the task that owns WiFiClientSecure/HTTPClient. Optional, absent from firmware built before the network task existed."
+    },
     "FirmwareVersion": {
       "type": "string",
       "maxLength": 20,

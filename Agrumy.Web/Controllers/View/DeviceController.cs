@@ -140,6 +140,7 @@ namespace Agrumy.Web.Controllers.View
             ViewBag.MinFreeHeapBytes = status?.MinFreeHeapBytes;
             ViewBag.MaxAllocHeapBytes = status?.MaxAllocHeapBytes;
             ViewBag.StackHighWaterMarkBytes = status?.StackHighWaterMarkBytes;
+            ViewBag.NetworkStackHighWaterMarkBytes = status?.NetworkStackHighWaterMarkBytes;
             ViewBag.ControllerCapable = status?.ControllerCapable ?? true;
             ViewBag.Kit = status?.Kit;
 
