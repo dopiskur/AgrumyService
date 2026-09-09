@@ -120,6 +120,23 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
+        /// Called via fetch from farms-reorder.js right after a drag ends, not a form post - the whole Farms page is a 10s live-refresh target so a full-page redirect would fight the next poll.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FarmsReorder([FromBody] List<int> orderedFarmIds)
+        {
+            try
+            {
+                await api.DeviceFarmsReorder(orderedFarmIds);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

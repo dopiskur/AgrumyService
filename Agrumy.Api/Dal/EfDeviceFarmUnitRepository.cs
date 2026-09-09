@@ -48,7 +48,7 @@ namespace Agrumy.Api.Dal
             {
                 q = q.Where(f => f.TenantID == tenantID);
             }
-            var rows = await q.OrderBy(f => f.DeviceFarmName).ToListAsync();
+            var rows = await q.OrderBy(f => f.DisplayOrder).ThenBy(f => f.IDDeviceFarm).ToListAsync();
             return rows.Select(ToDtoFarm).ToList();
         }
 
@@ -62,7 +62,8 @@ namespace Agrumy.Api.Dal
         public Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm, Func<Task<string?>>? quotaCheckAsync = null) =>
             QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName };
+                int nextOrder = await db.DeviceFarms.Where(f => f.TenantID == farm.TenantID).Select(f => (int?)f.DisplayOrder).MaxAsync() ?? -1;
+                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName, DisplayOrder = nextOrder + 1 };
                 db.DeviceFarms.Add(row);
                 await db.SaveChangesAsync();
                 return ToDtoFarm(row);
@@ -95,6 +96,20 @@ namespace Agrumy.Api.Dal
             }
             // TenantID intentionally not overwritten - same "payload cannot move to another tenant" rule as DeviceFarmUnitUpdateAsync.
             row.DeviceFarmName = farm.DeviceFarmName;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task DeviceFarmsReorderAsync(int tenantId, IReadOnlyList<int> orderedFarmIds)
+        {
+            var rows = await db.DeviceFarms.Where(f => f.TenantID == tenantId && orderedFarmIds.Contains(f.IDDeviceFarm)).ToListAsync();
+            var byId = rows.ToDictionary(f => f.IDDeviceFarm);
+            for (int i = 0; i < orderedFarmIds.Count; i++)
+            {
+                if (byId.TryGetValue(orderedFarmIds[i], out DeviceFarmRow? row))
+                {
+                    row.DisplayOrder = i;
+                }
+            }
             await db.SaveChangesAsync();
         }
 
@@ -1388,6 +1403,7 @@ namespace Agrumy.Api.Dal
             IDDeviceFarm = f.IDDeviceFarm,
             TenantID = f.TenantID,
             DeviceFarmName = f.DeviceFarmName,
+            DisplayOrder = f.DisplayOrder,
             DeletedAtUtc = f.DeletedAtUtc,
             PurgedAtUtc = f.PurgedAtUtc,
         };

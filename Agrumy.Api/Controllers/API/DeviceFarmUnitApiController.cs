@@ -69,6 +69,36 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
+        /// The Farms page's drag-and-drop card order - full replacement of every listed farm's DisplayOrder by index, not a partial patch. Every id must resolve to an owned farm AND belong to the same tenant, or the whole request is rejected.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Farm/Reorder")]
+        public async Task<ActionResult<bool>> DeviceFarmsReorder([FromBody] List<int> orderedFarmIds)
+        {
+            if (orderedFarmIds is null or [])
+            {
+                return BadRequest("orderedFarmIds is required.");
+            }
+
+            int? tenantId = null;
+            foreach (int id in orderedFarmIds)
+            {
+                var (farm, error) = await EnsureOwnedFarmAsync(id, forWrite: true);
+                if (error != null)
+                {
+                    return error;
+                }
+                tenantId ??= farm!.TenantID;
+                if (farm!.TenantID != tenantId)
+                {
+                    return BadRequest("All farms in one reorder request must belong to the same tenant.");
+                }
+            }
+
+            await deviceFarmUnitRepo.DeviceFarmsReorderAsync(tenantId!.Value, orderedFarmIds);
+            await WriteAuditAsync("DeviceFarm.Reordered", tenantId, "DeviceFarm", string.Join(",", orderedFarmIds), null);
+            return true;
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Farm")]
         public async Task<ActionResult<bool>> DeviceFarmDelete(int? idDeviceFarm)

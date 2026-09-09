@@ -67,6 +67,7 @@ POST,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Farm/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
@@ -98,6 +99,7 @@ POST,api/RecycleBin/Farm/{idDeviceFarm}/Restore,Global admin;Global Device;Tenan
 POST,api/ServerConfig/ArchiveSettings,Global admin
 POST,api/ServerConfig/TestArchiveDatabase,Global admin
 POST,api/ServerConfig/TestEmail,Global admin
+POST,api/ServerConfig/TestWebhook,Global admin
 POST,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
 POST,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin
 POST,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin

@@ -69,6 +69,11 @@
       "destination": "wwwroot/lib/esp-web-tools/"
     },
     {
+      "library": "Sortable@1.15.7",
+      "destination": "wwwroot/lib/sortablejs/",
+      "files": [ "Sortable.min.js" ]
+    },
+    {
       "library": "leaflet@1.9.4",
       "destination": "wwwroot/lib/leaflet/",
       "files": [ "leaflet.css", "leaflet.js", "images/marker-icon.png", "images/marker-icon-2x.png", "images/marker-shadow.png" ]

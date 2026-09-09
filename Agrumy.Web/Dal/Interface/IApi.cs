@@ -214,6 +214,10 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/DeviceFarmUnit/Farm")]
         Task DeviceFarmUpdate([Body] DeviceFarm farm);
 
+        /// Persists the Farms page's drag-and-drop card order - full replacement of every listed farm's DisplayOrder by index, not a partial patch.
+        [Post("/api/DeviceFarmUnit/Farm/Reorder")]
+        Task DeviceFarmsReorder([Body] List<int> orderedFarmIds);
+
         [Delete("/api/DeviceFarmUnit/Farm")]
         Task DeviceFarmDelete(int? idDeviceFarm);
 

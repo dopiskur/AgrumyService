@@ -104,14 +104,21 @@
 </div>
 
 @section Scripts {
+    <script src="~/lib/sortablejs/Sortable.min.js"></script>
     <script src="~/js/farm-delete.js"></script>
+    <script src="~/js/farms-reorder.js"></script>
     <script src="~/js/live-refresh.js"></script>
     <script nonce="@Context.CspNonce()">
         document.addEventListener('DOMContentLoaded', function () {
             startLiveRefresh({
                 url: '@Url.Action("IndexCubes")',
                 applyHtml: function (html) {
+                    // Skip this tick rather than yank the cards out from under an in-progress drag - the next tick picks up normally once the drop lands.
+                    if (window.farmDragInProgress) {
+                        return;
+                    }
                     document.getElementById('farmsAndUnits').innerHTML = html;
+                    initFarmDragReorder();
                 }
             });
         });

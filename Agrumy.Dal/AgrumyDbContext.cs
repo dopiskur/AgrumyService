@@ -203,6 +203,7 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDDeviceFarm);
                 e.Property(x => x.IDDeviceFarm).ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmName).HasMaxLength(100);
+                e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);
                 // Roadmap #409 - every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.

@@ -32,6 +32,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task DeviceFarmUpdateAsync(DeviceFarm farm);
 
+        /// Sets DisplayOrder to each id's index in orderedFarmIds - only touches farms actually owned by tenantID, an id for another tenant (or a stale/unknown id) is silently ignored.
+        Task DeviceFarmsReorderAsync(int tenantId, IReadOnlyList<int> orderedFarmIds);
+
         /// Roadmap #408 - soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
         Task DeviceFarmDeleteAsync(int idDeviceFarm);
 

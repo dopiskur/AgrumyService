@@ -48,12 +48,18 @@
 }
 else
 {
+    @* id'd so farms-reorder.js can find it after every live-refresh re-render; data-id-device-farm on each card is the drag payload. *@
+    <div id="farmCardsContainer">
     @foreach (var farm in Model.Farms)
     {
         var unitsInFarm = Model.Units.Where(u => u.DeviceFarmID == farm.IDDeviceFarm).ToList();
         var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != farm.IDDeviceFarm).ToList();
-        <div class="card mb-3">
+        <div class="card mb-3" data-id-device-farm="@farm.IDDeviceFarm">
             <div class="card-header">
+                @if (canManage)
+                {
+                    <i class="bi bi-grip-vertical farm-drag-handle me-2" title="Drag to reorder" style="cursor:grab"></i>
+                }
                 <h3 class="card-title">@farm.DeviceFarmName</h3>
                 <div class="float-end d-flex gap-2">
                     <a asp-action="DeviceFarmAlertRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">
@@ -112,6 +118,7 @@ else
             </div>
         </div>
     }
+    </div>
 
     @* Always rendered (not just when non-empty) - a newly created unit lands here, so this is where "Add Unit" has to live once units are no longer grouped under one single "Units" card. *@
     <div class="card mb-3">

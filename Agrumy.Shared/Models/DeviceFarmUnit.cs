@@ -10,6 +10,8 @@ namespace Agrumy.Shared.Models
         public int? IDDeviceFarm { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmName { get; set; }
+        // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
+        public int DisplayOrder { get; set; }
         // Roadmap #409 - null unless this came from the Recycle Bin listing.
         public DateTimeOffset? DeletedAtUtc { get; set; }
         // Roadmap #427 - null unless this came from the pending-purge listing.

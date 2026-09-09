@@ -17,6 +17,8 @@ namespace Agrumy.Api.Dal
 
         public Task DeviceFarmUpdateAsync(DeviceFarm farm) => deviceFarmUnitRepository.DeviceFarmUpdateAsync(farm);
 
+        public Task DeviceFarmsReorderAsync(int tenantId, IReadOnlyList<int> orderedFarmIds) => deviceFarmUnitRepository.DeviceFarmsReorderAsync(tenantId, orderedFarmIds);
+
         public Task DeviceFarmDeleteAsync(int idDeviceFarm) => deviceFarmUnitRepository.DeviceFarmDeleteAsync(idDeviceFarm);
 
         public Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID) => deviceFarmUnitRepository.DeviceFarmRecycleBinGetAsync(tenantID);
