@@ -20,7 +20,8 @@ namespace Agrumy.Api.Diagnostics
         EmailHealthCheck emailHealthCheck,
         FirmwareSourceHealthCheck firmwareSourceHealthCheck,
         WeatherHealthCheck weatherHealthCheck,
-        GatewayHealthCheck gatewayHealthCheck) : IServerHealthService
+        GatewayHealthCheck gatewayHealthCheck,
+        BackgroundWorkersHealthCheck backgroundWorkersHealthCheck) : IServerHealthService
     {
         private static readonly HealthCheckContext Context = new() { Registration = new HealthCheckRegistration("serverHealth", sp => null!, null, null) };
 
@@ -30,6 +31,7 @@ namespace Agrumy.Api.Diagnostics
             var entries = new List<ServerHealthEntry>
             {
                 await RunAsync("database", databaseHealthCheck, ct), // core dependency, always shown
+                await RunAsync("backgroundWorkers", backgroundWorkersHealthCheck, ct), // always registered, regardless of which integrations are enabled
             };
 
             // Redis has no ServerConfig flag - "enabled" means an external backend is actually configured; an in-memory fallback has nothing external to check.

@@ -246,6 +246,7 @@ builder.Services.AddTransient<EmailHealthCheck>();
 builder.Services.AddTransient<FirmwareSourceHealthCheck>();
 builder.Services.AddTransient<WeatherHealthCheck>();
 builder.Services.AddTransient<GatewayHealthCheck>();
+builder.Services.AddTransient<BackgroundWorkersHealthCheck>();
 builder.Services.AddScoped<IServerHealthService, ServerHealthService>();
 
 // Listens on the same "Agrumy.Api" Meter the JSON /metrics endpoint already reads, so Prometheus/Grafana get the identical counters with no separate instrumentation.

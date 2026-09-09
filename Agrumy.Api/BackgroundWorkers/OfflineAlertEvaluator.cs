@@ -1,16 +1,24 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
+using Agrumy.Api.Diagnostics;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
     /// Offline-detection/notification logic, kept separate from OfflineAlertBackgroundService so it is directly unit-testable with mocked repositories.
-    public sealed class OfflineAlertEvaluator(IDeviceRepository deviceRepo, IUserRepository userRepo, INotificationDispatcher dispatcher)
+    public sealed class OfflineAlertEvaluator(IDeviceRepository deviceRepo, IUserRepository userRepo, INotificationDispatcher dispatcher, AgrumyMetrics metrics)
     {
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
             DateTimeOffset utcNow = DateTimeOffset.UtcNow;
             var candidates = await deviceRepo.OfflineAlertCandidatesGetAsync();
+
+            // Enabled-device fleet snapshot this same query already gives for free - a never-seen device counts as offline here, unlike the alerting loop below which deliberately skips it.
+            if (candidates.Count > 0)
+            {
+                int offlineCount = candidates.Count(d => !DeviceFleetStatus.ComputeOnline(d.LastSeenAt, d.SleepSeconds, utcNow));
+                metrics.SetOfflineDevicePercentage(100.0 * offlineCount / candidates.Count);
+            }
 
             foreach (var d in candidates)
             {

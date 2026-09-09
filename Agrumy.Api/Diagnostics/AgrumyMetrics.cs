@@ -16,6 +16,9 @@ namespace Agrumy.Api.Diagnostics
         private readonly Histogram<double> requestDuration;
         private readonly ConcurrentDictionary<(string Route, string Method), RouteStat> stats = new();
 
+        // Set by OfflineAlertEvaluator's own tick, read back by the ObservableGauge callback below - null (not reported) until at least one tick has run.
+        private double? offlineDevicePercentage;
+
         public AgrumyMetrics()
         {
             var meter = new Meter(MeterName, "1.0");
@@ -23,7 +26,12 @@ namespace Agrumy.Api.Diagnostics
                 description: "HTTP requests handled, tagged by route/method/status_code.");
             requestDuration = meter.CreateHistogram<double>("agrumy.api.request.duration", unit: "ms",
                 description: "HTTP request duration, tagged by route/method.");
+            meter.CreateObservableGauge<double>("agrumy.api.devices.offline_percentage",
+                () => offlineDevicePercentage is double pct ? [new Measurement<double>(pct)] : [],
+                unit: "%", description: "Share of enabled devices currently offline, last computed by OfflineAlertEvaluator's own tick.");
         }
+
+        public void SetOfflineDevicePercentage(double percentage) => offlineDevicePercentage = percentage;
 
         public void RecordRequest(string route, string method, int statusCode, double elapsedMs)
         {

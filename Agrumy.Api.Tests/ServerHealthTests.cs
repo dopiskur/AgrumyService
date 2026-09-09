@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Agrumy.Api.BackgroundWorkers;
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal;
 using Agrumy.Api.Dal.Interface;
@@ -8,6 +9,9 @@ using Agrumy.Api.Firmware;
 using Agrumy.Shared.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -294,7 +298,8 @@ public class ServerHealthTests
             new EmailHealthCheck(repo),
             new FirmwareSourceHealthCheck(repo, new FakeFirmwareFetcher("{}")),
             new WeatherHealthCheck(repo),
-            new GatewayHealthCheck(gatewayRepo.Object, deviceRepo.Object));
+            new GatewayHealthCheck(gatewayRepo.Object, deviceRepo.Object),
+            new BackgroundWorkersHealthCheck(Enumerable.Empty<IHostedService>()));
     }
 
     private sealed class FakeSystemRepositoryAlwaysOk : ISystemRepository
@@ -305,13 +310,14 @@ public class ServerHealthTests
     }
 
     [Fact]
-    public async Task ServerHealthService_EverythingDisabled_OnlyListsDatabase()
+    public async Task ServerHealthService_EverythingDisabled_StillListsTheTwoAlwaysOnEntries()
     {
         var service = BuildService(new ServerConfig());
 
         var entries = await service.GetStatusesAsync();
 
         Assert.Single(entries, e => e.Name == "database");
+        Assert.Single(entries, e => e.Name == "backgroundWorkers");
     }
 
     [Fact]
@@ -386,5 +392,37 @@ public class ServerHealthTests
         var entries = await service.GetStatusesAsync();
 
         Assert.Contains(entries, e => e.Name == "gateway");
+    }
+
+    // ---- BackgroundWorkersHealthCheck: generalized stale-worker detection -----
+
+    private sealed class FakeWorker(TimeSpan interval)
+        : PeriodicBackgroundService(new Mock<IServiceScopeFactory>().Object, NullLogger.Instance)
+    {
+        protected override TimeSpan Interval => interval;
+        protected override Task DoWorkAsync(IServiceProvider scopedProvider, CancellationToken ct) => Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task BackgroundWorkersHealthCheck_JustStarted_ReportsHealthy()
+    {
+        var check = new BackgroundWorkersHealthCheck([new FakeWorker(TimeSpan.FromMinutes(5))]);
+
+        HealthCheckResult result = await check.CheckHealthAsync(Context);
+
+        Assert.Equal(HealthStatus.Healthy, result.Status);
+    }
+
+    [Fact]
+    public async Task BackgroundWorkersHealthCheck_NeverTickedPastGracePeriod_ReportsStale()
+    {
+        var worker = new FakeWorker(TimeSpan.FromMilliseconds(1));
+        await Task.Delay(50);
+        var check = new BackgroundWorkersHealthCheck([worker]);
+
+        HealthCheckResult result = await check.CheckHealthAsync(Context);
+
+        Assert.Equal(HealthStatus.Degraded, result.Status);
+        Assert.Contains("FakeWorker", result.Description);
     }
 }

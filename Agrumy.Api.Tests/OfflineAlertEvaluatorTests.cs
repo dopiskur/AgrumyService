@@ -2,6 +2,7 @@ using Agrumy.Api.BackgroundWorkers;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
+using Agrumy.Api.Diagnostics;
 using Moq;
 
 namespace Agrumy.Api.Tests;
@@ -13,7 +14,7 @@ public class OfflineAlertEvaluatorTests
     private readonly Mock<IUserRepository> _users = new(MockBehavior.Strict);
     private readonly Mock<INotificationDispatcher> _dispatcher = new(MockBehavior.Strict);
 
-    private OfflineAlertEvaluator NewEvaluator() => new(_devices.Object, _users.Object, _dispatcher.Object);
+    private OfflineAlertEvaluator NewEvaluator() => new(_devices.Object, _users.Object, _dispatcher.Object, new AgrumyMetrics());
 
     private static OfflineAlertCandidate Candidate(
         int id = 1, int tenantId = 1, string? name = "Greenhouse Sensor",

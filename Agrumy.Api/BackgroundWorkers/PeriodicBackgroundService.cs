@@ -7,6 +7,14 @@ namespace Agrumy.Api.BackgroundWorkers
     {
         protected abstract TimeSpan Interval { get; }
 
+        private readonly DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
+
+        /// Null until the first tick completes without throwing.
+        public DateTimeOffset? LastSuccessfulTickUtc { get; private set; }
+
+        /// Same "missed more than 2x its own interval" grace WeatherHealthCheck used before this generalized it - one slow/failed tick alone shouldn't flag a worker.
+        public bool IsStale => DateTimeOffset.UtcNow - (LastSuccessfulTickUtc ?? startedAtUtc) > Interval + Interval;
+
         /// One tick's work, given a fresh DI scope's IServiceProvider; let it throw - ExecuteAsync isolates one tick's failure from the next.
         protected abstract Task DoWorkAsync(IServiceProvider scopedProvider, CancellationToken ct);
 
@@ -30,6 +38,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     }
 
                     await DoWorkAsync(scope.ServiceProvider, stoppingToken);
+                    LastSuccessfulTickUtc = DateTimeOffset.UtcNow;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
