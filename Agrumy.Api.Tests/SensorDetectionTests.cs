@@ -46,6 +46,33 @@ public class SensorDetectionTests
         return controller;
     }
 
+    // The firmware pushes these EventType strings literally (ServiceController::pushEvent call sites) - PushEvent's `Enum.TryParse<DeviceEventType>` rejects anything not in the enum with a 400, so a string used on the firmware side but never added here (SensorMissing was, once) silently 400s every push forever.
+    [Theory]
+    [InlineData("NoInternet")]
+    [InlineData("ConfigSyncFailed")]
+    [InlineData("ConfigApplied")]
+    [InlineData("CrashLoopRollback")]
+    [InlineData("OtaFailed")]
+    [InlineData("BufferDiscarded")]
+    [InlineData("CommandExecuted")]
+    [InlineData("SafetyLimitTripped")]
+    [InlineData("Crash")]
+    [InlineData("I2CFault")]
+    [InlineData("RuleRejected")]
+    [InlineData("SensorStale")]
+    [InlineData("LowMemoryReboot")]
+    [InlineData("LoRaHardwareNotDetected")]
+    [InlineData("SensorMissing")]
+    public async Task PushEvent_EveryFirmwareEventTypeString_IsAKnownDeviceEventType(string eventType)
+    {
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid")).ReturnsAsync(new Device { IDDevice = 500, TenantID = 3 });
+        _repo.Setup(r => r.EventDevicePushAsync(500, 3, It.IsAny<DeviceEventType>(), It.IsAny<string?>())).ReturnsAsync(true);
+
+        var result = await NewController().PushEvent(new DeviceEventPush { EventType = eventType, Message = "x" });
+
+        Assert.IsType<OkResult>(result);
+    }
+
     [Fact]
     public async Task PushEvent_CommandExecuted_ForDetectSensors_PersistsParsedResult()
     {
