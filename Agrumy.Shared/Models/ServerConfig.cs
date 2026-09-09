@@ -171,6 +171,18 @@ namespace Agrumy.Shared.Models
         [Display(Name = "From name")]
         public string EmailFromName { get; set; } = "Agrumy";
 
+        // Generic HTTP POST webhook, DB-backed replacement for the old appsettings-only Notifications:Webhook section - see Agrumy.Api.Notifications.WebhookNotificationChannel, which now reads this instead, same reasoning as Email* above.
+        [Display(Name = "Enable webhook notifications")]
+        public bool WebhookEnabled { get; set; }
+
+        /// Must be https:// - checked by SsrfGuard before every send, same as any other admin-configurable outbound URL.
+        [Display(Name = "Webhook URL")]
+        public string? WebhookUrl { get; set; }
+
+        // Never round-tripped back into the edit form - same "blank keeps existing" convention as MqttPassword/EmailPassword above.
+        [Display(Name = "Webhook signing secret")]
+        public string? WebhookSecret { get; set; }
+
         // A leaked/screen-shotted PIN (or a leaked DeviceCommand.Payload, see DeviceCommandApiController.GetCommand) is valid for this long - fixed preset {5,15,60,120,360,720,1440}, clamped by ServerConfigApiController.Update, not free-text.
         [Display(Name = "Registration PIN validity (minutes)")]
         public int DevicePinValidMinutes { get; set; } = 60;

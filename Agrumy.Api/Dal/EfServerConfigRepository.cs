@@ -137,6 +137,13 @@ namespace Agrumy.Api.Dal
             {
                 row.EmailPassword = secretProtector.Protect(config.EmailPassword);
             }
+            row.WebhookEnabled = config.WebhookEnabled;
+            row.WebhookUrl = config.WebhookUrl;
+            // Same "blank keeps existing" handling as MqttPassword/EmailPassword above.
+            if (!string.IsNullOrEmpty(config.WebhookSecret))
+            {
+                row.WebhookSecret = secretProtector.Protect(config.WebhookSecret);
+            }
             row.ArchiveEnabled = config.ArchiveEnabled;
             row.ArchiveCutoffMode = (int)config.ArchiveCutoffMode;
             row.ArchiveCustomCutoffDate = config.ArchiveCustomCutoffDate;
@@ -322,6 +329,10 @@ namespace Agrumy.Api.Dal
             EmailFromName = string.IsNullOrWhiteSpace(r.EmailFromName) ? "Agrumy" : r.EmailFromName,
             // Real value, decrypted - same reasoning as MqttPassword above.
             EmailPassword = secretProtector.Unprotect(r.EmailPassword),
+            WebhookEnabled = r.WebhookEnabled,
+            WebhookUrl = r.WebhookUrl,
+            // Real value, decrypted - same reasoning as MqttPassword/EmailPassword above.
+            WebhookSecret = secretProtector.Unprotect(r.WebhookSecret),
             // An older row has 0 here, which is not a usable duration - same 0-means-unset fallback as GatewayWaitWindowSeconds.
             DevicePinValidMinutes = r.DevicePinValidMinutes == 0 ? 60 : r.DevicePinValidMinutes,
             ArchiveEnabled = r.ArchiveEnabled,

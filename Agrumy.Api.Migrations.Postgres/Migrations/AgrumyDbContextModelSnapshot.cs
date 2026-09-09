@@ -2035,6 +2035,17 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<double?>("WeatherRainSkipThreshold")
                         .HasColumnType("double precision");
 
+                    b.Property<bool>("WebhookEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("WebhookSecret")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.HasKey("IDServerConfig");
 
                     b.ToTable("serverConfig", (string)null);

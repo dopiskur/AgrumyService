@@ -573,6 +573,10 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/ServerConfig/TestEmail")]
         Task ServerConfigTestEmail(string toEmail);
 
+        /// Sends through the SAVED Webhook settings, not the unsaved form - see ServerConfigApiController.TestWebhook.
+        [Post("/api/ServerConfig/TestWebhook")]
+        Task ServerConfigTestWebhook();
+
         /// Tests the UNSAVED form's archive DB credentials before Update ever persists them - see ServerConfigApiController.TestArchiveDatabase.
         [Post("/api/ServerConfig/TestArchiveDatabase")]
         Task ServerConfigTestArchiveDatabase([Body] ArchiveDbTestRequest request);

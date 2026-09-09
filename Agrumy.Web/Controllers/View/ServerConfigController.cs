@@ -98,6 +98,22 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        /// Sends through the SAVED settings (Save first, then test) - not whatever is currently typed into the unsaved form.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> TestWebhook()
+        {
+            try
+            {
+                await api.ServerConfigTestWebhook();
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
         /// Tests the CURRENTLY TYPED (unsaved) archive DB fields, opposite of TestEmail above - see ServerConfigApiController.TestArchiveDatabase.
         [HttpPost]
         [ValidateAntiForgeryToken]

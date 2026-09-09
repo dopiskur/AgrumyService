@@ -28,8 +28,13 @@ public class NotificationTests
     private static FcmPushNotificationChannel Fcm(PushChannelOptions push) =>
         new(Opts(new NotificationOptions { Push = push }), NullLogger<FcmPushNotificationChannel>.Instance);
 
-    private static WebhookNotificationChannel Webhook(WebhookChannelOptions webhook, IHttpClientFactory? factory = null) =>
-        new(Opts(new NotificationOptions { Webhook = webhook }), factory ?? new FakeHttpClientFactory(HttpStatusCode.OK), NullLogger<WebhookNotificationChannel>.Instance);
+    /// Webhook's config now lives in ServerConfig (DB), read fresh via IRepository.ServerConfigGetAsync(1) - same reasoning as Email above.
+    private static WebhookNotificationChannel Webhook(ServerConfig config, IHttpClientFactory? factory = null)
+    {
+        var repo = new Mock<IRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(config);
+        return new WebhookNotificationChannel(repo.Object, factory ?? new FakeHttpClientFactory(HttpStatusCode.OK), NullLogger<WebhookNotificationChannel>.Instance);
+    }
 
 
     [Fact]
@@ -172,7 +177,7 @@ public class NotificationTests
     [Fact]
     public async Task Webhook_IsConfigured_False_When_Disabled()
     {
-        var ch = Webhook(new WebhookChannelOptions { Enabled = false, Url = "https://example.com/hook" });
+        var ch = Webhook(new ServerConfig { WebhookEnabled = false, WebhookUrl = "https://example.com/hook" });
         Assert.False(await ch.IsConfiguredAsync());
     }
 
@@ -182,21 +187,21 @@ public class NotificationTests
     [InlineData("not a url")]
     public async Task Webhook_IsConfigured_False_When_Url_Missing_Or_Not_Https(string? url)
     {
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = url });
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = url });
         Assert.False(await ch.IsConfiguredAsync());
     }
 
     [Fact]
     public async Task Webhook_IsConfigured_True_When_Enabled_With_Https_Url()
     {
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://example.com/hook" });
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://example.com/hook" });
         Assert.True(await ch.IsConfiguredAsync());
     }
 
     [Fact]
     public async Task Webhook_SendAsync_Skips_When_Not_Configured()
     {
-        var result = await Webhook(new WebhookChannelOptions()).SendAsync(Sample());
+        var result = await Webhook(new ServerConfig()).SendAsync(Sample());
         Assert.False(result.Sent);
         Assert.False(result.Attempted);
     }
@@ -205,7 +210,7 @@ public class NotificationTests
     public async Task Webhook_SendAsync_Skips_SecretBearingNotification_EvenWhenConfigured()
     {
         var factory = new FakeHttpClientFactory(HttpStatusCode.OK);
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://example.com/hook" }, factory);
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://example.com/hook" }, factory);
         var secretNotification = Sample() with { ContainsSecret = true };
 
         var result = await ch.SendAsync(secretNotification);
@@ -218,7 +223,7 @@ public class NotificationTests
     [Fact]
     public async Task Webhook_SendAsync_Blocked_By_SsrfGuard_For_Loopback_Url()
     {
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://localhost/hook" });
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://localhost/hook" });
         var result = await ch.SendAsync(Sample());
         Assert.False(result.Sent);
         Assert.True(result.Attempted);
@@ -229,7 +234,7 @@ public class NotificationTests
     public async Task Webhook_SendAsync_Posts_Json_And_Returns_Ok_On_Success()
     {
         var factory = new FakeHttpClientFactory(HttpStatusCode.OK);
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://example.com/hook" }, factory);
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://example.com/hook" }, factory);
 
         var result = await ch.SendAsync(Sample());
 
@@ -243,7 +248,7 @@ public class NotificationTests
     public async Task Webhook_SendAsync_Returns_Failed_On_NonSuccess_StatusCode()
     {
         var factory = new FakeHttpClientFactory(HttpStatusCode.InternalServerError);
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://example.com/hook" }, factory);
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://example.com/hook" }, factory);
 
         var result = await ch.SendAsync(Sample());
 
@@ -255,7 +260,7 @@ public class NotificationTests
     public async Task Webhook_SendAsync_Adds_Signature_Header_When_Secret_Configured()
     {
         var factory = new FakeHttpClientFactory(HttpStatusCode.OK);
-        var ch = Webhook(new WebhookChannelOptions { Enabled = true, Url = "https://example.com/hook", Secret = "shh" }, factory);
+        var ch = Webhook(new ServerConfig { WebhookEnabled = true, WebhookUrl = "https://example.com/hook", WebhookSecret = "shh" }, factory);
 
         await ch.SendAsync(Sample());
 

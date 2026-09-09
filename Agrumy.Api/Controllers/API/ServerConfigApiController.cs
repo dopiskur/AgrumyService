@@ -27,6 +27,7 @@ namespace Agrumy.Api.Controllers.API
             config.MqttPassword = null;
             config.EmailPassword = null;
             config.ArchivePassword = null;
+            config.WebhookSecret = null;
             return Ok(config);
         }
 
@@ -218,6 +219,34 @@ namespace Agrumy.Api.Controllers.API
                 "This is a test email from your Agrumy server's Server Settings -> Email section.",
                 new NotificationRecipient(toEmail));
             NotificationResult result = await email.SendAsync(notification);
+            return result.Sent ? Ok() : BadRequest(result.Detail ?? "Send failed.");
+        }
+
+        /// Sends a real test POST through the saved Webhook settings, same "Save first, then test" pattern as TestEmail above.
+        [HttpPost("TestWebhook")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> TestWebhook()
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+
+            INotificationChannel? webhook = notificationChannels.FirstOrDefault(c => c.Name == "webhook");
+            if (webhook is null)
+            {
+                return StatusCode(500, "Webhook channel is not registered.");
+            }
+            if (!await webhook.IsConfiguredAsync())
+            {
+                return BadRequest("Webhook is not enabled, or its URL is missing/not https - save first.");
+            }
+
+            var notification = new Notification(
+                "Agrumy test webhook",
+                "This is a test notification from your Agrumy server's Server Settings -> Webhook section.",
+                new NotificationRecipient());
+            NotificationResult result = await webhook.SendAsync(notification);
             return result.Sent ? Ok() : BadRequest(result.Detail ?? "Send failed.");
         }
 

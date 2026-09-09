@@ -69,6 +69,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-email" type="button" role="tab">Email</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-webhook" type="button" role="tab">Webhook</button>
+                </li>
             </ul>
             <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3">
                 <div class="tab-pane fade show active" id="tab-health" role="tabpanel">
@@ -563,6 +566,35 @@
                         <div id="testEmailStatus" class="mt-2"></div>
                     </div>
                 </div>
+
+                <div class="tab-pane fade" id="tab-webhook" role="tabpanel">
+                    <p class="text-secondary">
+                        Sends a signed HTTP POST to an external URL for every alert - replaces the old
+                        appsettings-only configuration, so it's editable here without server file
+                        access. Save this tab first, then use "Send test webhook" below to confirm the
+                        endpoint actually receives it.
+                    </p>
+                    <div class="form-check mb-3">
+                        <input asp-for="WebhookEnabled" class="form-check-input" />
+                        <label asp-for="WebhookEnabled" class="form-check-label"></label>
+                    </div>
+                    <div class="mb-3" style="max-width:28rem">
+                        <label asp-for="WebhookUrl" class="form-label"></label>
+                        <input asp-for="WebhookUrl" class="form-control" placeholder="https://example.com/agrumy-hook" />
+                        <div class="form-text">Must be https://.</div>
+                    </div>
+                    <div class="mb-0" style="max-width:20rem">
+                        <label asp-for="WebhookSecret" class="form-label"></label>
+                        <input asp-for="WebhookSecret" type="password" class="form-control" autocomplete="new-password" />
+                        <div class="form-text">Leave blank to keep the currently stored secret. Used to sign each POST body (X-Agrumy-Signature, HMAC-SHA256).</div>
+                    </div>
+
+                    <hr />
+                    <div class="mb-0">
+                        <button type="button" id="testWebhookButton" class="btn btn-outline-secondary">Send test webhook</button>
+                        <div id="testWebhookStatus" class="mt-2"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-0">
@@ -645,6 +677,7 @@
     <script src="~/lib/leaflet/leaflet.js"></script>
     <script src="~/js/weather-location.js"></script>
     <script src="~/js/send-test-email.js"></script>
+    <script src="~/js/send-test-webhook.js"></script>
     <script src="~/js/archive-settings.js"></script>
     <script src="~/js/live-refresh.js"></script>
     <script>

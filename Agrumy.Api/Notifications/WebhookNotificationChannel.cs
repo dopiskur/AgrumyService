@@ -1,35 +1,26 @@
 using System.Security.Cryptography;
 using System.Text;
+using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
-using Microsoft.Extensions.Options;
+using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Notifications
 {
-    /// Posts a JSON event to an operator-configured URL, so an external system learns about an alert without polling Agrumy. Configured under <c>Notifications:Webhook</c>.
-    public sealed class WebhookNotificationChannel : INotificationChannel
+    /// Posts a JSON event to an operator-configured URL, so an external system learns about an alert without polling Agrumy. Config lives in the DB-backed ServerConfig (Webhook* fields, admin-editable via Server Settings), not appsettings - read fresh on every call, same pattern as EmailNotificationChannel.
+    public sealed class WebhookNotificationChannel(IRepository repo, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger) : INotificationChannel
     {
         public const string ClientName = "WebhookNotificationChannel";
-
-        private readonly WebhookChannelOptions _options;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly ILogger<WebhookNotificationChannel> _logger;
-
-        public WebhookNotificationChannel(IOptions<NotificationOptions> options, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger)
-        {
-            _options = options.Value.Webhook;
-            _httpClientFactory = httpClientFactory;
-            _logger = logger;
-        }
 
         public string Name => "webhook";
         public bool PerRecipient => false;
 
-        private bool IsConfigured =>
-            _options.Enabled
-            && Uri.TryCreate(_options.Url, UriKind.Absolute, out Uri? uri)
+        private static bool IsConfigured(ServerConfig config) =>
+            config.WebhookEnabled
+            && Uri.TryCreate(config.WebhookUrl, UriKind.Absolute, out Uri? uri)
             && uri.Scheme == Uri.UriSchemeHttps;
 
-        public Task<bool> IsConfiguredAsync(CancellationToken ct = default) => Task.FromResult(IsConfigured);
+        public async Task<bool> IsConfiguredAsync(CancellationToken ct = default) =>
+            IsConfigured(await repo.ServerConfigGetAsync(1));
 
         public async Task<NotificationResult> SendAsync(Notification notification, CancellationToken ct = default)
         {
@@ -37,19 +28,20 @@ namespace Agrumy.Api.Notifications
             {
                 return NotificationResult.Skipped("notification carries a secret, never forwarded to webhook");
             }
-            if (!IsConfigured)
+            ServerConfig config = await repo.ServerConfigGetAsync(1);
+            if (!IsConfigured(config))
             {
                 return NotificationResult.Skipped("webhook channel disabled or Url missing/not https");
             }
 
-            var uri = new Uri(_options.Url!); // https-scheme, valid absolute: IsConfigured
+            var uri = new Uri(config.WebhookUrl!); // https-scheme, valid absolute: IsConfigured
             try
             {
                 await SsrfGuard.EnsureAllowedAsync(uri, ct);
             }
             catch (SsrfBlockedException ex)
             {
-                _logger.LogWarning(ex, "Webhook notification blocked by SsrfGuard.");
+                logger.LogWarning(ex, "Webhook notification blocked by SsrfGuard.");
                 return NotificationResult.Failed(ex.Message);
             }
 
@@ -61,14 +53,14 @@ namespace Agrumy.Api.Notifications
                 Content = new ByteArrayContent(body)
             };
             request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-            if (!string.IsNullOrEmpty(_options.Secret))
+            if (!string.IsNullOrEmpty(config.WebhookSecret))
             {
-                request.Headers.Add("X-Agrumy-Signature", ComputeSignature(body, _options.Secret));
+                request.Headers.Add("X-Agrumy-Signature", ComputeSignature(body, config.WebhookSecret));
             }
 
             try
             {
-                HttpClient client = _httpClientFactory.CreateClient(ClientName);
+                HttpClient client = httpClientFactory.CreateClient(ClientName);
                 using HttpResponseMessage response = await client.SendAsync(request, ct);
                 return response.IsSuccessStatusCode
                     ? NotificationResult.Ok($"POST {uri} -> {(int)response.StatusCode}")
@@ -76,7 +68,7 @@ namespace Agrumy.Api.Notifications
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Webhook notification to {Url} failed.", uri);
+                logger.LogWarning(ex, "Webhook notification to {Url} failed.", uri);
                 return NotificationResult.Failed(ex.Message);
             }
         }

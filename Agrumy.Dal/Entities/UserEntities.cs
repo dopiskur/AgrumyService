@@ -190,6 +190,12 @@ namespace Agrumy.Dal.Entities
         public string? EmailPassword { get; set; }
         public string? EmailFromAddress { get; set; }
         public string EmailFromName { get; set; } = "Agrumy";
+
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
+        public bool WebhookEnabled { get; set; }
+        public string? WebhookUrl { get; set; }
+        public string? WebhookSecret { get; set; }
+
         public int DevicePinValidMinutes { get; set; } = 60;
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
