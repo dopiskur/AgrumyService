@@ -59,6 +59,7 @@ namespace Agrumy.Dal
         public DbSet<SensorDataReportRow> SensorDataReports => Set<SensorDataReportRow>();
         public DbSet<EventTypeRow> EventTypes => Set<EventTypeRow>();
         public DbSet<EventDeviceRow> EventDevices => Set<EventDeviceRow>();
+        public DbSet<TenantUsageSnapshotRow> TenantUsageSnapshots => Set<TenantUsageSnapshotRow>();
 
         public DbSet<AuditLogRow> AuditLogs => Set<AuditLogRow>();
 
@@ -598,6 +599,15 @@ namespace Agrumy.Dal
                 e.Property(x => x.TargetType).HasMaxLength(50);
                 e.Property(x => x.TargetId).HasMaxLength(50);
                 e.HasIndex(x => new { x.TenantID, x.TimestampUtc }).HasDatabaseName("ix_auditLog_tenant_timestamp"); // A Global admin's cross-tenant listing scans the whole table, acceptable at this volume.
+            });
+
+            modelBuilder.Entity<TenantUsageSnapshotRow>(e =>
+            {
+                e.ToTable("tenantUsageSnapshot");
+                e.HasKey(x => x.IDTenantUsageSnapshot);
+                e.Property(x => x.IDTenantUsageSnapshot).ValueGeneratedOnAdd();
+                e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(x => new { x.TenantID, x.SnapshotDateUtc }).IsUnique().HasDatabaseName("ix_tenantUsageSnapshot_tenant_date");
             });
         }
     }

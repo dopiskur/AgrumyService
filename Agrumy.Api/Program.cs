@@ -181,6 +181,9 @@ builder.Services.AddHostedService<SimulationSessionExpiryBackgroundService>();
 builder.Services.AddScoped<DeviceCommandRetentionEvaluator>();
 builder.Services.AddHostedService<DeviceCommandRetentionBackgroundService>();
 
+builder.Services.AddScoped<TenantUsageSnapshotEvaluator>();
+builder.Services.AddHostedService<TenantUsageSnapshotBackgroundService>();
+
 builder.Services.AddHttpClient<IWeatherForecastClient, OpenWeatherMapClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);

@@ -3262,4 +3262,22 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains(all, d => d.IDDevice == deviceA.IDDevice);
         Assert.Contains(all, d => d.IDDevice == deviceB.IDDevice);
     }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task TenantUsageSnapshotRecordAsync_SameDayRerun_UpsertsRatherThanDuplicates(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        await MakeDevice(t, tenantId);
+        DateTimeOffset today = DateTimeOffset.UtcNow.Date;
+
+        await _repo.TenantUsageSnapshotRecordAsync(tenantId, today);
+        await MakeDevice(t, tenantId); // a second device before the same day's re-run
+        await _repo.TenantUsageSnapshotRecordAsync(tenantId, today);
+
+        IReadOnlyList<TenantUsageSnapshot> snapshots = await _repo.TenantUsageSnapshotsGetAsync(tenantId, 30);
+
+        TenantUsageSnapshot only = Assert.Single(snapshots);
+        Assert.Equal(2, only.DeviceCount);
+    }
 }

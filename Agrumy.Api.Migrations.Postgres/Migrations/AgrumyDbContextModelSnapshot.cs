@@ -2242,6 +2242,35 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("tenant", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantUsageSnapshotRow", b =>
+                {
+                    b.Property<int>("IDTenantUsageSnapshot")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDTenantUsageSnapshot"));
+
+                    b.Property<int>("DeviceCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("SensorDataRowCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("SnapshotDateUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDTenantUsageSnapshot");
+
+                    b.HasIndex("TenantID", "SnapshotDateUtc")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenantUsageSnapshot_tenant_date");
+
+                    b.ToTable("tenantUsageSnapshot", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantWifiConfigRow", b =>
                 {
                     b.Property<int>("IDTenantWifiConfig")
@@ -2839,6 +2868,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
                         .WithOne()
                         .HasForeignKey("Agrumy.Dal.Entities.TenantQuotaRow", "IDTenant")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantUsageSnapshotRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
+                        .WithMany()
+                        .HasForeignKey("TenantID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

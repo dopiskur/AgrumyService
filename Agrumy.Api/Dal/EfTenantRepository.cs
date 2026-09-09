@@ -191,5 +191,39 @@ namespace Agrumy.Api.Dal
         {
             await db.TenantWifiConfigs.Where(c => c.IDTenantWifiConfig == idTenantWifiConfig).ExecuteDeleteAsync();
         }
+
+        public async Task TenantUsageSnapshotRecordAsync(int idTenant, DateTimeOffset snapshotDateUtc)
+        {
+            int deviceCount = await db.Devices.CountAsync(d => d.TenantID == idTenant);
+            long sensorDataRowCount = await db.SensorData.LongCountAsync(s => s.TenantID == idTenant);
+
+            var row = await db.TenantUsageSnapshots
+                .FirstOrDefaultAsync(x => x.TenantID == idTenant && x.SnapshotDateUtc == snapshotDateUtc);
+            if (row == null)
+            {
+                row = new TenantUsageSnapshotRow { TenantID = idTenant, SnapshotDateUtc = snapshotDateUtc };
+                db.TenantUsageSnapshots.Add(row);
+            }
+            row.DeviceCount = deviceCount;
+            row.SensorDataRowCount = sensorDataRowCount;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days)
+        {
+            return await db.TenantUsageSnapshots.AsNoTracking()
+                .Where(x => x.TenantID == idTenant)
+                .OrderByDescending(x => x.SnapshotDateUtc)
+                .Take(days)
+                .Select(x => new TenantUsageSnapshot
+                {
+                    IDTenantUsageSnapshot = x.IDTenantUsageSnapshot,
+                    TenantID = x.TenantID,
+                    SnapshotDateUtc = x.SnapshotDateUtc,
+                    DeviceCount = x.DeviceCount,
+                    SensorDataRowCount = x.SensorDataRowCount,
+                })
+                .ToListAsync();
+        }
     }
 }

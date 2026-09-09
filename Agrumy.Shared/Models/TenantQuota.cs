@@ -42,4 +42,14 @@ namespace Agrumy.Shared.Models
             MaxSimulations = 1,
         };
     }
+
+    /// One day's recorded usage against TenantQuota's caps - devices and sensorData rows are the two costs that actually accrue (see TenantQuota.MaxDevices' own remark); notification volume isn't tracked yet, nothing persists a per-send log to count.
+    public class TenantUsageSnapshot
+    {
+        public int IDTenantUsageSnapshot { get; set; }
+        public int TenantID { get; set; }
+        public DateTimeOffset SnapshotDateUtc { get; set; }
+        public int DeviceCount { get; set; }
+        public long SensorDataRowCount { get; set; }
+    }
 }

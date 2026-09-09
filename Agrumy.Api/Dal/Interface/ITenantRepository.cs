@@ -37,5 +37,11 @@ namespace Agrumy.Api.Dal.Interface
 
         /// A no-op if the id does not exist.
         Task TenantWifiConfigDeleteAsync(int idTenantWifiConfig);
+
+        /// Upserts today's device/sensorData counts for this tenant - called once daily by TenantUsageSnapshotEvaluator; a same-day re-run (e.g. a service restart) refreshes the existing row rather than duplicating it.
+        Task TenantUsageSnapshotRecordAsync(int idTenant, DateTimeOffset snapshotDateUtc);
+
+        /// Most recent snapshots first, capped at <paramref name="days"/> rows.
+        Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days);
     }
 }

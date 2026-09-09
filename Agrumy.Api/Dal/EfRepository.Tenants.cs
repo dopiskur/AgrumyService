@@ -34,5 +34,9 @@ namespace Agrumy.Api.Dal
         public Task TenantWifiConfigUpdateAsync(TenantWifiConfig config) => tenantRepository.TenantWifiConfigUpdateAsync(config);
 
         public Task TenantWifiConfigDeleteAsync(int idTenantWifiConfig) => tenantRepository.TenantWifiConfigDeleteAsync(idTenantWifiConfig);
+
+        public Task TenantUsageSnapshotRecordAsync(int idTenant, DateTimeOffset snapshotDateUtc) => tenantRepository.TenantUsageSnapshotRecordAsync(idTenant, snapshotDateUtc);
+
+        public Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days) => tenantRepository.TenantUsageSnapshotsGetAsync(idTenant, days);
     }
 }
