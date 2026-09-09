@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Shared.Models
@@ -256,7 +257,7 @@ namespace Agrumy.Shared.Models
     }
 
     /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
-    public class DeviceFarmUnitZoneRule
+    public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]
         public int? IDDeviceFarmUnitZoneRule { get; set; }
@@ -281,6 +282,158 @@ namespace Agrumy.Shared.Models
         /// Notification-action only; supports {zone}/{value}/{metric} placeholders, substituted by RuleNotificationEvaluator ({value}/{metric} resolve from the first ComparisonNode found in the tree, best-effort for a multi-metric rule).
         public string? NotificationSubject { get; set; }
         public string? NotificationBody { get; set; }
+
+        // Must match AgrumyFirmware Logic/ConditionTree.h's MAX_NODES_PER_RULE - total node count across the WHOLE tree (leaves+groups), not just top-level conditions. Kept small deliberately (DRAM budget on-device), see that constant's own remarks.
+        public const int HardMaxNodesPerRule = 8;
+        // Must match AgrumyFirmware Logic/ConditionTree.h's MAX_CHILDREN_PER_GROUP.
+        public const int HardMaxChildrenPerGroup = 4;
+
+        /// Shape+bound self-validation - everything Agrumy.Api.Devices.RuleValidationService.ShapeErrorAsync checks EXCEPT RuleTriggered's cross-reference (needs a DB lookup, which a Shared-project DTO can't do; RuleValidationService still checks that part itself). Runs automatically wherever this DTO is model-bound ([ApiController] rejects it with 400 before the action body runs) or wherever RuleValidationService.ShapeErrorAsync delegates to it - a rule built in code (e.g. Agrumy.Rules.HorticultureRuleTemplateBuilder) gets the exact same checks as one typed in by hand, not a second hand-maintained copy of them.
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                yield return new ValidationResult("Name is required.", [nameof(Name)]);
+            }
+            if (ActionType == ActionType.Relay)
+            {
+                if (RelayFunction == null)
+                {
+                    yield return new ValidationResult("Relay rule: relayFunction is required.", [nameof(RelayFunction)]);
+                }
+                else if (RelayFunction.Value.IsPositional())
+                {
+                    if (TargetPercent is not int percent || percent < 0 || percent > 100)
+                    {
+                        yield return new ValidationResult("Screen/Vent rule: targetPercent is required, 0-100.", [nameof(TargetPercent)]);
+                    }
+                }
+                else if (TargetPercent != null)
+                {
+                    yield return new ValidationResult("targetPercent only applies to a Screen/Vent (positional) rule.", [nameof(TargetPercent)]);
+                }
+            }
+            else
+            {
+                if (RelayFunction != null)
+                {
+                    yield return new ValidationResult("Notification rule: relayFunction must not be set.", [nameof(RelayFunction)]);
+                }
+                if (TargetPercent != null)
+                {
+                    yield return new ValidationResult("Notification rule: targetPercent must not be set.", [nameof(TargetPercent)]);
+                }
+                if (string.IsNullOrWhiteSpace(NotificationSubject))
+                {
+                    yield return new ValidationResult("Notification rule: subject is required.", [nameof(NotificationSubject)]);
+                }
+            }
+
+            if (Root == null)
+            {
+                yield return new ValidationResult("A rule needs at least one condition.", [nameof(Root)]);
+                yield break;
+            }
+            if (CountNodes(Root) > HardMaxNodesPerRule)
+            {
+                yield return new ValidationResult($"A rule may have at most {HardMaxNodesPerRule} conditions/groups total.", [nameof(Root)]);
+                yield break; // tree too large to usefully walk further
+            }
+            foreach (ValidationResult error in NodeErrors(Root, ActionType))
+            {
+                yield return error;
+            }
+        }
+
+        private static int CountNodes(ConditionNode node) => 1 + node.Children.Sum(CountNodes);
+
+        /// Recurses into GroupNode.Children - a rule's tree can nest arbitrarily, so every node (not just top-level) needs the same shape/bound checks. Skips RuleTriggered's own referenced-rule existence check - that needs a DB lookup, done separately by RuleValidationService.
+        private static IEnumerable<ValidationResult> NodeErrors(ConditionNode node, ActionType actionType)
+        {
+            if (node.Type == NodeType.RuleTriggered && actionType != ActionType.Notification)
+            {
+                yield return new ValidationResult("\"another rule fired\" is only valid on a Notification-action rule (a Relay rule fires on-device, invisibly to the server).", [nameof(Root)]);
+            }
+            if ((node.Type == NodeType.RateOfChange || node.Type == NodeType.DifDisruption) && actionType != ActionType.Notification)
+            {
+                yield return new ValidationResult("A rate-of-change/DIF condition is only valid on a Notification-action rule - it reads SensorTrend history the device never receives, so a Relay rule would always evaluate this condition as false.", [nameof(Root)]);
+            }
+            if (NodeConfigError(node) is string configError)
+            {
+                yield return new ValidationResult(configError, [nameof(Root)]);
+            }
+            if (node.Type == NodeType.Group)
+            {
+                if (node.Children.Count == 0)
+                {
+                    yield return new ValidationResult("A group needs at least one child condition.", [nameof(Root)]);
+                }
+                else if (node.Children.Count > HardMaxChildrenPerGroup)
+                {
+                    yield return new ValidationResult($"A group may have at most {HardMaxChildrenPerGroup} direct children.", [nameof(Root)]);
+                }
+                if (node.GroupOperator == null)
+                {
+                    yield return new ValidationResult("A group needs an AND/OR operator.", [nameof(Root)]);
+                }
+                foreach (ConditionNode child in node.Children)
+                {
+                    foreach (ValidationResult childError in NodeErrors(child, actionType))
+                    {
+                        yield return childError;
+                    }
+                }
+            }
+        }
+
+        /// Shape+bound check per NodeType - the firmware would otherwise silently treat a malformed rule as inert (ConfigParser/evaluateRule), a confusing way to discover a typo; a ComparisonNode's Value1 is deliberately unbounded, only Hysteresis has a universal "must not be negative" rule. RuleTriggered's own referencedRuleId presence is checked here (cheap, no DB); its existence/tenant/action-type cross-reference is not (see RuleValidationService).
+        private static string? NodeConfigError(ConditionNode node)
+        {
+            switch (node.Type)
+            {
+                case NodeType.Comparison:
+                    if (node.Metric == null) { return "metric is required."; }
+                    if (node.Operator == null) { return "operator is required."; }
+                    if (node.Value1 == null) { return "value is required."; }
+                    if (node.Operator == ComparisonOperator.Between && node.Value2 == null) { return "a second value is required for \"between\"."; }
+                    if (node.Hysteresis is < 0) { return "hysteresis must not be negative."; }
+                    return null;
+                case NodeType.Interval:
+                    if (node.Interval is not int interval || interval <= 0) { return "interval must be greater than 0."; }
+                    if (node.IntervalLength is not int intervalLength || intervalLength <= 0 || intervalLength > interval) { return "on-duration must be greater than 0 and not exceed the interval."; }
+                    return null;
+                case NodeType.Schedule:
+                    if (node.DaysOfWeek is not int scheduleDays || scheduleDays < 0 || scheduleDays > 0b1111111) { return "days of week must be a value from 0 to 127."; }
+                    if (node.Start is not int start || start < 0 || start > 86399) { return "start must be between 0 and 86399 seconds since local midnight."; }
+                    if (node.Duration is not int duration || duration < 1 || start + duration > 86400) { return "duration must be at least 1 second and not cross local midnight (start + duration <= 86400)."; }
+                    return null;
+                case NodeType.Astronomical:
+                    if (node.DaysOfWeek is not int astroDays || astroDays < 0 || astroDays > 0b1111111) { return "days of week must be a value from 0 to 127."; }
+                    if (node.SunriseOffsetMinutes is not int sunriseOffset || sunriseOffset < -720 || sunriseOffset > 720
+                        || node.SunsetOffsetMinutes is not int sunsetOffset || sunsetOffset < -720 || sunsetOffset > 720)
+                    {
+                        return "offsets must be between -720 and 720 minutes.";
+                    }
+                    return null;
+                case NodeType.RuleTriggered:
+                    return node.ReferencedRuleId == null ? "referencedRuleId is required." : null;
+                case NodeType.RateOfChange:
+                    if (node.Metric == null) { return "metric is required."; }
+                    if (node.WindowHours is not int rocWindow || rocWindow < 1 || rocWindow >= SensorTrend.HourBuckets) { return $"windowHours must be between 1 and {SensorTrend.HourBuckets - 1}."; }
+                    if (node.ChangeThreshold is not double rocThreshold || rocThreshold < 0) { return "changeThreshold is required and must not be negative."; }
+                    return null;
+                case NodeType.DifDisruption:
+                    if (node.NightWindowHours is not int nightHours || nightHours < 1) { return "nightWindowHours must be at least 1."; }
+                    if (node.DayWindowHours is not int dayHours || dayHours < 1) { return "dayWindowHours must be at least 1."; }
+                    if (nightHours + dayHours > SensorTrend.HourBuckets) { return $"nightWindowHours + dayWindowHours must not exceed {SensorTrend.HourBuckets}."; }
+                    if (node.MinDifDegrees == null) { return "minDifDegrees is required."; }
+                    return null;
+                case NodeType.Group:
+                    return null; // Children/GroupOperator checked by the caller (NodeErrors), not here.
+                default:
+                    return "unknown condition type.";
+            }
+        }
     }
 
     /// Per-sensor-type average from each device's LATEST reading only, not a historical average (which would skew by poll frequency); null means nothing in scope has reported that type.
