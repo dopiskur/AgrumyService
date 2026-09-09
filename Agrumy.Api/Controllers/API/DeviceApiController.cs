@@ -546,7 +546,10 @@ namespace Agrumy.Api.Controllers.API
 
             // apiAuth is a bearer-style session credential (DeviceAuth.SessionPolicy), same CSPRNG requirement as ApiKey above.
             var deviceAuthentication = new DeviceAuthentication { apiAuth = AuthenticationProvider.GetSecureToken() };
-            await Cache.SetItemAsync(apiId, new DeviceCache { apiAuth = deviceAuthentication.apiAuth }, SessionTtlFor(device.SleepSeconds));
+            TimeSpan ttl = SessionTtlFor(device.SleepSeconds);
+            await Cache.SetItemAsync(apiId, new DeviceCache { apiAuth = deviceAuthentication.apiAuth }, ttl);
+            // DB-backed fallback - DeviceSessionHandler falls back here on a cache miss, so a server restart/redeploy doesn't force every device through this same endpoint again.
+            await deviceRepo.DeviceSessionSetAsync(device.IDDevice!.Value, deviceAuthentication.apiAuth, DateTimeOffset.UtcNow + ttl);
 
             return Ok(deviceAuthentication);
         }

@@ -322,6 +322,22 @@ namespace Agrumy.Api.Dal
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastFullConfigSentAt, sentAtUtc));
 
+        public Task DeviceSessionSetAsync(int deviceID, string? token, DateTimeOffset? expiresAtUtc) =>
+            db.Devices.Where(d => d.IDDevice == deviceID)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.ApiAuthToken, token)
+                    .SetProperty(d => d.ApiAuthExpiresAtUtc, expiresAtUtc));
+
+        public async Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId)
+        {
+            var row = await db.Devices.Where(d => d.ApiId == apiId)
+                .Select(d => new { d.ApiAuthToken, d.ApiAuthExpiresAtUtc })
+                .FirstOrDefaultAsync();
+            return row is { ApiAuthToken: { } token, ApiAuthExpiresAtUtc: { } expiresAtUtc }
+                ? (token, expiresAtUtc)
+                : null;
+        }
+
         public Task DeviceHardResetSetAsync(int deviceID, bool pending) =>
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.Reset, pending));

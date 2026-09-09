@@ -871,6 +871,13 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("varchar(64)")
                         .HasComputedColumnSql("(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)", true);
 
+                    b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ApiAuthToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
