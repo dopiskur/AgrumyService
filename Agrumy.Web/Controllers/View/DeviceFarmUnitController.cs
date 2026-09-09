@@ -163,7 +163,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> DeviceFarmManualActuate(int idDeviceFarm)
         {
             DeviceFarm farm = await api.DeviceFarmGet(idDeviceFarm);
@@ -236,7 +236,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Recycle Bin (roadmap #409/#427) --------------------------------
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> RecycleBin()
         {
             ServerConfig config = await api.ServerConfigGet();
@@ -342,7 +342,7 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> UnitManualActuate(int idDeviceFarmUnit)
         {
             DeviceFarmUnit unit = await api.DeviceFarmUnitGet(idDeviceFarmUnit);
@@ -803,7 +803,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> UnitRules(int idDeviceFarmUnit) => View(new RuleEditorViewModel
         {
             Scope = RuleScope.Unit,
@@ -831,7 +831,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// "Alert rules" - same Unit rule set as UnitRules, but the view (RuleEditorViewModel.ShowRelayCard) only shows the Notification card.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> UnitAlertRules(int idDeviceFarmUnit) => View(new RuleEditorViewModel
         {
             Scope = RuleScope.UnitAlert,
@@ -858,7 +858,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(UnitAlertRules), new { idDeviceFarmUnit });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> DeviceFarmRules(int idDeviceFarm) => View(new RuleEditorViewModel
         {
             Scope = RuleScope.Farm,
@@ -886,7 +886,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// "Alert rules" - same Farm rule set as DeviceFarmRules, Notification-only view like UnitAlertRules.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> DeviceFarmAlertRules(int idDeviceFarm) => View(new RuleEditorViewModel
         {
             Scope = RuleScope.FarmAlert,
@@ -913,7 +913,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(DeviceFarmAlertRules), new { idDeviceFarm });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> GlobalRules() => View(new GlobalRulesPageViewModel
         {
             Editor = new RuleEditorViewModel
@@ -1029,7 +1029,7 @@ namespace Agrumy.Web.Controllers.View
             };
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> AssignPicker(int idDeviceFarmUnitZone, bool controllerCapable) =>
             View(new AssignPickerViewModel
             {

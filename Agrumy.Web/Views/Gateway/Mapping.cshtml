@@ -7,6 +7,7 @@
     bool isPrivateProtocol = Model.Gateway.GatewayProfile == Agrumy.Shared.Models.GatewayProfile.LoRaPrivateProtocol;
     string idLabel = isPrivateProtocol ? "Node Address" : "DevEUI";
     ViewData["Title"] = "Gateway Devices - " + Model.Gateway.DeviceName + " " + idLabel + " Mapping";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card mb-3">
@@ -53,13 +54,16 @@
                             <td class="font-monospace">@m.DevEUI</td>
                             <td>@m.DeviceName <span class="text-secondary small">(@m.DeviceApiId)</span></td>
                             <td>
-                                <form asp-action="MappingDelete" method="post" class="d-inline">
-                                    <input type="hidden" name="idGatewayDeviceMapping" value="@m.IDGatewayDeviceMapping" />
-                                    <input type="hidden" name="idGatewayDevice" value="@Model.Gateway.IDDevice" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove mapping" aria-label="Remove mapping">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="MappingDelete" method="post" class="d-inline">
+                                        <input type="hidden" name="idGatewayDeviceMapping" value="@m.IDGatewayDeviceMapping" />
+                                        <input type="hidden" name="idGatewayDevice" value="@Model.Gateway.IDDevice" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove mapping" aria-label="Remove mapping" data-action="delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
                             </td>
                         </tr>
 }
@@ -68,6 +72,8 @@
             </div>
         }
 
+        @if (!isReadOnly)
+        {
         <hr />
         <h6 class="fw-semibold">Add mapping</h6>
         <form asp-action="MappingAdd" method="post" class="row g-2 align-items-end">
@@ -96,8 +102,9 @@
                 </select>
             </div>
             <div class="col-sm-3">
-                <button type="submit" class="btn btn-primary w-100">Add</button>
+                <button type="submit" class="btn btn-primary w-100" data-action="add">Add</button>
             </div>
         </form>
+        }
     </div>
 </div>

@@ -48,5 +48,17 @@ namespace Agrumy.Shared.Security
 
         /// May view/edit a device's Simulation Mode overrides - tenant scoping still applies inline, same rule as DeviceManagers.
         public const string SimulationManagers = GlobalAdmin + "," + TenantAdmin + "," + SimulationAdministrator;
+
+        /// GET-only widening of Admins to Global reader - write actions on the same controller keep using Admins directly.
+        public const string AdminsOrGlobalReader = Admins + "," + GlobalReader;
+
+        /// GET-only widening of DeviceManagers to Global reader - write actions on the same controller keep using DeviceManagers directly.
+        public const string DeviceManagersOrGlobalReader = DeviceManagers + "," + GlobalReader;
+
+        /// GET-only widening of SimulationManagers to Global reader - write actions on the same controller keep using SimulationManagers directly.
+        public const string SimulationManagersOrGlobalReader = SimulationManagers + "," + GlobalReader;
+
+        /// GET-only widening of UserManagers to Global reader - write actions on the same controller keep using UserManagers directly.
+        public const string UserManagersOrGlobalReader = UserManagers + "," + GlobalReader;
     }
 }

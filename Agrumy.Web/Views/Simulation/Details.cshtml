@@ -20,6 +20,7 @@
     var groups = (IList<SimulationGroup>)ViewBag.Groups;
     var units = (IList<DeviceFarmUnit>)ViewBag.Units;
     var zones = (IList<DeviceFarmUnitZone>)ViewBag.Zones;
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 
     // One number input per overridable metric, blank = no override for that metric - same 13 fields DeviceSimulation itself has, just without the per-device slider (a group covers several devices at once, a single slider position wouldn't mean the same thing for all of them).
     Microsoft.AspNetCore.Html.IHtmlContent GroupMetricField(string name, string label, string unit, (double Min, double Max) range, double? current = null, string formId = "groupAddForm")
@@ -60,11 +61,13 @@
     <div class="alert alert-info">@info</div>
 }
 
-@if (running)
+@if (!isReadOnly)
+{
+if (running)
 {
     <form asp-action="Stop" method="post" class="mb-3" onsubmit="return confirm('Stop this simulation now? Every member device returns to its real readings immediately.');">
         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-        <button type="submit" class="btn btn-outline-danger">Stop simulation</button>
+        <button type="submit" class="btn btn-outline-danger" data-action="stop">Stop simulation</button>
     </form>
 }
 else
@@ -92,9 +95,10 @@ else
         </div>
         <input type="hidden" id="simDurationMinutes" name="durationMinutes" value="1440" />
         <div class="col-auto">
-            <button type="submit" class="btn btn-primary">@(everStarted ? "Resume simulation" : "Start simulation")</button>
+            <button type="submit" class="btn btn-primary" data-action="start">@(everStarted ? "Resume simulation" : "Start simulation")</button>
         </div>
     </form>
+}
 }
 
 <h4>Devices in this simulation</h4>
@@ -112,11 +116,14 @@ else
                 <td><a asp-controller="Device" asp-action="Details" asp-route-idDevice="@device.IDDevice">@device.DeviceName</a></td>
                 <td>
                     <a asp-controller="Device" asp-action="Simulation" asp-route-idDevice="@device.IDDevice" asp-route-idSimulationSession="@Model.IDSimulationSession" class="btn btn-outline-primary btn-sm">Configure overrides</a>
-                    <form asp-action="RemoveDevice" method="post" class="d-inline">
-                        <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-                        <input type="hidden" name="idDevice" value="@device.IDDevice" />
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
-                    </form>
+                    @if (!isReadOnly)
+                    {
+                        <form asp-action="RemoveDevice" method="post" class="d-inline">
+                            <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                            <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="delete">Remove</button>
+                        </form>
+                    }
                 </td>
             </tr>
         }
@@ -149,6 +156,8 @@ else
                 <td>@g.Scope: @g.ScopeName</td>
                 <td>@g.MemberDeviceCount</td>
                 <td>
+                    @if (!isReadOnly)
+                    {
                     <details class="d-inline">
                         <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">Edit values</summary>
                         <form id="@editFormId" asp-action="SessionGroupUpdate" method="post" class="row g-2 align-items-end mt-2 p-2 border rounded">
@@ -177,8 +186,9 @@ else
                     <form asp-action="SessionGroupDelete" method="post" class="d-inline" onsubmit="return confirm('Remove this group? Every member device it added returns to its real readings.');">
                         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
                         <input type="hidden" name="idGroup" value="@g.IDSimulationGroup" />
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="delete">Remove</button>
                     </form>
+                    }
                 </td>
             </tr>
         }
@@ -189,6 +199,8 @@ else
     </tbody>
 </table>
 
+@if (!isReadOnly)
+{
 <details class="mb-3">
     <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">+ Add whole Unit/Zone</summary>
     <form id="groupAddForm" asp-action="SessionGroupAdd" method="post" class="mt-2 p-2 border rounded">
@@ -236,10 +248,11 @@ else
         @GroupMetricField("WaterLevel", "Water level", "", SimulationMetricRange.WaterLevel)
         @GroupMetricField("Wind", "Wind", "", SimulationMetricRange.Wind)
         <div class="col-auto">
-            <button type="submit" form="groupAddForm" class="btn btn-sm btn-primary">Add to simulation</button>
+            <button type="submit" form="groupAddForm" class="btn btn-sm btn-primary" data-action="add">Add to simulation</button>
         </div>
     </div>
 </details>
+}
 
 <script nonce="@Context.CspNonce()">
     document.getElementById('groupScopeSelect')?.addEventListener('change', function () {
@@ -252,9 +265,11 @@ else
 </script>
 
 @* "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
+@if (!isReadOnly)
+{
 <form asp-action="CreateVirtualDevice" method="post" class="mb-3">
     <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-    <button type="submit" class="btn btn-outline-primary">Create new virtual device and add it</button>
+    <button type="submit" class="btn btn-outline-primary" data-action="add">Create new virtual device and add it</button>
 </form>
 
 <h4>Add existing physical device</h4>
@@ -270,9 +285,10 @@ else
         </select>
     </div>
     <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Add to simulation</button>
+        <button type="submit" class="btn btn-primary" data-action="add">Add to simulation</button>
     </div>
 </form>
+}
 
 <h4 class="mt-4">Simulation-scoped rules</h4>
 <p class="text-secondary small">

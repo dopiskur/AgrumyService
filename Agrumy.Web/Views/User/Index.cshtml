@@ -2,14 +2,18 @@
 
 @{
     ViewData["Title"] = "Users";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Users</h3>
-        <div class="card-tools">
-            <a asp-action="Create" class="btn btn-sm btn-info">Create New</a>
-        </div>
+        @if (!isReadOnly)
+        {
+            <div class="card-tools">
+                <a asp-action="Create" class="btn btn-sm btn-info" data-action="create">Create New</a>
+            </div>
+        }
     </div>
     <div class="card-body table-responsive p-0">
         <table id="usersTable" class="table table-hover">
@@ -37,20 +41,30 @@
                         @Html.DisplayFor(modelItem => item.Username)
                     </td>
                     <td class="d-none d-md-table-cell">
-                        <form asp-action="ToggleEnabled" method="post" class="d-inline">
-                            <input type="hidden" name="idUser" value="@item.IDUser" />
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" name="enabled" value="true"
-                                       id="userEnabled-@item.IDUser" @((item.Enabled ?? false) ? "checked=\"checked\"" : "") onchange="this.form.requestSubmit()" />
-                                <label class="form-check-label" for="userEnabled-@item.IDUser"></label>
-                            </div>
-                        </form>
+                        @if (isReadOnly)
+                        {
+                            <span class="badge @((item.Enabled ?? false) ? "text-bg-success" : "text-bg-secondary")">@((item.Enabled ?? false) ? "Enabled" : "Disabled")</span>
+                        }
+                        else
+                        {
+                            <form asp-action="ToggleEnabled" method="post" class="d-inline">
+                                <input type="hidden" name="idUser" value="@item.IDUser" />
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" name="enabled" value="true"
+                                           id="userEnabled-@item.IDUser" @((item.Enabled ?? false) ? "checked=\"checked\"" : "") onchange="this.form.requestSubmit()" />
+                                    <label class="form-check-label" for="userEnabled-@item.IDUser"></label>
+                                </div>
+                            </form>
+                        }
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group" aria-label="User actions">
                             <a asp-action="Details" asp-route-idUser="@item.IDUser" class="btn btn-primary" title="Details" aria-label="Details"><i class="bi bi-info-circle"></i></a>
                             <a asp-action="Edit" asp-route-idUser="@item.IDUser" class="btn btn-warning" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                            <a asp-action="Delete" asp-route-idUser="@item.IDUser" class="btn btn-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>
+                            @if (!isReadOnly)
+                            {
+                                <a asp-action="Delete" asp-route-idUser="@item.IDUser" class="btn btn-danger" title="Delete" aria-label="Delete" data-action="delete"><i class="bi bi-trash"></i></a>
+                            }
                         </div>
                     </td>
                 </tr>

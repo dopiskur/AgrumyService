@@ -8,21 +8,25 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     /// Global Admin-only content curation for the three horticulture subcatalogs - any tenant applies an entry's template from the Zone page (see DeviceFarmUnitController.ApplyHorticultureCatalog), but only a Global Admin edits the catalog itself, same "not a public/community catalog yet" scope as the roadmap's own explicit deferral.
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class HorticultureCatalogController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index(HorticultureCatalogType type = HorticultureCatalogType.Crop)
         {
             ViewBag.CatalogType = type;
             return View(await api.HorticultureCatalogGet(type));
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public ActionResult Create(HorticultureCatalogType type) =>
             View("Edit", new HorticultureCatalogEditViewModel { CatalogType = type });
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Edit(HorticultureCatalogType type, int id) =>
             View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Save(HorticultureCatalogEditViewModel value)
@@ -42,6 +46,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index), new { type = value.CatalogType });
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Delete(HorticultureCatalogType type, int id)

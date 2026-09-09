@@ -9,12 +9,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     /// Roadmap #403 - "Add Simulation" is the entry point (create a named, time-boxed session first), devices are added INTO it afterward; replaces the old bare virtual-device list and the per-device Fleet toggle both.
-    [Authorize(Roles = RoleNames.SimulationManagers)]
+    [Authorize]
     public class SimulationController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         public async Task<ActionResult> Index() => View(await api.SimulationSessionList());
 
         /// Name only now, no duration; Details is where the session actually gets started.
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(string name)
@@ -31,6 +33,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Delete(int idSimulationSession)
@@ -46,6 +49,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         public async Task<ActionResult> Details(int idSimulationSession)
         {
             SimulationSession session = await api.SimulationSessionGet(idSimulationSession);
@@ -64,6 +68,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Starts a never-started session, or resumes one that was Stopped/expired; same action either way.
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Start(int idSimulationSession, int durationMinutes)
@@ -79,6 +84,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Stop(int idSimulationSession)
@@ -87,6 +93,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> AddDevice(int idSimulationSession, int idDevice)
@@ -102,6 +109,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> RemoveDevice(int idSimulationSession, int idDevice)
@@ -111,6 +119,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Creates a fully virtual device (same POST /api/Simulation/Device flow as before) and immediately adds it to this session in one step - a virtual device has no other reason to exist outside a session.
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> CreateVirtualDevice(int idSimulationSession)
@@ -127,6 +136,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DeleteVirtualDevice(int idDevice, int idSimulationSession)
@@ -137,6 +147,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Simulation-scoped rules - a member device evaluates these ahead of its real Zone>Unit>Farm>Global rules, same RuleFormInput/rule-builder.js as DeviceFarmUnitController's own Zone/Unit/Farm/Global rule forms. ----
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SessionRuleAdd(int idSimulationSession, RuleFormInput input)
@@ -167,6 +178,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SessionRuleDelete(int idDeviceFarmUnitZoneRule, int idSimulationSession)
@@ -184,6 +196,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Simulation groups - a whole Unit/Zone added at once, one override value set fanned out to every member device. ----
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SessionGroupAdd(int idSimulationSession, SimulationGroup group)
@@ -200,6 +213,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SessionGroupUpdate(int idSimulationSession, int idGroup, SimulationGroup group)
@@ -215,6 +229,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idSimulationSession });
         }
 
+        [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SessionGroupDelete(int idSimulationSession, int idGroup)

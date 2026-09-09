@@ -8,10 +8,11 @@ namespace Agrumy.Api.Controllers.API
 {
     /// TenantQuota CRUD - Global Admin only, mirroring TenantApiController's write bar; IDTenant=0 (the default/bootstrap tenant) has no quota to configure, see TenantQuotaEnforcer.
     [Route("/api/TenantQuota")]
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class TenantQuotaApiController(ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [HttpGet]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<TenantQuota>> TenantQuotaGet(int idTenant)
         {
             if (idTenant == 0)
@@ -23,6 +24,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [HttpPut]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> TenantQuotaSet([FromBody] TenantQuota quota)
         {
             if (quota.IDTenant == 0)

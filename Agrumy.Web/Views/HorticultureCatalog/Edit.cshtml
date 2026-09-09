@@ -1,6 +1,7 @@
 @model Agrumy.Web.ViewModels.HorticultureCatalogEditViewModel
 @{
     ViewData["Title"] = Model.Entry.ID is int ? "Edit Catalog Entry" : "Add Catalog Entry";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -9,6 +10,7 @@
     </div>
     <div class="card-body">
         <form asp-action="Save">
+        <fieldset disabled="@isReadOnly">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="CatalogType" />
             <input type="hidden" asp-for="Entry.ID" />
@@ -82,9 +84,13 @@
             </div>
 
             <div class="mt-4">
-                <input type="submit" value="Save" class="btn btn-primary" />
+                @if (!isReadOnly)
+                {
+                    <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                }
                 <a asp-action="Index" asp-route-type="@Model.CatalogType" class="btn btn-outline-secondary">Back to List</a>
             </div>
+        </fieldset>
         </form>
     </div>
 </div>

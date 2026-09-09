@@ -7,11 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    [Authorize(Roles = RoleNames.DeviceManagers)]
+    [Authorize]
     public class WifiConfigController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> Index() => View(await api.DiscoveryWifiConfigsGet());
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Add(TenantWifiConfig config)
@@ -28,6 +30,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Update(int idTenantWifiConfig, TenantWifiConfig config)
@@ -44,6 +47,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Delete(int idTenantWifiConfig)

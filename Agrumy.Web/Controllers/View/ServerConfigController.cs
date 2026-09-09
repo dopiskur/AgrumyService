@@ -7,9 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class ServerConfigController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index()
         {
             await PopulateHealthAsync();
@@ -17,6 +18,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Roadmap #419 - the "Server Health" tab's live-refresh.js poll target (Agrumy.Web's own passive proxy, not an on-demand test button).
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Health() => PartialView("_ServerHealth", await api.ServerConfigGetHealth());
 
         private async Task PopulateHealthAsync()
@@ -32,6 +34,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Index(ServerConfig serverConfig)
@@ -83,6 +86,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Sends through the SAVED settings (Save first, then test) - not whatever is currently typed into the unsaved form.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> TestEmail(string toEmail)
@@ -99,6 +103,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Sends through the SAVED settings (Save first, then test) - not whatever is currently typed into the unsaved form.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> TestWebhook()
@@ -115,6 +120,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Tests the CURRENTLY TYPED (unsaved) archive DB fields, opposite of TestEmail above - see ServerConfigApiController.TestArchiveDatabase.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> TestArchiveDatabase([FromBody] ArchiveDbTestRequest request)
@@ -131,6 +137,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Saves the whole "Data Archiving" subsection independently of this page's main Save button - see ServerConfigApiController.SaveArchiveSettings.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SaveArchiveSettings([FromBody] ArchiveSettingsSaveRequest request)
@@ -146,6 +153,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet]
         public async Task<ActionResult<DataMaintenanceProviderInfo>> DataMaintenanceProvider()
         {
@@ -159,6 +167,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DataMaintenanceOptimize([FromBody] DataMaintenanceRequest request)
@@ -174,6 +183,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DataMaintenancePurge([FromBody] DataPurgeRequest request)
@@ -189,6 +199,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DataMaintenancePurgeOrphaned([FromBody] RecycleBinPurgeRequest request)

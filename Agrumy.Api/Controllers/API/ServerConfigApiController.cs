@@ -15,10 +15,10 @@ namespace Agrumy.Api.Controllers.API
         // These are SERVER-WIDE settings, so Global admin only.
 
         [HttpGet]
-        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<ServerConfig>> Get()
         {
-            if (!CallerIsGlobalAdmin)
+            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
                 return StatusCode(403, "Server-wide settings require the Global admin role");
             }
@@ -347,10 +347,10 @@ namespace Agrumy.Api.Controllers.API
 
         /// Roadmap #419 - passive Server Health card, polled by the Web page on an interval (Agrumy.Web's ServerConfigController.Health -> live-refresh.js), not an on-demand test button like TestEmail/TestArchiveDatabase above. Only lists a dependency currently enabled/configured in ServerConfig - see ServerHealthService.
         [HttpGet("Health")]
-        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<IReadOnlyList<ServerHealthEntry>>> GetHealth()
         {
-            if (!CallerIsGlobalAdmin)
+            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
                 return StatusCode(403, "Server-wide settings require the Global admin role");
             }

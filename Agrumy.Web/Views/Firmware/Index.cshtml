@@ -1,6 +1,7 @@
 @model FirmwareViewModel
 @{
     ViewData["Title"] = "Firmware";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     var source = Model.Config.FirmwareSource;
     string sourceLabel = source switch
     {
@@ -125,6 +126,8 @@
                     self-signed certificate. <strong>Custom</strong> reads a <code>manifest.json</code> from
                     your own URL.
                 </p>
+                @if (!isReadOnly)
+                {
                 <form asp-action="SaveSettings" method="post" class="row g-3 align-items-end mb-3">
                     <div class="col-md-3">
                         <label class="form-label">Firmware source</label>
@@ -152,9 +155,12 @@
                         </div>
                     }
                 </form>
+                }
 
                 <hr />
                 <h6 class="text-uppercase text-secondary small">Sync the catalog</h6>
+                @if (!isReadOnly)
+                {
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     @if (source != FirmwareSource.Local)
                     {
@@ -176,9 +182,12 @@
                         </form>
                     }
                 </div>
+                }
             </div>
 
             <div class="tab-pane fade" id="tab-local" role="tabpanel">
+                @if (!isReadOnly)
+                {
                 <div class="row g-3">
                     <div class="col-lg-6">
                         <h6 class="text-uppercase text-secondary small">Import from a directory on the server</h6>
@@ -197,6 +206,7 @@
                         <div class="form-text">A single <code>.bin</code> is stored and offered to devices of that board regardless of the active source; a <code>.zip</code> (as produced by "Build from GitHub repository" below) is extracted and imported the same way.</div>
                     </div>
                 </div>
+                }
                 <hr />
                 <h6 class="text-uppercase text-secondary small">Build from GitHub repository</h6>
                 <p class="text-secondary small mb-2">Packages the visible catalog plus a <code>manifest.json</code> with SHA-256 checksums into a ZIP - take it to an air-gapped server and Upload it there, or use "Import from a directory" after unzipping.</p>
@@ -258,10 +268,13 @@
                                 }
                             </td>
                             <td>
-                                <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Remove this build from the catalog@(f.Source == FirmwareSource.Local ? " and delete the stored file" : "")?');">
-                                    <input type="hidden" name="idDeviceFirmware" value="@f.IDDeviceFirmware" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Remove this build from the catalog@(f.Source == FirmwareSource.Local ? " and delete the stored file" : "")?');">
+                                        <input type="hidden" name="idDeviceFirmware" value="@f.IDDeviceFirmware" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }

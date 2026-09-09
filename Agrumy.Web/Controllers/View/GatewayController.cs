@@ -8,14 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     /// Lists registered gateways and manages a LoRaGateway's DevEUI-&gt;device mapping; gateways are install-wide infrastructure (IGatewayRepository), so this is Global-Admin-only, not tenant-scoped.
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class GatewayController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index()
         {
             return View(new GatewayListViewModel { Gateways = await api.GatewaysGetAll() });
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Mapping(int idGatewayDevice)
         {
             DeviceDto gateway = await api.DeviceGet(idGatewayDevice);
@@ -35,6 +37,7 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> MappingAdd(int idGatewayDevice, string devEUI, int idDevice)
@@ -48,6 +51,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Mapping), new { idGatewayDevice });
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> MappingDelete(int idGatewayDeviceMapping, int idGatewayDevice)

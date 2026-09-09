@@ -236,7 +236,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idDevice });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> Edit(int? idDevice)
         {
             DeviceDto device = await api.DeviceGet(idDevice);
@@ -325,7 +325,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> Delete(int? idDevice) =>
             View(await api.DeviceGet(idDevice));
 
@@ -338,7 +338,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Fleet));
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> EditSensor(int? idDevice)
         {
             var device = await api.DeviceGet(idDevice);
@@ -351,7 +351,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Polled by EditSensor.cshtml's "Check result" button after a Detect now command was issued - null Result means the device hasn't reported back yet.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet]
         public async Task<ActionResult<DeviceSensorDetectionResult?>> SensorDetectionResult(int idDevice) =>
             Ok(await api.DeviceSensorDetectionResultGet(idDevice));
@@ -377,7 +377,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Roadmap #403 - reached only from a simulation session's own Details page now (Device Details no longer links here directly), idSimulationSession just carries the "where to go back to" context through the round trip.
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         public async Task<ActionResult> Simulation(int? idDevice, int? idSimulationSession)
         {
             var device = await api.DeviceGet(idDevice);
@@ -403,7 +403,7 @@ namespace Agrumy.Web.Controllers.View
                 : RedirectToAction(nameof(Details), new { idDevice });
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> EditController(int? idDevice)
         {
             var device = await api.DeviceGet(idDevice);

@@ -44,7 +44,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Status of one previously-issued command - IssueCommand's CreatedCommandIds otherwise had no way to check on afterward short of direct DB access.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("{idDeviceCommand}")]
         public async Task<ActionResult<DeviceCommand>> GetCommand(int idDeviceCommand)
         {
@@ -53,7 +53,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound();
             }
-            var (_, error) = await EnsureOwnedDeviceAsync(command.DeviceID);
+            var (_, error) = await EnsureOwnedDeviceAsync(command.DeviceID, forWrite: false);
             if (error != null)
             {
                 return error;
@@ -97,8 +97,8 @@ namespace Agrumy.Api.Controllers.API
             return redacted ? node.ToJsonString() : null;
         }
 
-        private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(int idDevice) =>
-            EnsureOwnedDeviceEntityAsync(() => deviceRepo.DeviceGetByIdAsync(idDevice), d => d.TenantID, "Device", forWrite: true);
+        private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(int idDevice, bool forWrite = true) =>
+            EnsureOwnedDeviceEntityAsync(() => deviceRepo.DeviceGetByIdAsync(idDevice), d => d.TenantID, "Device", forWrite);
 
         private Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite: true);

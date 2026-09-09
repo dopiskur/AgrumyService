@@ -20,39 +20,39 @@ DELETE,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global adm
 DELETE,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
 DELETE,api/Simulation/Session/{idSimulationSession}/Rule/{idRule},Global admin;Simulation administrator;Tenant admin
 DELETE,api/User,Global admin;Global User;Tenant admin;Tenant User
-GET,api/AuditLog,Global admin;Tenant admin
-GET,api/DataMaintenance/Provider,Global admin
-GET,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenant admin
-GET,api/DeviceCommand/{idDeviceCommand},Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/DeviceFarmUnit/Unassigned,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/AuditLog,Global admin;Tenant admin;Global reader
+GET,api/DataMaintenance/Provider,Global admin;Global reader
+GET,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenant admin;Global reader
+GET,api/DeviceCommand/{idDeviceCommand},Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/DeviceFarmUnit/Unassigned,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Discovery/WifiConfigs/{idTenantWifiConfig}/Reveal,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Experiment/{idExperiment},Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Experiment/{idExperiment}/ControllerData,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Experiment/{idExperiment}/SensorData,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Firmware,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Firmware/DownloadZip,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Firmware/Fetch,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Firmware/Manifest,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Gateway/All,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/Gateway/DeviceMapping/All,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/RecycleBin/Device,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/RecycleBin/Farm/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device
-GET,api/ServerConfig,Global admin
-GET,api/ServerConfig/Health,Global admin
-GET,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
-GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin
-GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin
-GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin
-GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin
+GET,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Experiment/{idExperiment},Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Experiment/{idExperiment}/ControllerData,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Experiment/{idExperiment}/SensorData,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Firmware,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Firmware/DownloadZip,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Firmware/Fetch,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Firmware/Manifest,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Gateway/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/Gateway/DeviceMapping/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/RecycleBin/Device,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/RecycleBin/Farm/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/ServerConfig,Global admin;Global reader
+GET,api/ServerConfig/Health,Global admin;Global reader
+GET,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin;Global reader
+GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin;Global reader
+GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin;Global reader
+GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin;Global reader
+GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Tenant,Global admin;Global reader
 GET,api/Tenant/All,Global admin;Global reader
 GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
 GET,api/Tenant/Export,Global admin;Tenant admin
-GET,api/TenantQuota,Global admin
+GET,api/TenantQuota,Global admin;Global reader
 GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
 GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
 POST,api/DataMaintenance/Optimize,Global admin

@@ -19,8 +19,12 @@ var apiServiceUrl = builder.Configuration["WebView:ApiService"];
 if (string.IsNullOrEmpty(apiServiceUrl))
     throw new InvalidOperationException("WebView:ApiService is missing in configuration.");
 
-// ApiAuthExceptionFilter turns a 401 from Agrumy.Api (expired stored JWT) into a re-login.
-builder.Services.AddControllersWithViews(o => o.Filters.Add<ApiAuthExceptionFilter>())
+// ApiAuthExceptionFilter turns a 401 from Agrumy.Api (expired stored JWT) into a re-login; ReadOnlyModeFilter computes ViewBag.IsReadOnly for every view/partial (Global reader support).
+builder.Services.AddControllersWithViews(o =>
+    {
+        o.Filters.Add<ApiAuthExceptionFilter>();
+        o.Filters.Add<ReadOnlyModeFilter>();
+    })
     .AddViewLocalization()
     .AddDataAnnotationsLocalization();
 builder.Services.AddHttpContextAccessor(); // BearerTokenHandler + _Layout read the current user
@@ -132,3 +136,9 @@ app.MapControllerRoute(
    .WithStaticAssets();
 
 app.Run();
+
+namespace Agrumy.Web
+{
+    /// Marker type for Agrumy.Api.Tests' WebApplicationFactory<Agrumy.Web.WebHostMarker> - a dedicated type instead of the implicit top-level Program, same reasoning as Agrumy.Api.ApiHostMarker (avoids a CS0433 clash once both assemblies are referenced by the same test project).
+    public sealed class WebHostMarker { }
+}

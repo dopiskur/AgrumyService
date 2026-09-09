@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Simulations";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <h1>Simulations</h1>
@@ -18,15 +19,18 @@
 }
 
 @* Name only here; duration is chosen when the session is actually started, inside its own Details page. *@
+@if (!isReadOnly)
+{
 <form asp-action="Create" method="post" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
         <label class="form-label" for="simName">Name</label>
         <input type="text" id="simName" name="name" class="form-control" required maxlength="128" placeholder="e.g. Irrigation rule test" />
     </div>
     <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Add Simulation</button>
+        <button type="submit" class="btn btn-primary" data-action="create">Add Simulation</button>
     </div>
 </form>
+}
 
 <table class="table">
     <thead>

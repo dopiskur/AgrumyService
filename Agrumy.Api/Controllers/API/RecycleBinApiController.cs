@@ -10,23 +10,23 @@ namespace Agrumy.Api.Controllers.API
     [Route("/api/RecycleBin")]
     public class RecycleBinApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Device")]
         public async Task<ActionResult<IList<DeviceDto>>> DevicesGet() =>
             Ok((await deviceRepo.DeviceRecycleBinGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId)).Select(d => d.ToDto()).ToList());
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Farm")]
         public async Task<ActionResult<IList<DeviceFarm>>> FarmsGet() =>
             Ok(await deviceFarmUnitRepo.DeviceFarmRecycleBinGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
 
         /// Roadmap #427 - devices marked for permanent removal but not yet reaped; still restorable via DeviceRestore.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Device/PendingPurge")]
         public async Task<ActionResult<IList<DeviceDto>>> DevicesPendingPurgeGet() =>
             Ok((await deviceRepo.DevicePendingPurgeGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId)).Select(d => d.ToDto()).ToList());
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Farm/PendingPurge")]
         public async Task<ActionResult<IList<DeviceFarm>>> FarmsPendingPurgeGet() =>
             Ok(await deviceFarmUnitRepo.DeviceFarmPendingPurgeGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));

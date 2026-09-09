@@ -1,6 +1,7 @@
 @model Agrumy.Web.ViewModels.AssignPickerViewModel
 @{
     ViewData["Title"] = Model.ControllerCapable ? "Add Controller" : "Add Sensor";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -37,12 +38,15 @@
                             <td>@d.DeviceName</td>
                             <td class="d-none d-md-table-cell text-secondary">@d.MacAddress</td>
                             <td class="text-end">
-                                <form asp-action="Assign" method="post" class="d-inline">
-                                    <input type="hidden" name="idDevice" value="@d.IDDevice" />
-                                    <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.IDDeviceFarmUnitZone" />
-                                    <input type="hidden" name="controllerCapable" value="@Model.ControllerCapable" />
-                                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="Assign" method="post" class="d-inline">
+                                        <input type="hidden" name="idDevice" value="@d.IDDevice" />
+                                        <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.IDDeviceFarmUnitZone" />
+                                        <input type="hidden" name="controllerCapable" value="@Model.ControllerCapable" />
+                                        <button type="submit" class="btn btn-sm btn-primary" data-action="add">Add</button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }

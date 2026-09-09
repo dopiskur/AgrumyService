@@ -1,0 +1,8 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
+@if (ViewBag.IsReadOnly == true)
+{
+    <div class="alert alert-info d-flex align-items-center py-2 mb-3">
+        <i class="bi bi-eye me-2"></i>
+        <span>@Localizer["Read-only view - your role can see every setting here but cannot save, delete, or run any action."]</span>
+    </div>
+}

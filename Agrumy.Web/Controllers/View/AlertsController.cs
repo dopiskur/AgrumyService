@@ -10,11 +10,13 @@ namespace Agrumy.Web.Controllers.View
     /// Alerts settings, split out of Server Settings into their own sidebar page (roadmap #338) -
     /// still the same ServerConfig model/endpoint, just a different View surfacing a different
     /// subset of its fields (same pattern as the Firmware page splitting off FirmwareSource et al.).
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class AlertsController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index() => View(await api.ServerConfigGet());
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Index(ServerConfig serverConfig)

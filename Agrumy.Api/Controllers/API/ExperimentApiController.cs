@@ -19,14 +19,15 @@ namespace Agrumy.Api.Controllers.API
         // Most-recent-first cap for the raw data view - a basic table, not a paged/exportable report (deferred to a future roadmap item).
         private const int MaxDataRowsReturned = 500;
 
-        private async Task<OwnedResult<Experiment>> EnsureOwnedExperimentAsync(int idExperiment)
+        private async Task<OwnedResult<Experiment>> EnsureOwnedExperimentAsync(int idExperiment, bool forWrite = true)
         {
             Experiment? experiment = await experimentRepo.ExperimentGetByIdAsync(idExperiment);
             if (experiment is null)
             {
                 return (null, NotFound());
             }
-            if (experiment.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            bool crossTenantAllowed = CallerManagesUsersGlobally || (!forWrite && CallerHasRole(RoleNames.GlobalReader));
+            if (experiment.TenantID != CallerTenantId && !crossTenantAllowed)
             {
                 return (null, StatusCode(403, "Experiment belongs to a different tenant"));
             }
@@ -80,15 +81,15 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Tenant-scoped for everyone including Global admin, same deliberate deviation SimulationApiController's own session routes use - an experiment belongs to the tenant it was created for.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet]
         public async Task<ActionResult<IList<Experiment>>> List() => Ok(await experimentRepo.ExperimentsGetAsync(CallerTenantId));
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("{idExperiment}")]
         public async Task<ActionResult<Experiment>> Get(int idExperiment)
         {
-            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment);
+            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment, forWrite: false);
             return error ?? Ok(experiment);
         }
 
@@ -109,11 +110,11 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Experiment-scoped rules - a device in scope evaluates these ahead of its real Zone>Unit>Farm>Global rules, falling back to that hierarchy for anything the experiment has no rule for. ----
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("{idExperiment}/Rule")]
         public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> RulesGet(int idExperiment)
         {
-            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment);
+            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment, forWrite: false);
             if (error != null)
             {
                 return error;
@@ -188,11 +189,11 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Raw data view - basic, most-recent-first; charting/comparison analysis is a deferred follow-up. ----
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("{idExperiment}/SensorData")]
         public async Task<ActionResult<IList<ExperimentSensorSample>>> SensorDataGet(int idExperiment)
         {
-            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment);
+            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment, forWrite: false);
             if (error != null)
             {
                 return error;
@@ -200,11 +201,11 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await experimentRepo.ExperimentSensorSamplesGetAsync(idExperiment, MaxDataRowsReturned));
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("{idExperiment}/ControllerData")]
         public async Task<ActionResult<IList<ExperimentControllerEvent>>> ControllerDataGet(int idExperiment)
         {
-            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment);
+            var (experiment, error) = await EnsureOwnedExperimentAsync(idExperiment, forWrite: false);
             if (error != null)
             {
                 return error;

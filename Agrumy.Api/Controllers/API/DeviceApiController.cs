@@ -605,7 +605,7 @@ namespace Agrumy.Api.Controllers.API
 
         /// Admin read for the Web Simulation page - an empty, disabled DeviceSimulation (not 404) when the device has never had one set, so the form has something to bind to.
         [HttpGet("Simulation/{idDevice}")]
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         public async Task<ActionResult<DeviceSimulation>> DeviceSimulationGet(int idDevice)
         {
             var (_, error) = await EnsureOwnedDeviceAsync(() => deviceRepo.DeviceGetByIdAsync(idDevice), "Device", forWrite: false);

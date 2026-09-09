@@ -8,16 +8,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    [Authorize(Roles = RoleNames.UserManagers)]
+    [Authorize]
     public class UserController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult> Index() => View(await api.UsersGet());
 
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult> Details(int? idUser) =>
             View(await api.UserGet(idUser));
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         public ActionResult Create() => View(new UserView());
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(UserView userView)
@@ -31,6 +35,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult> Edit(int? idUser)
         {
             var user = await api.UserGet(idUser);
@@ -52,6 +57,7 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit(UserView userView)
@@ -66,6 +72,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idUser = userView.UserUpdate!.IDUser });
         }
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ToggleEnabled(int idUser, bool enabled)
@@ -113,9 +120,11 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idUser = value.IDUser });
         }
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         public async Task<ActionResult> Delete(int? idUser) =>
             View(await api.UserGet(idUser));
 
+        [Authorize(Roles = RoleNames.UserManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DeleteConfirm(int? idUser)

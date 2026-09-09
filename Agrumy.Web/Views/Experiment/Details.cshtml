@@ -8,6 +8,7 @@
     var sensorSamples = (IList<ExperimentSensorSample>)ViewBag.SensorSamples;
     var controllerEvents = (IList<ExperimentControllerEvent>)ViewBag.ControllerEvents;
     bool running = Model.StoppedAtUtc == null && (Model.ExpiresAtUtc == null || Model.ExpiresAtUtc > DateTimeOffset.UtcNow);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <h1>@Model.Name</h1>
@@ -43,11 +44,11 @@
                 }
             </div>
         </div>
-        @if (running)
+        @if (running && !isReadOnly)
         {
             <form asp-action="Stop" method="post" onsubmit="return confirm('Stop this experiment? Devices in scope return to the real Zone/Unit/Farm/Global rules immediately. The recorded sensor/controller history stays.');">
                 <input type="hidden" name="idExperiment" value="@Model.IDExperiment" />
-                <button type="submit" class="btn btn-outline-danger">Stop</button>
+                <button type="submit" class="btn btn-outline-danger" data-action="stop">Stop</button>
             </form>
         }
     </div>

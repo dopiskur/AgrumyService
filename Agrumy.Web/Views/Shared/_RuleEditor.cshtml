@@ -31,6 +31,7 @@
     // Computed from other readings, not a raw sensor value - hidden from the metric picker in Simple mode along with every non-comparison node type (see rule-builder.js's allowedTypes()).
     HashSet<Agrumy.Shared.Models.SensorMetric> derivedMetrics = [Agrumy.Shared.Models.SensorMetric.Vpd, Agrumy.Shared.Models.SensorMetric.DewPoint, Agrumy.Shared.Models.SensorMetric.DewPointSpread];
     bool simpleUIMode = User.GetUIMode() == UIMode.Simple;
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     string SummarizeTree(Agrumy.Shared.Models.ConditionNode? node)
@@ -125,18 +126,23 @@
                                     @if (rule.TargetPercent is int targetPercent) { <span class="badge text-bg-info">&rarr; @targetPercent%</span> }
                                     - @Html.Raw(SummarizeTree(rule.Root))
                                 </span>
-                                <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
-                                    <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
-                                    @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
-                                    {
-                                        <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
-                                    }
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                                        <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
+                                        @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
+                                        {
+                                            <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
                             </li>
                         }
                     </ul>
                 }
+                @if (!isReadOnly)
+                {
                 <details>
                     <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;">+ Add rule</summary>
                     <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded">
@@ -170,9 +176,10 @@
                             </div>
                         </div>
                         @TreeBuilder($"relay-{function}", isNotification: false, notificationRules)
-                        <button type="submit" class="btn btn-sm btn-primary mt-2">Add rule</button>
+                        <button type="submit" class="btn btn-sm btn-primary mt-2" data-action="add">Add rule</button>
                     </form>
                 </details>
+                }
             </div>
         }
         <p class="text-secondary small mb-0">
@@ -215,19 +222,24 @@
                             @if (rule.IsSafetyRule) { <span class="badge text-bg-warning">safety</span> }
                             - @rule.NotificationSubject - @Html.Raw(SummarizeTree(rule.Root))
                         </span>
-                        <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
-                            <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
-                            @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
-                            {
-                                <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
-                            }
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-trash"></i></button>
-                        </form>
+                        @if (!isReadOnly)
+                        {
+                            <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                                <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
+                                @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
+                                {
+                                    <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
+                                }
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        }
                     </li>
                 }
             </ul>
         }
 
+        @if (!isReadOnly)
+        {
         <details>
             <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;">+ Add notification rule</summary>
             <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded">
@@ -261,9 +273,10 @@
                     </div>
                 </div>
                 @TreeBuilder("notification", isNotification: true, notificationRules)
-                <button type="submit" class="btn btn-sm btn-primary mt-2">Add notification rule</button>
+                <button type="submit" class="btn btn-sm btn-primary mt-2" data-action="add">Add notification rule</button>
             </form>
         </details>
+        }
     </div>
 </div>
 

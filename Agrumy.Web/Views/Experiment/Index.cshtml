@@ -3,6 +3,7 @@
 
 @{
     ViewData["Title"] = "Experiments";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <h1>Experiments</h1>
@@ -18,6 +19,8 @@
     <div class="alert alert-warning">@error</div>
 }
 
+@if (!isReadOnly)
+{
 <form asp-action="Create" method="post" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
         <label class="form-label" for="expName">Name</label>
@@ -65,9 +68,10 @@
         <input type="datetime-local" id="expExpires" name="expiresAtUtc" class="form-control" />
     </div>
     <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Add Experiment</button>
+        <button type="submit" class="btn btn-primary" data-action="add">Add Experiment</button>
     </div>
 </form>
+}
 
 <table class="table">
     <thead>

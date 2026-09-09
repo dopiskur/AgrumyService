@@ -5,13 +5,14 @@
     Func<string, string> navActive = c => string.Equals(c, currentController, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var currentUserEmail = User.Identity?.Name;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
-    // Only fetched for a Global admin, who's the only one who can ever see the menu item this
-    // gates - a Global reader/other role never pays for this extra call. Swallowed on failure
-    // (just hides the item) since this runs in the shared layout on every page - a transient Api
-    // hiccup must not take down the whole navigation shell.
+    bool isGlobalReader = User.IsInRole(RoleNames.GlobalReader);
+    Func<string, bool> hasAnyRoleOrReads = csv => hasAnyRole(csv) || isGlobalReader;
+    // Fetched for a Global admin or Global reader, the only two roles that can ever see the menu
+    // items this gates. Swallowed on failure (just hides the item) since this runs in the shared
+    // layout on every page - a transient Api hiccup must not take down the whole navigation shell.
     bool tenantManagementEnabled = false;
     bool gatewayEnabled = false;
-    if (User.IsInRole(RoleNames.GlobalAdmin))
+    if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
     {
         try
         {
@@ -177,7 +178,7 @@
                                 <p>@Localizer["Reporting"]</p>
                             </a>
                         </li>
-                        @if (hasAnyRole(RoleNames.DeviceManagers))
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="GlobalRules" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "GlobalRules", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
@@ -192,7 +193,7 @@
                                 </a>
                             </li>
                         }
-                        @if (hasAnyRole(RoleNames.UserManagers))
+                        @if (hasAnyRoleOrReads(RoleNames.UserManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="User" asp-action="Index" class="nav-link @navActive("User")">
@@ -201,7 +202,7 @@
                                 </a>
                             </li>
                         }
-                        @if (hasAnyRole(RoleNames.Admins))
+                        @if (hasAnyRoleOrReads(RoleNames.Admins))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="AuditLog" asp-action="Index" class="nav-link @navActive("AuditLog")">
@@ -210,7 +211,7 @@
                                 </a>
                             </li>
                         }
-                        @if (hasAnyRole(RoleNames.SimulationManagers))
+                        @if (hasAnyRoleOrReads(RoleNames.SimulationManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="Simulation" asp-action="Index" class="nav-link @navActive("Simulation")">
@@ -219,7 +220,7 @@
                                 </a>
                             </li>
                         }
-                        @if (hasAnyRole(RoleNames.DeviceManagers) && !simpleUIMode)
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers) && !simpleUIMode)
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="Experiment" asp-action="Index" class="nav-link @navActive("Experiment")">
@@ -228,7 +229,7 @@
                                 </a>
                             </li>
                         }
-                        @if (User.IsInRole(RoleNames.GlobalAdmin))
+                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="HorticultureCatalog" asp-action="Index" class="nav-link @navActive("HorticultureCatalog")">
@@ -273,7 +274,7 @@
                                 </li>
                             }
                         }
-                        @if (hasAnyRole(RoleNames.DeviceManagers) && !simpleUIMode)
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers) && !simpleUIMode)
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
@@ -325,6 +326,7 @@
             </div>
             <div class="app-content">
                 <div class="container-fluid">
+                    <partial name="_ReadOnlyBanner" />
                     @RenderBody()
                 </div>
             </div>

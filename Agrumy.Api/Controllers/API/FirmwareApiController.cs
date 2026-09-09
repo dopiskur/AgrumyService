@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
     [Route("/api/Firmware")]
     public class FirmwareApiController(IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, FirmwareCatalogService catalog, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet]
         public async Task<ActionResult<IList<DeviceFirmware>>> List(string? board) =>
             Ok(string.IsNullOrWhiteSpace(board) ? await catalog.ListAsync() : await catalog.ListForBoardAsync(board));
@@ -90,7 +90,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Packages the visible catalog (+ manifest.json) into a ZIP for download - same read-access level as Manifest/Fetch below, since this only repackages what those already expose.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("DownloadZip")]
         public async Task<ActionResult> DownloadZip(bool latestOnly, CancellationToken cancellationToken)
         {
@@ -114,12 +114,12 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Manifest")]
         public async Task<ActionResult<FirmwareManifest>> Manifest() => Ok(await catalog.BuildManifestAsync(PublicBaseUrl));
 
         /// The browser "Build offline repo" tool reads every catalog file through here (same-origin via Agrumy.Web's proxy) instead of hitting GitHub directly - a release asset's redirect target does not answer cross-origin fetches from a page.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [EnableRateLimiting("device-data")]
         [HttpGet("Fetch")]
         public async Task<ActionResult> Fetch(string fileName, CancellationToken cancellationToken)

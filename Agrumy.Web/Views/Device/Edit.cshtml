@@ -21,6 +21,7 @@
     var batteryToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.BatteryEnabled)), Label = "Device battery", Value = form.BatteryEnabled };
     var debugToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.Debug)), Label = nameof(form.Debug), Value = form.Debug };
     var enabledToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.Enabled)), Label = "Device", Value = form.Enabled };
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -29,6 +30,7 @@
     </div>
     <div class="card-body">
         <form asp-action="Edit">
+        <fieldset disabled="@isReadOnly">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="mb-3">
                 <label asp-for="Device.IDDevice" class="form-label"></label>
@@ -120,9 +122,13 @@
             <partial name="_EnabledToggleField" model="enabledToggle" />
 
             <div class="mb-0">
-                <input type="submit" value="Save" class="btn btn-primary" />
+                @if (!isReadOnly)
+                {
+                    <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                }
                 <a asp-action="Fleet" class="btn btn-outline-secondary">Back to List</a>
             </div>
+        </fieldset>
         </form>
     </div>
 </div>

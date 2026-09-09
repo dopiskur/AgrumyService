@@ -10,12 +10,13 @@ using StreamPart = Refit.StreamPart; // not `using Refit;` - its AuthorizeAttrib
 
 namespace Agrumy.Web.Controllers.View
 {
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class FirmwareController(IApi api, IConfiguration configuration) : Controller
     {
         // Bare host, matching what the captive portal's own servicePoint field expects (Agrumy.Shared.Models.DeviceRegistration) - WebView:ApiService is a full URL (e.g. "https://api.agrumy.com"), Agrumy.Api itself, NOT this Web app's own host.
         private string ApiServicePointHost => new Uri(configuration["WebView:ApiService"]!).Host;
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index()
         {
             ServerConfig config = await api.ServerConfigGet();
@@ -37,6 +38,7 @@ namespace Agrumy.Web.Controllers.View
                 .ToList();
 
         // ServerConfigApiController.Update overwrites the whole row, so this re-fetches and overlays only these three fields to avoid clobbering concurrent Server Settings changes.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SaveSettings(FirmwareSource firmwareSource, string? firmwareGitHubRepository, string? firmwareCustomRepositoryUrl, int? firmwareRefreshIntervalHours)
@@ -58,6 +60,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Sync(FirmwareSyncMode mode)
@@ -66,6 +69,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Import(string path)
@@ -74,6 +78,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Upload(IFormFile? file)
@@ -109,6 +114,7 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// "Build from GitHub repository": packages the visible catalog into a ZIP the browser downloads directly - <paramref name="latestOnly"/> keeps just the newest build per board, otherwise every visible build is included.
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> DownloadZip(bool latestOnly)
         {
             HttpResponseMessage response = await api.FirmwareDownloadZip(latestOnly);
@@ -122,6 +128,7 @@ namespace Agrumy.Web.Controllers.View
             return File(await response.Content.ReadAsStreamAsync(), "application/zip", downloadName);
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Delete(int idDeviceFirmware)
@@ -133,6 +140,7 @@ namespace Agrumy.Web.Controllers.View
         // ---- Post-flash provisioning wizard - AJAX endpoints backing firmware-provisioning.js ----
 
         /// Auto-fills the wizard's userLogin/devicePin instead of asking the admin to retype what Device/AddDevice already shows them - same "reuse caller's still-valid PIN" mechanism, minted fresh only when the current one is missing/expired.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpGet]
         public async Task<ActionResult> MyProvisioningCredentials()
         {
@@ -144,11 +152,13 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Ssid-only - the caller never needs the real Password (see ResolveWifiSecret below, used only at the moment of sending it to the device over serial).
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet]
         public async Task<ActionResult> WifiConfigsForProvisioning() =>
             Json((await api.DiscoveryWifiConfigsGet()).Select(c => new { id = c.IDTenantWifiConfig, ssid = c.Ssid }));
 
         /// The one place this wizard needs the real WiFi password - resolved just-in-time, never persisted client-side beyond the moment it's written to the device's serial port.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ResolveWifiSecret(int idTenantWifiConfig)
@@ -166,6 +176,7 @@ namespace Agrumy.Web.Controllers.View
 
         /// Farm > Unit > Zone, nested - the wizard needs the whole shape up front to decide whether to show a Farm picker at all ("one farm = no farm-object" principle extends here: skip straight to Unit > Zone when there's only one).
         [HttpGet]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> FarmTree()
         {
             IList<DeviceFarm> farms = await api.DeviceFarmsGet();
@@ -195,6 +206,7 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> AssignProvisionedDevice(int idDevice, int idDeviceFarmUnitZone)
@@ -210,6 +222,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> OfflineFile(string fileName)
         {
             HttpResponseMessage response = await api.FirmwareFetch(fileName);
@@ -223,6 +236,7 @@ namespace Agrumy.Web.Controllers.View
             return File(await response.Content.ReadAsStreamAsync(), "application/octet-stream", downloadName);
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> InstallManifest(string board)
         {
             string? chipFamily = EspChipFamily.ForBoard(board);

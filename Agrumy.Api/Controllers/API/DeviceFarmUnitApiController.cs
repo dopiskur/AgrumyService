@@ -751,10 +751,10 @@ namespace Agrumy.Api.Controllers.API
         #region Device assignment
 
         /// Devices with no current zone, filtered to controller- or sensor-capable - the "Add Controller"/"Add Sensor" picker list.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Unassigned")]
         public async Task<ActionResult<IList<DeviceDto>>> DeviceUnassignedGet(bool controllerCapable) =>
-            Ok((await deviceFarmUnitRepo.DeviceUnassignedGetAsync(CallerManagesDevicesGlobally ? null : CallerTenantId, controllerCapable))
+            Ok((await deviceFarmUnitRepo.DeviceUnassignedGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, controllerCapable))
                 .Select(d => d.ToDto()).ToList());
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

@@ -2,14 +2,18 @@
 @{
     ViewData["Title"] = "Horticulture Catalog";
     var type = (Agrumy.Shared.Models.HorticultureCatalogType)ViewBag.CatalogType;
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Horticulture Catalog</h3>
-        <div class="card-tools">
-            <a asp-action="Create" asp-route-type="@type" class="btn btn-sm btn-info">Add New</a>
-        </div>
+        @if (!isReadOnly)
+        {
+            <div class="card-tools">
+                <a asp-action="Create" asp-route-type="@type" class="btn btn-sm btn-info" data-action="create">Add New</a>
+            </div>
+        }
     </div>
     <div class="card-body">
         <ul class="nav nav-tabs mb-3">
@@ -52,11 +56,14 @@
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a asp-action="Edit" asp-route-type="@type" asp-route-id="@entry.ID" class="btn btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <form asp-action="Delete" method="post" class="d-inline">
-                                    <input type="hidden" name="type" value="@type" />
-                                    <input type="hidden" name="id" value="@entry.ID" />
-                                    <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Delete this catalog entry?');"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="Delete" method="post" class="d-inline">
+                                        <input type="hidden" name="type" value="@type" />
+                                        <input type="hidden" name="id" value="@entry.ID" />
+                                        <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Delete this catalog entry?');" data-action="delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>

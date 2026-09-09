@@ -1,16 +1,20 @@
 @model IList<Agrumy.Shared.Models.TenantWifiConfig>
 @{
     ViewData["Title"] = "WiFi Networks";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Saved WiFi networks</h3>
-        <div class="float-end">
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addWifiModal">
-                <i class="bi bi-plus-lg"></i> Add network
-            </button>
-        </div>
+        @if (!isReadOnly)
+        {
+            <div class="float-end">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addWifiModal" data-action="add">
+                    <i class="bi bi-plus-lg"></i> Add network
+                </button>
+            </div>
+        }
     </div>
     <div class="card-body">
         <p class="text-secondary">
@@ -44,13 +48,16 @@
                         <tr>
                             <td>@config.Ssid</td>
                             <td class="text-end">
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editWifiModal-@config.IDTenantWifiConfig" title="Edit"><i class="bi bi-pencil"></i></button>
-                                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Remove this saved network? Devices already provisioned with it keep working - this only affects future registrations.');">
-                                        <input type="hidden" name="idTenantWifiConfig" value="@config.IDTenantWifiConfig" />
-                                        <button type="submit" class="btn btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </div>
+                                @if (!isReadOnly)
+                                {
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editWifiModal-@config.IDTenantWifiConfig" title="Edit"><i class="bi bi-pencil"></i></button>
+                                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Remove this saved network? Devices already provisioned with it keep working - this only affects future registrations.');">
+                                            <input type="hidden" name="idTenantWifiConfig" value="@config.IDTenantWifiConfig" />
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete" data-action="delete"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                }
                             </td>
                         </tr>
                     }
@@ -60,6 +67,8 @@
     </div>
 </div>
 
+@if (!isReadOnly)
+{
 <div class="modal fade" id="addWifiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -87,7 +96,10 @@
         </div>
     </div>
 </div>
+}
 
+@if (!isReadOnly)
+{
 @foreach (var config in Model)
 {
     <div class="modal fade" id="editWifiModal-@config.IDTenantWifiConfig" tabindex="-1" aria-hidden="true">
@@ -118,4 +130,5 @@
             </div>
         </div>
     </div>
+}
 }

@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
         private readonly IAuditLogRepository auditLog = auditLogRepo;
         private const int MaxTake = 500;
 
-        [Authorize(Roles = RoleNames.Admins)]
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<AuditLogEntry>>> AuditLogGet(int take = 200, string? actorEmail = null, string? action = null, string? targetType = null, DateTime? fromUtc = null, DateTime? toUtc = null)
         {

@@ -11,16 +11,17 @@ namespace Agrumy.Api.Controllers.API
 {
     /// "Optimize Old Data" / "Purge Old Data", Global admin only (affects every tenant's telemetry) - both dispatch to BackgroundJobQueue and return 202 immediately instead of holding the request open for a large table's processing time.
     [Route("api/DataMaintenance")]
-    [Authorize(Roles = RoleNames.GlobalAdmin)]
+    [Authorize]
     public class DataMaintenanceApiController(
         IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, AgrumyDbContext db, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         /// Lets Agrumy.Web decide whether to show the MariaDB-only "shrink files on disk?" dialog before confirming a Purge - Postgres/TimescaleDB reclaims disk space automatically.
         [HttpGet("Provider")]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public ActionResult<DataMaintenanceProviderInfo> GetProvider()
         {
-            if (!CallerIsGlobalAdmin)
+            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
                 return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
             }
@@ -28,6 +29,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [HttpPost("Optimize")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public ActionResult Optimize([FromBody] DataMaintenanceRequest request)
         {
             if (!CallerIsGlobalAdmin)
@@ -58,6 +60,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [HttpPost("Purge")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public ActionResult Purge([FromBody] DataPurgeRequest request)
         {
             if (!CallerIsGlobalAdmin)
@@ -96,6 +99,7 @@ namespace Agrumy.Api.Controllers.API
 
         /// Roadmap #427 - manual trigger for the same recycle-bin purge cycle PurgeOrphanedSensorDataBackgroundService runs on a schedule; forces PurgeOrphanedSensorDataEvaluator.RunOnceAsync regardless of PurgeOrphanedSensorDataScheduleEnabled, since an explicit admin click is not "the schedule". Marks anything newly past its tenant's retention AND reaps everything already Purged (including finalizing any #427 "Delete permanently now"/"Empty Recycle Bin" actions instead of waiting for the next scheduled tick).
         [HttpPost("PurgeOrphaned")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
         public ActionResult PurgeOrphaned([FromBody] RecycleBinPurgeRequest request)
         {
             if (!CallerIsGlobalAdmin)

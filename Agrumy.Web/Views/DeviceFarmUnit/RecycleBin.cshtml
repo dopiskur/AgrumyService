@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Recycle Bin";
     bool canPurge = User.IsInRole(RoleNames.GlobalAdmin);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 @if (canPurge && (Model.Farms.Any() || Model.Devices.Any()))
@@ -42,10 +43,13 @@
                             <td>@farm.DeviceFarmName</td>
                             <td>@farm.DeletedAtUtc?.ToString("u")</td>
                             <td class="d-flex gap-2">
-                                <form asp-action="RecycleBinRestoreFarm" method="post">
-                                    <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="RecycleBinRestoreFarm" method="post">
+                                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" data-action="restore">Restore</button>
+                                    </form>
+                                }
                                 @if (canPurge)
                                 {
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-recycle-bin-purge
@@ -83,10 +87,13 @@
                             <td>@device.MacAddress</td>
                             <td>@device.DeletedAtUtc?.ToString("u")</td>
                             <td class="d-flex gap-2">
-                                <form asp-action="RecycleBinRestoreDevice" method="post">
-                                    <input type="hidden" name="idDevice" value="@device.IDDevice" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
-                                </form>
+                                @if (!isReadOnly)
+                                {
+                                    <form asp-action="RecycleBinRestoreDevice" method="post">
+                                        <input type="hidden" name="idDevice" value="@device.IDDevice" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" data-action="restore">Restore</button>
+                                    </form>
+                                }
                                 @if (canPurge)
                                 {
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-recycle-bin-purge

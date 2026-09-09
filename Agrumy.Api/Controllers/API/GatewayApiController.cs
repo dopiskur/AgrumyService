@@ -357,7 +357,7 @@ namespace Agrumy.Api.Controllers.API
         // ---- admin (Gateway Devices page) ---------------------------------------------------
 
         [HttpGet("All")]
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult<IList<DeviceDto>>> GatewaysGetAll() =>
             Ok((await gatewayRepo.GatewayDevicesGetAllAsync()).Select(d => d.ToDto()).ToList());
 
@@ -366,7 +366,7 @@ namespace Agrumy.Api.Controllers.API
             EnsureOwnedDeviceEntityAsync(() => deviceRepo.DeviceGetByIdAsync(idGatewayDevice), d => d.TenantID, "Gateway", forWrite);
 
         [HttpGet("DeviceMapping/All")]
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult<IList<GatewayDeviceMapping>>> DeviceMappingGetAll(int idGatewayDevice)
         {
             var (_, error) = await EnsureOwnedGatewayAsync(idGatewayDevice, forWrite: false);

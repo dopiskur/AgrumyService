@@ -9,9 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     /// Long-term real-device rule experiments; unlike Simulation there's no device-membership step (Scope+ScopeID alone defines who's in it) and no hard duration cap, so Create both names AND starts the experiment in one step.
-    [Authorize(Roles = RoleNames.DeviceManagers)]
+    [Authorize]
     public class ExperimentController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> Index()
         {
             IList<DeviceFarm> farms = await api.DeviceFarmsGet();
@@ -36,6 +37,7 @@ namespace Agrumy.Web.Controllers.View
             });
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(string name, ExperimentScope scope, int scopeId, DateTimeOffset? expiresAtUtc)
@@ -52,6 +54,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> Details(int idExperiment)
         {
             Experiment experiment = await api.ExperimentGet(idExperiment);
@@ -71,6 +74,7 @@ namespace Agrumy.Web.Controllers.View
             return View(experiment);
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Stop(int idExperiment)
@@ -81,6 +85,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Experiment-scoped rules - same RuleFormInput/rule-builder.js as every other scope's rule form. ----
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ExperimentRuleAdd(int idExperiment, RuleFormInput input)
@@ -111,6 +116,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idExperiment });
         }
 
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ExperimentRuleDelete(int idDeviceFarmUnitZoneRule, int idExperiment)

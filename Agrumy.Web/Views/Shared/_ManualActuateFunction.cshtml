@@ -6,6 +6,7 @@
     string scopeFieldName = Model.IsFarmLevel ? "idDeviceFarm" : Model.IsUnitLevel ? "idDeviceFarmUnit" : "idDeviceFarmUnitZone";
     // Target mode is always offered at Unit/Farm level - individual zones lacking MaxRunSeconds are skipped server-side, not gated here (a Unit/Farm can span zones with different or no configured cap).
     bool targetModeAvailable = Model.IsUnitLevel || Model.IsFarmLevel || Model.MaxRunSeconds is > 0;
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="d-flex flex-wrap align-items-start gap-3 py-2 border-bottom">
@@ -22,11 +23,18 @@
                 @(active.Mode == ManualOverrideMode.Target ? "(safety cutoff, may finish sooner once the target is reached)" : "")
             </span>
         </div>
-        <form asp-action="ZoneManualActuateStop" method="post">
-            <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.ScopeId" />
-            <input type="hidden" name="relayFunction" value="@((int)Model.RelayFunction)" />
-            <button type="submit" class="btn btn-sm btn-outline-danger">Stop</button>
-        </form>
+        @if (!isReadOnly)
+        {
+            <form asp-action="ZoneManualActuateStop" method="post">
+                <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.ScopeId" />
+                <input type="hidden" name="relayFunction" value="@((int)Model.RelayFunction)" />
+                <button type="submit" class="btn btn-sm btn-outline-danger" data-action="stop">Stop</button>
+            </form>
+        }
+    }
+    else if (isReadOnly)
+    {
+        <div class="flex-grow-1 text-secondary small">Not active.</div>
     }
     else
     {

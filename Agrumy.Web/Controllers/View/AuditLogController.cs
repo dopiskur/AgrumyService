@@ -8,9 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     /// Read-only - the API itself already scopes the result to the caller's tenant (or every tenant for a Global admin), nothing further to decide here.
-    [Authorize(Roles = RoleNames.Admins)]
+    [Authorize]
     public class AuditLogController(IApi api) : Controller
     {
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> Index(string? actorEmail, string? action, string? targetType, DateTime? fromUtc, DateTime? toUtc) => View(new AuditLogViewModel
         {
             Entries = await api.AuditLogGet(actorEmail: actorEmail, action: action, targetType: targetType, fromUtc: fromUtc, toUtc: toUtc),
@@ -22,6 +23,7 @@ namespace Agrumy.Web.Controllers.View
         });
 
         /// Same filters as Index - exported set always matches what the admin is currently looking at.
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> ExportCsv(string? actorEmail, string? action, string? targetType, DateTime? fromUtc, DateTime? toUtc)
         {
             var entries = await api.AuditLogGet(actorEmail: actorEmail, action: action, targetType: targetType, fromUtc: fromUtc, toUtc: toUtc);

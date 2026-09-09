@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Alerts";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -14,6 +15,7 @@
             <div class="alert alert-success">@message</div>
         }
         <form asp-action="Index">
+        <fieldset disabled="@isReadOnly">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="IDServerConfig" />
             @* Every other Server Settings field must ride along hidden - this form posts the whole ServerConfig object, same reasoning as the Firmware/Alerts hidden fields on ServerConfig/Index.cshtml. *@
@@ -115,8 +117,12 @@
             </div>
 
             <div class="mb-0">
-                <input type="submit" value="Save" class="btn btn-primary" />
+                @if (!isReadOnly)
+                {
+                    <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                }
             </div>
+        </fieldset>
         </form>
     </div>
 </div>

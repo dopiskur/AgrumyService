@@ -58,7 +58,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Tenant-scoped for everyone including Global admin - a deliberate deviation from the usual Global-admin-sees-everything pattern, since a simulation is scoped to the tenant it was created for.
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Device")]
         public async Task<ActionResult<IList<int>>> ListVirtualDevices() =>
             Ok(await simulationRepo.VirtualDeviceIdsGetAsync(CallerTenantId));
@@ -113,12 +113,12 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Tenant-scoped for everyone including Global admin, same deliberate deviation as ListVirtualDevices above - a session belongs to the tenant it was created for.
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Session")]
         public async Task<ActionResult<IList<SimulationSession>>> ListSessions() =>
             Ok(await simulationRepo.SimulationSessionsGetAsync(CallerTenantId));
 
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Session/{idSimulationSession}")]
         public async Task<ActionResult<SimulationSession>> GetSession(int idSimulationSession)
         {
@@ -127,7 +127,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound();
             }
-            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally && !CallerHasRole(RoleNames.GlobalReader))
             {
                 return StatusCode(403, "Session belongs to a different tenant");
             }
@@ -291,25 +291,26 @@ namespace Agrumy.Api.Controllers.API
         // ---- Simulation-scoped rules - a member device evaluates these ahead of its real Zone>Unit>Farm>Global rules, falling back to that hierarchy for whatever a session has no rule for. ----
 
         /// Same ownership check every other Session-scoped route in this controller already does - kept local rather than shared since it's three lines and every one of these routes needs it inline anyway.
-        private async Task<OwnedResult<SimulationSession>> EnsureOwnedSessionAsync(int idSimulationSession)
+        private async Task<OwnedResult<SimulationSession>> EnsureOwnedSessionAsync(int idSimulationSession, bool forWrite = true)
         {
             SimulationSession? session = await simulationRepo.SimulationSessionGetByIdAsync(idSimulationSession);
             if (session is null)
             {
                 return (null, NotFound());
             }
-            if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
+            bool crossTenantAllowed = CallerManagesUsersGlobally || (!forWrite && CallerHasRole(RoleNames.GlobalReader));
+            if (session.TenantID != CallerTenantId && !crossTenantAllowed)
             {
                 return (null, StatusCode(403, "Session belongs to a different tenant"));
             }
             return (session, null);
         }
 
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Session/{idSimulationSession}/Rule")]
         public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> SessionRulesGet(int idSimulationSession)
         {
-            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession, forWrite: false);
             if (error != null)
             {
                 return error;
@@ -384,11 +385,11 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Simulation groups - a whole Unit/Zone added together, one override value set fanned out to every member device. ----
 
-        [Authorize(Roles = RoleNames.SimulationManagers)]
+        [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Session/{idSimulationSession}/Group")]
         public async Task<ActionResult<IList<SimulationGroup>>> SessionGroupsGet(int idSimulationSession)
         {
-            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession);
+            var (session, error) = await EnsureOwnedSessionAsync(idSimulationSession, forWrite: false);
             if (error != null)
             {
                 return error;
