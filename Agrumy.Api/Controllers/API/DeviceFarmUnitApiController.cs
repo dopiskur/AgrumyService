@@ -827,15 +827,15 @@ namespace Agrumy.Api.Controllers.API
         #endregion
 
         /// Same shape as DeviceApiController.EnsureOwnedDeviceAsync, for DeviceFarm (roadmap #384).
-        private Task<(DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedFarmAsync(int? idDeviceFarm, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int? idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 
         /// Same shape as DeviceApiController.EnsureOwnedDeviceAsync, for DeviceFarmUnit - see ApiControllerBase.EnsureOwnedDeviceEntityAsync for the shared 404/403 logic.
-        private Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int? idDeviceFarmUnit, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarmUnit>> EnsureOwnedUnitAsync(int? idDeviceFarmUnit, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit), u => u.TenantID, "Unit", forWrite);
 
         /// Same shape as EnsureOwnedUnitAsync, for DeviceFarmUnitZone.
-        private Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int? idDeviceFarmUnitZone, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int? idDeviceFarmUnitZone, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite);
 
         /// Routes a dashboard widget's own (level, levelId) target through whichever EnsureOwned*Async matches its level - a widget's data source is checked independently of the zone whose page it happens to be displayed on.
@@ -848,7 +848,7 @@ namespace Agrumy.Api.Controllers.API
         };
 
         /// Same shape as EnsureOwnedUnitAsync, for Device.
-        private Task<(Device? Device, ActionResult? Error)> EnsureOwnedDeviceAsync(
+        private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(
             Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);
     }

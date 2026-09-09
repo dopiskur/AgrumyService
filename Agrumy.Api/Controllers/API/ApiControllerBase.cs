@@ -113,7 +113,7 @@ namespace Agrumy.Api.Controllers.API
             && !CallerManagesUsersGlobally && !CallerHasRole(RoleNames.TenantUser);
 
         /// Shared body behind each Device-domain controller's per-entity EnsureOwned* helper: 404 on missing, 403 on tenant mismatch unless the caller's role crosses tenants (CallerManagesDevicesGlobally on a write, the wider CallerReadsDevicesGlobally on a read).
-        protected async Task<(T? Entity, ActionResult? Error)> EnsureOwnedDeviceEntityAsync<T>(Func<Task<T?>> lookup, Func<T, int?> tenantIdOf, string ownerLabel, bool forWrite) where T : class
+        protected async Task<OwnedResult<T>> EnsureOwnedDeviceEntityAsync<T>(Func<Task<T?>> lookup, Func<T, int?> tenantIdOf, string ownerLabel, bool forWrite) where T : class
         {
             T? entity = await lookup();
             if (entity is null)

@@ -291,7 +291,7 @@ namespace Agrumy.Api.Controllers.API
         // ---- Simulation-scoped rules - a member device evaluates these ahead of its real Zone>Unit>Farm>Global rules, falling back to that hierarchy for whatever a session has no rule for. ----
 
         /// Same ownership check every other Session-scoped route in this controller already does - kept local rather than shared since it's three lines and every one of these routes needs it inline anyway.
-        private async Task<(SimulationSession? Session, ActionResult? Error)> EnsureOwnedSessionAsync(int idSimulationSession)
+        private async Task<OwnedResult<SimulationSession>> EnsureOwnedSessionAsync(int idSimulationSession)
         {
             SimulationSession? session = await simulationRepo.SimulationSessionGetByIdAsync(idSimulationSession);
             if (session is null)
@@ -473,7 +473,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Same shape as DeviceFarmUnitApiController's own EnsureOwnedUnitAsync/EnsureOwnedZoneAsync - kept local since this controller doesn't otherwise need the rest of that controller's ownership surface.
-        private async Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int idDeviceFarmUnit)
+        private async Task<OwnedResult<DeviceFarmUnit>> EnsureOwnedUnitAsync(int idDeviceFarmUnit)
         {
             DeviceFarmUnit? unit = await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit);
             if (unit == null)
@@ -485,7 +485,7 @@ namespace Agrumy.Api.Controllers.API
                 : (unit, null);
         }
 
-        private async Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone)
+        private async Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone)
         {
             DeviceFarmUnitZone? zone = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone);
             if (zone == null)

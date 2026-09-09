@@ -97,13 +97,13 @@ namespace Agrumy.Api.Controllers.API
             return redacted ? node.ToJsonString() : null;
         }
 
-        private Task<(Device? Device, ActionResult? Error)> EnsureOwnedDeviceAsync(int idDevice) =>
+        private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(int idDevice) =>
             EnsureOwnedDeviceEntityAsync(() => deviceRepo.DeviceGetByIdAsync(idDevice), d => d.TenantID, "Device", forWrite: true);
 
-        private Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone) =>
+        private Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite: true);
 
-        private Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int idDeviceFarmUnit) =>
+        private Task<OwnedResult<DeviceFarmUnit>> EnsureOwnedUnitAsync(int idDeviceFarmUnit) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit), u => u.TenantID, "Unit", forWrite: true);
     }
 }

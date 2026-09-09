@@ -24,7 +24,7 @@ namespace Agrumy.Api.Controllers.API
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         /// The caller's own device row, already confirmed to be a gateway - null (with the ActionResult already set) covers every failure mode, so every action below is one guard clause instead of repeating the same checks.
-        private async Task<(Device? gateway, ActionResult? error)> GetCallerGatewayAsync()
+        private async Task<OwnedResult<Device>> GetCallerGatewayAsync()
         {
             string apiId = HttpContext.DeviceApiId()!;
             Device? gateway = await deviceRepo.DeviceGetByApiIdAsync(apiId);
@@ -362,7 +362,7 @@ namespace Agrumy.Api.Controllers.API
             Ok((await gatewayRepo.GatewayDevicesGetAllAsync()).Select(d => d.ToDto()).ToList());
 
         /// Looks the gateway device up and checks the caller may touch it - same shared 404/403 logic every other Device-domain controller uses (ApiControllerBase.EnsureOwnedDeviceEntityAsync).
-        private Task<(Device? Gateway, ActionResult? Error)> EnsureOwnedGatewayAsync(int idGatewayDevice, bool forWrite) =>
+        private Task<OwnedResult<Device>> EnsureOwnedGatewayAsync(int idGatewayDevice, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceRepo.DeviceGetByIdAsync(idGatewayDevice), d => d.TenantID, "Gateway", forWrite);
 
         [HttpGet("DeviceMapping/All")]

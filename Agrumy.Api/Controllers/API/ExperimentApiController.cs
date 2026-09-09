@@ -19,7 +19,7 @@ namespace Agrumy.Api.Controllers.API
         // Most-recent-first cap for the raw data view - a basic table, not a paged/exportable report (deferred to a future roadmap item).
         private const int MaxDataRowsReturned = 500;
 
-        private async Task<(Experiment? Experiment, ActionResult? Error)> EnsureOwnedExperimentAsync(int idExperiment)
+        private async Task<OwnedResult<Experiment>> EnsureOwnedExperimentAsync(int idExperiment)
         {
             Experiment? experiment = await experimentRepo.ExperimentGetByIdAsync(idExperiment);
             if (experiment is null)

@@ -244,7 +244,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Looks a device up and checks the caller may touch it - see ApiControllerBase.EnsureOwnedDeviceEntityAsync for the shared 404/403 logic.
-        private Task<(Device? Device, ActionResult? Error)> EnsureOwnedDeviceAsync(
+        private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(
             Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);
 

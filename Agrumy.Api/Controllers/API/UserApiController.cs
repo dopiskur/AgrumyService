@@ -273,7 +273,7 @@ namespace Agrumy.Api.Controllers.API
             return error2 != null ? error2 : Ok(loginResult);
         }
 
-        private async Task<(UserLoginResult? result, ActionResult? error)> IssueLoginResultAsync(User user)
+        private async Task<OwnedResult<UserLoginResult>> IssueLoginResultAsync(User user)
         {
             IReadOnlyList<string> tokenRoles = await ResolveCallerTokenRolesAsync(user);
             if (tokenRoles.Count == 0)

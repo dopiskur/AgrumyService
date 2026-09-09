@@ -289,16 +289,16 @@ namespace Agrumy.Api.Controllers.API
             };
         }
 
-        private Task<(DeviceFarmUnitZone? Zone, ActionResult? Error)> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite);
 
-        private Task<(DeviceFarmUnit? Unit, ActionResult? Error)> EnsureOwnedUnitAsync(int idDeviceFarmUnit, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarmUnit>> EnsureOwnedUnitAsync(int idDeviceFarmUnit, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit), u => u.TenantID, "Unit", forWrite);
 
-        private Task<(DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
+        private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 
-        private Task<(TenantWifiConfig? Config, ActionResult? Error)> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
+        private Task<OwnedResult<TenantWifiConfig>> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
             EnsureOwnedDeviceEntityAsync(() => tenantRepo.TenantWifiConfigGetByIdAsync(idTenantWifiConfig), c => (int?)c.TenantID, "WiFi network", forWrite: true);
 
         /// Same precedence as FirmwareApiController.PublicBaseUrl (WebView:ApiService, else the request's own host), but host-only - Agrumy.Shared.Models.DeviceConfig.ServicePoint has no scheme, firmware prepends http(s):// itself.
