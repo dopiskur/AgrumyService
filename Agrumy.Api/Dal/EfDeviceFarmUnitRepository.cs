@@ -459,6 +459,18 @@ namespace Agrumy.Api.Dal
             await DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone: row.IDDeviceFarmUnitZone);
         }
 
+        public async Task DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit)
+        {
+            var row = await db.DeviceFarmUnitZones.FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
+            if (row == null)
+            {
+                return;
+            }
+            row.DeviceFarmUnitID = idTargetDeviceFarmUnit;
+            await db.SaveChangesAsync();
+            await DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone);
+        }
+
         /// Bumps ConfigVersion for every device in the zone (bulk update, not fetch-then-loop) so the next poll picks up a zone-level rule/safety-limit change.
         public async Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone)
         {

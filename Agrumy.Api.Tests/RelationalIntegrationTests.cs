@@ -1636,6 +1636,26 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal("First farm", Assert.Single(farms).DeviceFarmName);
     }
 
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZoneMigrateAsync_MovesZoneToTargetUnit_AndBumpsItsDevicesConfigVersion(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (sourceUnit, zone) = await MakeUnitAndZone(tenantId);
+        var targetUnit = await _repo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = tenantId, DeviceFarmUnitName = "Target_" + U() });
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        int configVersionBeforeMigrate = (await _repo.DeviceGetByIdAsync(d.IDDevice))!.ConfigVersion!.Value;
+
+        await _repo.DeviceFarmUnitZoneMigrateAsync(zone.IDDeviceFarmUnitZone!.Value, targetUnit.IDDeviceFarmUnit!.Value);
+
+        var migrated = await _repo.DeviceFarmUnitZoneGetByIdAsync(zone.IDDeviceFarmUnitZone);
+        Assert.Equal(targetUnit.IDDeviceFarmUnit, migrated!.DeviceFarmUnitID);
+        Assert.NotEqual(sourceUnit.IDDeviceFarmUnit, migrated.DeviceFarmUnitID);
+        var deviceAfterMigrate = await _repo.DeviceGetByIdAsync(d.IDDevice);
+        Assert.Equal(configVersionBeforeMigrate + 1, deviceAfterMigrate!.ConfigVersion);
+    }
+
     // Roadmap #384 - Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarm_UnitAssignment_And_FarmScopeRule_RoundTrip(DbProviderKind provider)

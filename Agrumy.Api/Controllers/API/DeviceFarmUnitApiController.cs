@@ -297,8 +297,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             string fromUnitName = (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(zone.DeviceFarmUnitID))?.DeviceFarmUnitName ?? zone.DeviceFarmUnitID.ToString();
-            zone.DeviceFarmUnitID = targetUnit.IDDeviceFarmUnit!.Value;
-            await deviceFarmUnitRepo.DeviceFarmUnitZoneUpdateAsync(zone);
+            await deviceFarmUnitRepo.DeviceFarmUnitZoneMigrateAsync(zone.IDDeviceFarmUnitZone!.Value, targetUnit.IDDeviceFarmUnit!.Value);
             await WriteAuditAsync("DeviceFarmUnitZone.Migrated", zone.TenantID, "DeviceFarmUnitZone", zone.IDDeviceFarmUnitZone.ToString()!, $"{zone.DeviceFarmUnitZoneName}: {fromUnitName} -> {targetUnit.DeviceFarmUnitName}");
             return true;
         }

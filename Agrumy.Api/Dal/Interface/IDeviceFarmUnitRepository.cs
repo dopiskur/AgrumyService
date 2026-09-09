@@ -88,6 +88,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone);
 
+        /// The deliberate counterpart to DeviceFarmUnitZoneUpdateAsync, which never touches DeviceFarmUnitID - bumps the zone's devices' ConfigVersion too, since their effective Unit-scope rules just changed.
+        Task DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
+
         /// Roadmap #238 - replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
         Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets);
 
