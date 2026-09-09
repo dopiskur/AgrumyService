@@ -63,6 +63,19 @@ public class DbExceptionFilterTests
         Assert.True(ctx.ExceptionHandled);
     }
 
+    // A value-too-long write used to fall through to the generic MySql/Postgres catch-all and surface as a misleading 503 connection_failure.
+    [Fact]
+    public void InvalidInput_Becomes400WithDbErrorResponse()
+    {
+        var ctx = Context(new Exception("Data too long for column 'FirmwareVersion'"));
+        Filter(DbFailureKind.InvalidInput).OnException(ctx);
+
+        var obj = Assert.IsType<ObjectResult>(ctx.Result);
+        Assert.Equal(StatusCodes.Status400BadRequest, obj.StatusCode);
+        Assert.Contains("invalid_input", JsonSerializer.Serialize(obj.Value));
+        Assert.DoesNotContain("connection_failure", JsonSerializer.Serialize(obj.Value));
+    }
+
     [Fact]
     public void Contention_Becomes503WithDbErrorResponse()
     {

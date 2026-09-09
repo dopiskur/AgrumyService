@@ -12,6 +12,9 @@ namespace Agrumy.Api.Dal
         /// A FK / check / unique constraint was violated (and DbExceptionFilter did not name it specifically).
         ConstraintViolation,
 
+        /// A value didn't fit its column (too long / wrong type) - a client-data problem, not a database outage.
+        InvalidInput,
+
         /// A deadlock or lock-wait timeout - transient, the caller can retry.
         Contention,
 

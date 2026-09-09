@@ -675,7 +675,8 @@ namespace Agrumy.Api.Dal
             row.StackHighWaterMarkBytes = poll.StackHighWaterMark ?? row.StackHighWaterMarkBytes;
             row.NetworkStackHighWaterMarkBytes = poll.NetworkStackHighWaterMark ?? row.NetworkStackHighWaterMarkBytes;
             row.ConfigSchemaVersion = poll.ConfigSchemaVersion ?? row.ConfigSchemaVersion;
-            row.FirmwareVersion = poll.FirmwareVersion ?? row.FirmwareVersion;
+            // Self-reported, unbounded in principle (`git describe --dirty` dev builds run long) - truncated to the column's own cap rather than trusting every future firmware build to stay under it, so a heartbeat write can never fail the whole Config poll over diagnostics text.
+            row.FirmwareVersion = poll.FirmwareVersion is string fv && fv.Length > 40 ? fv[..40] : poll.FirmwareVersion ?? row.FirmwareVersion;
             row.Board = poll.Board ?? row.Board;
             row.DeviceTypeID = deviceTypeId ?? row.DeviceTypeID;
             await db.SaveChangesAsync();

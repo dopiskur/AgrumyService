@@ -12,7 +12,7 @@ namespace Agrumy.Api.Dal
         {
             Exception inner = ex is DbUpdateException due && due.InnerException != null ? due.InnerException : ex;
 
-            // 1146/1051/1305 = table/routine missing; 1216/1217/1451/1452 = FK violation; 1062 = duplicate key; 1213/1205 = deadlock/lock-wait timeout.
+            // 1146/1051/1305 = table/routine missing; 1216/1217/1451/1452 = FK violation; 1062 = duplicate key; 1406 = value too long for column; 1213/1205 = deadlock/lock-wait timeout.
             if (inner is MySqlException mysqlEx)
             {
                 switch (mysqlEx.Number)
@@ -27,6 +27,8 @@ namespace Agrumy.Api.Dal
                     case 1452:
                     case 1062:
                         return DbFailureKind.ConstraintViolation;
+                    case 1406:
+                        return DbFailureKind.InvalidInput;
                     case 1213:
                     case 1205:
                         return DbFailureKind.Contention;
@@ -35,7 +37,7 @@ namespace Agrumy.Api.Dal
                 return DbFailureKind.ConnectionFailure;
             }
 
-            // 42P01/42703/3F000 = missing table/column/schema; 23503/23505/23514 = FK/unique/check violation; 40P01/40001/55P03 = deadlock/serialization failure/lock unavailable.
+            // 42P01/42703/3F000 = missing table/column/schema; 23503/23505/23514 = FK/unique/check violation; 22001 = value too long for column; 40P01/40001/55P03 = deadlock/serialization failure/lock unavailable.
             if (inner is PostgresException pgEx)
             {
                 switch (pgEx.SqlState)
@@ -48,6 +50,8 @@ namespace Agrumy.Api.Dal
                     case "23505":
                     case "23514":
                         return DbFailureKind.ConstraintViolation;
+                    case "22001":
+                        return DbFailureKind.InvalidInput;
                     case "40P01":
                     case "40001":
                     case "55P03":

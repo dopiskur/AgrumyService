@@ -2087,6 +2087,23 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(board, await _repo.DeviceBoardGetAsync(d.IDDevice.Value));
     }
 
+    // `git describe --tags --always --dirty` dev builds report e.g. "1.2.3-4-gabc1234-dirty" (23+ chars), which used to overflow deviceDiagnostic.FirmwareVersion's old varchar(20) and fail the whole Config poll with a misleading 503.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceDiagnosticUpsertAsync_LongDevBuildFirmwareVersion_DoesNotThrow(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        string longVersion = "1.2.3-47-gabcdef1234567890abcdef1234567890-dirty"; // past the 40-char column cap
+        Assert.True(longVersion.Length > 40);
+
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1, FirmwareVersion = longVersion });
+
+        await using var db = _fx.NewContext(t);
+        string? stored = await db.DeviceDiagnostics.AsNoTracking().Where(x => x.DeviceID == d.IDDevice).Select(x => x.FirmwareVersion).SingleAsync();
+        Assert.Equal(longVersion[..40], stored);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task ServerConfig_FirmwareSource_RoundTrips_And_Defaults_To_GitHub_Repository(DbProviderKind provider)
     {

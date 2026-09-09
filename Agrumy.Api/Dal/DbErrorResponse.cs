@@ -17,6 +17,11 @@ namespace Agrumy.Api.Dal
                 reason = "constraint_violation",
                 message = "The request conflicts with an existing record or a referenced record does not exist."
             },
+            DbFailureKind.InvalidInput => new
+            {
+                reason = "invalid_input",
+                message = "One of the submitted values is too long or the wrong type for its field."
+            },
             DbFailureKind.Contention => new
             {
                 reason = "contention",
@@ -34,10 +39,11 @@ namespace Agrumy.Api.Dal
             }
         };
 
-        /// HTTP status for a failure kind: 409 for a constraint violation, 500 for an unknown/unexpected error, otherwise 503.
+        /// HTTP status for a failure kind: 409 for a constraint violation, 400 for invalid input, 500 for an unknown/unexpected error, otherwise 503.
         public static int StatusCodeFor(DbFailureKind kind) => kind switch
         {
             DbFailureKind.ConstraintViolation => 409,
+            DbFailureKind.InvalidInput => 400,
             DbFailureKind.Unknown => 500,
             _ => 503
         };

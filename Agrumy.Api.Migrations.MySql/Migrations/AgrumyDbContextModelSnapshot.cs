@@ -425,8 +425,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("FirmwareVersion")
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
 
                     b.Property<long?>("FreeHeapBytes")
                         .HasColumnType("bigint");

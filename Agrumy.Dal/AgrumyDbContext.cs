@@ -440,7 +440,7 @@ namespace Agrumy.Dal
                 e.ToTable("deviceDiagnostic");
                 e.HasKey(x => x.DeviceID);
                 e.Property(x => x.DeviceID).ValueGeneratedNever(); // PK is 1:1 with device, deliberately not ValueGeneratedOnAdd.
-                e.Property(x => x.FirmwareVersion).HasMaxLength(20); // same cap as deviceFirmware.Version
+                e.Property(x => x.FirmwareVersion).HasMaxLength(40); // self-reported, not curated like deviceFirmware.Version - `git describe --dirty` dev builds run e.g. "1.2.3-4-gabc1234-dirty"
                 e.Property(x => x.Board).HasMaxLength(40);
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
                 // A firmware-reported Kit not yet in the catalog is auto-registered by DeviceDiagnosticUpsertAsync BEFORE this row is written, so the FK never rejects a legitimate device's heartbeat; NULL (never reported / generic build, normalized from "") bypasses the FK entirely.
