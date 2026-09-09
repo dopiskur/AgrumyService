@@ -280,6 +280,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/DeviceFarmUnit/ZoneById")]
         Task<DeviceFarmUnitZone> DeviceFarmUnitZoneGetById(int? idDeviceFarmUnitZone);
 
+        [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate")]
+        Task DeviceFarmUnitZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
+
         // Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdate above.
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets")]
         Task DeviceFarmUnitZoneWidgetsSet(int idDeviceFarmUnitZone, [Body] List<DashboardWidget> widgets);

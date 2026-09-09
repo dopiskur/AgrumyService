@@ -8,6 +8,9 @@ namespace Agrumy.Web.ViewModels
         // Breadcrumb only grows a Farm segment once there's a second one (Unit.DeviceFarmID alone tells the view which one, if any).
         public IList<DeviceFarm> Farms { get; set; } = [];
         public IList<DeviceFarmUnitZoneDashboard> Zones { get; set; } = new List<DeviceFarmUnitZoneDashboard>();
+
+        /// Every other unit, for the "Migrate zone" target picker (this unit's own zones are excluded from a self-migrate in the view, not here).
+        public IList<DeviceFarmUnit> Units { get; set; } = [];
         public string DisplayTimeZone { get; set; } = "UTC";
         public IList<DiscoveryResult> DiscoveredDevices { get; set; } = new List<DiscoveryResult>();
         public IList<TenantWifiConfig> WifiConfigs { get; set; } = new List<TenantWifiConfig>();

@@ -266,9 +266,40 @@ namespace Agrumy.Api.Controllers.API
             }
 
             zone.TenantID = existing!.TenantID; // payload cannot move a zone to another tenant
-            zone.DeviceFarmUnitID = existing.DeviceFarmUnitID; // ...or to another unit - rename only
+            zone.DeviceFarmUnitID = existing.DeviceFarmUnitID; // ...or to another unit - rename only, see DeviceFarmUnitZoneMigrate for the deliberate version
             await deviceFarmUnitRepo.DeviceFarmUnitZoneUpdateAsync(zone);
             await WriteAuditAsync("DeviceFarmUnitZone.Updated", existing.TenantID, "DeviceFarmUnitZone", existing.IDDeviceFarmUnitZone.ToString()!, zone.DeviceFarmUnitZoneName);
+            return true;
+        }
+
+        /// Deliberate unit reassignment, kept out of DeviceFarmUnitZoneUpdate's payload on purpose (see the comment there); both ends' ownership are checked separately since a Global admin can own zone and target unit in different tenants.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Zone/{idDeviceFarmUnitZone}/Migrate")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit)
+        {
+            var (zone, zoneError) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (zoneError != null)
+            {
+                return zoneError;
+            }
+            var (targetUnit, unitError) = await EnsureOwnedUnitAsync(idTargetDeviceFarmUnit, forWrite: true);
+            if (unitError != null)
+            {
+                return unitError;
+            }
+            if (targetUnit!.TenantID != zone!.TenantID)
+            {
+                return BadRequest("Target unit belongs to a different tenant.");
+            }
+            if (targetUnit.IDDeviceFarmUnit == zone.DeviceFarmUnitID)
+            {
+                return BadRequest("Zone is already in that unit.");
+            }
+
+            string fromUnitName = (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(zone.DeviceFarmUnitID))?.DeviceFarmUnitName ?? zone.DeviceFarmUnitID.ToString();
+            zone.DeviceFarmUnitID = targetUnit.IDDeviceFarmUnit!.Value;
+            await deviceFarmUnitRepo.DeviceFarmUnitZoneUpdateAsync(zone);
+            await WriteAuditAsync("DeviceFarmUnitZone.Migrated", zone.TenantID, "DeviceFarmUnitZone", zone.IDDeviceFarmUnitZone.ToString()!, $"{zone.DeviceFarmUnitZoneName}: {fromUnitName} -> {targetUnit.DeviceFarmUnitName}");
             return true;
         }
 

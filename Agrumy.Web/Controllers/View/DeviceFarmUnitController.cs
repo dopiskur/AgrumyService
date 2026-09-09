@@ -315,6 +315,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 Unit = await api.DeviceFarmUnitGet(idDeviceFarmUnit),
                 Farms = await api.DeviceFarmsGet(),
+                Units = await api.DeviceFarmUnitsGet(),
                 Zones = zones,
                 DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone,
                 // Last 24h, hourly buckets - same window _ZoneDetails' sparkline trend already uses.
@@ -629,6 +630,23 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> ZoneDelete(int idDeviceFarmUnitZone, int idDeviceFarmUnit)
         {
             await api.DeviceFarmUnitZoneDelete(idDeviceFarmUnitZone);
+            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit, int idDeviceFarmUnit)
+        {
+            try
+            {
+                await api.DeviceFarmUnitZoneMigrate(idDeviceFarmUnitZone, idTargetDeviceFarmUnit);
+                TempData["Message"] = "Zone migrated.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
         }
 
