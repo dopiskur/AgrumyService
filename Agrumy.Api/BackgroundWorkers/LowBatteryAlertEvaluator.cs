@@ -4,19 +4,21 @@ using Agrumy.Api.Notifications;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
+    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold (or its tenant's own TenantAlertConfig override, roadmap #509) fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
     public sealed class LowBatteryAlertEvaluator(
-        IDeviceRepository deviceRepo, IUserRepository userRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
+        IDeviceRepository deviceRepo, IUserRepository userRepo, ITenantRepository tenantRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
-
-            double threshold = serverConfig.BatteryLowThreshold ?? 20.0;
-            double hysteresis = Math.Max(0.0, serverConfig.BatteryLowHysteresis ?? 5.0);
-            double clearAt = threshold + hysteresis;
-
             var candidates = await deviceRepo.LowBatteryAlertCandidatesGetAsync();
+
+            // One TenantAlertConfig lookup per distinct tenant in this batch, not per device.
+            var tenantConfigs = new Dictionary<int, TenantAlertConfig>();
+            foreach (int tenantId in candidates.Where(d => d.TenantID != null).Select(d => d.TenantID!.Value).Distinct())
+            {
+                tenantConfigs[tenantId] = await tenantRepo.TenantAlertConfigGetAsync(tenantId);
+            }
 
             foreach (var d in candidates)
             {
@@ -32,6 +34,11 @@ namespace Agrumy.Api.BackgroundWorkers
                 {
                     continue;
                 }
+
+                TenantAlertConfig tenantConfig = tenantConfigs[tenantId];
+                double threshold = tenantConfig.BatteryLowThreshold ?? serverConfig.BatteryLowThreshold ?? 20.0;
+                double hysteresis = Math.Max(0.0, tenantConfig.BatteryLowHysteresis ?? serverConfig.BatteryLowHysteresis ?? 5.0);
+                double clearAt = threshold + hysteresis;
 
                 bool low = battery <= threshold;
                 bool recovered = battery >= clearAt;

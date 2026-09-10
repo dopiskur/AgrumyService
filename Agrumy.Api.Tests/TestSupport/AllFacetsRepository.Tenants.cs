@@ -38,5 +38,9 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task TenantUsageSnapshotRecordAsync(int idTenant, DateTimeOffset snapshotDateUtc) => tenantRepository.TenantUsageSnapshotRecordAsync(idTenant, snapshotDateUtc);
 
         public Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days) => tenantRepository.TenantUsageSnapshotsGetAsync(idTenant, days);
+
+        public Task<TenantAlertConfig> TenantAlertConfigGetAsync(int idTenant) => tenantRepository.TenantAlertConfigGetAsync(idTenant);
+
+        public Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config) => tenantRepository.TenantAlertConfigUpdateAsync(idTenant, config);
     }
 }

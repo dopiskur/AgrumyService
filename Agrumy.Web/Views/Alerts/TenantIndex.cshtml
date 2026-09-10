@@ -1,0 +1,103 @@
+@model Agrumy.Shared.Models.TenantAlertConfig
+
+@{
+    ViewData["Title"] = "Alerts";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Alerts</h3>
+    </div>
+    <div class="card-body">
+        @if (TempData["Message"] is string message)
+        {
+            <div class="alert alert-success">@message</div>
+        }
+        <p class="text-secondary">
+            These apply only to your own tenant's devices and zones. Leave any field blank
+            (or "Inherit server default" for the dropdown) to use the server-wide default
+            instead of setting your own value.
+        </p>
+        <form asp-action="TenantIndex">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <p class="text-secondary">
+                Low-battery alert: a device's latest battery reading at or
+                below this percentage triggers one email per low-battery streak; it only
+                clears (and can re-alert) once the reading climbs back above threshold +
+                hysteresis, same dead-zone idea as the relay margins, applied to the alert
+                instead of a relay.
+            </p>
+            <div class="mb-3">
+                <label asp-for="BatteryLowThreshold" class="form-label"></label>
+                <input asp-for="BatteryLowThreshold" class="form-control" placeholder="server default" />
+                <span asp-validation-for="BatteryLowThreshold" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="BatteryLowHysteresis" class="form-label"></label>
+                <input asp-for="BatteryLowHysteresis" class="form-control" placeholder="server default" />
+                <span asp-validation-for="BatteryLowHysteresis" class="text-danger"></span>
+            </div>
+
+            <p class="text-secondary">
+                Tank refill alert: a calibrated zone's tank fill percent (Device Unit &rarr; a
+                zone &rarr; Tank calibration) at or below this percentage triggers one email
+                per low-tank streak, same dead-zone clearing rule as the battery alert above.
+                A zone with no tank calibration set never triggers this.
+            </p>
+            <div class="mb-3">
+                <label asp-for="TankRefillThreshold" class="form-label"></label>
+                <input asp-for="TankRefillThreshold" class="form-control" placeholder="server default" />
+                <span asp-validation-for="TankRefillThreshold" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="TankRefillHysteresis" class="form-label"></label>
+                <input asp-for="TankRefillHysteresis" class="form-control" placeholder="server default" />
+                <span asp-validation-for="TankRefillHysteresis" class="text-danger"></span>
+            </div>
+
+            <p class="text-secondary">
+                A device repeating the identical event (e.g. "NoInternet") within this many
+                minutes of its last one is ignored, not stored.
+            </p>
+            <div class="mb-3">
+                <label asp-for="EventDedupeMinutes" class="form-label"></label>
+                <input asp-for="EventDedupeMinutes" class="form-control" placeholder="server default" />
+                <span asp-validation-for="EventDedupeMinutes" class="text-danger"></span>
+            </div>
+
+            <hr />
+            <h6 class="fw-semibold">Non-critical problem alerts</h6>
+            <p class="text-secondary">
+                Crash/auth/sync/OTA-failure events turn a Unit/Zone Orange (the badge lists
+                them, with an Acknowledge button per alert) without affecting relay control.
+                An un-acknowledged alert clears itself once it's older than the expiry below;
+                acknowledging it clears it immediately.
+            </p>
+            <div class="mb-3" style="max-width:16rem">
+                <label asp-for="ProblemEventAlertsEnabled" class="form-label">Alert on non-critical device problems</label>
+                <select asp-for="ProblemEventAlertsEnabled" class="form-select">
+                    <option value="">Inherit server default</option>
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                </select>
+            </div>
+            <div class="mb-3" style="max-width:12rem">
+                <label asp-for="ProblemEventExpiryHours" class="form-label"></label>
+                <select asp-for="ProblemEventExpiryHours" class="form-select">
+                    <option value="">Inherit server default</option>
+                    <option value="1">1 hour</option>
+                    <option value="6">6 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48">48 hours</option>
+                </select>
+                <span asp-validation-for="ProblemEventExpiryHours" class="text-danger"></span>
+            </div>
+
+            <div class="mb-0">
+                <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+            </div>
+        </form>
+    </div>
+</div>

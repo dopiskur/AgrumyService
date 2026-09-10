@@ -209,6 +209,38 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        public async Task<TenantAlertConfig> TenantAlertConfigGetAsync(int idTenant)
+        {
+            var row = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.IDTenant == idTenant);
+            return row == null ? new TenantAlertConfig() : new TenantAlertConfig
+            {
+                ProblemEventAlertsEnabled = row.ProblemEventAlertsEnabled,
+                ProblemEventExpiryHours = row.ProblemEventExpiryHours,
+                BatteryLowThreshold = row.BatteryLowThreshold,
+                BatteryLowHysteresis = row.BatteryLowHysteresis,
+                TankRefillThreshold = row.TankRefillThreshold,
+                TankRefillHysteresis = row.TankRefillHysteresis,
+                EventDedupeMinutes = row.EventDedupeMinutes,
+            };
+        }
+
+        public async Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config)
+        {
+            var row = await db.Tenants.FirstOrDefaultAsync(t => t.IDTenant == idTenant);
+            if (row == null)
+            {
+                return;
+            }
+            row.ProblemEventAlertsEnabled = config.ProblemEventAlertsEnabled;
+            row.ProblemEventExpiryHours = config.ProblemEventExpiryHours;
+            row.BatteryLowThreshold = config.BatteryLowThreshold;
+            row.BatteryLowHysteresis = config.BatteryLowHysteresis;
+            row.TankRefillThreshold = config.TankRefillThreshold;
+            row.TankRefillHysteresis = config.TankRefillHysteresis;
+            row.EventDedupeMinutes = config.EventDedupeMinutes;
+            await db.SaveChangesAsync();
+        }
+
         public async Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days)
         {
             return await db.TenantUsageSnapshots.AsNoTracking()

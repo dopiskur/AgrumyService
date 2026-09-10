@@ -53,6 +53,7 @@ GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation adminis
 GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Tenant,Global admin;Global reader
+GET,api/Tenant/AlertConfig,Global admin;Tenant admin;Global reader
 GET,api/Tenant/All,Global admin;Global reader
 GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
 GET,api/Tenant/Export,Global admin;Tenant admin
@@ -144,6 +145,7 @@ PUT,api/HorticultureCatalog,Global admin
 PUT,api/ServerConfig,Global admin
 PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
 PUT,api/Tenant,Global admin
+PUT,api/Tenant/AlertConfig,Global admin;Tenant admin
 PUT,api/TenantQuota,Global admin
 PUT,api/User,Global admin;Global User;Tenant admin;Tenant User
 PUT,api/User/UserRoles,Global admin;Tenant admin

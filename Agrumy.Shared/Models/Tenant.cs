@@ -26,4 +26,16 @@ namespace Agrumy.Shared.Models
         public string Ssid { get; set; } = "";
         public string? Password { get; set; }
     }
+
+    /// A tenant's own override of ServerConfig's alert thresholds - null on any field falls back to that ServerConfig value (same cascade convention as Tenant.ScheduleTimeZone/Latitude/Longitude), so each tenant's Battery/Tank/problem-event alerts can differ from every other tenant's and from the server-wide default. Self-scoped: GET/PUT /api/Tenant/AlertConfig always act on the caller's own tenant.
+    public class TenantAlertConfig
+    {
+        public bool? ProblemEventAlertsEnabled { get; set; }
+        public int? ProblemEventExpiryHours { get; set; }
+        public double? BatteryLowThreshold { get; set; }
+        public double? BatteryLowHysteresis { get; set; }
+        public double? TankRefillThreshold { get; set; }
+        public double? TankRefillHysteresis { get; set; }
+        public int? EventDedupeMinutes { get; set; }
+    }
 }

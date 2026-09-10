@@ -7,6 +7,8 @@
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool isGlobalReader = User.IsInRole(RoleNames.GlobalReader);
     Func<string, bool> hasAnyRoleOrReads = csv => hasAnyRole(csv) || isGlobalReader;
+    // Roadmap #509 - Horticulture Catalog (shared, read-only browse) and Alerts (now per-tenant, see TenantAlertConfig) are the two Global-only items a Tenant admin also gets; everything else Global-gated below stays Global admin/reader only.
+    bool hasCatalogOrAlertsAccess = User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader || User.IsInRole(RoleNames.TenantAdmin);
     // Fetched for a Global admin or Global reader, the only two roles that can ever see the menu
     // items this gates. Swallowed on failure (just hides the item) since this runs in the shared
     // layout on every page - a transient Api hiccup must not take down the whole navigation shell.
@@ -230,7 +232,7 @@
                                 </a>
                             </li>
                         }
-                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+                        @if (hasCatalogOrAlertsAccess)
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="HorticultureCatalog" asp-action="Index" class="nav-link @navActive("HorticultureCatalog")">
@@ -238,6 +240,15 @@
                                     <p>@Localizer["Horticulture Catalog"]</p>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
+                                    <i class="nav-icon bi bi-bell"></i>
+                                    <p>@Localizer["Alerts"]</p>
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+                        {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="Firmware" asp-action="Index" class="nav-link @navActive("Firmware")">
                                     <i class="nav-icon bi bi-cpu"></i>
@@ -248,12 +259,6 @@
                                 <a asp-area="" asp-controller="ServerConfig" asp-action="Index" class="nav-link @navActive("ServerConfig")">
                                     <i class="nav-icon bi bi-sliders"></i>
                                     <p>@Localizer["Server Settings"]</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
-                                    <i class="nav-icon bi bi-bell"></i>
-                                    <p>@Localizer["Alerts"]</p>
                                 </a>
                             </li>
                             @if (tenantManagementEnabled)

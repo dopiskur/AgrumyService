@@ -14,6 +14,15 @@ namespace Agrumy.Dal.Entities
 
         // Roadmap #427 - per-tenant override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
         public int? RecycleBinRetentionDays { get; set; }
+
+        // Roadmap #509 - per-tenant alert override, same cascade convention as RecycleBinRetentionDays above; see Agrumy.Shared.Models.TenantAlertConfig.
+        public bool? ProblemEventAlertsEnabled { get; set; }
+        public int? ProblemEventExpiryHours { get; set; }
+        public double? BatteryLowThreshold { get; set; }
+        public double? BatteryLowHysteresis { get; set; }
+        public double? TankRefillThreshold { get; set; }
+        public double? TankRefillHysteresis { get; set; }
+        public int? EventDedupeMinutes { get; set; }
     }
 
     /// See Agrumy.Shared.Models.TenantQuota - IDTenant is both PK and FK (1:1 with TenantRow), absent row means "not yet explicitly configured" (EfTenantQuotaRepository falls back to TenantQuota.Default, never unlimited).

@@ -612,6 +612,13 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/Tenant")]
         Task TenantUpdate([Body] Tenant tenant);
 
+        /// Always the caller's own tenant - see TenantApiController.TenantAlertConfigGet.
+        [Get("/api/Tenant/AlertConfig")]
+        Task<TenantAlertConfig> TenantAlertConfigGet();
+
+        [Put("/api/Tenant/AlertConfig")]
+        Task TenantAlertConfigUpdate([Body] TenantAlertConfig config);
+
         [Get("/api/Tenant/EmergencyStop")]
         Task<bool> EmergencyStopStatus(int? idTenant = null);
 

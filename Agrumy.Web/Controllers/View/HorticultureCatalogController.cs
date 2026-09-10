@@ -7,22 +7,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Global Admin-only content curation for the three horticulture subcatalogs - any tenant applies an entry's template from the Zone page (see DeviceFarmUnitController.ApplyHorticultureCatalog), but only a Global Admin edits the catalog itself, same "not a public/community catalog yet" scope as the roadmap's own explicit deferral.
+    /// Global Admin-only content curation for the three horticulture subcatalogs - any tenant applies an entry's template from the Zone page (see DeviceFarmUnitController.ApplyHorticultureCatalog). Roadmap #509 - a Tenant admin can browse the catalog same as a Global reader (read-only, see Index/Edit.cshtml's isReadOnly), but still can't Save/Delete: it's one shared, cross-tenant catalog, not per-tenant data.
     [Authorize]
     public class HorticultureCatalogController(IApi api) : Controller
     {
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> Index(HorticultureCatalogType type = HorticultureCatalogType.Crop)
         {
             ViewBag.CatalogType = type;
             return View(await api.HorticultureCatalogGet(type));
         }
 
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public ActionResult Create(HorticultureCatalogType type) =>
             View("Edit", new HorticultureCatalogEditViewModel { CatalogType = type });
 
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> Edit(HorticultureCatalogType type, int id) =>
             View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
 

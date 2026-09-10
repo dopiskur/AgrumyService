@@ -891,8 +891,9 @@ namespace Agrumy.Api.Dal
 
         public async Task<bool> EventDevicePushAsync(int deviceID, int tenantID, DeviceEventType eventType, string? message)
         {
-            // ServerConfigGetAsync may auto-generate the row (and its EventDedupeMinutes default) on a brand-new install, same as DeviceAddAsync's own call.
-            int dedupeMinutes = (await serverConfigRepository.ServerConfigGetAsync(1)).EventDedupeMinutes ?? settings.EventDedupeMinutes;
+            // ServerConfigGetAsync may auto-generate the row (and its EventDedupeMinutes default) on a brand-new install, same as DeviceAddAsync's own call. Tenant's own override (roadmap #509) wins over the server-wide default.
+            int? tenantDedupeMinutes = await db.Tenants.AsNoTracking().Where(t => t.IDTenant == tenantID).Select(t => t.EventDedupeMinutes).FirstOrDefaultAsync();
+            int dedupeMinutes = tenantDedupeMinutes ?? (await serverConfigRepository.ServerConfigGetAsync(1)).EventDedupeMinutes ?? settings.EventDedupeMinutes;
             DateTime cutoff = DateTime.UtcNow.AddMinutes(-dedupeMinutes);
 
             bool isDuplicate = await db.EventDevices.AsNoTracking()

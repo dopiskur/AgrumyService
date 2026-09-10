@@ -2483,6 +2483,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDTenant"));
 
+                    b.Property<double?>("BatteryLowHysteresis")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("BatteryLowThreshold")
+                        .HasColumnType("double precision");
+
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -2491,11 +2497,20 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<bool>("EmergencyStopActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("EventDedupeMinutes")
+                        .HasColumnType("integer");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
 
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
+
+                    b.Property<bool?>("ProblemEventAlertsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("ProblemEventExpiryHours")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("RecycleBinRetentionDays")
                         .HasColumnType("integer");
@@ -2503,6 +2518,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("ScheduleTimeZone")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<double?>("TankRefillHysteresis")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("TankRefillThreshold")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("TenantName")
                         .IsRequired()

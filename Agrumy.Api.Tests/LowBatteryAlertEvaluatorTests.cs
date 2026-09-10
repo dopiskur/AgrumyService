@@ -11,18 +11,26 @@ public class LowBatteryAlertEvaluatorTests
 {
     private readonly Mock<IDeviceRepository> _devices = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _users = new(MockBehavior.Strict);
+    private readonly Mock<ITenantRepository> _tenants = new(MockBehavior.Strict);
     private readonly Mock<IServerConfigRepository> _serverConfig = new(MockBehavior.Strict);
     private readonly Mock<INotificationDispatcher> _dispatcher = new(MockBehavior.Strict);
 
-    private LowBatteryAlertEvaluator NewEvaluator() => new(_devices.Object, _users.Object, _serverConfig.Object, _dispatcher.Object);
+    private LowBatteryAlertEvaluator NewEvaluator() => new(_devices.Object, _users.Object, _tenants.Object, _serverConfig.Object, _dispatcher.Object);
 
     private static LowBatteryAlertCandidate Candidate(
         int id = 1, int tenantId = 1, string? name = "Greenhouse Sensor",
         int? battery = null, DateTime? lowBatteryNotifiedAt = null) =>
         new(id, tenantId, name, battery, lowBatteryNotifiedAt);
 
-    private void SetupCandidates(params LowBatteryAlertCandidate[] candidates) =>
+    // No tenant override in any of these tests - every candidate's tenant falls back to ServerConfig's own threshold/hysteresis.
+    private void SetupCandidates(params LowBatteryAlertCandidate[] candidates)
+    {
         _devices.Setup(d => d.LowBatteryAlertCandidatesGetAsync()).ReturnsAsync(candidates);
+        foreach (int tenantId in candidates.Where(c => c.TenantID != null).Select(c => c.TenantID!.Value).Distinct())
+        {
+            _tenants.Setup(t => t.TenantAlertConfigGetAsync(tenantId)).ReturnsAsync(new TenantAlertConfig());
+        }
+    }
 
     // Threshold=20, hysteresis=5 (defaults) unless a test overrides it - alert at <=20%, clear at >=25%.
 

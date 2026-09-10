@@ -918,7 +918,7 @@ namespace Agrumy.Api.Dal
             {
                 scopedDevices = scopedDevices.Where(d => d.TenantID == tenantID);
             }
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(tenantID);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
 
@@ -962,7 +962,7 @@ namespace Agrumy.Api.Dal
                 .ToListAsync();
 
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit);
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(zoneRows.Count > 0 ? zoneRows[0].TenantID : null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
 
@@ -1009,7 +1009,7 @@ namespace Agrumy.Api.Dal
 
             var deviceRows = await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone).ToListAsync();
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone);
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(zone.TenantID);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
 
@@ -1053,7 +1053,8 @@ namespace Agrumy.Api.Dal
         private async Task<(SensorAverages Averages, SensorTrend Trend)> BuildUnitAggregateAsync(int idDeviceFarmUnit)
         {
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit);
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            // Averages-only caller (see BuildZoneAggregateAsync's sibling for the Status-carrying path) - HasRecentProblemEvent goes unused here, so the server-wide default is fine regardless of tenant.
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
                 .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit && z.IDDeviceFarmUnitZone != 0)
@@ -1071,7 +1072,8 @@ namespace Agrumy.Api.Dal
                 .ToListAsync();
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking()
                 .Where(d => d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value));
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            // Averages-only caller, same reasoning as BuildUnitAggregateAsync above.
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
                 .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.IDDeviceFarmUnitZone != 0)
@@ -1081,11 +1083,21 @@ namespace Agrumy.Api.Dal
         }
 
         /// Single ServerConfig read shared by every dashboard aggregation call this request needs it in.
-        private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync()
+        private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync(int? tenantID)
         {
             ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
-            int expiryHours = config.ProblemEventExpiryHours > 0 ? config.ProblemEventExpiryHours : 24;
-            return (expiryHours, config.ProblemEventAlertsEnabled);
+            bool? tenantAlertsEnabled = null;
+            int? tenantExpiryHours = null;
+            if (tenantID is int id)
+            {
+                var row = await db.Tenants.AsNoTracking().Where(t => t.IDTenant == id)
+                    .Select(t => new { t.ProblemEventAlertsEnabled, t.ProblemEventExpiryHours }).FirstOrDefaultAsync();
+                tenantAlertsEnabled = row?.ProblemEventAlertsEnabled;
+                tenantExpiryHours = row?.ProblemEventExpiryHours;
+            }
+            int expiryHoursRaw = tenantExpiryHours ?? config.ProblemEventExpiryHours;
+            int expiryHours = expiryHoursRaw > 0 ? expiryHoursRaw : 24;
+            return (expiryHours, tenantAlertsEnabled ?? config.ProblemEventAlertsEnabled);
         }
 
         /// Latest telemetry per device - EF can't translate a whole-row correlated subquery, so this pulls the latest SensorData id per device via portable scalar subqueries, then batch-fetches the rows.

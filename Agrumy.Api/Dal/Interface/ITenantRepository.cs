@@ -43,5 +43,10 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Most recent snapshots first, capped at <paramref name="days"/> rows.
         Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days);
+
+        /// Null-only object (every field null) when the tenant has no overrides set yet - never null itself, so a caller doesn't need a separate "not configured" branch.
+        Task<TenantAlertConfig> TenantAlertConfigGetAsync(int idTenant);
+
+        Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config);
     }
 }

@@ -11,10 +11,11 @@ public class TankRefillAlertEvaluatorTests
 {
     private readonly Mock<IDeviceFarmUnitRepository> _deviceFarmUnits = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _users = new(MockBehavior.Strict);
+    private readonly Mock<ITenantRepository> _tenants = new(MockBehavior.Strict);
     private readonly Mock<IServerConfigRepository> _serverConfig = new(MockBehavior.Strict);
     private readonly Mock<INotificationDispatcher> _dispatcher = new(MockBehavior.Strict);
 
-    private TankRefillAlertEvaluator NewEvaluator() => new(_deviceFarmUnits.Object, _users.Object, _serverConfig.Object, _dispatcher.Object);
+    private TankRefillAlertEvaluator NewEvaluator() => new(_deviceFarmUnits.Object, _users.Object, _tenants.Object, _serverConfig.Object, _dispatcher.Object);
 
     // rawEmpty=0, rawFull=100 -> waterLevel IS the fill percent, keeps test math trivial.
     private static TankRefillAlertCandidate Candidate(
@@ -23,8 +24,15 @@ public class TankRefillAlertEvaluatorTests
         DateTime? tankRefillNotifiedAt = null) =>
         new(id, tenantId, name, waterLevel, rawEmpty, rawFull, capacityLiters, tankRefillNotifiedAt);
 
-    private void SetupCandidates(params TankRefillAlertCandidate[] candidates) =>
+    // No tenant override in any of these tests - every candidate's tenant falls back to ServerConfig's own threshold/hysteresis.
+    private void SetupCandidates(params TankRefillAlertCandidate[] candidates)
+    {
         _deviceFarmUnits.Setup(d => d.TankRefillAlertCandidatesGetAsync()).ReturnsAsync(candidates);
+        foreach (int tenantId in candidates.Select(c => c.TenantID).Distinct())
+        {
+            _tenants.Setup(t => t.TenantAlertConfigGetAsync(tenantId)).ReturnsAsync(new TenantAlertConfig());
+        }
+    }
 
     // Threshold=20, hysteresis=5 (defaults) unless a test overrides it - alert at <=20%, clear at >=25%.
 

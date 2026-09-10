@@ -103,6 +103,37 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
+        // ---- Alert config (roadmap #509) -------------------------------------
+
+        /// Always the caller's own tenant - a Tenant admin's Battery/Tank/problem-event alert overrides, no idTenant parameter to avoid needing a separate ownership check. Global reader can view (read-only, same as the ServerConfig-backed Alerts page), write stays Admins-only below.
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
+        [HttpGet("AlertConfig")]
+        public async Task<ActionResult<TenantAlertConfig>> TenantAlertConfigGet()
+        {
+            if (CallerTenantId is not int tenantId)
+            {
+                return StatusCode(403, "Caller has no tenant.");
+            }
+            return Ok(await tenantRepo.TenantAlertConfigGetAsync(tenantId));
+        }
+
+        [Authorize(Roles = RoleNames.Admins)]
+        [HttpPut("AlertConfig")]
+        public async Task<ActionResult> TenantAlertConfigUpdate([FromBody] TenantAlertConfig config)
+        {
+            if (CallerTenantId is not int tenantId)
+            {
+                return StatusCode(403, "Caller has no tenant.");
+            }
+            if (config.ProblemEventExpiryHours is int hours && hours is not (1 or 6 or 12 or 24 or 48))
+            {
+                return BadRequest("ProblemEventExpiryHours must be one of 1, 6, 12, 24, 48, or left blank.");
+            }
+            await tenantRepo.TenantAlertConfigUpdateAsync(tenantId, config);
+            await WriteAuditAsync("Tenant.AlertConfigUpdated", tenantId, "Tenant", tenantId.ToString(), null);
+            return Ok();
+        }
+
         // ---- Emergency stop (roadmap #230) -----------------------------------
 
         /// Fail-closed, tenant-wide: forces every actuator in idTenant (defaulting to the caller's own) off ahead of any rule, until explicitly cleared. Deliberately one click, no confirmation - unlike a destructive action, hesitation here is the wrong default.
