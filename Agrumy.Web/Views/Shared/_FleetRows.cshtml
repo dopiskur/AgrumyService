@@ -43,7 +43,7 @@
         <td>
             @if (item.Enabled != true)
             {
-                <span class="badge border bg-white text-dark" style="border-left: 20px solid @FleetRowDisplay.DisabledStripeColor(item);" title="Disabled (@(item.IsVirtual ? "virtual" : item.Online ? "online" : "offline"))">Disabled</span>
+                <span class="badge border text-dark" style="background: linear-gradient(to right, @FleetRowDisplay.DisabledStripeColor(item) 0 10%, #fff 10% 100%);" title="Disabled (@(item.IsVirtual ? "virtual" : item.Online ? "online" : "offline"))">Disabled</span>
             }
             else if (item.IsVirtual)
             {

@@ -3,7 +3,7 @@ using Agrumy.Web.ViewModels;
 
 namespace Agrumy.Api.Tests;
 
-/// Fleet page Signal/Uptime columns show a dash for an offline device instead of a stale value, and a disabled device's badge stays white apart from a state-colored left stripe.
+/// Fleet page Signal/Uptime columns show a dash for an offline device instead of a stale value, and a disabled device's badge stays mostly white apart from a state-colored stripe.
 public class FleetRowDisplayTests
 {
     [Fact]
@@ -23,10 +23,10 @@ public class FleetRowDisplayTests
         Assert.Equal("var(--bs-primary)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = true, Online = false }));
 
     [Fact]
-    public void DisabledStripeColor_RealOnline_IsLightGreen() =>
-        Assert.Equal("var(--bs-success-subtle)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = false, Online = true }));
+    public void DisabledStripeColor_RealOnline_IsGreen() =>
+        Assert.Equal("var(--bs-success)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = false, Online = true }));
 
     [Fact]
-    public void DisabledStripeColor_RealOffline_IsLightRed() =>
-        Assert.Equal("var(--bs-danger-subtle)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = false, Online = false }));
+    public void DisabledStripeColor_RealOffline_IsRed() =>
+        Assert.Equal("var(--bs-danger)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = false, Online = false }));
 }
