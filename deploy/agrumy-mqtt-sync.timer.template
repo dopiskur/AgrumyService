@@ -1,0 +1,14 @@
+# Installed by install.sh as /etc/systemd/system/agrumy-mqtt-sync.timer, only when a local Mosquitto
+# broker was already detected on this host (install.sh's own preset detection) - see
+# agrumy-mqtt-sync.service for what actually runs.
+
+[Unit]
+Description=Run agrumy-mqtt-sync.service every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=agrumy-mqtt-sync.service
+
+[Install]
+WantedBy=timers.target

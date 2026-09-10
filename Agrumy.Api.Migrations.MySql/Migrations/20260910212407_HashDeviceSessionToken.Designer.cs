@@ -4,6 +4,7 @@ using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910212407_HashDeviceSessionToken")]
+    partial class HashDeviceSessionToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2319,9 +2322,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.Property<int>("MqttBrokerPort")
                         .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("MqttCredentialsSyncedAtUtc")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("MqttPassword")
                         .HasMaxLength(512)

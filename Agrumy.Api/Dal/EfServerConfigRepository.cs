@@ -319,6 +319,8 @@ namespace Agrumy.Api.Dal
             MqttUsername = r.MqttUsername,
             // Real value, decrypted - MqttCommandPublisher needs it to actually authenticate. The API/edit-form response redacts this at the controller boundary (ServerConfigApiController.Get), not here.
             MqttPassword = secretProtector.Unprotect(r.MqttPassword),
+            // Written directly by tools/Agrumy.MqttCredentialSync, never through this Update path - read-only here.
+            MqttCredentialsSyncedAtUtc = r.MqttCredentialsSyncedAtUtc,
             EmailEnabled = r.EmailEnabled,
             EmailHost = r.EmailHost,
             // An older row has 0 here, which is not a usable port - same 0-means-unset fallback as GatewayWaitWindowSeconds.

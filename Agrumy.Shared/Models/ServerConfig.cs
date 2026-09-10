@@ -144,6 +144,9 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Broker password")]
         public string? MqttPassword { get; set; }
 
+        /// Written by tools/Agrumy.MqttCredentialSync after it successfully regenerates the broker's acl_file/password_file (the agrumy-mqtt-sync.timer install.sh installs) - a device created after this timestamp isn't in the broker ACL yet, so Device Details shows "MQTT credentials pending sync" until the next run picks it up. Null if the sync has never run.
+        public DateTimeOffset? MqttCredentialsSyncedAtUtc { get; set; }
+
         // SMTP email delivery config, DB-backed replacement for the old appsettings-only Notifications:Email section - see Agrumy.Api.Notifications.EmailNotificationChannel, which now reads this instead.
         [Display(Name = "Enable email notifications")]
         public bool EmailEnabled { get; set; }

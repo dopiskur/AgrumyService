@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Installed by install.sh as {{SYNC_DIR}}/agrumy-mqtt-sync.sh, run by agrumy-mqtt-sync.service on
+# agrumy-mqtt-sync.timer's 5-minute schedule. A thin wrapper, not the tool itself, because the DB
+# connection string doesn't exist at install.sh time - Agrumy.Api's appsettings.json ConnectionStrings
+# section is only written by the web setup wizard on first boot (CLAUDE.md). Exits 0 (not an error)
+# when that hasn't happened yet, same "self-healing, no error spam before setup" reasoning as every
+# other install.sh-installed unit that can start before configuration is complete.
+set -euo pipefail
+
+APPSETTINGS="{{API_APPSETTINGS_PATH}}"
+CONN="$(grep -o '"DefaultConnection"[[:space:]]*:[[:space:]]*"[^"]*"' "$APPSETTINGS" 2>/dev/null | sed -E 's/.*: *"([^"]*)"/\1/')"
+if [ -z "$CONN" ]; then
+  echo "ConnectionStrings.DefaultConnection not set yet in ${APPSETTINGS} - setup wizard hasn't run, skipping this sync."
+  exit 0
+fi
+
+exec {{SYNC_DIR}}/Agrumy.MqttCredentialSync \
+  --provider mysql \
+  --connection "$CONN" \
+  --acl-file {{ACL_FILE}} \
+  --password-file {{PASSWORD_FILE}} \
+  --reload

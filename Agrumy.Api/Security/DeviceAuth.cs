@@ -25,6 +25,10 @@ namespace Agrumy.Api.Security
             return x.Length == y.Length && CryptographicOperations.FixedTimeEquals(x, y);
         }
 
+        /// Unsalted - the token itself is a CSPRNG value (DeviceApiController.Authenticate), not a low-entropy secret a rainbow table could target, so a salt buys nothing here (unlike password hashing).
+        internal static string HashSessionToken(string token) =>
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
         internal static string ReadAuthToken(HttpContext http)
         {
             string raw = http.Request.Headers.Authorization.ToString();
@@ -129,9 +133,9 @@ namespace Agrumy.Api.Security
                 return;
             }
 
-            // Cache miss, not necessarily a genuinely dead session - fall back to the DB-persisted token before rejecting, so a server restart doesn't force every device through a fresh Authenticate on its very next poll.
+            // Cache miss, not necessarily a genuinely dead session - fall back to the DB-persisted token before rejecting, so a server restart doesn't force every device through a fresh Authenticate on its very next poll. dbSession.Token is a SHA-256 hash (DeviceSessionSetAsync), not the raw token - hash the incoming one to compare.
             if (await repo.DeviceSessionGetAsync(apiId) is { } dbSession && dbSession.ExpiresAtUtc > DateTimeOffset.UtcNow
-                && DeviceAuth.ConstantTimeEquals(token, dbSession.Token))
+                && DeviceAuth.ConstantTimeEquals(DeviceAuth.HashSessionToken(token), dbSession.Token))
             {
                 http.Items[DeviceAuth.ApiIdItemKey] = apiId;
                 context.Succeed(requirement);

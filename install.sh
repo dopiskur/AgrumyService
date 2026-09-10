@@ -313,6 +313,48 @@ install_systemd_unit() {
   rm -f "$tmp"
 }
 
+install_mqtt_sync_timer() {
+  # $1 = Agrumy.Api install dir (for appsettings.json's connection string, read at RUN time not install
+  # time - see agrumy-mqtt-sync.sh.template's own remarks on why).
+  # Only installed when a local Mosquitto broker is already on this host (the "MQTT preset" this repo
+  # doesn't yet install for you - deploy/mosquitto.conf.template exists for that but isn't wired into
+  # this script; an operator who already has mosquitto running gets its ACL/password_file kept in sync
+  # with the device table automatically, everyone else gets nothing extra installed).
+  local api_dir="$1"
+  if ! has_cmd mosquitto_passwd; then
+    return
+  fi
+  log "Local Mosquitto broker detected - installing agrumy-mqtt-sync.timer to keep its ACL/password_file in sync with the device table."
+
+  local sync_dir="/opt/agrumy/mqtt-sync"
+  local acl_file="/etc/mosquitto/acl_file" password_file="/etc/mosquitto/password_file"
+  local tag
+  tag="$(latest_release_tag)"
+  download_and_install_app "Agrumy.MqttCredentialSync" "$tag" "$sync_dir" "root"
+
+  local tmp
+  tmp="$(mktemp)"
+  fetch "deploy/agrumy-mqtt-sync.sh.template" "$tmp"
+  sed -e "s|{{SYNC_DIR}}|${sync_dir}|g" -e "s|{{API_APPSETTINGS_PATH}}|${api_dir}/appsettings.json|g" \
+      -e "s|{{ACL_FILE}}|${acl_file}|g" -e "s|{{PASSWORD_FILE}}|${password_file}|g" "$tmp" \
+    | as_root tee "${sync_dir}/agrumy-mqtt-sync.sh" > /dev/null
+  as_root chmod +x "${sync_dir}/agrumy-mqtt-sync.sh"
+  rm -f "$tmp"
+
+  tmp="$(mktemp)"
+  fetch "deploy/agrumy-mqtt-sync.service.template" "$tmp"
+  sed -e "s|{{SYNC_DIR}}|${sync_dir}|g" "$tmp" | as_root tee "/etc/systemd/system/agrumy-mqtt-sync.service" > /dev/null
+  rm -f "$tmp"
+
+  tmp="$(mktemp)"
+  fetch "deploy/agrumy-mqtt-sync.timer.template" "$tmp"
+  as_root cp "$tmp" "/etc/systemd/system/agrumy-mqtt-sync.timer"
+  rm -f "$tmp"
+
+  as_root systemctl daemon-reload
+  as_root systemctl enable --now agrumy-mqtt-sync.timer
+}
+
 install_reverse_proxy_hostname() {
   # $1 = nginx|apache, $2 = api domain, $3 = admin domain
   local kind="$1" api_domain="$2" admin_domain="$3" tmp
@@ -533,6 +575,8 @@ install_baremetal() {
   as_root systemctl daemon-reload
   as_root systemctl enable --now agrumy-api.service
   as_root systemctl enable --now agrumy-web.service
+
+  install_mqtt_sync_timer "$api_dir"
 
   local proxy_kind="nginx"
   [ "$PROXY_CHOICE" = "a" ] && proxy_kind="apache"

@@ -193,6 +193,7 @@ namespace Agrumy.Dal.Entities
         public int MqttBrokerPort { get; set; } = 1883;
         public string? MqttUsername { get; set; }
         public string? MqttPassword { get; set; }
+        public DateTimeOffset? MqttCredentialsSyncedAtUtc { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool EmailEnabled { get; set; }

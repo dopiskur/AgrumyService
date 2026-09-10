@@ -168,7 +168,8 @@ public class DeviceAuthTests
         cache.Setup(c => c.SetItemAsync("dev1", It.Is<DeviceCache>(d => d.apiAuth == "sometoken"), It.IsAny<TimeSpan?>()))
             .Returns(Task.CompletedTask);
         var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
-        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync(("sometoken", DateTimeOffset.UtcNow.AddMinutes(30)));
+        // DeviceSessionGetAsync now returns a SHA-256 hash of the real token (DeviceSessionSetAsync's write side), not the raw value - the handler hashes the incoming header token before comparing.
+        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync((Agrumy.Api.Security.DeviceAuth.HashSessionToken("sometoken"), DateTimeOffset.UtcNow.AddMinutes(30)));
         var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
         var http = HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken");
         var context = NewContext(new DeviceSessionRequirement(), http);

@@ -1,0 +1,11 @@
+# Installed by install.sh as /etc/systemd/system/agrumy-mqtt-sync.service - a oneshot triggered by
+# agrumy-mqtt-sync.timer, not started directly (no [Install]/WantedBy needed on the service itself).
+
+[Unit]
+Description=Agrumy MQTT broker credential sync (acl_file/password_file from the device table)
+After=network.target mosquitto.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart={{SYNC_DIR}}/agrumy-mqtt-sync.sh

@@ -55,6 +55,11 @@ Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(aclFile))!);
 await File.WriteAllTextAsync(aclFile, generatedAcl);
 Console.WriteLine($"Wrote {aclFile} ({credentials.Count} device(s)).");
 
+// So Device Details' "MQTT credentials pending sync" banner (agrumy-mqtt-sync.timer's whole reason to
+// exist) knows a device created after this moment isn't in the ACL yet. Table is a singleton (one row),
+// so this touches every row - there's only ever one.
+await db.ServerConfigs.ExecuteUpdateAsync(s => s.SetProperty(c => c.MqttCredentialsSyncedAtUtc, DateTimeOffset.UtcNow));
+
 if (passwordFile != null)
 {
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(passwordFile))!);

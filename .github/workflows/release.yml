@@ -27,7 +27,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        app: [Agrumy.Api, Agrumy.Web]
+        # path is the project's directory relative to repo root - differs from app for
+        # Agrumy.MqttCredentialSync (lives under tools/), same as every other app otherwise.
+        include:
+          - app: Agrumy.Api
+            path: Agrumy.Api
+          - app: Agrumy.Web
+            path: Agrumy.Web
+          - app: Agrumy.MqttCredentialSync
+            path: tools/Agrumy.MqttCredentialSync
     steps:
       # Roadmap #121: SHA-pinned (same practice as AgrumyFirmware's release.yml) - a moving major
       # tag could be repointed at anything; the pinned commit is exactly what was reviewed.
@@ -39,7 +47,7 @@ jobs:
 
       - name: Publish ${{ matrix.app }} (linux-x64, self-contained, single file)
         run: >
-          dotnet publish ${{ matrix.app }}/${{ matrix.app }}.csproj
+          dotnet publish ${{ matrix.path }}/${{ matrix.app }}.csproj
           -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true
           -o publish/${{ matrix.app }}
 

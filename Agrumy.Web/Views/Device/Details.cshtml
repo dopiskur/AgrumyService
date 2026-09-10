@@ -31,6 +31,14 @@
 {
     <div class="alert alert-warning">@hardResetError</div>
 }
+@if (ViewBag.MqttCredentialsPendingSync == true)
+{
+    <div class="alert alert-info">
+        MQTT credentials pending sync - this device's ApiId/ApiKey aren't in the broker's ACL yet
+        (agrumy-mqtt-sync.timer runs every 5 minutes). It can still reach the server over the normal
+        HTTP poll cycle in the meantime.
+    </div>
+}
 
 <div class="card">
     <div class="card-header">

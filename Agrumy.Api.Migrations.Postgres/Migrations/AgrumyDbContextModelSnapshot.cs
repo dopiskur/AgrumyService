@@ -2320,6 +2320,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("MqttBrokerPort")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset?>("MqttCredentialsSyncedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("MqttPassword")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");

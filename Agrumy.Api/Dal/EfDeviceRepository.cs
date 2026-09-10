@@ -4,6 +4,7 @@ using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
 using Agrumy.Api.Quota;
+using Agrumy.Api.Security;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -331,10 +332,12 @@ namespace Agrumy.Api.Dal
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastFullConfigSentAt, sentAtUtc));
 
+        // Stores a SHA-256 hash of token, never the raw value - DeviceSessionGetAsync's returned "Token" is
+        // therefore also a hash; the caller (DeviceSessionHandler) hashes the incoming token before comparing.
         public Task DeviceSessionSetAsync(int deviceID, string? token, DateTimeOffset? expiresAtUtc) =>
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s
-                    .SetProperty(d => d.ApiAuthToken, token)
+                    .SetProperty(d => d.ApiAuthToken, token == null ? null : DeviceAuth.HashSessionToken(token))
                     .SetProperty(d => d.ApiAuthExpiresAtUtc, expiresAtUtc));
 
         public async Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId)
