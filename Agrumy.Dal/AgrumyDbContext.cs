@@ -66,6 +66,7 @@ namespace Agrumy.Dal
         public DbSet<HorticultureCatalogCropRow> HorticultureCatalogCrops => Set<HorticultureCatalogCropRow>();
         public DbSet<HorticultureCatalogPermaRow> HorticultureCatalogPermas => Set<HorticultureCatalogPermaRow>();
         public DbSet<HorticultureCatalogHydroponicRow> HorticultureCatalogHydroponics => Set<HorticultureCatalogHydroponicRow>();
+        public DbSet<HorticultureCatalogFruitRow> HorticultureCatalogFruits => Set<HorticultureCatalogFruitRow>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -139,7 +140,7 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every tenant-scoped user list filters by TenantID alone.
             });
 
-            // Three tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
+            // Four tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
             void ConfigureHorticultureCatalog<TEntity>(string tableName) where TEntity : class
             {
                 modelBuilder.Entity<TEntity>(e =>
@@ -154,6 +155,7 @@ namespace Agrumy.Dal
             ConfigureHorticultureCatalog<HorticultureCatalogCropRow>("horticultureCatalogCrop");
             ConfigureHorticultureCatalog<HorticultureCatalogPermaRow>("horticultureCatalogPerma");
             ConfigureHorticultureCatalog<HorticultureCatalogHydroponicRow>("horticultureCatalogHydroponic");
+            ConfigureHorticultureCatalog<HorticultureCatalogFruitRow>("horticultureCatalogFruit");
 
             modelBuilder.Entity<UserNotificationPreferenceRow>(e =>
             {

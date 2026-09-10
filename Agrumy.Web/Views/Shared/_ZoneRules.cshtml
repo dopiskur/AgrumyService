@@ -37,8 +37,9 @@
     (string Label, IList<HorticultureCatalogEntry> Entries)[] catalogs =
     [
         ("Crop", Model.CropCatalog),
-        ("Perma", Model.PermaCatalog),
+        ("Fruit", Model.FruitCatalog),
         ("Hydroponic", Model.HydroponicCatalog),
+        ("Perma", Model.PermaCatalog),
     ];
 }
 @if (catalogs.Any(c => c.Entries.Count > 0))

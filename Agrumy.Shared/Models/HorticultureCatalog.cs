@@ -1,11 +1,24 @@
 namespace Agrumy.Shared.Models
 {
-    /// Which of the three subcatalogs an entry belongs to - each backed by its own table (horticultureCatalogCrop/Perma/Hydroponic), same row shape across all three.
+    /// Which of the four subcatalogs an entry belongs to - each backed by its own table (horticultureCatalogCrop/Perma/Hydroponic/Fruit), same row shape across all four.
     public enum HorticultureCatalogType
     {
         Crop = 1,
         Perma = 2,
         Hydroponic = 3,
+        Fruit = 4,
+    }
+
+    /// Display order for catalog tabs/pickers - Hydroponic before Perma intentionally, opposite of the raw enum-value order above, so nothing here may use Enum.GetValues() for display.
+    public static class HorticultureCatalogTypeDisplay
+    {
+        public static readonly IReadOnlyList<HorticultureCatalogType> Order =
+        [
+            HorticultureCatalogType.Crop,
+            HorticultureCatalogType.Fruit,
+            HorticultureCatalogType.Hydroponic,
+            HorticultureCatalogType.Perma,
+        ];
     }
 
     /// One recommended-parameter-range entry (e.g. "Tomato", "Food forest guild", "Deep water culture lettuce") - AirTemp/SoilTemp/AirHumidity/SoilMoisture/Light ranges drive HorticultureRuleTemplateBuilder's generated starter rules when applied to a zone; SoilPH/SoilEC/Co2 are informational only (no actuator exists in RelayFunction for pH/EC dosing or CO2 injection).
