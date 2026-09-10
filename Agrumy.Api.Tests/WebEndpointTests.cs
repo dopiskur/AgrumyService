@@ -111,6 +111,7 @@ public sealed class WebEndpointTests : IClassFixture<WebWebApplicationFactory>
     [InlineData("/ServerConfig")]
     [InlineData("/User")]
     [InlineData("/Device/Edit?idDevice=1")]
+    [InlineData("/Device/Details?idDevice=1")]
     public async Task GlobalReader_SeesPage_WithNoWriteControls(string path)
     {
         using HttpClient client = _factory.CreateClientWithRoles(RoleNames.GlobalReader);
@@ -126,6 +127,7 @@ public sealed class WebEndpointTests : IClassFixture<WebWebApplicationFactory>
     [InlineData("/ServerConfig")]
     [InlineData("/User")]
     [InlineData("/Device/Edit?idDevice=1")]
+    [InlineData("/Device/Details?idDevice=1")]
     public async Task GlobalAdmin_SeesPage_WithWriteControls(string path)
     {
         using HttpClient client = _factory.CreateClientWithRoles(RoleNames.GlobalAdmin);

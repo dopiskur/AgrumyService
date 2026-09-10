@@ -268,18 +268,44 @@ namespace Agrumy.Web.Controllers.View
             // Start from the server's own current copy - TenantID/MacAddress/IsGateway/ApiId/ApiKey never come from the form at all, by construction (DeviceEditForm has no property for them).
             DeviceDto device = await api.DeviceGet(form.IDDevice);
             form.ApplyTo(device);
-            (device.DeviceSensorEnabled, device.DeviceControllerEnabled) = device.DeviceRoleID switch
-            {
-                0 => (false, false),
-                1 => (true, false),
-                2 => (false, true),
-                3 => (true, true),
-                _ => (device.DeviceSensorEnabled, device.DeviceControllerEnabled),
-            };
+            device.RecomputeSensorControllerEnabled();
 
             await api.DeviceUpdate(device);
             // PRG: redirect so a refresh re-fetches Details instead of re-submitting the update.
             return RedirectToAction(nameof(Details), new { idDevice = device.IDDevice });
+        }
+
+        /// Backs the toggle switches on the Details page's main view - a lighter counterpart to Edit/Advanced's full form, scoped to just the fields that moved there.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> QuickSettings(int idDevice, bool deviceSensorEnabled, bool deviceControllerEnabled,
+            int sleepSeconds, bool sleepDeepEnabled, bool loRaGatewayEnabled, bool batteryEnabled, bool debug, bool enabled)
+        {
+            DeviceDto device = await api.DeviceGet(idDevice);
+            device.DeviceSensorEnabled = deviceSensorEnabled;
+            device.DeviceControllerEnabled = deviceControllerEnabled;
+            device.RecomputeSensorControllerEnabled();
+            device.SleepSeconds = sleepSeconds;
+            device.SleepDeepEnabled = sleepDeepEnabled;
+            device.LoRaGatewayEnabled = loRaGatewayEnabled;
+            device.BatteryEnabled = batteryEnabled;
+            device.Debug = debug;
+            device.Enabled = enabled;
+
+            await api.DeviceUpdate(device);
+            return RedirectToAction(nameof(Details), new { idDevice });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> RenameDevice(int idDevice, string deviceName)
+        {
+            DeviceDto device = await api.DeviceGet(idDevice);
+            device.DeviceName = deviceName;
+            await api.DeviceUpdate(device);
+            return RedirectToAction(nameof(Details), new { idDevice });
         }
 
         public async Task<ActionResult> Events(int? idDevice) => View(new DeviceView

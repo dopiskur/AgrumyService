@@ -129,7 +129,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
-    /// The Web Edit form's ONLY binding target - deliberately carries just what EfRepository.DeviceUpdateAsync's own whitelist actually writes, so MacAddress/TenantID/IsGateway/GatewayProfile/ApiId/ApiKey/ConfigVersion have no property for an over-posted form value to land on, by construction rather than by remembering to filter them out downstream.
+    /// The Web Advanced form's ONLY binding target - deliberately carries just what EfRepository.DeviceUpdateAsync's own whitelist actually writes, so MacAddress/TenantID/IsGateway/GatewayProfile/ApiId/ApiKey/ConfigVersion have no property for an over-posted form value to land on, by construction rather than by remembering to filter them out downstream. The toggle-style settings (sleep, battery, debug, enabled, LoRa gateway, sensor/controller enabled) moved to the Device Details quick-settings form and are no longer part of this one.
     public class DeviceEditForm
     {
         public int? IDDevice { get; set; }
@@ -139,14 +139,6 @@ namespace Agrumy.Shared.Models
         public int? ManualDeviceTypeID { get; set; }
         public string? ServicePoint { get; set; }
         public string? ServicePublicKey { get; set; }
-        public int? SleepSeconds { get; set; }
-        public bool? SleepDeepEnabled { get; set; }
-        public bool? LoRaGatewayEnabled { get; set; }
-        public bool? DeviceSensorEnabled { get; set; }
-        public bool? DeviceControllerEnabled { get; set; }
-        public bool? BatteryEnabled { get; set; }
-        public bool? Debug { get; set; }
-        public bool? Enabled { get; set; }
     }
 
     public static class DeviceMappingExtensions
@@ -231,14 +223,6 @@ namespace Agrumy.Shared.Models
             target.ManualDeviceTypeID = form.ManualDeviceTypeID;
             target.ServicePoint = form.ServicePoint;
             target.ServicePublicKey = form.ServicePublicKey;
-            target.SleepSeconds = form.SleepSeconds;
-            target.SleepDeepEnabled = form.SleepDeepEnabled;
-            target.LoRaGatewayEnabled = form.LoRaGatewayEnabled;
-            target.DeviceSensorEnabled = form.DeviceSensorEnabled;
-            target.DeviceControllerEnabled = form.DeviceControllerEnabled;
-            target.BatteryEnabled = form.BatteryEnabled;
-            target.Debug = form.Debug;
-            target.Enabled = form.Enabled;
         }
 
         public static DeviceEditForm ToEditForm(this DeviceDto d) => new()
@@ -250,15 +234,20 @@ namespace Agrumy.Shared.Models
             ManualDeviceTypeID = d.ManualDeviceTypeID,
             ServicePoint = d.ServicePoint,
             ServicePublicKey = d.ServicePublicKey,
-            SleepSeconds = d.SleepSeconds,
-            SleepDeepEnabled = d.SleepDeepEnabled,
-            LoRaGatewayEnabled = d.LoRaGatewayEnabled,
-            DeviceSensorEnabled = d.DeviceSensorEnabled,
-            DeviceControllerEnabled = d.DeviceControllerEnabled,
-            BatteryEnabled = d.BatteryEnabled,
-            Debug = d.Debug,
-            Enabled = d.Enabled,
         };
+
+        /// Known DeviceRoleID values (0-3) derive sensor/controller-enabled directly and override whatever the caller set; an unknown role id leaves them alone, so a manual toggle only ever sticks for a role outside that fixed set.
+        public static void RecomputeSensorControllerEnabled(this DeviceDto device)
+        {
+            (device.DeviceSensorEnabled, device.DeviceControllerEnabled) = device.DeviceRoleID switch
+            {
+                0 => (false, false),
+                1 => (true, false),
+                2 => (false, true),
+                3 => (true, true),
+                _ => (device.DeviceSensorEnabled, device.DeviceControllerEnabled),
+            };
+        }
     }
 
     public class DeviceRegistration()

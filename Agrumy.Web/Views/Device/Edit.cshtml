@@ -1,7 +1,7 @@
 @model Agrumy.Shared.Models.DeviceView
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Advanced";
     var device = Model.Device!;
     var form = Model.DeviceEdit!;
     string EditField(string name) => $"{nameof(Model.DeviceEdit)}.{name}";
@@ -15,18 +15,12 @@
     var deviceTypeServiceItems = new SelectList(Model.DeviceTypeService, nameof(DeviceTypeService.IDDeviceTypeService), nameof(DeviceTypeService.ServiceType), form.DeviceTypeServiceID);
     var deviceTypeServiceSelect = new SelectFieldViewModel { Name = EditField(nameof(form.DeviceTypeServiceID)), Label = "Service type", Items = deviceTypeServiceItems };
 
-    var sleepDeepToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.SleepDeepEnabled)), Label = "SleepDeep", Value = form.SleepDeepEnabled };
-    // Standalone/dual-role LoRa Gateway relay; firmware only actually starts listening if it detects the LoRa radio chip physically present (see the Details page's event log otherwise).
-    var loRaGatewayToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.LoRaGatewayEnabled)), Label = "LoRa Gateway enabled", Value = form.LoRaGatewayEnabled };
-    var batteryToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.BatteryEnabled)), Label = "Device battery", Value = form.BatteryEnabled };
-    var debugToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.Debug)), Label = nameof(form.Debug), Value = form.Debug };
-    var enabledToggle = new EnabledToggleFieldViewModel { Name = EditField(nameof(form.Enabled)), Label = "Device", Value = form.Enabled };
     bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Edit Device</h3>
+        <h3 class="card-title">Advanced - @Html.DisplayFor(m => m.Device!.DeviceName)</h3>
     </div>
     <div class="card-body">
         <form asp-action="Edit">
@@ -71,11 +65,6 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="DeviceEdit.DeviceName" class="form-label"></label>
-                <input asp-for="DeviceEdit.DeviceName" class="form-control" />
-                <span asp-validation-for="DeviceEdit.DeviceName" class="text-danger"></span>
-            </div>
-            <div class="mb-3">
                 <label asp-for="Device.MacAddress" class="form-label"></label>
                 <p class="form-control-plaintext">@Html.DisplayFor(m => m.Device!.MacAddress)</p>
             </div>
@@ -97,29 +86,6 @@
                 <input asp-for="DeviceEdit.ServicePublicKey" class="form-control" />
                 <span asp-validation-for="DeviceEdit.ServicePublicKey" class="text-danger"></span>
             </div>
-            <div class="mb-3">
-                <label asp-for="DeviceEdit.SleepSeconds" class="form-label"></label>
-                <input asp-for="DeviceEdit.SleepSeconds" class="form-control" />
-                <span asp-validation-for="DeviceEdit.SleepSeconds" class="text-danger"></span>
-            </div>
-
-            @* Recomputed from DeviceRoleID in DeviceController.Edit POST for every known role - shown for transparency, but edits only survive for unknown role ids. *@
-            <div class="mb-3">
-                <label asp-for="DeviceEdit.DeviceSensorEnabled" class="form-label"></label>
-                <input asp-for="DeviceEdit.DeviceSensorEnabled" class="form-control" />
-                <span asp-validation-for="DeviceEdit.DeviceSensorEnabled" class="text-danger"></span>
-            </div>
-            <div class="mb-3">
-                <label asp-for="DeviceEdit.DeviceControllerEnabled" class="form-label"></label>
-                <input asp-for="DeviceEdit.DeviceControllerEnabled" class="form-control" />
-                <span asp-validation-for="DeviceEdit.DeviceControllerEnabled" class="text-danger"></span>
-            </div>
-
-            <partial name="_EnabledToggleField" model="sleepDeepToggle" />
-            <partial name="_EnabledToggleField" model="loRaGatewayToggle" />
-            <partial name="_EnabledToggleField" model="batteryToggle" />
-            <partial name="_EnabledToggleField" model="debugToggle" />
-            <partial name="_EnabledToggleField" model="enabledToggle" />
 
             <div class="mb-0">
                 @if (!isReadOnly)

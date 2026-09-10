@@ -29,11 +29,7 @@
         </p>
         <form asp-action="EditController">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="mb-3">
-                <label asp-for="Device.IDDevice" class="form-label"></label>
-                <p class="form-control-plaintext">@Html.DisplayFor(m => m.Device!.IDDevice)</p>
-                @Html.HiddenFor(m => m.Device!.IDDevice)
-            </div>
+            @Html.HiddenFor(m => m.Device!.IDDevice)
 
             <partial name="_EnabledToggleField" model="relayEnabledToggle" />
 
@@ -52,7 +48,7 @@
 
             <div class="mb-0">
                 <input type="submit" value="Save" class="btn btn-primary" />
-                <a asp-action="Fleet" class="btn btn-outline-secondary">Back to List</a>
+                <a asp-action="Details" asp-route-idDevice="@Model.Device!.IDDevice" class="btn btn-outline-secondary">Back</a>
             </div>
         </form>
     </div>
