@@ -14,6 +14,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Narrow writer for WeatherEvaluator's computed result, kept separate from ServerConfigUpdateAsync so a concurrent settings save can't race it.
         Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig);
 
+        /// Narrow writer for FrostAlertEvaluator's computed result, same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig);
+
         /// Narrow writer for FirmwareCatalogRefreshEvaluator's last-run timestamp, same isolation reasoning as ServerConfigWeatherStateSetAsync.
         Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig);
 

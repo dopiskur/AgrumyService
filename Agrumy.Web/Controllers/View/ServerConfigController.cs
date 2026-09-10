@@ -96,15 +96,21 @@ namespace Agrumy.Web.Controllers.View
                                             ? nameof(ServerConfig.WeatherPollIntervalMinutes)
                                             : ex.Body.Contains("rain-skip", StringComparison.OrdinalIgnoreCase)
                                                 ? nameof(ServerConfig.WeatherRainSkipThreshold)
-                                                : ex.Body.Contains("SMTP port", StringComparison.OrdinalIgnoreCase)
-                                                    ? nameof(ServerConfig.EmailPort)
-                                                    : ex.Body.Contains("email notifications", StringComparison.OrdinalIgnoreCase)
-                                                        ? nameof(ServerConfig.EmailHost)
-                                                        : ex.Body.Contains("PIN validity", StringComparison.OrdinalIgnoreCase)
-                                                            ? nameof(ServerConfig.DevicePinValidMinutes)
-                                                            : ex.Body.Contains("archive", StringComparison.OrdinalIgnoreCase)
-                                                                ? nameof(ServerConfig.ArchiveEnabled)
-                                                                : nameof(ServerConfig.FirmwareSource);
+                                                : ex.Body.Contains("Frost lookahead", StringComparison.OrdinalIgnoreCase)
+                                                    ? nameof(ServerConfig.FrostLookaheadHours)
+                                                    : ex.Body.Contains("Frost max cloudiness", StringComparison.OrdinalIgnoreCase)
+                                                        ? nameof(ServerConfig.FrostCloudinessMaxPercent)
+                                                        : ex.Body.Contains("Frost max wind", StringComparison.OrdinalIgnoreCase)
+                                                            ? nameof(ServerConfig.FrostWindMaxMetersPerSecond)
+                                                            : ex.Body.Contains("SMTP port", StringComparison.OrdinalIgnoreCase)
+                                                                ? nameof(ServerConfig.EmailPort)
+                                                                : ex.Body.Contains("email notifications", StringComparison.OrdinalIgnoreCase)
+                                                                    ? nameof(ServerConfig.EmailHost)
+                                                                    : ex.Body.Contains("PIN validity", StringComparison.OrdinalIgnoreCase)
+                                                                        ? nameof(ServerConfig.DevicePinValidMinutes)
+                                                                        : ex.Body.Contains("archive", StringComparison.OrdinalIgnoreCase)
+                                                                            ? nameof(ServerConfig.ArchiveEnabled)
+                                                                            : nameof(ServerConfig.FirmwareSource);
                 ModelState.AddModelError(field, ex.Body);
                 return View(serverConfig);
             }

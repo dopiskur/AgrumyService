@@ -1085,6 +1085,18 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.LowBatteryNotifiedAt, notifiedAt));
         }
 
+        // ---- Frost alert background worker ---------------------------------
+
+        public async Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync()
+        {
+            return await db.Devices.AsNoTracking()
+                .Where(d => d.Enabled == true)
+                .Select(d => new FrostSensorReading(
+                    db.SensorData.AsNoTracking().Where(s => s.DeviceID == d.IDDevice).OrderByDescending(s => s.DateCreated).Select(s => s.Temperature).FirstOrDefault(),
+                    db.SensorData.AsNoTracking().Where(s => s.DeviceID == d.IDDevice).OrderByDescending(s => s.DateCreated).Select(s => s.Humidity).FirstOrDefault()))
+                .ToListAsync();
+        }
+
         private static DeviceEvent ToDto(EventDeviceRow e) => new()
         {
             IDEventDevice = e.IDEventDevice,

@@ -100,6 +100,18 @@ namespace Agrumy.Api.Controllers.API
             {
                 return BadRequest("Weather rain-skip threshold must be between 0 and 100 percent.");
             }
+            if (config.FrostLookaheadHours is < 1 or > 48)
+            {
+                return BadRequest("Frost lookahead must be between 1 and 48 hours.");
+            }
+            if (config.FrostCloudinessMaxPercent is < 0 or > 100)
+            {
+                return BadRequest("Frost max cloudiness must be between 0 and 100 percent.");
+            }
+            if (config.FrostWindMaxMetersPerSecond is < 0)
+            {
+                return BadRequest("Frost max wind speed cannot be negative.");
+            }
 
             // Negative is meaningless; 0/null both mean "auto-refresh disabled".
             if (config.FirmwareRefreshIntervalHours is < 0)

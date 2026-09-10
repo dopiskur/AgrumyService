@@ -69,6 +69,12 @@ namespace Agrumy.Shared
         public int WeatherPollIntervalMinutes { get; set; } = 15;
         public double WeatherRainSkipThreshold { get; set; } = 50.0;
 
+        // Radiative-frost factors - clear sky and calm wind let ground heat radiate away overnight, so a forecast near the threshold only counts as risky alongside low cloudiness/wind too.
+        public int FrostLookaheadHours { get; set; } = 12;
+        public double FrostTempThresholdC { get; set; } = 3.0;
+        public double FrostCloudinessMaxPercent { get; set; } = 30.0;
+        public double FrostWindMaxMetersPerSecond { get; set; } = 2.0;
+
         // Shared with Agrumy.Gateway's own GatewayOptions.Gateway.RegistrationSecret - proves a Register call declaring IsGateway:true actually comes from Agrumy.Gateway, not any client holding a valid user email+PIN. Null/empty means no gateway may self-register on this server.
         public string? GatewayRegistrationSecret { get; set; }
 
@@ -105,6 +111,10 @@ namespace Agrumy.Shared
             WeatherApiKey = configuration.GetSection("Weather:ApiKey").Value,
             WeatherPollIntervalMinutes = ParseIntOr(configuration, "ServerConfig:WeatherPollIntervalMinutes", 15),
             WeatherRainSkipThreshold = ParseDoubleOr(configuration, "ServerConfig:WeatherRainSkipThreshold", 50.0),
+            FrostLookaheadHours = ParseIntOr(configuration, "ServerConfig:FrostLookaheadHours", 12),
+            FrostTempThresholdC = ParseDoubleOr(configuration, "ServerConfig:FrostTempThresholdC", 3.0),
+            FrostCloudinessMaxPercent = ParseDoubleOr(configuration, "ServerConfig:FrostCloudinessMaxPercent", 30.0),
+            FrostWindMaxMetersPerSecond = ParseDoubleOr(configuration, "ServerConfig:FrostWindMaxMetersPerSecond", 2.0),
             GatewayRegistrationSecret = configuration.GetSection("Gateway:RegistrationSecret").Value,
         };
 

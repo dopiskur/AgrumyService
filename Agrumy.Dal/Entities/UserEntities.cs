@@ -172,6 +172,15 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
+        public int? FrostLookaheadHours { get; set; }
+        public double? FrostTempThresholdC { get; set; }
+        public double? FrostCloudinessMaxPercent { get; set; }
+        public double? FrostWindMaxMetersPerSecond { get; set; }
+        public bool FrostPredicted { get; set; }
+        public int? FrostPredictedHoursAhead { get; set; }
+        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool GatewayEnabled { get; set; }
         public int GatewayMode { get; set; }
         public int GatewayWaitWindowSeconds { get; set; } = 30;

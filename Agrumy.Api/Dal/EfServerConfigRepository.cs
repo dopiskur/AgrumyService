@@ -54,6 +54,10 @@ namespace Agrumy.Api.Dal
                 RecycleBinRetentionDays = 30,
                 WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes,
                 WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold,
+                FrostLookaheadHours = settings.FrostLookaheadHours,
+                FrostTempThresholdC = settings.FrostTempThresholdC,
+                FrostCloudinessMaxPercent = settings.FrostCloudinessMaxPercent,
+                FrostWindMaxMetersPerSecond = settings.FrostWindMaxMetersPerSecond,
                 GatewayWaitWindowSeconds = 30,
                 ProblemEventAlertsEnabled = true,
                 ProblemEventExpiryHours = 24,
@@ -107,6 +111,11 @@ namespace Agrumy.Api.Dal
             row.WeatherLocationLon = config.WeatherLocationLon;
             row.WeatherPollIntervalMinutes = config.WeatherPollIntervalMinutes;
             row.WeatherRainSkipThreshold = config.WeatherRainSkipThreshold;
+            // FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc deliberately NOT written here - FrostAlertEvaluator owns them via ServerConfigFrostStateSetAsync, same reasoning as WeatherRainPredicted/WeatherCheckedAtUtc above.
+            row.FrostLookaheadHours = config.FrostLookaheadHours;
+            row.FrostTempThresholdC = config.FrostTempThresholdC;
+            row.FrostCloudinessMaxPercent = config.FrostCloudinessMaxPercent;
+            row.FrostWindMaxMetersPerSecond = config.FrostWindMaxMetersPerSecond;
             row.GatewayEnabled = config.GatewayEnabled;
             row.GatewayMode = (int)config.GatewayMode;
             row.GatewayWaitWindowSeconds = config.GatewayWaitWindowSeconds;
@@ -196,6 +205,10 @@ namespace Agrumy.Api.Dal
             row.SensorDataRetentionDays = settings.SensorDataRetentionDays;
             row.WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes;
             row.WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold;
+            row.FrostLookaheadHours = settings.FrostLookaheadHours;
+            row.FrostTempThresholdC = settings.FrostTempThresholdC;
+            row.FrostCloudinessMaxPercent = settings.FrostCloudinessMaxPercent;
+            row.FrostWindMaxMetersPerSecond = settings.FrostWindMaxMetersPerSecond;
             row.FirmwareRefreshIntervalHours = settings.FirmwareRefreshIntervalHours;
             await db.SaveChangesAsync();
             await ApplyRetentionPolicyAsync(settings.SensorDataRetentionDays);
@@ -211,6 +224,20 @@ namespace Agrumy.Api.Dal
             }
             row.WeatherRainPredicted = rainPredicted;
             row.WeatherCheckedAtUtc = checkedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
+        /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        public async Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig = 1)
+        {
+            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
+            if (row == null)
+            {
+                return;
+            }
+            row.FrostPredicted = frostPredicted;
+            row.FrostPredictedHoursAhead = hoursAhead;
+            row.FrostCheckedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
         }
 
@@ -302,6 +329,14 @@ namespace Agrumy.Api.Dal
             WeatherRainSkipThreshold = r.WeatherRainSkipThreshold ?? settings.WeatherRainSkipThreshold,
             WeatherRainPredicted = r.WeatherRainPredicted,
             WeatherCheckedAtUtc = r.WeatherCheckedAtUtc,
+            // Same appsettings-seed fallback as the WeatherPollIntervalMinutes/WeatherRainSkipThreshold pair above.
+            FrostLookaheadHours = r.FrostLookaheadHours ?? settings.FrostLookaheadHours,
+            FrostTempThresholdC = r.FrostTempThresholdC ?? settings.FrostTempThresholdC,
+            FrostCloudinessMaxPercent = r.FrostCloudinessMaxPercent ?? settings.FrostCloudinessMaxPercent,
+            FrostWindMaxMetersPerSecond = r.FrostWindMaxMetersPerSecond ?? settings.FrostWindMaxMetersPerSecond,
+            FrostPredicted = r.FrostPredicted,
+            FrostPredictedHoursAhead = r.FrostPredictedHoursAhead,
+            FrostCheckedAtUtc = r.FrostCheckedAtUtc,
             GatewayEnabled = r.GatewayEnabled,
             GatewayMode = (GatewayMode)r.GatewayMode,
             // An older row has 0 here, which already equals the sane default (a 10-300 clamp keeps 0 unreachable otherwise) - no settings.* fallback needed.

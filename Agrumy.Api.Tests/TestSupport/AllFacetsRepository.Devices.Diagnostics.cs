@@ -30,5 +30,7 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<IList<LowBatteryAlertCandidate>> LowBatteryAlertCandidatesGetAsync() => deviceRepository.LowBatteryAlertCandidatesGetAsync();
 
         public Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt) => deviceRepository.DeviceLowBatteryNotifiedSetAsync(deviceID, notifiedAt);
+
+        public Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync() => deviceRepository.FrostSensorReadingsGetAsync();
     }
 }

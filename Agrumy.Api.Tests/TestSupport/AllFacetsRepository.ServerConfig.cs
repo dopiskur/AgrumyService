@@ -15,6 +15,9 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigWeatherStateSetAsync(rainPredicted, checkedAtUtc, idServerConfig);
 
+        public Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
+            serverConfigRepository.ServerConfigFrostStateSetAsync(frostPredicted, hoursAhead, checkedAtUtc, idServerConfig);
+
         public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigFirmwareRefreshStateSetAsync(checkedAtUtc, idServerConfig);
 

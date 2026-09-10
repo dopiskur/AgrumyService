@@ -104,6 +104,24 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Forecast last checked")]
         public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
+        // Same install-wide lat/lon + WeatherApiKey as the rain-skip forecast above - FrostAlertEvaluator just asks a different question of the same OpenWeatherMap forecast.
+        [Display(Name = "Frost lookahead (hours)")]
+        public int? FrostLookaheadHours { get; set; }
+        [Display(Name = "Frost temperature threshold (°C)")]
+        public double? FrostTempThresholdC { get; set; }
+        [Display(Name = "Frost max cloudiness (%)")]
+        public double? FrostCloudinessMaxPercent { get; set; }
+        [Display(Name = "Frost max wind speed (m/s)")]
+        public double? FrostWindMaxMetersPerSecond { get; set; }
+
+        // FrostAlertEvaluator's last result - read-only on Server Settings, written only through ServerConfigFrostStateSetAsync, same isolation reasoning as WeatherRainPredicted/WeatherCheckedAtUtc.
+        [Display(Name = "Frost predicted")]
+        public bool FrostPredicted { get; set; }
+        [Display(Name = "Hours until predicted frost")]
+        public int? FrostPredictedHoursAhead { get; set; }
+        [Display(Name = "Frost forecast last checked")]
+        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+
         // Gates the Gateway Devices admin page (_Layout.cshtml, same pattern as TenantManagementEnabled) and whether GatewayApiController accepts Batch calls at all.
         [Display(Name = "Enable Agrumy.Gateway support")]
         public bool GatewayEnabled { get; set; }

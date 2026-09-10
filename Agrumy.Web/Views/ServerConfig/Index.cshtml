@@ -449,6 +449,50 @@
                             <span class="text-secondary small">not checked yet</span>
                         }
                     </p>
+                    <hr />
+                    <p class="text-secondary">
+                        <strong>Frost early warning</strong> uses the same location/API key above -
+                        an alert fires once, hours ahead, when the forecast's coldest bucket in the
+                        lookahead window is at or below the temperature threshold AND cloudiness/wind
+                        are both low enough for radiative frost (clear, calm nights lose heat fastest).
+                        Sent to Global admins.
+                    </p>
+                    <div class="mb-3">
+                        <label asp-for="FrostLookaheadHours" class="form-label"></label>
+                        <input asp-for="FrostLookaheadHours" class="form-control" style="max-width:12rem" />
+                        <span asp-validation-for="FrostLookaheadHours" class="text-danger"></span>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-4">
+                            <label asp-for="FrostTempThresholdC" class="form-label"></label>
+                            <input asp-for="FrostTempThresholdC" class="form-control" />
+                            <span asp-validation-for="FrostTempThresholdC" class="text-danger"></span>
+                        </div>
+                        <div class="col-sm-4">
+                            <label asp-for="FrostCloudinessMaxPercent" class="form-label"></label>
+                            <input asp-for="FrostCloudinessMaxPercent" class="form-control" />
+                            <span asp-validation-for="FrostCloudinessMaxPercent" class="text-danger"></span>
+                        </div>
+                        <div class="col-sm-4">
+                            <label asp-for="FrostWindMaxMetersPerSecond" class="form-label"></label>
+                            <input asp-for="FrostWindMaxMetersPerSecond" class="form-control" />
+                            <span asp-validation-for="FrostWindMaxMetersPerSecond" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <p class="mb-0">
+                        <strong>Current forecast:</strong>
+                        @if (Model.FrostCheckedAtUtc is DateTimeOffset frostCheckedAt)
+                        {
+                            <span class="badge @(Model.FrostPredicted ? "text-bg-danger" : "text-bg-secondary")">
+                                @(Model.FrostPredicted ? $"Frost predicted (~{Model.FrostPredictedHoursAhead}h)" : "No frost predicted")
+                            </span>
+                            <span class="text-secondary small">last checked @frostCheckedAt.ToString("u")</span>
+                        }
+                        else
+                        {
+                            <span class="text-secondary small">not checked yet</span>
+                        }
+                    </p>
                 </div>
 
                 <div class="tab-pane fade" id="tab-gateway" role="tabpanel">

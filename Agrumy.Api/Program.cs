@@ -209,6 +209,9 @@ builder.Services.AddHttpClient<IWeatherForecastClient, OpenWeatherMapClient>(cli
 builder.Services.AddScoped<WeatherEvaluator>();
 builder.Services.AddHostedService<WeatherBackgroundService>();
 
+builder.Services.AddScoped<FrostAlertEvaluator>();
+builder.Services.AddHostedService<FrostAlertBackgroundService>();
+
 // Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
 builder.Services.AddSingleton<Agrumy.Api.Commands.IMqttConnectionManager, Agrumy.Api.Commands.MqttConnectionManager>();

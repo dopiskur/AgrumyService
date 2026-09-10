@@ -28,6 +28,7 @@ public class ServerHealthTests
         public Task ServerConfigUpdateAsync(ServerConfig c) => Task.CompletedTask;
         public Task ServerConfigReloadFromAppSettingsAsync(int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
+        public Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ApplyRetentionPolicyAsync(int? retentionDays) => Task.CompletedTask;

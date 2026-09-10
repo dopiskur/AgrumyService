@@ -7,6 +7,7 @@ namespace Agrumy.Shared.Models
         LowBattery = 2,
         TankRefill = 3,
         RuleTriggered = 4,
+        Frost = 5,
     }
 
     /// Opt-OUT model: absence of a row for (UserID, EventType, Channel) means enabled, matching every admin's current behavior before this preference existed - a row only ever needs to exist to record a user turning something off. Channel is a per-RECIPIENT channel name (matches INotificationChannel.Name for Email/Push) - a per-event channel like Webhook has no per-user concept and ignores this table entirely.

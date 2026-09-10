@@ -2293,6 +2293,27 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int>("FirmwareSource")
                         .HasColumnType("int");
 
+                    b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<double?>("FrostCloudinessMaxPercent")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("FrostLookaheadHours")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("FrostPredicted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("FrostPredictedHoursAhead")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("FrostTempThresholdC")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("FrostWindMaxMetersPerSecond")
+                        .HasColumnType("double");
+
                     b.Property<bool>("GatewayEnabled")
                         .HasColumnType("tinyint(1)");
 

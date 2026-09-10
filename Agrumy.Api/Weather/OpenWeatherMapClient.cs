@@ -8,7 +8,13 @@ namespace Agrumy.Api.Weather
     {
         /// Null means the request failed (already logged) - the caller must leave the last known state alone rather than treat a failed fetch as "no rain".
         Task<double?> GetMaxRainProbabilityPercentAsync(double lat, double lon, string apiKey, CancellationToken ct);
+
+        /// The coldest forecast bucket within the lookahead window, with the cloudiness/wind reading from that same bucket - null means the request failed (already logged), same "leave the last state alone" convention as GetMaxRainProbabilityPercentAsync.
+        Task<FrostForecastResult?> GetFrostForecastAsync(double lat, double lon, string apiKey, int lookaheadHours, CancellationToken ct);
     }
+
+    /// HoursAhead is the coldest bucket's distance from now, in whole hours (3h-bucket granularity); MinTemperatureC/CloudinessPercent/WindSpeedMetersPerSecond are null only if that bucket's JSON omitted the field.
+    public sealed record FrostForecastResult(double? MinTemperatureC, double? CloudinessPercent, double? WindSpeedMetersPerSecond, int HoursAhead);
 
     /// Uses OpenWeatherMap's free "5 day / 3 hour forecast" endpoint, not the paid One Call 3.0 - each bucket's "pop" (0-1) is a closer match to "will it rain soon" than the current-conditions endpoint.
     public sealed class OpenWeatherMapClient(HttpClient httpClient, ILogger<OpenWeatherMapClient> logger) : IWeatherForecastClient
@@ -56,6 +62,55 @@ namespace Agrumy.Api.Weather
             catch (Exception ex) when (ex is HttpRequestException or JsonException)
             {
                 logger.LogWarning(ex, "OpenWeatherMap forecast fetch failed.");
+                return null;
+            }
+        }
+
+        public async Task<FrostForecastResult?> GetFrostForecastAsync(double lat, double lon, string apiKey, int lookaheadHours, CancellationToken ct)
+        {
+            // units=metric so "temp" comes back in Celsius directly - GetMaxRainProbabilityPercentAsync above never needed it since "pop" is unitless.
+            string url = $"{ForecastUrl}?lat={lat.ToString(CultureInfo.InvariantCulture)}&lon={lon.ToString(CultureInfo.InvariantCulture)}&units=metric&appid={Uri.EscapeDataString(apiKey)}";
+            try
+            {
+                using HttpResponseMessage response = await httpClient.GetAsync(url, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    logger.LogWarning("OpenWeatherMap forecast request failed with {Status}.", response.StatusCode);
+                    return null;
+                }
+
+                using var stream = await response.Content.ReadAsStreamAsync(ct);
+                using JsonDocument doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+                if (!doc.RootElement.TryGetProperty("list", out JsonElement list))
+                {
+                    return null;
+                }
+
+                int bucketsWanted = Math.Max(1, (int)Math.Ceiling(lookaheadHours / 3.0));
+                FrostForecastResult? coldest = null;
+                int seen = 0;
+                foreach (JsonElement entry in list.EnumerateArray())
+                {
+                    if (seen >= bucketsWanted)
+                    {
+                        break;
+                    }
+                    seen++;
+
+                    double? temp = entry.TryGetProperty("main", out JsonElement main) && main.TryGetProperty("temp", out JsonElement tempEl) && tempEl.TryGetDouble(out double t) ? t : null;
+                    double? clouds = entry.TryGetProperty("clouds", out JsonElement cloudsEl) && cloudsEl.TryGetProperty("all", out JsonElement allEl) && allEl.TryGetDouble(out double c) ? c : null;
+                    double? wind = entry.TryGetProperty("wind", out JsonElement windEl) && windEl.TryGetProperty("speed", out JsonElement speedEl) && speedEl.TryGetDouble(out double w) ? w : null;
+
+                    if (temp is double tv && (coldest is null || coldest.MinTemperatureC is not double bestT || tv < bestT))
+                    {
+                        coldest = new FrostForecastResult(tv, clouds, wind, seen * 3);
+                    }
+                }
+                return coldest;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or JsonException)
+            {
+                logger.LogWarning(ex, "OpenWeatherMap frost forecast fetch failed.");
                 return null;
             }
         }

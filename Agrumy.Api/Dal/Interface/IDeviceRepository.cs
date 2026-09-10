@@ -19,6 +19,9 @@ namespace Agrumy.Api.Dal.Interface
         int? Battery,
         DateTimeOffset? LowBatteryNotifiedAt);
 
+    /// The minimal shape FrostAlertEvaluator needs for its local DewPoint-spread confirmation signal - latest Temperature+Humidity per enabled device, no tenant scoping since the underlying forecast check is itself install-wide.
+    public sealed record FrostSensorReading(double? Temperature, double? Humidity);
+
     /// Device facet of the data layer: device CRUD, sensor/controller configs, firmware (OTA), the fixed type lists, and device events.
     public interface IDeviceRepository
     {
@@ -157,6 +160,11 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Sets (or clears, notifiedAt: null) LowBatteryNotifiedAt on one device's diagnostic row.
         Task DeviceLowBatteryNotifiedSetAsync(int deviceID, DateTimeOffset? notifiedAt);
+
+        // Frost alert background worker
+
+        /// Latest Temperature+Humidity per enabled device across every tenant - not tenant-scoped, same reasoning as OfflineAlertCandidatesGetAsync/LowBatteryAlertCandidatesGetAsync.
+        Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync();
 
         // Simulation Mode (per-metric overrides on an existing physical device)
 
