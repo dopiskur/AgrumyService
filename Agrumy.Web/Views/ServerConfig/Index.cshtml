@@ -74,6 +74,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-webhook" type="button" role="tab">Webhook</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-odata" type="button" role="tab">Power BI</button>
+                </li>
             </ul>
             <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3">
                 <div class="tab-pane fade show active" id="tab-health" role="tabpanel">
@@ -707,6 +710,37 @@
                             </div>
                         </div>
                     }
+                </div>
+
+                <div class="tab-pane fade" id="tab-odata" role="tabpanel">
+                    <p class="text-secondary">
+                        A read-only OData v4 feed of this install's own sensor readings, scoped to the
+                        signed-in account's organization the same way every other endpoint is - Power BI's
+                        native "OData feed" connector understands $filter/$select/$orderby/$top natively
+                        against it, no manual Power Query M transforms needed (unlike the plain "Web"
+                        connector against the regular REST endpoints).
+                    </p>
+                    <div class="form-check mb-3">
+                        <input asp-for="ODataEnabled" class="form-check-input" />
+                        <label asp-for="ODataEnabled" class="form-check-label"></label>
+                    </div>
+                    @{ var odataUrl = $"{(ViewBag.ApiServiceUrl as string)?.TrimEnd('/')}/api/odata/SensorData"; }
+                    <div class="mb-0">
+                        <label class="form-label">Feed URL</label>
+                        <div class="input-group" style="max-width:40rem">
+                            <input type="text" class="form-control" value="@odataUrl" readonly />
+                        </div>
+                        <div class="form-text">
+                            Paste this into Power BI's "Get Data &rarr; OData feed" dialog. This endpoint
+                            takes the same JWT bearer token as the rest of the API, not a username/password
+                            Power BI's connector understands natively - choose its "Web API" credential
+                            type and supply an <code>Authorization</code> header with
+                            <code>Bearer &lt;token&gt;</code>, where the token comes from
+                            <code>POST /api/User/Login</code>. The token expires like any normal login
+                            session, so it needs pasting in again periodically - not a set-and-forget
+                            connection. Disabled above, this URL answers 404.
+                        </div>
+                    </div>
                 </div>
             </div>
 

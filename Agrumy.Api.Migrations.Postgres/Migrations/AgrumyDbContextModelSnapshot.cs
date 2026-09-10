@@ -2354,6 +2354,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("MqttUsername")
                         .HasColumnType("text");
 
+                    b.Property<bool>("ODataEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("PasswordMinLength")
                         .HasColumnType("integer");
 

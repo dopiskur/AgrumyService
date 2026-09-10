@@ -31,5 +31,7 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task OptimizeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct) => sensorDataRepository.OptimizeOldSensorDataAsync(cutoffUtc, ct);
 
         public Task PurgeOldSensorDataAsync(DateTime cutoffUtc, bool shrinkAfterPurge, CancellationToken ct) => sensorDataRepository.PurgeOldSensorDataAsync(cutoffUtc, shrinkAfterPurge, ct);
+
+        public IQueryable<SensorDataODataEntry> SensorDataODataQueryable(int tenantID) => sensorDataRepository.SensorDataODataQueryable(tenantID);
     }
 }

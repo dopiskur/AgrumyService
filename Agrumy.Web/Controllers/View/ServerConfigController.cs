@@ -8,13 +8,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace Agrumy.Web.Controllers.View
 {
     [Authorize]
-    public class ServerConfigController(IApi api) : Controller
+    public class ServerConfigController(IApi api, IConfiguration configuration) : Controller
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Index()
         {
             await PopulateHealthAsync();
             ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
+            // Same config key Program.cs's own Refit HttpClient is built from - the actual base URL a Power BI OData connector would be pointed at.
+            ViewBag.ApiServiceUrl = configuration["WebView:ApiService"];
             return View(await api.ServerConfigGet());
         }
 

@@ -122,6 +122,10 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Frost forecast last checked")]
         public DateTimeOffset? FrostCheckedAtUtc { get; set; }
 
+        // Gates SensorDataODataController - disabled (the default) returns 404 regardless of role, so the feed doesn't exist at all for an install that never opted in.
+        [Display(Name = "Enable Power BI / OData feed")]
+        public bool ODataEnabled { get; set; }
+
         // Gates the Gateway Devices admin page (_Layout.cshtml, same pattern as TenantManagementEnabled) and whether GatewayApiController accepts Batch calls at all.
         [Display(Name = "Enable Agrumy.Gateway support")]
         public bool GatewayEnabled { get; set; }

@@ -14,6 +14,7 @@ using Agrumy.Api.Notifications;
 using Agrumy.Api.Security;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Weather;
+using Microsoft.AspNetCore.OData;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -283,7 +284,9 @@ builder.Services.AddOpenTelemetry()
         .AddMeter(AgrumyMetrics.MeterName)
         .AddPrometheusExporter());
 
-builder.Services.AddControllers(options => options.Filters.AddService<DbExceptionFilter>());
+// Query-only OData ($filter/$select/$orderby/$top/$count) for SensorDataODataController's [EnableQuery] action - no EDM model/route-component registration needed since that action already returns a plain IQueryable. AV0022 (suppressed project-wide, see the .csproj) wants this routed through Asp.Versioning's own OData package instead, which needs a full per-version EDM model this single, version-neutral feed doesn't - see the controller's own [ApiVersionNeutral].
+builder.Services.AddControllers(options => options.Filters.AddService<DbExceptionFilter>())
+    .AddOData(o => o.Select().Filter().OrderBy().SetMaxTop(5000).Count());
 
 // AssumeDefaultVersionWhenUnspecified keeps every existing caller (device firmware, Agrumy.Web's Refit client) working unversioned on 1.0; a future breaking change adds its own [ApiVersion("2.0")] controller instead of altering this one.
 builder.Services.AddApiVersioning(options =>

@@ -12,7 +12,10 @@
          this flag exists so a comment that IS written gets picked up, not to force writing one on
          every public member as part of this change. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- AV0022: Asp.Versioning.Mvc's analyzer wants every AddOData() call routed through Asp.Versioning.OData
+         instead - that package needs a full per-API-version EDM model, which SensorDataODataController (a
+         single, deliberately [ApiVersionNeutral] Power BI feed with no EDM model, see Program.cs) doesn't need. -->
+    <NoWarn>$(NoWarn);1591;AV0022</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,6 +44,7 @@
     <!-- SMTP email for the notification channel (roadmap #6). -->
     <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.OData" Version="9.5.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.22.0" />
     <!-- Roadmap #146: instant command push over MQTT alongside the HTTP/JWT poll cycle. -->

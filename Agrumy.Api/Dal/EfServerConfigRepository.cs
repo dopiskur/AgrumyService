@@ -116,6 +116,7 @@ namespace Agrumy.Api.Dal
             row.FrostTempThresholdC = config.FrostTempThresholdC;
             row.FrostCloudinessMaxPercent = config.FrostCloudinessMaxPercent;
             row.FrostWindMaxMetersPerSecond = config.FrostWindMaxMetersPerSecond;
+            row.ODataEnabled = config.ODataEnabled;
             row.GatewayEnabled = config.GatewayEnabled;
             row.GatewayMode = (int)config.GatewayMode;
             row.GatewayWaitWindowSeconds = config.GatewayWaitWindowSeconds;
@@ -337,6 +338,7 @@ namespace Agrumy.Api.Dal
             FrostPredicted = r.FrostPredicted,
             FrostPredictedHoursAhead = r.FrostPredictedHoursAhead,
             FrostCheckedAtUtc = r.FrostCheckedAtUtc,
+            ODataEnabled = r.ODataEnabled,
             GatewayEnabled = r.GatewayEnabled,
             GatewayMode = (GatewayMode)r.GatewayMode,
             // An older row has 0 here, which already equals the sane default (a 10-300 clamp keeps 0 unreachable otherwise) - no settings.* fallback needed.

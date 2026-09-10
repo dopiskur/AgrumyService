@@ -2,6 +2,34 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Dal.Interface
 {
+    /// OData/Power BI feed shape - exposes IDSensorData as the entity key, unlike Agrumy.Shared.Models.SensorData which no existing chart/export consumer needs it on.
+    public sealed class SensorDataODataEntry
+    {
+        public int IDSensorData { get; set; }
+        public int DeviceID { get; set; }
+        public int? DeviceFarmUnitID { get; set; }
+        public int? DeviceFarmUnitZoneID { get; set; }
+        public int? Battery { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public int? Moisture { get; set; }
+        public int? Light { get; set; }
+        public int? Co2 { get; set; }
+        public int? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public int? RainLevel { get; set; }
+        public int? WaterLevel { get; set; }
+        public int? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
+        public int? WifiRssiDbm { get; set; }
+        public int? LoRaRssiDbm { get; set; }
+        public int? LoRaSnrDb { get; set; }
+        public DateTimeOffset? DateCreated { get; set; }
+    }
+
     /// Telemetry facet of the data layer.
     public interface ISensorDataRepository
     {
@@ -27,5 +55,8 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Deletes rows older than cutoffUtc outright (drop_chunks() on TimescaleDB, plain DELETE otherwise) - shrinkAfterPurge also runs OPTIMIZE TABLE on MariaDB/MySQL, whose DELETE never shrinks the .ibd file.
         Task PurgeOldSensorDataAsync(DateTime cutoffUtc, bool shrinkAfterPurge, CancellationToken ct);
+
+        /// Tenant-scoped IQueryable for the OData/Power BI feed - filtered to tenantID here, server-side, before OData's [EnableQuery] layers $filter/$select/$orderby/$top on top; the client's OData query can never widen this to another tenant's rows.
+        IQueryable<SensorDataODataEntry> SensorDataODataQueryable(int tenantID);
     }
 }

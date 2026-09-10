@@ -401,6 +401,34 @@ namespace Agrumy.Api.Dal
             }).ToListAsync();
         }
 
+        public IQueryable<SensorDataODataEntry> SensorDataODataQueryable(int tenantID) =>
+            db.SensorData.AsNoTracking().Where(s => s.TenantID == tenantID).Select(s => new SensorDataODataEntry
+            {
+                IDSensorData = s.IDSensorData,
+                DeviceID = s.DeviceID,
+                DeviceFarmUnitID = s.DeviceFarmUnitID,
+                DeviceFarmUnitZoneID = s.DeviceFarmUnitZoneID,
+                Battery = s.Battery,
+                Temperature = s.Temperature,
+                SoilTemperature = s.SoilTemperature,
+                Humidity = s.Humidity,
+                Moisture = s.Moisture,
+                Light = s.Light,
+                Co2 = s.Co2,
+                Tvoc = s.Tvoc,
+                Barometer = s.Barometer,
+                LiquidPH = s.LiquidPH,
+                RainLevel = s.RainLevel,
+                WaterLevel = s.WaterLevel,
+                Wind = s.Wind,
+                Ec = s.Ec,
+                Weight = s.Weight,
+                WifiRssiDbm = s.WifiRssiDbm,
+                LoRaRssiDbm = s.LoRaRssiDbm,
+                LoRaSnrDb = s.LoRaSnrDb,
+                DateCreated = s.DateCreated,
+            });
+
         public async Task SensorDataImportAsync(IList<SensorData> rows)
         {
             db.SensorData.AddRange(rows.Select(r => new SensorDataRow

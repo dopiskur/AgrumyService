@@ -180,6 +180,9 @@ namespace Agrumy.Dal.Entities
         public int? FrostPredictedHoursAhead { get; set; }
         public DateTimeOffset? FrostCheckedAtUtc { get; set; }
 
+        // See Agrumy.Shared.Models.ServerConfig's own copy of this for the full explanation.
+        public bool ODataEnabled { get; set; }
+
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public bool GatewayEnabled { get; set; }
         public int GatewayMode { get; set; }
