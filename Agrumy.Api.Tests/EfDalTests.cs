@@ -6,6 +6,7 @@ using Agrumy.Api.Dal.Interface;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Npgsql;
 
 namespace Agrumy.Api.Tests;
 
@@ -403,5 +404,37 @@ public class DbErrorResponseMentionsTests
         Assert.True(DbErrorResponse.Mentions(ex, "email_UNIQUE"));
         Assert.False(DbErrorResponse.Mentions(ex, "Username_UNIQUE"));
         Assert.False(DbErrorResponse.Mentions(null, "email_UNIQUE"));
+    }
+
+    // MySqlException has no public constructor (every overload is internal to MySqlConnector), so the 1062/parsed-name
+    // path can only be exercised against a real driver-thrown exception - see RelationalIntegrationTests, which already
+    // asserts MentionsConstraint against genuine duplicate-key exceptions on both providers.
+
+    [Fact]
+    public void MentionsConstraint_RealPostgresUniqueViolation_MatchesOnConstraintNameFieldNotMessageText()
+    {
+        var pgEx = new PostgresException(
+            messageText: "duplicate key value violates unique constraint \"email_UNIQUE\"",
+            severity: "ERROR", invariantSeverity: "ERROR", sqlState: PostgresErrorCodes.UniqueViolation,
+            detail: "", hint: "", position: 0, internalPosition: 0, internalQuery: "",
+            where: "", schemaName: "", tableName: "user", columnName: "", dataTypeName: "",
+            constraintName: "email_UNIQUE", file: "", line: "", routine: "");
+
+        Assert.True(DbErrorResponse.MentionsConstraint(pgEx, "email_UNIQUE"));
+        Assert.False(DbErrorResponse.MentionsConstraint(pgEx, "Username_UNIQUE"));
+    }
+
+    [Fact]
+    public void MentionsConstraint_PostgresErrorWithDifferentSqlState_NeverMatchesEvenIfConstraintNameSet()
+    {
+        // A non-23505 PostgresException must not be treated as a duplicate-key hit even if ConstraintName happens to be set.
+        var pgEx = new PostgresException(
+            messageText: "deadlock detected",
+            severity: "ERROR", invariantSeverity: "ERROR", sqlState: "40P01",
+            detail: "", hint: "", position: 0, internalPosition: 0, internalQuery: "",
+            where: "", schemaName: "", tableName: "user", columnName: "", dataTypeName: "",
+            constraintName: "email_UNIQUE", file: "", line: "", routine: "");
+
+        Assert.False(DbErrorResponse.MentionsConstraint(pgEx, "email_UNIQUE"));
     }
 }

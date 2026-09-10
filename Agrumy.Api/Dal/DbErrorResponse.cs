@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using MySqlConnector;
 using Npgsql;
 
 namespace Agrumy.Api.Dal
@@ -61,17 +63,28 @@ namespace Agrumy.Api.Dal
             return false;
         }
 
-        /// Same intent as <see cref="Mentions"/> but structural where the driver offers it: PostgresException.ConstraintName is a parsed server field, not free text, so it survives a message-wording change a future Npgsql version might make - MySqlConnector exposes no equivalent, so that path still falls back to Mentions (see RelationalIntegrationTests' regression test guarding the two literal names this is called with never silently drifting from the real schema).
+        /// Same intent as <see cref="Mentions"/> but gated on the driver's own error code first, so this can't be fooled by an unrelated exception whose message happens to contain the name - Postgres exposes the parsed constraint name directly (ConstraintName), MySqlConnector only via message text so that part is parsed once the 1062 code has already confirmed it really is a duplicate key; falls back to the plain substring search for anything that isn't a recognized driver exception (e.g. the crafted messages DbExceptionFilterTests uses to avoid needing a live DB).
         public static bool MentionsConstraint(Exception? ex, string constraintName)
         {
             for (Exception? e = ex; e != null; e = e.InnerException)
             {
-                if (e is PostgresException pg)
+                if (e is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg)
                 {
                     return string.Equals(pg.ConstraintName, constraintName, System.StringComparison.OrdinalIgnoreCase);
                 }
+                if (e is MySqlException { Number: 1062 } mysql)
+                {
+                    return string.Equals(MySqlDuplicateKeyName(mysql.Message), constraintName, System.StringComparison.OrdinalIgnoreCase);
+                }
             }
             return Mentions(ex, constraintName);
+        }
+
+        /// Pulls the index name out of MySQL's "Duplicate entry '...' for key 'table.index'" (or just 'index' with no table prefix) - the driver never parses this into a property of its own.
+        private static string? MySqlDuplicateKeyName(string message)
+        {
+            var match = Regex.Match(message, @"for key '(?:[^'.]+\.)?([^'.]+)'");
+            return match.Success ? match.Groups[1].Value : null;
         }
     }
 }
