@@ -35,10 +35,13 @@ AliExpress components, not a purpose-built appliance costing thousands.
 | --- | --- | --- |
 | `Agrumy.Shared` | class library | Models (`api.Models`), `Config`, `Security` (`JwtTokenProvider`, `AuthenticationProvider`). Referenced by both apps. |
 | `Agrumy.Dal` | class library | Data-access model: `AgrumyDbContext`, EF entities (`api.Dal.Entities`), provider selection (`DbProviderKind`, `DbOptionsFactory`). No stored procedures - every query is LINQ. |
-| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), the `IRepository` implementation (`Dal/EfRepository`, EF Core over `Agrumy.Dal`), MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + schema creation on an empty database. |
+| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), one domain-repository interface per facet (`Dal/Interface/I*Repository`, each implemented by its own `Dal/EfXxxRepository` class - `EfDeviceRepository`, `EfUserRepository`, etc., no single god-class), EF Core over `Agrumy.Dal`, MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + migration/schema bootstrap on an empty or legacy database. |
 | `Agrumy.Web` | MVC app | Admin UI (`Controllers/View`, `Views/`, `wwwroot/`). Talks to `Agrumy.Api` **only over HTTP** (`Dal/ApiRepository` + `HttpClient` with a JWT bearer token). No direct database access. |
 | `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
+| `Agrumy.Rules` | class library | Pure rule-tree evaluation - fold logic, hierarchy precedence, astronomical/day-night resolvers - with no EF Core or ASP.NET Core dependency, only `Agrumy.Shared` model types; mirrors `AgrumyFirmware`'s `RelayLogic.cpp`/`ActuatorController` as a genuinely separate C# runtime rather than sharing code with it. |
+| `Agrumy.Api.Migrations.MySql`, `Agrumy.Api.Migrations.Postgres` | class library | Per-provider EF Core migrations for `AgrumyDbContext` - see "Database & schema provisioning" below for how a schema change gets added to both. |
 | `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
+| `tools/Agrumy.ContractGen`, `tools/Agrumy.MqttCredentialSync` | console apps | Small standalone utilities, not part of the running system - ContractGen regenerates `contracts/device-api/*.schema.json` from the `Agrumy.Shared` DTOs (see "Practical advantages" below); MqttCredentialSync provisions/rotates a device's MQTT broker credentials directly against `Agrumy.Dal`, no `Agrumy.Api` host involved. |
 
 `db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
 is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
@@ -85,20 +88,33 @@ is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
    `Uptime`/`Rssi`/`FreeHeap`/`FirmwareVersion`/`Board` land in `deviceDiagnostic`
    and drive the Fleet page's online/offline status. The same poll response
    carries any command an operator queued for that device (`POST
-   /api/DeviceCommand` - Reboot / ForceOTA / ForceConfigSync); the device acts on
-   it and reports back via `POST /api/Device/Command/Ack`.
+   /api/DeviceCommand` - Reboot / ForceOTA / ForceConfigSync), stored in the
+   single `deviceOutbox` table that every delivery path (direct poll, gateway
+   batch, LoRa relay) reads from; the device acts on it and reports back via
+   `POST /api/Device/Command/Ack`. When the server has an MQTT broker configured
+   (Server Settings), a newly-queued command also gets an immediate best-effort
+   push there (`Agrumy.Api.Commands.MqttCommandPublisher`, signed with the
+   device's own `ApiKey`) for a persistently-connected device to act on right
+   away - the poll-based delivery above is what still guarantees it arrives
+   eventually if that push fails or MQTT isn't configured.
 
 ## Automation rule engine
 
 Agrumy's rule engine is deliberately bounded, not general-purpose: each relay
 function (ventilation/light/heating/water-pump) - or, for a Notification-action
-rule, each sensor metric - holds a set of rules, any one of which turning "on"
+rule, each rule name - holds a set of rules, any one of which turning "on"
 wins (OR across rules). Within one rule, up to 8 Threshold/Interval/Schedule/
 Astronomical conditions fold strictly left-to-right by AND/OR ("(A AND B) OR C",
 never "A AND (B OR C)" - no parentheses or operator precedence). Rules live at
-Zone, Unit, Farm, or organization-wide Global scope, in that precedence order -
-the most specific scope defining a rule for a given function/metric wins
-outright, it doesn't merge with a less specific one. A Notification-action rule
+Simulation, Experiment, Zone (Parcel for an Open-Field farm), Unit (Crop), Farm,
+or organization-wide Global scope, in that precedence order (`Agrumy.Rules.
+RuleHierarchyResolver`) - the most specific scope defining a rule for a given
+function/name wins outright and replaces rather than merges with a less
+specific one, except a rule marked `IsSafetyRule`, which survives regardless of
+scope and ORs in alongside whichever scope's rules won, so a Zone-level
+override can no longer suppress a Global frost-guard. Simulation/Experiment
+only ever contribute rules for a device currently inside an active
+simulation/experiment, empty otherwise. A Notification-action rule
 can also fire on another Notification rule's own result ("another rule fired")
 for simple chaining. Threshold's metric/direction is still implicit per relay
 function; a Notification rule picks an explicit sensor metric instead, since
@@ -151,6 +167,11 @@ committed rather than after they're pushed):
 git config core.hooksPath .githooks
 ```
 
+CI runs the same script twice as a backstop for anyone who skipped that one-time
+step: a fast standalone `roadmap-ref-check.yml` workflow, and again inside
+`build.yml` itself so disabling the standalone workflow can't silently drop the
+check.
+
 ## Configuration
 
 **`Agrumy.Api/appsettings.json`**
@@ -174,7 +195,7 @@ git config core.hooksPath .githooks
 | `ServerConfig:GatewayEnabled`, `GatewayMode`, `GatewayWaitWindowSeconds` | no (default off / `Realtime` / `30`) | enables `POST /api/Gateway/*`. `Realtime` forwards each batched device entry immediately; `Aggregated` holds entries up to the wait-window for a LoRa Class A device's decoupled uplink/downlink cycle |
 | `Notifications:Email:*` | no (default off) | SMTP alert email. `Enabled` + `Host` + `FromAddress` are the minimum; `Port`/`UseStartTls`/`Username`/`Password`/`FromName` optional. Disabled or incomplete = channel skipped, not an error. |
 | `Notifications:Push:*` | no (default off) | FCM push channel - **prepared but inert**. Stays skipped until the Android app registers device tokens and the OAuth step in `FcmPushNotificationChannel` is wired. Leave `Enabled=false`. |
-| `Notifications:Webhook:*` | no (default off) | generic HTTP POST channel for notifying an external system. `Enabled` + `Url` (must be `https://`) are the minimum; optional `Secret` adds an `X-Agrumy-Signature` HMAC-SHA256 header the receiver can verify. `Url` goes through the same `SsrfGuard` as firmware fetches before every send. |
+| `Notifications:Webhook:*` | no (default off) | generic HTTP POST channel for notifying an external system, DB-backed via the Server Settings page rather than these keys once configured there. `Enabled` + `Url` (must be `https://`) are the minimum; optional `Secret` adds an `X-Agrumy-Signature` HMAC-SHA256 header the receiver can verify. `Url` goes through the same `SsrfGuard` as firmware fetches before every send - resolved-address revalidation happens at actual-connect time (`SocketsHttpHandler.ConnectCallback`), not just once against the URL, so a DNS answer can't be swapped for a private address between the check and the request. An admin can relax either the https-only or private-network block per exact hostname/CIDR via `GET/POST/DELETE /api/ServerConfig/WebhookSsrfAllowlist` - Firmware fetches have their own separate `.../FirmwareSsrfAllowlist`, the two lists never share entries. |
 | `Notifications:OfflineCheckIntervalMinutes` | no (default `5`) | how often `OfflineAlertBackgroundService` sweeps every device for a newly-offline one and notifies its admins via whatever `Notifications:*` channels are configured above |
 | `Notifications:BatteryCheckIntervalMinutes` | no (default `30`) | how often `LowBatteryAlertEvaluator` sweeps every device's latest battery telemetry; longer than the offline interval by default since a battery drains over hours/days, not seconds |
 | `Notifications:RuleCheckIntervalMinutes` | no (default `5`) | how often `RuleNotificationEvaluator` sweeps Notification-action rules (the server-side counterpart to the on-device Relay-action rule engine, since firmware has no way to send a notification itself) |
@@ -193,14 +214,20 @@ git config core.hooksPath .githooks
 
 ## Database & schema provisioning
 
-The data-access layer is EF Core (`Agrumy.Dal/AgrumyDbContext` + `Dal/EfRepository`),
-LINQ only - no stored procedures. It runs on **MySQL/MariaDB** (Pomelo) or
-**PostgreSQL** (Npgsql), chosen by `Database:Provider` (see Configuration).
+The data-access layer is EF Core (`Agrumy.Dal/AgrumyDbContext` + the per-facet
+`Dal/EfXxxRepository` classes), LINQ only - no stored procedures. It runs on
+**MySQL/MariaDB** (Pomelo) or **PostgreSQL** (Npgsql), chosen by
+`Database:Provider` (see Configuration).
 
-On startup `EfRepository.EnsureSchemaAsync` calls `EnsureCreatedAsync()`: an empty
-database gets every table straight from the `AgrumyDbContext` model, and a database
-that already has tables is left untouched - no manual SQL setup for a fresh
-environment, no repeated work against an existing one. Whether a *failed* check
+On startup `SchemaBootstrapper.EnsureSchemaAsync` runs real EF Core migrations
+(`db.Database.MigrateAsync()`) - an empty database gets every migration from
+scratch, an up-to-date one is a no-op. A database built by the old pre-migrations
+`EnsureCreatedAsync()` path (detected by a `device` table existing with no
+`__EFMigrationsHistory`, e.g. invent.hr) is handled first by
+`MarkLegacyEnsureCreatedSchemaAsBaselineAsync`: it marks every migration up to
+that point as already-applied directly in `__EFMigrationsHistory`, so the
+following `MigrateAsync()` sees nothing left to do instead of failing on
+`CREATE TABLE` against tables that already exist. Whether a *failed* check
 stops the app or just logs a warning is controlled by `Startup:FailFastOnDbCheck`
 (see Configuration above).
 
@@ -218,13 +245,25 @@ unaffected.
 
 ### Schema evolution
 
-Pre-beta there are no EF migrations. The project has no real users or data to
-preserve across schema changes, so the model is the single source of truth and a
-fresh database is built with `EnsureCreatedAsync()`. Changing the schema during
-development means recreating the dev database (drop it, let startup re-create it).
-Migrations are planned to return for the beta once the schema settles - see the
-roadmap. `db/migrations/` holds unrelated hand-written SQL patches for the legacy
-database and is not part of this.
+Real EF Core migrations, one project per provider (`Agrumy.Api.Migrations.MySql`,
+`Agrumy.Api.Migrations.Postgres` - both reference `Agrumy.Dal` for the shared
+`AgrumyDbContext` model, `Agrumy.Api.Dal.AgrumyDbContextDesignTimeFactory` lets
+`dotnet ef` build a context without booting the web host). After changing an
+entity, add the matching migration to both:
+
+```
+dotnet ef migrations add <Name> --project Agrumy.Api.Migrations.MySql    --startup-project Agrumy.Api -- --provider mysql
+dotnet ef migrations add <Name> --project Agrumy.Api.Migrations.Postgres --startup-project Agrumy.Api -- --provider postgres
+```
+
+`SchemaBootstrapper.EnsureSchemaAsync` applies whatever is pending on the next
+startup - no manual `dotnet ef database update` needed against a running
+environment. Forgetting to add a migration for a model change doesn't wait to
+surface until deployment: CI's `RelationalIntegrationTests` migrates an empty
+database of each provider and then asserts both `GetPendingMigrations()` is
+empty and `Database.HasPendingModelChanges()` is false, so a drifted model fails
+the build. `db/migrations/baseline.sql` documents the pre-migrations schema for
+reference only, not something a new migration is written against.
 
 ### Provider notes
 
@@ -234,8 +273,10 @@ database and is not part of this.
 - **Legacy foreign keys.** The model configures primary keys, the unique indexes
   the app depends on (`email_UNIQUE`, `Username_UNIQUE`, `ApiID_UNIQUE`,
   `Name_UNIQUE`) and the legacy `NO ACTION` FKs; navigation properties are not
-  mapped - `EfRepository` joins explicitly in LINQ. A legacy database keeps
-  whatever FKs it already had (`EnsureCreatedAsync` never touches a non-empty DB).
+  mapped - each `EfXxxRepository` joins explicitly in LINQ. A legacy database
+  keeps whatever FKs it already had unless a later migration explicitly changes
+  them (see "Schema evolution" above for how a legacy DB is brought under
+  migrations without a `CREATE TABLE` clash).
 - **PostgreSQL:** `NpgsqlCompat` opts into pre-6.0 timestamp behaviour
   (`DateTime` -> `timestamp without time zone`, any `DateTimeKind`) because the
   schema stores naive local datetimes throughout. Legacy MySQL `0000-00-00`
@@ -246,17 +287,18 @@ database and is not part of this.
   *is* the deployment-size choice: MariaDB/MySQL is the small-deployment tier
   and stays an ordinary table, no code path runs for it. Choosing PostgreSQL
   is choosing the large-deployment tier - on every startup,
-  `EfRepository.EnsureTimescaleHypertableAsync` runs `CREATE EXTENSION IF NOT
-  EXISTS timescaledb` and converts `sensorData` into a hypertable partitioned
-  on `DateCreated` (widening its PK to `(IDSensorData, DateCreated)`, which
-  TimescaleDB requires). This needs no application code branching - EF Core
-  LINQ queries against `sensorData` run unchanged on both providers, Timescale
-  just partitions/prunes transparently underneath. A self-hosted Postgres
-  without the extension installed isn't a startup failure: the `CREATE
-  EXTENSION` call is caught, a warning is logged, and `sensorData` is left as
-  a plain table, same as the MariaDB tier. Verified against
-  `timescale/timescaledb:latest-pg17` - a bare `postgres:17` container (as
-  used by the dev/test fixture above) exercises the same warn-and-skip path.
+  `SchemaBootstrapper.EnsureTimescaleHypertableAsync` runs `CREATE EXTENSION IF
+  NOT EXISTS timescaledb` and converts the sensor-reading table (`dataSensor` -
+  renamed from `sensorData`, same rename applied to `controllerData` ->
+  `dataController`) into a hypertable partitioned on `DateCreated` (widening its
+  PK to `(IDSensorData, DateCreated)`, which TimescaleDB requires). This needs no
+  application code branching - EF Core LINQ queries against `dataSensor` run
+  unchanged on both providers, Timescale just partitions/prunes transparently
+  underneath. A self-hosted Postgres without the extension installed isn't a
+  startup failure: the `CREATE EXTENSION` call is caught, a warning is logged,
+  and `dataSensor` is left as a plain table, same as the MariaDB tier. Verified
+  against `timescale/timescaledb:latest-pg17` - a bare `postgres:17` container
+  (as used by the dev/test fixture above) exercises the same warn-and-skip path.
 
 ## API endpoints
 
@@ -322,9 +364,12 @@ apiId/apiKey/apiAuth scheme described in "How it works", not JWT.
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `POST /api/DeviceCommand` | DeviceManagers | Queue Reboot / ForceOTA / ForceConfigSync for one or more devices; delivered on the device's next config poll |
+| `POST /api/DeviceCommand` | DeviceManagers | Queue Reboot / ForceOTA / ForceConfigSync for one or more devices into `deviceOutbox`; delivered on the device's next config poll, plus a best-effort instant MQTT push if the server has a broker configured |
 
 **DeviceFarmUnit** (`DeviceFarmUnitApiController`, `api/DeviceFarmUnit`) - the Farm > Unit > Zone fleet hierarchy
+for a Greenhouse farm (`DeviceFarm.FarmType`); an Open-Field farm uses the parallel Crop/Parcel branch instead
+(mirrors Unit/Zone exactly in shape and behavior), see **FarmOpenfield** below for what's specific to it. Farm
+CRUD/reorder/delete/recycle-bin here is shared by both branches.
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
@@ -334,19 +379,32 @@ apiId/apiKey/apiAuth scheme described in "How it works", not JWT.
 | `POST /api/DeviceFarmUnit`, `PUT /api/DeviceFarmUnit`, `DELETE /api/DeviceFarmUnit` | DeviceManagers | Create / update / delete a unit |
 | `GET /api/DeviceFarmUnit/Zone`, `GET .../ZoneById` | JWT | Zones under a unit / a single zone by id |
 | `POST/PUT/DELETE /api/DeviceFarmUnit/Zone` | DeviceManagers | Create / update / delete a zone |
-| `GET /api/DeviceFarmUnit/Unassigned` | DeviceManagers | Devices not yet placed in any zone |
+| `GET /api/DeviceFarmUnit/Unassigned` | DeviceManagers | Devices not yet placed in any zone (either branch) |
 | `POST /api/DeviceFarmUnit/Assign`, `POST .../Unassign` | DeviceManagers | Place / remove a device from a zone |
-| `GET .../Zone/Rule`, `GET .../Unit/Rule`, `GET .../Farm/Rule`, `GET .../Global/Rule` | JWT | A zone/unit/farm/account's automation rules - see "Automation rule engine" above for the Zone > Unit > Farm > Global precedence |
-| `POST/DELETE` on the same four routes | DeviceManagers | Add / remove one rule - up to 8 conditions each, see "Automation rule engine"; delete returns 409 if another rule's RuleTriggered condition still references it |
+| `GET .../Zone/Rule`, `GET .../Unit/Rule`, `GET .../Farm/Rule`, `GET .../Global/Rule`, `GET .../Crop/Rule`, `GET .../Parcel/Rule` | JWT | A zone/unit/farm/account's (or crop's/parcel's, for an Open-Field farm) automation rules - see "Automation rule engine" above for the full scope precedence |
+| `POST/DELETE` on the same six routes | DeviceManagers | Add / remove one rule - up to 8 conditions each, see "Automation rule engine"; delete returns 409 if another rule's RuleTriggered condition still references it |
 | `POST /api/DeviceFarmUnit/Zone/ManualActuate`, `POST .../Zone/ManualActuate/Stop`, `POST .../Unit/ManualActuate`, `GET .../Zone/ManualActuate` | JWT (POST DeviceManagers) | Start / stop / check a Manual Actuate override for a zone or unit - see "Automation rule engine" |
 | `GET /api/DeviceFarmUnit/Dashboard`, `Dashboard/Zones`, `Dashboard/Zone` | JWT | Hierarchical dashboard rollups (per-unit, per-zone-list, per-zone) |
+
+**FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop/Parcel branch for an Open-Field
+farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD and rules stay on DeviceFarmUnitApiController
+
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `POST /api/FarmOpenfield`, `GET .../All` | DeviceManagers / JWT | Create a Farm together with its Open-Field extension row / list Open-Field farms |
+| `GET /api/FarmOpenfield/Crop/All`, `GET .../Crop`, `GET .../Crop/Dashboard` | JWT | List a farm's crops / fetch one / crop dashboard cubes (same sensor-average/status styling as the Unit dashboard) |
+| `POST/PUT/DELETE /api/FarmOpenfield/Crop`, `POST .../Crop/Reorder` | DeviceManagers | Create / update / delete / reorder a crop |
+| `GET /api/FarmOpenfield/Parcel`, `GET .../ParcelById`, `GET .../Crop/Parcel/Dashboard` | JWT | Parcels under a crop / one by id / parcel dashboard cubes |
+| `POST/PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Create / update / delete a parcel - same safety-limit validation as a Zone |
+| `PUT /api/FarmOpenfield/Parcel/{id}/Migrate` | DeviceManagers | Move a parcel to a different crop within the same account |
+| `POST /api/FarmOpenfield/Assign`, `POST .../Unassign` | DeviceManagers | Place / remove a device from a parcel (one controller per parcel, same rule as a Zone) |
 
 **Gateway** (`GatewayApiController`, `api/Gateway`) - lets one WiFi-connected device relay other devices' traffic instead of reporting its own sensors, so a fleet of LoRa-only nodes (or a WiFi repeater setup) needs no direct internet reach of their own
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
 | `POST /api/Gateway/Batch` | apiId/apiKey (gateway device) | Runs a batch of other devices' Config/SensorData/Event/CommandAck requests through the same logic each single-device endpoint uses; one bad entry never fails the rest |
-| `POST /api/Gateway/RelayUplink` | apiId/apiKey (gateway device) | The WiFi-relay counterpart to Batch for one already RF-decoded LoRa private-protocol frame, resolved against the gateway's own device mappings |
+| `POST /api/Gateway/RelayUplink` | apiId/apiKey (gateway device) | The WiFi-relay counterpart to Batch for one already RF-decoded LoRa private-protocol frame, resolved against the gateway's own device mappings. Accepts both wire versions: v1's plain monotonic counter is checked against the last-seen value, v2 (a boot nonce is present) instead replays against a per-device `deviceLoRaSession` row - device firmware age decides which one a given node sends |
 | `GET /api/Gateway/DeviceMapping` | apiId/apiKey (gateway device) | The calling gateway's own address->device forwarding table, including secrets it needs to reconstruct each device's request |
 | `GET /api/Gateway/All` | DeviceManagers | List every device registered as a gateway |
 | `GET /api/Gateway/DeviceMapping/All`, `POST/DELETE /api/Gateway/DeviceMapping` | DeviceManagers | Admin CRUD for one gateway's node-address-to-device mappings |
@@ -437,9 +495,10 @@ things that make Agrumy easier to trust and run day-to-day:
   its last-saved config (see "Control is local to the device" above) - a lost
   connection to the API doesn't stop irrigation/climate control, it just delays
   picking up config changes.
-- **A Farm > Unit > Zone hierarchy with a live dashboard.** `GET
-  /api/DeviceFarmUnit/Dashboard` rolls up status across an entire fleet of
-  installations, not just one controller.
+- **A Farm > Unit > Zone hierarchy with a live dashboard**, or Farm > Crop >
+  Parcel for an Open-Field farm (`api/FarmOpenfield`) - the same dashboard
+  rollup and rule scoping either way. `GET /api/DeviceFarmUnit/Dashboard` rolls
+  up status across an entire fleet of installations, not just one controller.
 - **Fleet-wide commands with server-side fan-out.** `POST /api/DeviceCommand`
   targets a unit or zone and the server resolves that into the actual set of
   devices to deliver Reboot/ForceOTA/ForceConfigSync to on their next poll.
@@ -453,7 +512,10 @@ things that make Agrumy easier to trust and run day-to-day:
   the same over LoRaWAN/ChirpStack or a private radio protocol.
 - **Simulation Mode.** Fully virtual devices, driven by a real background
   worker calling the real registration/config/sensor endpoints, let a whole
-  fleet be tested and demoed without any physical hardware.
+  fleet be tested and demoed without any physical hardware; a per-device
+  Latitude/Longitude override lets a demo device appear anywhere on the map
+  without touching its real GPS/manual location, reverting automatically the
+  moment the simulation is disabled.
 - **13 native firmware unit tests in CI**, no hardware required
   (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
   AND-OR-fold/discovery/LoRa/manual-override logic is regression-tested on
