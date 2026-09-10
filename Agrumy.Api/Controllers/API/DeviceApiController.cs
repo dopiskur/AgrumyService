@@ -37,7 +37,19 @@ namespace Agrumy.Api.Controllers.API
             Device? device = CallerReadsDevicesGlobally
                 ? await deviceRepo.DeviceGetByIdAsync(idDevice)
                 : await deviceRepo.DeviceGetAsync(CallerTenantId, idDevice, null, null);
-            return device is null ? NotFound() : Ok(device.ToDto());
+            if (device is null)
+            {
+                return NotFound();
+            }
+            // Roadmap #508 - Simulation Mode's own Latitude/Longitude override, applied only here (never persisted onto the device row itself), so it overrides even a device with a real GPS fix and disappears the instant the simulation is disabled/deleted.
+            DeviceSimulation? sim = await deviceRepo.DeviceSimulationGetAsync(device.IDDevice!.Value);
+            if (sim is { Enabled: true, Latitude: double lat, Longitude: double lon })
+            {
+                device.Latitude = lat;
+                device.Longitude = lon;
+                device.LocationSource = DeviceLocationSource.Simulated;
+            }
+            return Ok(device.ToDto());
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

@@ -1038,6 +1038,8 @@ namespace Agrumy.Api.Dal
             row.RainLevel = value.RainLevel;
             row.WaterLevel = value.WaterLevel;
             row.Wind = value.Wind;
+            row.Latitude = value.Latitude;
+            row.Longitude = value.Longitude;
             await db.SaveChangesAsync();
         }
 
@@ -1057,6 +1059,8 @@ namespace Agrumy.Api.Dal
             RainLevel = s.RainLevel,
             WaterLevel = s.WaterLevel,
             Wind = s.Wind,
+            Latitude = s.Latitude,
+            Longitude = s.Longitude,
         };
     }
 }

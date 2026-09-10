@@ -4,12 +4,13 @@ using System.Linq;
 
 namespace Agrumy.Shared.Models
 {
-    /// Which write last set Device.Latitude/Longitude - Gps always overwrites Manual on the next fix, Manual only changes via the Edit form.
+    /// Which write last set Device.Latitude/Longitude - Gps always overwrites Manual on the next fix, Manual only changes via the Edit form. Simulated is never persisted (DeviceSimulation.Latitude/Longitude overlay the real stored value only in the read DTO), so a device keeps its real Gps/Manual/None value underneath and reverts to it automatically the moment the simulation override is cleared.
     public enum DeviceLocationSource
     {
         None = 0,
         Manual = 1,
         Gps = 2,
+        Simulated = 3,
     }
 
     public class Device
@@ -519,6 +520,10 @@ namespace Agrumy.Shared.Models
         public int? RainLevel { get; set; }
         public int? WaterLevel { get; set; }
         public int? Wind { get; set; }
+
+        // Roadmap #508 - unlike the sensor metrics above, never sent to the device (DeviceSimulationPoll) - Device.Latitude/Longitude is server-stored metadata, not a firmware-reported reading, so the override is applied server-side wherever a device's location is read (see DeviceApiController.DeviceGet), overriding even a device with a real GPS fix. Nothing to revert on simulation delete: the real Device.Latitude/Longitude/LocationSource row is never touched, so it's already there the moment the override stops applying.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 
     /// Roadmap #403 - the "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.

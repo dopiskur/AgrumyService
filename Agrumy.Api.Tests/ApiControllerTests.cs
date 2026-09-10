@@ -101,6 +101,7 @@ public class ApiControllerTests
     {
         var device = new Device { IDDevice = 42, DeviceName = "greenhouse-1" };
         _repo.Setup(r => r.DeviceGetAsync(7, 42, null, null)).ReturnsAsync(device);
+        _repo.Setup(r => r.DeviceSimulationGetAsync(42)).ReturnsAsync((DeviceSimulation?)null);
 
         var controller = NewDeviceController();
         SetCaller(controller, "user", 7); // DeviceGet scopes to the caller's tenant
@@ -2476,6 +2477,7 @@ public class ApiControllerTests
     public async Task DeviceGet_GlobalReader_UsesUnfilteredLookup()
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(42)).ReturnsAsync(new Device { IDDevice = 42, TenantID = 9 });
+        _repo.Setup(r => r.DeviceSimulationGetAsync(42)).ReturnsAsync((DeviceSimulation?)null);
 
         var controller = NewDeviceController();
         SetCallerRoles(controller, 1, "user", RoleNames.GlobalReader);

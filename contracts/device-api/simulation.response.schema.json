@@ -19,7 +19,9 @@
     "liquidPH",
     "rainLevel",
     "waterLevel",
-    "wind"
+    "wind",
+    "latitude",
+    "longitude"
   ],
   "properties": {
     "enabled": {
@@ -65,6 +67,12 @@
     },
     "wind": {
       "type": ["integer", "null"]
+    },
+    "latitude": {
+      "type": ["number", "null"]
+    },
+    "longitude": {
+      "type": ["number", "null"]
     }
   }
 }

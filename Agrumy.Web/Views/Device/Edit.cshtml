@@ -93,6 +93,11 @@
                     <p class="form-control-plaintext">From GPS: @device.Latitude, @device.Longitude</p>
                     <div class="form-text">Reported by the device's own GPS module - entering coordinates below overrides this until the next GPS fix arrives.</div>
                 }
+                else if (device.LocationSource == Agrumy.Shared.Models.DeviceLocationSource.Simulated)
+                {
+                    <p class="form-control-plaintext">Simulated: @device.Latitude, @device.Longitude</p>
+                    <div class="form-text">Set on the device's Simulation Mode page, not its real location - clears itself once that override is turned off.</div>
+                }
                 <div class="row g-2">
                     <div class="col-auto">
                         <input asp-for="DeviceEdit.Latitude" class="form-control" placeholder="Latitude" />

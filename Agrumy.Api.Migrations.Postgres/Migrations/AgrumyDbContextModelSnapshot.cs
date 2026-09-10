@@ -1107,10 +1107,16 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<double?>("Humidity")
                         .HasColumnType("double precision");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
                     b.Property<int?>("Light")
                         .HasColumnType("integer");
 
                     b.Property<double?>("LiquidPH")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
 
                     b.Property<int?>("Moisture")

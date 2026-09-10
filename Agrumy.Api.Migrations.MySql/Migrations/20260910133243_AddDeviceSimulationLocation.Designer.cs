@@ -4,6 +4,7 @@ using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910133243_AddDeviceSimulationLocation")]
+    partial class AddDeviceSimulationLocation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -139,6 +142,50 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasDatabaseName("ux_dataController_device_relayFunction");
 
                     b.ToTable("dataController", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceCommandRow", b =>
+                {
+                    b.Property<int>("IDDeviceCommand")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceCommand"));
+
+                    b.Property<int>("ActionType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ActiveKey")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DeviceID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("ExecutedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("IDDeviceCommand");
+
+                    b.HasIndex("DeviceID", "ActiveKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_deviceCommand_device_activekey");
+
+                    b.HasIndex("DeviceID", "Status")
+                        .HasDatabaseName("ix_deviceCommand_device_status");
+
+                    b.ToTable("deviceCommand", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerRelayRow", b =>
@@ -813,56 +860,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasDatabaseName("ux_deviceManualOverride_device_relayfunction");
 
                     b.ToTable("deviceManualOverride", (string)null);
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceOutboxRow", b =>
-                {
-                    b.Property<int>("IDDeviceOutbox")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceOutbox"));
-
-                    b.Property<int?>("ActiveKey")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("DeviceID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("ExecutedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Payload")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.HasKey("IDDeviceOutbox");
-
-                    b.HasIndex("DeviceID", "ActiveKey")
-                        .IsUnique()
-                        .HasDatabaseName("ux_deviceOutbox_device_activekey");
-
-                    b.HasIndex("DeviceID", "Status")
-                        .HasDatabaseName("ix_deviceOutbox_device_status");
-
-                    b.HasIndex("Status", "PublishedAt")
-                        .HasDatabaseName("ix_deviceOutbox_pending_unpublished");
-
-                    b.ToTable("deviceOutbox", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceRoleRow", b =>
@@ -2814,6 +2811,15 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceCommandRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerRelayRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceConfigControllerRow", null)
@@ -2986,15 +2992,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceManualOverrideRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
-                        .WithMany()
-                        .HasForeignKey("DeviceID")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceOutboxRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
                         .WithMany()

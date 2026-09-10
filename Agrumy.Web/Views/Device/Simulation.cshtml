@@ -72,6 +72,26 @@
     @MetricRow(nameof(DeviceSimulation.WaterLevel), "Water level", sim.WaterLevel, SimulationMetricRange.WaterLevel, "")
     @MetricRow(nameof(DeviceSimulation.Wind), "Wind", sim.Wind, SimulationMetricRange.Wind, "m/s", 0.5)
 
+    <hr />
+    <h6 class="fw-semibold">Location override</h6>
+    <p class="text-muted">
+        Test "what if this device were somewhere else" - overrides the device's location on its Edit page
+        even if it reports a real GPS fix. Not sent to the device itself, and never overwrites its real
+        location: clears the moment this is turned off, leaving the real GPS/manual value untouched underneath.
+    </p>
+    <div class="mb-3 row align-items-center">
+        <div class="col-sm-1">
+            <input type="checkbox" class="form-check-input sim-toggle" data-target="sim_location" @(sim.Latitude.HasValue && sim.Longitude.HasValue ? "checked" : "") />
+        </div>
+        <label class="col-sm-2 col-form-label">Location</label>
+        <div class="col-sm-4">
+            <input type="number" step="any" min="-90" max="90" class="form-control" id="sim_location" name="@Field(nameof(DeviceSimulation.Latitude))" placeholder="Latitude" value="@sim.Latitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
+        </div>
+        <div class="col-sm-4">
+            <input type="number" step="any" min="-180" max="180" class="form-control" id="sim_location_lon" name="@Field(nameof(DeviceSimulation.Longitude))" placeholder="Longitude" value="@sim.Longitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
+        </div>
+    </div>
+
     <button type="submit" class="btn btn-primary">Save</button>
     @if (ViewBag.IdSimulationSession != null)
     {
@@ -88,6 +108,11 @@
         document.querySelectorAll('.sim-toggle').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 document.getElementById(cb.dataset.target).disabled = !cb.checked;
+                // Location is the one toggle target with a paired second field (longitude) that must enable/disable together.
+                var pair = document.getElementById(cb.dataset.target + '_lon');
+                if (pair) {
+                    pair.disabled = !cb.checked;
+                }
             });
         });
     </script>
