@@ -54,11 +54,7 @@
     <div class="card-body">
         <form asp-action="EditSensor">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="mb-3">
-                <label asp-for="Device.IDDevice" class="form-label"></label>
-                <p class="form-control-plaintext">@Html.DisplayFor(m => m.Device!.IDDevice)</p>
-                @Html.HiddenFor(m => m.Device!.IDDevice)
-            </div>
+            @Html.HiddenFor(m => m.Device!.IDDevice)
 
             <div class="mb-3" id="sensor-detect-panel" data-device-id="@Model.Device!.IDDevice">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-device-command
@@ -179,7 +175,7 @@
 
             <div class="mb-0">
                 <input type="submit" value="Save" class="btn btn-primary" />
-                <a asp-action="Fleet" class="btn btn-outline-secondary">Back to List</a>
+                <a asp-action="Details" asp-route-idDevice="@Model.Device!.IDDevice" class="btn btn-outline-secondary">Back</a>
             </div>
         </form>
     </div>

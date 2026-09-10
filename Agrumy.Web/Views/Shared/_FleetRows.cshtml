@@ -58,6 +58,7 @@
                 <span class="badge text-bg-danger">Offline</span>
             }
         </td>
+        <td class="d-none d-md-table-cell">@(item.Enabled == true ? "Yes" : "No")</td>
         <td class="d-none d-md-table-cell">@(item.LastSeenAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
         <td class="d-none d-md-table-cell">
             @if (FleetRowDisplay.IsOffline(item))

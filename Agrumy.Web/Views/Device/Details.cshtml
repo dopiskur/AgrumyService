@@ -3,6 +3,24 @@
 @{
     ViewData["Title"] = "Details";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
+    var renameModel = new InlineRenameViewModel
+    {
+        Action = nameof(Agrumy.Web.Controllers.View.DeviceController.RenameDevice),
+        IdFieldName = "idDevice",
+        IdValue = Model.IDDevice!.Value,
+        NameFieldName = "deviceName",
+        CurrentName = Model.DeviceName,
+    };
+
+    var sensorToggle = new EnabledToggleFieldViewModel { Name = "deviceSensorEnabled", Label = "Sensor", Value = Model.DeviceSensorEnabled };
+    var controllerToggle = new EnabledToggleFieldViewModel { Name = "deviceControllerEnabled", Label = "Controller", Value = Model.DeviceControllerEnabled };
+    var sleepDeepToggle = new EnabledToggleFieldViewModel { Name = "sleepDeepEnabled", Label = "SleepDeep", Value = Model.SleepDeepEnabled };
+    // Standalone/dual-role LoRa Gateway relay; firmware only actually starts listening if it detects the LoRa radio chip physically present (see the event log otherwise).
+    var loRaGatewayToggle = new EnabledToggleFieldViewModel { Name = "loRaGatewayEnabled", Label = "LoRa", Value = Model.LoRaGatewayEnabled };
+    var batteryToggle = new EnabledToggleFieldViewModel { Name = "batteryEnabled", Label = "Device battery", Value = Model.BatteryEnabled };
+    var debugToggle = new EnabledToggleFieldViewModel { Name = "debug", Label = "Debug", Value = Model.Debug };
+    var enabledToggle = new EnabledToggleFieldViewModel { Name = "enabled", Label = "Device", Value = Model.Enabled };
 }
 
 @if (TempData["HardResetMessage"] is string hardResetMessage)
@@ -16,29 +34,42 @@
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Device</h3>
+        <h3 class="card-title">
+            @Model.DeviceName
+            @if (!isReadOnly && hasAnyRole(RoleNames.DeviceManagers))
+            {
+                <partial name="_InlineRename" model="renameModel" />
+            }
+        </h3>
+        <div class="float-end d-flex align-items-center gap-2">
+            @if (hasAnyRole(RoleNames.DeviceManagers))
+            {
+                <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Device, TargetId = Model.IDDevice!.Value }" />
+            }
+            <a asp-action="Edit" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-primary">Advanced</a>
+            <a asp-action="EditSensor" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-primary">Sensor config</a>
+            @* Hidden when there's no relay-hardware signal (DeviceRole choice AND no recognized Kit) - avoids a control that does nothing. *@
+            @if (ViewBag.ControllerCapable == true)
+            {
+                <a asp-action="EditController" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-primary">Controller config</a>
+            }
+            <a asp-action="Events" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-secondary">Events</a>
+            @if (!isReadOnly)
+            {
+                <a asp-action="Delete" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-danger">Delete</a>
+            }
+            @if (!isReadOnly && hasAnyRole(RoleNames.GlobalAdmin))
+            {
+                <form asp-action="HardReset" asp-route-idDevice="@Model.IDDevice" method="post" class="d-inline"
+                      onsubmit="return confirm('This wipes the device completely (factory reset) - it will need physical/captive-portal re-provisioning afterward. Continue?');">
+                    <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-exclamation-octagon"></i> Hard Reset</button>
+                </form>
+            }
+            <a asp-action="Fleet" class="btn btn-sm btn-outline-secondary">Back to List</a>
+        </div>
     </div>
     <div class="card-body">
         <dl class="row">
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.IDDevice)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.IDDevice)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DeviceRoleID)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DeviceRoleID)
-            </dd>
-
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DeviceName)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DeviceName)
-            </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.MacAddress)
             </dt>
@@ -52,64 +83,16 @@
                 @Html.DisplayFor(model => model.ServicePoint)
             </dd>
             <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DeviceTypeServiceID)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DeviceTypeServiceID)
-            </dd>
-            <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.ServicePublicKey)
             </dt>
             <dd class="col-sm-9">
                 @Html.DisplayFor(model => model.ServicePublicKey)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DeviceSensorEnabled)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DeviceSensorEnabled)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DeviceControllerEnabled)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DeviceControllerEnabled)
             </dd>
             @if (ViewBag.Kit is string { Length: > 0 } kit)
             {
                 <dt class="col-sm-3">Kit</dt>
                 <dd class="col-sm-9">@kit</dd>
             }
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.SleepSeconds)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.SleepSeconds)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.SleepDeepEnabled)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.SleepDeepEnabled)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.BatteryEnabled)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.BatteryEnabled)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.Debug)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.Debug)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.Enabled)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.Enabled)
-            </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.ConfigVersion)
             </dt>
@@ -154,30 +137,29 @@
                 @Html.DisplayFor(model => model.DateModified)
             </dd>
         </dl>
-    </div>
-    <div class="card-footer">
-        @if (hasAnyRole(RoleNames.DeviceManagers))
-        {
-            <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Device, TargetId = Model.IDDevice!.Value }" />
-        }
-        <a asp-action="Edit" asp-route-idDevice="@Model.IDDevice" class="btn btn-primary">Edit</a>
-        <a asp-action="EditSensor" asp-route-idDevice="@Model.IDDevice" class="btn btn-primary">Sensor config</a>
-        @* Hidden when there's no relay-hardware signal (DeviceRole choice AND no recognized Kit) - avoids a control that does nothing. *@
-        @if (ViewBag.ControllerCapable == true)
-        {
-            <a asp-action="EditController" asp-route-idDevice="@Model.IDDevice" class="btn btn-primary">Controller config</a>
-        }
-        @* Simulation controls moved entirely into the dedicated Simulations section (Add Simulation -> add this device to a session), no longer a direct link from this page. *@
-        <a asp-action="Events" asp-route-idDevice="@Model.IDDevice" class="btn btn-secondary">Events</a>
-        <a asp-action="Delete" asp-route-idDevice="@Model.IDDevice" class="btn btn-danger">Delete</a>
-        @if (hasAnyRole(RoleNames.GlobalAdmin))
-        {
-            <form asp-action="HardReset" asp-route-idDevice="@Model.IDDevice" method="post" class="d-inline"
-                  onsubmit="return confirm('This wipes the device completely (factory reset) - it will need physical/captive-portal re-provisioning afterward. Continue?');">
-                <button type="submit" class="btn btn-danger"><i class="bi bi-exclamation-octagon"></i> Hard Reset</button>
-            </form>
-        }
-        <a asp-action="Fleet" class="btn btn-outline-secondary">Back to List</a>
+
+        <hr />
+
+        <form asp-action="QuickSettings" method="post">
+            <fieldset disabled="@isReadOnly">
+                <input type="hidden" name="idDevice" value="@Model.IDDevice" />
+                <partial name="_EnabledToggleField" model="sensorToggle" />
+                <partial name="_EnabledToggleField" model="controllerToggle" />
+                <partial name="_EnabledToggleField" model="sleepDeepToggle" />
+                <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
+                    <label class="form-label">Sleep seconds</label>
+                    <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
+                </div>
+                <partial name="_EnabledToggleField" model="loRaGatewayToggle" />
+                <partial name="_EnabledToggleField" model="batteryToggle" />
+                <partial name="_EnabledToggleField" model="debugToggle" />
+                <partial name="_EnabledToggleField" model="enabledToggle" />
+                @if (!isReadOnly)
+                {
+                    <input type="submit" value="Save" class="btn btn-primary" />
+                }
+            </fieldset>
+        </form>
     </div>
 </div>
 
@@ -186,4 +168,15 @@
 {
     <partial name="_DeviceWifiUpdate" model="Model.IDDevice!.Value" />
     <partial name="_DeviceLoRaPrivateKey" model="Model.IDDevice!.Value" />
+}
+
+@section Scripts {
+    <script>
+        // SleepSeconds only makes sense once SleepDeep is on - mirror the radio toggle's state instead of a full page round-trip.
+        document.querySelectorAll('input[name="sleepDeepEnabled"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                document.getElementById('sleep-seconds-field').hidden = document.querySelector('input[name="sleepDeepEnabled"][value="True"]').checked === false;
+            });
+        });
+    </script>
 }

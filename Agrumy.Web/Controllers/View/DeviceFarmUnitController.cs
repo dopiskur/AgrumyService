@@ -463,6 +463,7 @@ namespace Agrumy.Web.Controllers.View
             IList<HorticultureCatalogEntry> cropCatalog = [];
             IList<HorticultureCatalogEntry> permaCatalog = [];
             IList<HorticultureCatalogEntry> hydroponicCatalog = [];
+            IList<HorticultureCatalogEntry> fruitCatalog = [];
             if (hasController)
             {
                 rules = await api.DeviceFarmUnitZoneRulesGet(idDeviceFarmUnitZone);
@@ -470,6 +471,7 @@ namespace Agrumy.Web.Controllers.View
                 cropCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop);
                 permaCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Perma);
                 hydroponicCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Hydroponic);
+                fruitCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Fruit);
             }
 
             // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
@@ -488,6 +490,7 @@ namespace Agrumy.Web.Controllers.View
                 CropCatalog = cropCatalog,
                 PermaCatalog = permaCatalog,
                 HydroponicCatalog = hydroponicCatalog,
+                FruitCatalog = fruitCatalog,
                 DiscoveredDevices = await api.DiscoveryResultsGet(null, idDeviceFarmUnitZone),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
                 UnitName = unit.DeviceFarmUnitName,
