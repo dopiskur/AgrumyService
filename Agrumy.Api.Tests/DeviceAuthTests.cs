@@ -84,21 +84,45 @@ public class DeviceAuthTests
     public async Task Session_MissingHeader_Fails()
     {
         var cache = new Mock<ICache>(MockBehavior.Strict);
-        var handler = new DeviceSessionHandler(cache.Object, NullLogger<DeviceSessionHandler>.Instance);
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
         var context = NewContext(new DeviceSessionRequirement(), HttpWithHeaders());
 
         await handler.HandleAsync(context);
 
         Assert.False(context.HasSucceeded);
         cache.Verify(c => c.GetDeviceCacheAsync(It.IsAny<string>()), Times.Never);
+        repo.Verify(r => r.DeviceSessionGetAsync(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
-    public async Task Session_NoActiveSession_Fails()
+    public async Task Session_ValidToken_Succeeds()
+    {
+        var cache = new Mock<ICache>(MockBehavior.Strict);
+        cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache { apiAuth = "sometoken" });
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
+        var http = HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken");
+        var context = NewContext(new DeviceSessionRequirement(), http);
+
+        await handler.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+        Assert.Equal("dev1", http.DeviceApiId());
+        // The fast cache path succeeded - the DB fallback must never be consulted.
+        repo.Verify(r => r.DeviceSessionGetAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    // Cache miss (server restart/redeploy wiped the in-process cache, or a different instance behind a load balancer) falls back to the DB-persisted token before rejecting.
+
+    [Fact]
+    public async Task Session_CacheMiss_NoDbRow_Fails()
     {
         var cache = new Mock<ICache>(MockBehavior.Strict);
         cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache());
-        var handler = new DeviceSessionHandler(cache.Object, NullLogger<DeviceSessionHandler>.Instance);
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync(((string, DateTimeOffset)?)null);
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
         var context = NewContext(new DeviceSessionRequirement(), HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken"));
 
         await handler.HandleAsync(context);
@@ -107,11 +131,45 @@ public class DeviceAuthTests
     }
 
     [Fact]
-    public async Task Session_ValidToken_Succeeds()
+    public async Task Session_CacheMiss_DbTokenExpired_Fails()
     {
         var cache = new Mock<ICache>(MockBehavior.Strict);
-        cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache { apiAuth = "sometoken" });
-        var handler = new DeviceSessionHandler(cache.Object, NullLogger<DeviceSessionHandler>.Instance);
+        cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache());
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync(("sometoken", DateTimeOffset.UtcNow.AddMinutes(-1)));
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
+        var context = NewContext(new DeviceSessionRequirement(), HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken"));
+
+        await handler.HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task Session_CacheMiss_DbTokenMismatch_Fails()
+    {
+        var cache = new Mock<ICache>(MockBehavior.Strict);
+        cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache());
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync(("differenttoken", DateTimeOffset.UtcNow.AddMinutes(30)));
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
+        var context = NewContext(new DeviceSessionRequirement(), HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken"));
+
+        await handler.HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task Session_CacheMiss_DbTokenValid_SucceedsAndRepopulatesCache()
+    {
+        var cache = new Mock<ICache>(MockBehavior.Strict);
+        cache.Setup(c => c.GetDeviceCacheAsync("dev1")).ReturnsAsync(new DeviceCache());
+        cache.Setup(c => c.SetItemAsync("dev1", It.Is<DeviceCache>(d => d.apiAuth == "sometoken"), It.IsAny<TimeSpan?>()))
+            .Returns(Task.CompletedTask);
+        var repo = new Mock<IDeviceRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.DeviceSessionGetAsync("dev1")).ReturnsAsync(("sometoken", DateTimeOffset.UtcNow.AddMinutes(30)));
+        var handler = new DeviceSessionHandler(cache.Object, repo.Object, NullLogger<DeviceSessionHandler>.Instance);
         var http = HttpWithHeaders(apiId: "dev1", authToken: "Bearer sometoken");
         var context = NewContext(new DeviceSessionRequirement(), http);
 
@@ -119,5 +177,6 @@ public class DeviceAuthTests
 
         Assert.True(context.HasSucceeded);
         Assert.Equal("dev1", http.DeviceApiId());
+        cache.Verify(c => c.SetItemAsync("dev1", It.Is<DeviceCache>(d => d.apiAuth == "sometoken"), It.IsAny<TimeSpan?>()), Times.Once);
     }
 }

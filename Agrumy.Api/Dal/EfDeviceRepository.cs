@@ -313,6 +313,13 @@ namespace Agrumy.Api.Dal
             row.BatteryEnabled = device.BatteryEnabled;
             row.Enabled = device.Enabled;
             row.Debug = device.Debug;
+            // Only a real DeviceEditForm submission carries these (see DeviceMappingExtensions.ApplyTo) - anything else round-tripping a fetched DeviceDto leaves both null and LocationSource untouched, never blanking a GPS fix.
+            if (device.Latitude.HasValue && device.Longitude.HasValue)
+            {
+                row.Latitude = device.Latitude;
+                row.Longitude = device.Longitude;
+                row.LocationSource = (int)DeviceLocationSource.Manual;
+            }
             // row's own value, not the payload's - the payload can be stale under two concurrent edits, which would otherwise let ConfigVersion regress or collide instead of growing monotonically.
             row.ConfigVersion = (row.ConfigVersion ?? 0) + 1;
             await db.SaveChangesAsync();
@@ -321,6 +328,22 @@ namespace Agrumy.Api.Dal
         public Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc) =>
             db.Devices.Where(d => d.IDDevice == deviceID)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastFullConfigSentAt, sentAtUtc));
+
+        public Task DeviceSessionSetAsync(int deviceID, string? token, DateTimeOffset? expiresAtUtc) =>
+            db.Devices.Where(d => d.IDDevice == deviceID)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.ApiAuthToken, token)
+                    .SetProperty(d => d.ApiAuthExpiresAtUtc, expiresAtUtc));
+
+        public async Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId)
+        {
+            var row = await db.Devices.Where(d => d.ApiId == apiId)
+                .Select(d => new { d.ApiAuthToken, d.ApiAuthExpiresAtUtc })
+                .FirstOrDefaultAsync();
+            return row is { ApiAuthToken: { } token, ApiAuthExpiresAtUtc: { } expiresAtUtc }
+                ? (token, expiresAtUtc)
+                : null;
+        }
 
         public Task DeviceHardResetSetAsync(int deviceID, bool pending) =>
             db.Devices.Where(d => d.IDDevice == deviceID)
@@ -382,6 +405,9 @@ namespace Agrumy.Api.Dal
             FirmwareTargetVersion = d.FirmwareTargetVersion,
             Enabled = d.Enabled,
             ConfigVersion = d.ConfigVersion,
+            Latitude = d.Latitude,
+            Longitude = d.Longitude,
+            LocationSource = (DeviceLocationSource)d.LocationSource,
             DateCreated = d.DateCreated,
             DateModified = d.DateModified,
             IsGateway = d.IsGateway,
@@ -679,6 +705,16 @@ namespace Agrumy.Api.Dal
             row.Board = poll.Board ?? row.Board;
             row.DeviceTypeID = deviceTypeId ?? row.DeviceTypeID;
             await db.SaveChangesAsync();
+
+            // A GPS fix always wins over a manual location - writes to the Device row itself, not DeviceDiagnostics, since it's a location other features can read, not a point-in-time heartbeat metric.
+            if (poll.Latitude.HasValue && poll.Longitude.HasValue)
+            {
+                await db.Devices.Where(d => d.IDDevice == deviceID)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(d => d.Latitude, poll.Latitude)
+                        .SetProperty(d => d.Longitude, poll.Longitude)
+                        .SetProperty(d => d.LocationSource, (int)DeviceLocationSource.Gps));
+            }
         }
 
         public async Task<bool> DeviceCheckAndRecordSensorPushAsync(int deviceID, TimeSpan minInterval)

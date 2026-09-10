@@ -4,6 +4,14 @@ using System.Linq;
 
 namespace Agrumy.Shared.Models
 {
+    /// Which write last set Device.Latitude/Longitude - Gps always overwrites Manual on the next fix, Manual only changes via the Edit form.
+    public enum DeviceLocationSource
+    {
+        None = 0,
+        Manual = 1,
+        Gps = 2,
+    }
+
     public class Device
     {
         public int? ConfigVersion { get; set; } = 1;
@@ -72,6 +80,10 @@ namespace Agrumy.Shared.Models
         public string? FirmwareTargetVersion { get; set; }
         public bool? Enabled { get; set; } = false;
 
+        // Manually entered (DeviceEditForm) or GPS-reported (DeviceConfigPoll.Latitude/Longitude, Heltec V4 + GPS module) - LocationSource says which; same nullable-double convention as Tenant.Latitude/Longitude.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public DeviceLocationSource LocationSource { get; set; } = DeviceLocationSource.None;
 
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
@@ -123,6 +135,9 @@ namespace Agrumy.Shared.Models
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; }
         public bool? Enabled { get; set; } = false;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public DeviceLocationSource LocationSource { get; set; } = DeviceLocationSource.None;
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
@@ -139,6 +154,9 @@ namespace Agrumy.Shared.Models
         public int? ManualDeviceTypeID { get; set; }
         public string? ServicePoint { get; set; }
         public string? ServicePublicKey { get; set; }
+        // Both non-null means the admin is setting a manual location (ApplyTo sets LocationSource=Manual); either null leaves the device's current location untouched, there's no clear/reset action here yet.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 
     public static class DeviceMappingExtensions
@@ -173,6 +191,9 @@ namespace Agrumy.Shared.Models
             FirmwareUpdate = d.FirmwareUpdate,
             FirmwareTargetVersion = d.FirmwareTargetVersion,
             Enabled = d.Enabled,
+            Latitude = d.Latitude,
+            Longitude = d.Longitude,
+            LocationSource = d.LocationSource,
             DateCreated = d.DateCreated,
             DateModified = d.DateModified,
             DeletedAtUtc = d.DeletedAtUtc,
@@ -210,6 +231,9 @@ namespace Agrumy.Shared.Models
             FirmwareUpdate = dto.FirmwareUpdate,
             FirmwareTargetVersion = dto.FirmwareTargetVersion,
             Enabled = dto.Enabled,
+            Latitude = dto.Latitude,
+            Longitude = dto.Longitude,
+            LocationSource = dto.LocationSource,
             DateCreated = dto.DateCreated,
             DateModified = dto.DateModified,
         };
@@ -223,6 +247,12 @@ namespace Agrumy.Shared.Models
             target.ManualDeviceTypeID = form.ManualDeviceTypeID;
             target.ServicePoint = form.ServicePoint;
             target.ServicePublicKey = form.ServicePublicKey;
+            if (form.Latitude.HasValue && form.Longitude.HasValue)
+            {
+                target.Latitude = form.Latitude;
+                target.Longitude = form.Longitude;
+                target.LocationSource = DeviceLocationSource.Manual;
+            }
         }
 
         public static DeviceEditForm ToEditForm(this DeviceDto d) => new()
@@ -234,6 +264,9 @@ namespace Agrumy.Shared.Models
             ManualDeviceTypeID = d.ManualDeviceTypeID,
             ServicePoint = d.ServicePoint,
             ServicePublicKey = d.ServicePublicKey,
+            // Blank (not the current GPS fix) when LocationSource is Gps - leaving the form's coordinate fields empty on submit means ApplyTo makes no change, so an untouched form never clobbers a live GPS fix with a stale copy of itself.
+            Latitude = d.LocationSource == DeviceLocationSource.Manual ? d.Latitude : null,
+            Longitude = d.LocationSource == DeviceLocationSource.Manual ? d.Longitude : null,
         };
 
         /// Known DeviceRoleID values (0-3) derive sensor/controller-enabled directly and override whatever the caller set; an unknown role id leaves them alone, so a manual toggle only ever sticks for a role outside that fixed set.
@@ -343,6 +376,9 @@ namespace Agrumy.Shared.Models
         public string? Kit { get; set; }
         // Which CONFIG_SCHEMA_VERSION this firmware build understands; null from older firmware, informational only (server doesn't currently act on a mismatch).
         public int? ConfigSchemaVersion { get; set; }
+        // GPS fix from a device built with AGRUMY_GPS_ENABLED (Heltec V4 + GPS module); null when no module, no fix yet, or older firmware. Overwrites Device.Latitude/Longitude with LocationSource=Gps whenever present - see EfDeviceRepository.DeviceDiagnosticUpsertAsync.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 
     /// One device's row on the fleet dashboard; Battery comes from the latest sensorData row, not the heartbeat, since the firmware's own battery sensor is a stub.
