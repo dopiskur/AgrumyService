@@ -9,13 +9,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// Roadmap #411 - bulk WiFi switch fan-out across every device in a unit.
 public class DeviceFarmUnitApiControllerTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private DeviceFarmUnitApiController NewController()

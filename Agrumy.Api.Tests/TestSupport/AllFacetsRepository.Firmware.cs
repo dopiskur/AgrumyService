@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IFirmwareRepository members - forwarded to the standalone EfFirmwareRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IFirmwareRepository members - forwarded to the standalone EfFirmwareRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<IList<DeviceFirmware>> FirmwareListAsync() => firmwareRepository.FirmwareListAsync();
 

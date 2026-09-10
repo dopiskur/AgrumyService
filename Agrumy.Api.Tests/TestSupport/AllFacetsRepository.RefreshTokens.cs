@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IRefreshTokenRepository members - forwarded to the standalone EfRefreshTokenRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IRefreshTokenRepository members - forwarded to the standalone EfRefreshTokenRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<int> RefreshTokenAddAsync(int userID, string tokenHash, DateTime expiresAt) =>
             refreshTokenRepository.RefreshTokenAddAsync(userID, tokenHash, expiresAt);

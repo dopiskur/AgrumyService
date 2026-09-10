@@ -11,7 +11,7 @@ using Npgsql;
 
 namespace Agrumy.Api.Dal
 {
-    /// IServerConfigRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain. Widely read-from by other domains, but that's calls INTO this class, not out of it.
+    /// IServerConfigRepository - a leaf facet, no dependency on any other domain. Widely read-from by other domains, but that's calls INTO this class, not out of it.
     internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger, ISecretProtector secretProtector) : IServerConfigRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;

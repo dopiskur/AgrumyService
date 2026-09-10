@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// ICommandRepository, extracted out of the EfRepository god class (roadmap #246) - raw deviceCommand CRUD only. Uses DbExceptionClassifier directly instead of ISystemRepository.ClassifyException so this class doesn't need a facet it otherwise has no reason to depend on.
+    /// ICommandRepository - raw deviceCommand CRUD only. Uses DbExceptionClassifier directly instead of ISystemRepository.ClassifyException so this class doesn't need a facet it otherwise has no reason to depend on.
     internal sealed class EfCommandRepository(AgrumyDbContext db) : ICommandRepository
     {
         public async Task<bool> HasActiveCommandAsync(int deviceId, CommandActionType actionType, DateTime utcNow)

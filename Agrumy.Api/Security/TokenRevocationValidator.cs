@@ -25,8 +25,8 @@ namespace Agrumy.Api.Security
             CachedRevocationState? state = await cache.GetAsync<CachedRevocationState>(cacheKey);
             if (state is null)
             {
-                IRepository repo = context.HttpContext.RequestServices.GetRequiredService<IRepository>();
-                User? user = await repo.UserGetAsync(null, email, null);
+                IUserRepository userRepo = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                User? user = await userRepo.UserGetAsync(null, email, null);
                 if (user is null)
                 {
                     return; // unreachable for a token that passed signature validation, but nothing to cache either way

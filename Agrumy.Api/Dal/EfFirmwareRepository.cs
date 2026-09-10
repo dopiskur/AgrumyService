@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IFirmwareRepository, extracted out of the EfRepository god class (roadmap #246) - the catalog rows and per-device update flags only; reads db.Devices/db.DeviceDiagnostics directly rather than through another facet, but that's a plain DbSet read, not a facet dependency.
+    /// IFirmwareRepository - the catalog rows and per-device update flags only; reads db.Devices/db.DeviceDiagnostics directly rather than through another facet, but that's a plain DbSet read, not a facet dependency.
     internal sealed class EfFirmwareRepository(AgrumyDbContext db) : IFirmwareRepository
     {
         public async Task<IList<DeviceFirmware>> FirmwareListAsync()

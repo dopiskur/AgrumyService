@@ -21,15 +21,17 @@ namespace Agrumy.Api.BackgroundWorkers
 
         protected override async Task DoWorkAsync(IServiceProvider scopedProvider, CancellationToken ct)
         {
-            IRepository repo = scopedProvider.GetRequiredService<IRepository>();
+            ISimulationRepository simulationRepo = scopedProvider.GetRequiredService<ISimulationRepository>();
+            IDeviceRepository deviceRepo = scopedProvider.GetRequiredService<IDeviceRepository>();
+            IControllerDataRepository controllerDataRepo = scopedProvider.GetRequiredService<IControllerDataRepository>();
             HttpClient http = httpClientFactory.CreateClient(HttpClientName);
             var client = new VirtualDeviceClient(http);
 
-            foreach (int deviceId in await repo.VirtualDeviceIdsGetAsync())
+            foreach (int deviceId in await simulationRepo.VirtualDeviceIdsGetAsync())
             {
                 try
                 {
-                    await RunOneTickAsync(repo, client, deviceId);
+                    await RunOneTickAsync(deviceRepo, controllerDataRepo, client, deviceId);
                 }
                 catch (Exception ex)
                 {
@@ -38,9 +40,9 @@ namespace Agrumy.Api.BackgroundWorkers
             }
         }
 
-        private async Task RunOneTickAsync(IRepository repo, VirtualDeviceClient client, int deviceId)
+        private async Task RunOneTickAsync(IDeviceRepository deviceRepo, IControllerDataRepository controllerDataRepo, VirtualDeviceClient client, int deviceId)
         {
-            Device? device = await repo.DeviceGetByIdAsync(deviceId);
+            Device? device = await deviceRepo.DeviceGetByIdAsync(deviceId);
             if (device is null)
             {
                 return; // deleted between the id list read and now - VirtualDeviceDeleteAsync already dropped the registry row too
@@ -54,7 +56,7 @@ namespace Agrumy.Api.BackgroundWorkers
 
             if (config?.DeviceConfigController is { Rules.Count: > 0 } controller)
             {
-                IList<ControllerDataStatus> current = await repo.ControllerDataGetAsync(deviceId);
+                IList<ControllerDataStatus> current = await controllerDataRepo.ControllerDataGetAsync(deviceId);
                 DateTime utcNow = DateTime.UtcNow;
                 var entries = new List<ControllerDataPush>();
                 foreach (RelayFunction function in Enum.GetValues<RelayFunction>())

@@ -6,13 +6,14 @@ using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// Roadmap #403 - "Add Simulation" sessions: a device (physical or virtual) is added TO a named, time-boxed session instead of being independently toggled.
 public class SimulationApiControllerTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
     private readonly Mock<IHttpClientFactory> _httpClientFactory = new(MockBehavior.Strict);
 

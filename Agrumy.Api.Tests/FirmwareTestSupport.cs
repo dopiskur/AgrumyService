@@ -45,7 +45,14 @@ internal static class FirmwareTestSupport
         return new FirmwareStorage(settings, new Mock<IHostEnvironment>().Object);
     }
 
-    /// The same IRepository mock backs every facet the service takes.
-    public static FirmwareCatalogService NewCatalog(IRepository repo, IFirmwareFetcher? fetcher = null, FirmwareStorage? storage = null) =>
-        new(repo, repo, repo, fetcher ?? new FakeFirmwareFetcher(), storage ?? NewStorage(out _), NullLogger<FirmwareCatalogService>.Instance);
+    public static FirmwareCatalogService NewCatalog(IFirmwareRepository firmwareRepo, IServerConfigRepository configRepo, IDeviceRepository deviceRepo, IFirmwareFetcher? fetcher = null, FirmwareStorage? storage = null) =>
+        new(firmwareRepo, configRepo, deviceRepo, fetcher ?? new FakeFirmwareFetcher(), storage ?? NewStorage(out _), NullLogger<FirmwareCatalogService>.Instance);
+
+    /// The same mock backs every facet the service takes - callers add setups for IServerConfigRepository/IDeviceRepository members via repo.As&lt;T&gt;(). Both As&lt;T&gt;() registrations must happen before repo.Object is read even once (Moq freezes the mock's interface list on the first .Object access, so reading .Object off the first As&lt;T&gt;() result before registering the second one would lock the second registration out).
+    public static FirmwareCatalogService NewCatalog(Mock<IFirmwareRepository> repo, IFirmwareFetcher? fetcher = null, FirmwareStorage? storage = null)
+    {
+        repo.As<IServerConfigRepository>();
+        repo.As<IDeviceRepository>();
+        return NewCatalog(repo.Object, (IServerConfigRepository)repo.Object, (IDeviceRepository)repo.Object, fetcher, storage);
+    }
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IRefreshTokenRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, only called into (by EfUserRepository), never calls out.
+    /// IRefreshTokenRepository - a leaf facet, only called into (by EfUserRepository), never calls out.
     internal sealed class EfRefreshTokenRepository(AgrumyDbContext db) : IRefreshTokenRepository
     {
         public async Task<int> RefreshTokenAddAsync(int userID, string tokenHash, DateTime expiresAt)

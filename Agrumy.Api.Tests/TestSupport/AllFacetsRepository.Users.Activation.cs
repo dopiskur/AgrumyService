@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IUserRepository activation members - forwarded to the standalone EfUserRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IUserRepository activation members - forwarded to the standalone EfUserRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task UserSetActivationTokenAsync(int idUser, string tokenHash, DateTime expiresAt) =>
             userRepository.UserSetActivationTokenAsync(idUser, tokenHash, expiresAt);

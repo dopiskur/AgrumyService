@@ -95,9 +95,8 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 }
 builder.Services.AddSingleton<ISecretProtector, SecretProtector>();
 
-builder.Services.AddScoped<EfRepository>();
-builder.Services.AddScoped<IRepository>(sp => sp.GetRequiredService<EfRepository>());
-builder.Services.AddScoped<ISystemRepository>(sp => sp.GetRequiredService<EfRepository>());
+builder.Services.AddScoped<DataSeeder>();
+builder.Services.AddScoped<ISystemRepository, SchemaBootstrapper>();
 builder.Services.AddScoped<IServerConfigRepository, EfServerConfigRepository>();
 builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<ITenantRepository, EfTenantRepository>();
@@ -437,20 +436,20 @@ app.MapPrometheusScrapingEndpoint("/api/metrics/prometheus")
 using (var scope = app.Services.CreateScope())
 {
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var repository = scope.ServiceProvider.GetRequiredService<IRepository>();
+    var systemRepository = scope.ServiceProvider.GetRequiredService<ISystemRepository>();
     bool failFastOnDbCheck = bool.TryParse(builder.Configuration["Startup:FailFastOnDbCheck"], out var failFast) && failFast;
 
     try
     {
-        if (await repository.TestConnectionAsync())
+        if (await systemRepository.TestConnectionAsync())
         {
             startupLogger.LogInformation("Startup DB check: database connection OK.");
-            await repository.EnsureSchemaAsync();
+            await systemRepository.EnsureSchemaAsync();
             startupLogger.LogInformation("Startup DB check: schema verified/provisioned.");
 
             if (scope.ServiceProvider.GetRequiredService<IOptions<AgrumySettings>>().Value.ServerConfigReload)
             {
-                await repository.ServerConfigReloadFromAppSettingsAsync(1);
+                await scope.ServiceProvider.GetRequiredService<IServerConfigRepository>().ServerConfigReloadFromAppSettingsAsync(1);
                 startupLogger.LogInformation("ServerConfig:Reload was true - serverConfig hysteresis fields overwritten from appsettings.json.");
             }
         }

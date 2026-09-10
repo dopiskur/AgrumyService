@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.Dal
 {
-    /// IDeviceFarmUnitRepository, extracted out of the EfRepository god class (roadmap #246) - Unit/Zone CRUD, device assignment, and the hierarchical dashboard aggregation. Needs IServerConfigRepository (dashboard's ProblemEvent settings) and IDeviceRepository (fleet-cache invalidation after assign/unassign, plus its ToDto mapper) - both already-extracted facets, so no circular dependency.
+    /// IDeviceFarmUnitRepository - Unit/Zone CRUD, device assignment, and the hierarchical dashboard aggregation. Needs IServerConfigRepository (dashboard's ProblemEvent settings) and IDeviceRepository (fleet-cache invalidation after assign/unassign, plus its ToDto mapper) - both already-extracted facets, so no circular dependency.
     internal sealed class EfDeviceFarmUnitRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository) : IDeviceFarmUnitRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;

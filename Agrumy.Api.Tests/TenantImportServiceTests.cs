@@ -9,9 +9,13 @@ namespace Agrumy.Api.Tests;
 /// Exercises TenantImportService.ImportUsersAsync's Global-role stripping - a Global-scope role is a server-level concept and must never survive a tenant export/import round-trip onto a different server.
 public class TenantImportServiceTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    // ITenantRepository is the primary mocked type; IUserRepository/IDeviceFarmUnitRepository are the same underlying mock viewed through Mock.As<T>() - IDeviceRepository/ISensorDataRepository are never called by ImportByNameAsync's user-only path here, so they're separate, unconfigured strict mocks.
+    private readonly Mock<ITenantRepository> _repo = new(MockBehavior.Strict);
+    private IUserRepository UserRepo => _repo.As<IUserRepository>().Object;
+    private IDeviceFarmUnitRepository FarmUnitRepo => _repo.As<IDeviceFarmUnitRepository>().Object;
 
-    private TenantImportService NewService() => new(_repo.Object);
+    private TenantImportService NewService() => new(_repo.Object, UserRepo, FarmUnitRepo,
+        new Mock<IDeviceRepository>(MockBehavior.Strict).Object, new Mock<ISensorDataRepository>(MockBehavior.Strict).Object);
 
     private static TenantExport Export(params TenantExportUser[] users) => new()
     {
@@ -30,13 +34,13 @@ public class TenantImportServiceTests
         };
 
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(5);
-        _repo.Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
-        _repo.SetupSequence(r => r.UserGetAsync(null, "boss@source.local", null))
+        _repo.As<IDeviceFarmUnitRepository>().Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
+        _repo.As<IUserRepository>().SetupSequence(r => r.UserGetAsync(null, "boss@source.local", null))
              .ReturnsAsync((User?)null)
              .ReturnsAsync(new User { IDUser = 42, Email = "boss@source.local" });
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.As<IUserRepository>().Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
         List<string>? appliedRoles = null;
-        _repo.Setup(r => r.UserRolesSetAsync(42, It.IsAny<IEnumerable<string>>()))
+        _repo.As<IUserRepository>().Setup(r => r.UserRolesSetAsync(42, It.IsAny<IEnumerable<string>>()))
              .Callback<int, IEnumerable<string>>((_, roles) => appliedRoles = roles.ToList())
              .Returns(Task.CompletedTask);
 
@@ -57,13 +61,13 @@ public class TenantImportServiceTests
         };
 
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(5);
-        _repo.Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
-        _repo.SetupSequence(r => r.UserGetAsync(null, "member@source.local", null))
+        _repo.As<IDeviceFarmUnitRepository>().Setup(r => r.EnsureFirstFarmAsync(5)).Returns(Task.CompletedTask);
+        _repo.As<IUserRepository>().SetupSequence(r => r.UserGetAsync(null, "member@source.local", null))
              .ReturnsAsync((User?)null)
              .ReturnsAsync(new User { IDUser = 43, Email = "member@source.local" });
-        _repo.Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
+        _repo.As<IUserRepository>().Setup(r => r.UserAddAsync(It.IsAny<User>(), It.IsAny<UserSecret>())).Returns(Task.CompletedTask);
         List<string>? appliedRoles = null;
-        _repo.Setup(r => r.UserRolesSetAsync(43, It.IsAny<IEnumerable<string>>()))
+        _repo.As<IUserRepository>().Setup(r => r.UserRolesSetAsync(43, It.IsAny<IEnumerable<string>>()))
              .Callback<int, IEnumerable<string>>((_, roles) => appliedRoles = roles.ToList())
              .Returns(Task.CompletedTask);
 

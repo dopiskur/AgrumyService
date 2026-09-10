@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
@@ -143,7 +144,7 @@ public class UserProfileTests
     }
 
 
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private static readonly IOptions<AgrumySettings> TestSettings = Options.Create(AgrumySettings.Bind(TestConfig.Configuration));

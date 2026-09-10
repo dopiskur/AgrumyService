@@ -8,6 +8,7 @@ using Agrumy.Api.Commands;
 using Agrumy.Api.Controllers.API;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Diagnostics;
+using Agrumy.Api.Tests.TestSupport;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
 using Agrumy.Api.Security;
@@ -21,10 +22,10 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// Controller tests with a mocked <see cref="IRepository"/>/<see cref="ICache"/>, bypassing the MVC pipeline (DbExceptionFilter behavior is covered by <see cref="DbExceptionFilterTests"/>).
+/// Controller tests with a mocked <see cref="IAllFacetsRepository"/>/<see cref="ICache"/>, bypassing the MVC pipeline (DbExceptionFilter behavior is covered by <see cref="DbExceptionFilterTests"/>).
 public class ApiControllerTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private readonly Mock<INotificationDispatcher> _notifications = new();
@@ -36,15 +37,15 @@ public class ApiControllerTests
     // None of these tests are about quota behavior (that's TenantQuotaEnforcerTests) - every tenant is unlimited by default here.
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
-    // CommandQueueService is a plain sealed class (not mocked); IRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
+    // CommandQueueService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
     private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
 
     private DeviceApiController NewDeviceController()
     {
-        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
+        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings, NewQuotaEnforcer());
     private DeviceCommandApiController NewDeviceCommandController() =>
@@ -56,7 +57,6 @@ public class ApiControllerTests
         Assert.True(_jobQueue.Reader.TryRead(out var job), "Expected a background job to have been enqueued.");
         IServiceProvider services = new ServiceCollection()
             .AddSingleton(_notifications.Object)
-            .AddSingleton(_repo.Object)
             .AddSingleton<IUserRepository>(_repo.Object)
             .BuildServiceProvider();
         await job(services, CancellationToken.None);
@@ -68,7 +68,8 @@ public class ApiControllerTests
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-        new Agrumy.Api.Migration.TenantExportService(_repo.Object), new Agrumy.Api.Migration.TenantImportService(_repo.Object),
+        new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+        new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
@@ -550,10 +551,10 @@ public class ApiControllerTests
 
     private DeviceApiController NewDeviceControllerWithGatewaySecret(string? serverSecret)
     {
-        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
+        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
             Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
 

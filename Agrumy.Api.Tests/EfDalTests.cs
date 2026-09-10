@@ -248,25 +248,11 @@ public class TankCalculatorTests
 public class ClassifyExceptionTests
 {
     // ClassifyException is a pure function - never touches the DbContext, so a never-connected one and default settings are enough to construct it.
-    private readonly EfRepository _repo = new(
+    private readonly SchemaBootstrapper _repo = new(
         new AgrumyDbContext(DbOptionsFactory.Build(DbProviderKind.MySql, "server=unused;database=unused;")),
-        NullLogger<EfRepository>.Instance,
-        new Mock<IAuditLogRepository>().Object,
-        new Mock<IRefreshTokenRepository>().Object,
-        new Mock<IControllerDataRepository>().Object,
-        new Mock<IDiscoveryRepository>().Object,
-        new Mock<ITenantRepository>().Object,
-        new Mock<IGatewayRepository>().Object,
+        NullLogger<SchemaBootstrapper>.Instance,
         new Mock<IServerConfigRepository>().Object,
-        new Mock<ICommandRepository>().Object,
-        new Mock<IFirmwareRepository>().Object,
-        new Mock<IUserRepository>().Object,
-        new Mock<IDeviceRepository>().Object,
-        new Mock<ISimulationRepository>().Object,
-        new Mock<IDeviceFarmUnitRepository>().Object,
-        new Mock<ISensorDataRepository>().Object,
-        new Mock<IExperimentRepository>().Object,
-        new Mock<IHorticultureCatalogRepository>().Object);
+        new DataSeeder(NullLogger<DataSeeder>.Instance));
 
     [Fact]
     public void PlainException_MentioningMissingTable_IsSchemaMissing()

@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IUserRepository role members - forwarded to the standalone EfUserRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IUserRepository role members - forwarded to the standalone EfUserRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<IList<UserRole>> UserRoleGetAsync() => userRepository.UserRoleGetAsync();
 

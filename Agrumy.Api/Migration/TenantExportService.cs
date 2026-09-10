@@ -6,7 +6,7 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Migration
 {
     /// Builds the full portable snapshot of one tenant - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
-    public class TenantExportService(IRepository repo)
+    public class TenantExportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
     {
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.
         private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -31,17 +31,17 @@ namespace Agrumy.Api.Migration
 
         public async Task<TenantExport> ExportAsync(int tenantId, bool includeSensorData, DateTime? sensorDataSinceUtc)
         {
-            Tenant? tenant = await repo.TenantGetByIdAsync(tenantId);
+            Tenant? tenant = await tenantRepo.TenantGetByIdAsync(tenantId);
 
             var exportUsers = new List<TenantExportUser>();
-            foreach (User u in await repo.UsersGetAsync(tenantId))
+            foreach (User u in await userRepo.UsersGetAsync(tenantId))
             {
                 if (u.IDUser is not int idUser)
                 {
                     continue;
                 }
-                UserSecret? secret = await repo.UserSecretGetAsync(idUser, null, null);
-                IReadOnlyList<string> roles = await repo.UserRoleNamesGetAsync(idUser);
+                UserSecret? secret = await userRepo.UserSecretGetAsync(idUser, null, null);
+                IReadOnlyList<string> roles = await userRepo.UserRoleNamesGetAsync(idUser);
                 exportUsers.Add(new TenantExportUser
                 {
                     User = u,
@@ -51,7 +51,7 @@ namespace Agrumy.Api.Migration
                 });
             }
 
-            IList<DeviceFarmUnit> units = await repo.DeviceFarmUnitsGetAsync(tenantId);
+            IList<DeviceFarmUnit> units = await deviceFarmUnitRepo.DeviceFarmUnitsGetAsync(tenantId);
             var zones = new List<DeviceFarmUnitZone>();
             var rules = new List<DeviceFarmUnitZoneRule>();
             foreach (DeviceFarmUnit unit in units)
@@ -60,19 +60,19 @@ namespace Agrumy.Api.Migration
                 {
                     continue;
                 }
-                IList<DeviceFarmUnitZone> unitZones = await repo.DeviceFarmUnitZonesGetAsync(idUnit);
+                IList<DeviceFarmUnitZone> unitZones = await deviceFarmUnitRepo.DeviceFarmUnitZonesGetAsync(idUnit);
                 zones.AddRange(unitZones);
                 foreach (DeviceFarmUnitZone zone in unitZones)
                 {
                     if (zone.IDDeviceFarmUnitZone is int idZone)
                     {
-                        rules.AddRange(await repo.RulesGetForZoneAsync(idZone));
+                        rules.AddRange(await deviceFarmUnitRepo.RulesGetForZoneAsync(idZone));
                     }
                 }
             }
 
             var exportDevices = new List<TenantExportDevice>();
-            foreach (Device d in await repo.DevicesGetAsync(tenantId))
+            foreach (Device d in await deviceRepo.DevicesGetAsync(tenantId))
             {
                 exportDevices.Add(new TenantExportDevice
                 {
@@ -80,8 +80,8 @@ namespace Agrumy.Api.Migration
                     // Read off the in-memory Device, not left to JSON serialization - see TenantExportDevice's remarks for why that would drop them.
                     ApiId = d.ApiId,
                     ApiKey = d.ApiKey,
-                    Sensor = d.DeviceConfigSensorID is int sId ? await repo.DeviceConfigSensorGetAsync(sId) : null,
-                    Controller = d.DeviceConfigControllerID is int cId ? await repo.DeviceConfigControllerGetAsync(cId) : null,
+                    Sensor = d.DeviceConfigSensorID is int sId ? await deviceRepo.DeviceConfigSensorGetAsync(sId) : null,
+                    Controller = d.DeviceConfigControllerID is int cId ? await deviceRepo.DeviceConfigControllerGetAsync(cId) : null,
                 });
             }
 
@@ -95,7 +95,7 @@ namespace Agrumy.Api.Migration
                 ZoneRules = rules,
                 Devices = exportDevices,
                 IncludesSensorData = includeSensorData,
-                SensorData = includeSensorData ? await repo.SensorDataExportGetAsync(tenantId, sensorDataSinceUtc) : null,
+                SensorData = includeSensorData ? await sensorDataRepo.SensorDataExportGetAsync(tenantId, sensorDataSinceUtc) : null,
             };
         }
     }

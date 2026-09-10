@@ -6,13 +6,14 @@ using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// Covers the tenant-scoping decision AuditLogApiController makes before delegating to IAuditLogRepository - a Global admin sees every tenant, everyone else only their own.
 public class AuditLogApiControllerTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private AuditLogApiController NewController(int? tenantId, params string[] roles)

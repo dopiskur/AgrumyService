@@ -17,10 +17,10 @@ public class NotificationTests
         new("Low water level", "Tank on device 12 is below the configured minimum.",
             new NotificationRecipient(email, tokens), NotificationSeverity.Warning);
 
-    /// Email's config now lives in ServerConfig (DB), read fresh via IRepository.ServerConfigGetAsync(1) - see EmailNotificationChannel's class remarks.
+    /// Email's config now lives in ServerConfig (DB), read fresh via IServerConfigRepository.ServerConfigGetAsync(1) - see EmailNotificationChannel's class remarks.
     private static EmailNotificationChannel Email(ServerConfig config)
     {
-        var repo = new Mock<IRepository>(MockBehavior.Strict);
+        var repo = new Mock<IServerConfigRepository>(MockBehavior.Strict);
         repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(config);
         return new EmailNotificationChannel(repo.Object, NullLogger<EmailNotificationChannel>.Instance);
     }
@@ -28,10 +28,10 @@ public class NotificationTests
     private static FcmPushNotificationChannel Fcm(PushChannelOptions push) =>
         new(Opts(new NotificationOptions { Push = push }), NullLogger<FcmPushNotificationChannel>.Instance);
 
-    /// Webhook's config now lives in ServerConfig (DB), read fresh via IRepository.ServerConfigGetAsync(1) - same reasoning as Email above.
+    /// Webhook's config now lives in ServerConfig (DB), read fresh via IServerConfigRepository.ServerConfigGetAsync(1) - same reasoning as Email above.
     private static WebhookNotificationChannel Webhook(ServerConfig config, IHttpClientFactory? factory = null)
     {
-        var repo = new Mock<IRepository>(MockBehavior.Strict);
+        var repo = new Mock<IServerConfigRepository>(MockBehavior.Strict);
         repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(config);
         return new WebhookNotificationChannel(repo.Object, factory ?? new FakeHttpClientFactory(HttpStatusCode.OK), NullLogger<WebhookNotificationChannel>.Instance);
     }

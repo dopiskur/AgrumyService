@@ -12,7 +12,28 @@ namespace Agrumy.Api.Tests;
 /// fully-populated Device and asserts each top-level field actually carried over.
 public class DeviceConfigBuilderTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    // IServerConfigRepository is the primary mocked type; every other facet DeviceConfigBuilder/FirmwareCatalogService need is the same underlying mock viewed through Mock.As<T>() - none of these tests enable DeviceControllerEnabled, so the rule-hierarchy facets are never actually called.
+    private readonly Mock<IServerConfigRepository> _repo = new(MockBehavior.Strict);
+    private ITenantRepository TenantRepo => _repo.As<ITenantRepository>().Object;
+    private IDeviceRepository DeviceRepo => _repo.As<IDeviceRepository>().Object;
+    private ISimulationRepository SimulationRepo => _repo.As<ISimulationRepository>().Object;
+    private IDeviceFarmUnitRepository FarmUnitRepo => _repo.As<IDeviceFarmUnitRepository>().Object;
+    private IExperimentRepository ExperimentRepo => _repo.As<IExperimentRepository>().Object;
+    private IFirmwareRepository FirmwareRepo => _repo.As<IFirmwareRepository>().Object;
+
+    // All six facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
+    public DeviceConfigBuilderTests()
+    {
+        _repo.As<ITenantRepository>();
+        _repo.As<IDeviceRepository>();
+        _repo.As<ISimulationRepository>();
+        _repo.As<IDeviceFarmUnitRepository>();
+        _repo.As<IExperimentRepository>();
+        _repo.As<IFirmwareRepository>();
+    }
+
+    private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, ExperimentRepo,
+        FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo));
 
     [Fact]
     public async Task BuildAsync_RealBuilder_PopulatesEveryTopLevelFieldFromDevice()
@@ -42,10 +63,10 @@ public class DeviceConfigBuilderTests
         };
 
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.TenantGetByIdAsync(7)).ReturnsAsync(new Tenant { IDTenant = 7, EmergencyStopActive = false });
-        _repo.Setup(r => r.DeviceSimulationGetAsync(1000038)).ReturnsAsync((DeviceSimulation?)null);
+        _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(7)).ReturnsAsync(new Tenant { IDTenant = 7, EmergencyStopActive = false });
+        _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(1000038)).ReturnsAsync((DeviceSimulation?)null);
 
-        var builder = new DeviceConfigBuilder(_repo.Object, FirmwareTestSupport.NewCatalog(_repo.Object));
+        var builder = NewBuilder();
 
         DeviceConfig config = await builder.BuildAsync(device, pendingCommand: null, board: null);
 
@@ -79,10 +100,10 @@ public class DeviceConfigBuilderTests
     {
         var device = new Device { IDDevice = 5, TenantID = 9, FirmwareUpdate = false };
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9, EmergencyStopActive = true });
-        _repo.Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
+        _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9, EmergencyStopActive = true });
+        _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
 
-        var builder = new DeviceConfigBuilder(_repo.Object, FirmwareTestSupport.NewCatalog(_repo.Object));
+        var builder = NewBuilder();
         DeviceConfig config = await builder.BuildAsync(device, pendingCommand: null, board: null);
 
         Assert.True(config.EmergencyStop);
@@ -94,10 +115,10 @@ public class DeviceConfigBuilderTests
         var device = new Device { IDDevice = 5, TenantID = 9, FirmwareUpdate = false };
         var pending = new PendingCommand { IDDeviceCommand = 11, ActionType = CommandActionType.Reboot, ExpiresAt = DateTime.UtcNow.AddMinutes(30) };
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9 });
-        _repo.Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
+        _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9 });
+        _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
 
-        var builder = new DeviceConfigBuilder(_repo.Object, FirmwareTestSupport.NewCatalog(_repo.Object));
+        var builder = NewBuilder();
         DeviceConfig config = await builder.BuildAsync(device, pending, board: null);
 
         Assert.Same(pending, config.PendingCommand);

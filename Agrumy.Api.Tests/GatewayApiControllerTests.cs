@@ -13,13 +13,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// A gateway must only forward entries for devices in its own tenant, never cross a tenant boundary.
 public class GatewayApiControllerTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     // Gateway tenant-boundary behavior, not quota behavior - every tenant is unlimited by default here.
@@ -36,10 +37,10 @@ public class GatewayApiControllerTests
 
     private GatewayApiController NewJwtController()
     {
-        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
+        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         return new GatewayApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object), NullLogger<GatewayApiController>.Instance);
     }
 

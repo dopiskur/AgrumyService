@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IDeviceRepository per-device config members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IDeviceRepository per-device config members - forwarded to the standalone EfDeviceRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<DeviceConfigSensor?> DeviceConfigSensorGetAsync(int? deviceConfigSensorID) => deviceRepository.DeviceConfigSensorGetAsync(deviceConfigSensorID);
 

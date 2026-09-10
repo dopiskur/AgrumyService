@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IExperimentRepository members - forwarded to the standalone EfExperimentRepository so IRepository's broad consumers keep working unchanged, same pattern as EfRepository.Simulation.cs.
-    internal partial class EfRepository
+    /// IExperimentRepository members - forwarded to the standalone EfExperimentRepository so RelationalIntegrationTests can drive many facets through one object, same pattern as AllFacetsRepository.Simulation.cs.
+    internal partial class AllFacetsRepository
     {
         public Task<Experiment> ExperimentAddAsync(Experiment experiment) => experimentRepository.ExperimentAddAsync(experiment);
 

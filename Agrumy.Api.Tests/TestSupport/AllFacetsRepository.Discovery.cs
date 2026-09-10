@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IDiscoveryRepository members - forwarded to the standalone EfDiscoveryRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IDiscoveryRepository members - forwarded to the standalone EfDiscoveryRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task DiscoveryReportAddAsync(int scanningDeviceId, string discoveredApMac, int? rssi) =>
             discoveryRepository.DiscoveryReportAddAsync(scanningDeviceId, discoveredApMac, rssi);

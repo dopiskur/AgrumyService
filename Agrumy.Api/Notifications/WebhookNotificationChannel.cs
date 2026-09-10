@@ -7,7 +7,7 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Notifications
 {
     /// Posts a JSON event to an operator-configured URL, so an external system learns about an alert without polling Agrumy. Config lives in the DB-backed ServerConfig (Webhook* fields, admin-editable via Server Settings), not appsettings - read fresh on every call, same pattern as EmailNotificationChannel.
-    public sealed class WebhookNotificationChannel(IRepository repo, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger) : INotificationChannel
+    public sealed class WebhookNotificationChannel(IServerConfigRepository serverConfigRepo, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger) : INotificationChannel
     {
         public const string ClientName = "WebhookNotificationChannel";
 
@@ -20,7 +20,7 @@ namespace Agrumy.Api.Notifications
             && uri.Scheme == Uri.UriSchemeHttps;
 
         public async Task<bool> IsConfiguredAsync(CancellationToken ct = default) =>
-            IsConfigured(await repo.ServerConfigGetAsync(1));
+            IsConfigured(await serverConfigRepo.ServerConfigGetAsync(1));
 
         public async Task<NotificationResult> SendAsync(Notification notification, CancellationToken ct = default)
         {
@@ -28,7 +28,7 @@ namespace Agrumy.Api.Notifications
             {
                 return NotificationResult.Skipped("notification carries a secret, never forwarded to webhook");
             }
-            ServerConfig config = await repo.ServerConfigGetAsync(1);
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
             if (!IsConfigured(config))
             {
                 return NotificationResult.Skipped("webhook channel disabled or Url missing/not https");

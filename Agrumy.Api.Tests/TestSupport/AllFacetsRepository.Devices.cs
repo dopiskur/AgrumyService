@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IDeviceRepository core CRUD members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged. ToDto(DeviceRow) moved to EfDeviceRepository.ToDto - EfRepository.DeviceFarmUnits.cs (not yet extracted) now calls that directly.
-    internal partial class EfRepository
+    /// IDeviceRepository core CRUD members - forwarded to the standalone EfDeviceRepository so RelationalIntegrationTests can drive many facets through one object. ToDto(DeviceRow) moved to EfDeviceRepository.ToDto - AllFacetsRepository.DeviceFarmUnits.cs (not yet extracted) now calls that directly.
+    internal partial class AllFacetsRepository
     {
         public Task<Device> DeviceAddAsync(Device device, Func<Task<string?>>? quotaCheckAsync = null) => deviceRepository.DeviceAddAsync(device, quotaCheckAsync);
 

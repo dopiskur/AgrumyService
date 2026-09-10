@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IHorticultureCatalogRepository members - forwarded to the standalone EfHorticultureCatalogRepository so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IHorticultureCatalogRepository members - forwarded to the standalone EfHorticultureCatalogRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<IList<HorticultureCatalogEntry>> CatalogGetAsync(HorticultureCatalogType type) => horticultureCatalogRepository.CatalogGetAsync(type);
 

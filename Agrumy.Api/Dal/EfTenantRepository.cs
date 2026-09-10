@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// ITenantRepository, extracted out of the EfRepository god class (roadmap #246) - a leaf facet, no dependency on any other domain.
+    /// ITenantRepository - a leaf facet, no dependency on any other domain.
     internal sealed class EfTenantRepository(AgrumyDbContext db, ISecretProtector secretProtector) : ITenantRepository
     {
         public async Task<bool> TenantGetAsync(string tenantName)

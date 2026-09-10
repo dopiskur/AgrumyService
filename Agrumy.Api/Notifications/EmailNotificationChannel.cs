@@ -7,7 +7,7 @@ using MimeKit;
 namespace Agrumy.Api.Notifications
 {
     /// SMTP email delivery via MailKit. Config lives in the DB-backed ServerConfig (Email* fields, admin-editable via Server Settings), not appsettings - read fresh on every call rather than a bound options snapshot, same pattern as Agrumy.Api.Commands.MqttCommandPublisher's ServerConfigGetAsync(1) read.
-    public sealed class EmailNotificationChannel(IRepository repo, ILogger<EmailNotificationChannel> logger) : INotificationChannel
+    public sealed class EmailNotificationChannel(IServerConfigRepository serverConfigRepo, ILogger<EmailNotificationChannel> logger) : INotificationChannel
     {
         public string Name => "email";
         public bool PerRecipient => true;
@@ -18,11 +18,11 @@ namespace Agrumy.Api.Notifications
             && !string.IsNullOrWhiteSpace(config.EmailFromAddress);
 
         public async Task<bool> IsConfiguredAsync(CancellationToken ct = default) =>
-            IsConfigured(await repo.ServerConfigGetAsync(1));
+            IsConfigured(await serverConfigRepo.ServerConfigGetAsync(1));
 
         public async Task<NotificationResult> SendAsync(Notification notification, CancellationToken ct = default)
         {
-            ServerConfig config = await repo.ServerConfigGetAsync(1);
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
             if (!IsConfigured(config))
             {
                 return NotificationResult.Skipped("email channel disabled or missing Host/FromAddress");

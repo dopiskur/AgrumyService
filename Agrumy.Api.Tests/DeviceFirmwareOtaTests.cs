@@ -5,13 +5,14 @@ using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// Exercises the firmware-lookup branch in DeviceApiController.BuildDeviceConfigAsync() through the public Register action (Config takes the same path). No database - IRepository is mocked.
 public class DeviceFirmwareOtaTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private DeviceConfig RegisterAndGetConfig(Device device)
@@ -27,10 +28,10 @@ public class DeviceFirmwareOtaTests
         _repo.Setup(r => r.GetPendingCommandsAsync(device.IDDevice!.Value)).ReturnsAsync(new List<DeviceCommand>());
         _repo.Setup(r => r.DeviceSimulationGetAsync(device.IDDevice!.Value)).ReturnsAsync((DeviceSimulation?)null);
 
-        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object);
+        var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DeviceApiController>.Instance,
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));

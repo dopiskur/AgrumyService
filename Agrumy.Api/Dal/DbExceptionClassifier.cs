@@ -5,7 +5,7 @@ using Npgsql;
 
 namespace Agrumy.Api.Dal
 {
-    /// Pure exception-to-DbFailureKind mapping, pulled out of EfRepository (roadmap #246) so domain repositories (EfCommandRepository, EfRepository.Devices.Diagnostics.cs) can classify a caught exception without depending on the whole ISystemRepository facet.
+    /// Pure exception-to-DbFailureKind mapping, pulled out of EfRepository so domain repositories (EfCommandRepository, EfRepository.Devices.Diagnostics.cs) can classify a caught exception without depending on the whole ISystemRepository facet.
     internal static class DbExceptionClassifier
     {
         internal static DbFailureKind Classify(Exception ex)

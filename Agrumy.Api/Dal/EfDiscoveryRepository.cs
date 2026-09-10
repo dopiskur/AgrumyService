@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IDiscoveryRepository, extracted out of the EfRepository god class (roadmap #246) - reads db.Devices directly for scanner scoping rather than calling into IDeviceRepository, but that's a direct DbSet read, not a facet-interface dependency.
+    /// IDiscoveryRepository - reads db.Devices directly for scanner scoping rather than calling into IDeviceRepository, but that's a direct DbSet read, not a facet-interface dependency.
     internal sealed class EfDiscoveryRepository(AgrumyDbContext db) : IDiscoveryRepository
     {
         public async Task DiscoveryReportAddAsync(int scanningDeviceId, string discoveredApMac, int? rssi)

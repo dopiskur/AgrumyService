@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IAuditLogRepository members - forwarded to the standalone EfAuditLogRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IAuditLogRepository members - forwarded to the standalone EfAuditLogRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task AuditLogAddAsync(AuditLogEntry entry) => auditLogRepository.AuditLogAddAsync(entry);
 

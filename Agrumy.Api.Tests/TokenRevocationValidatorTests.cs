@@ -9,20 +9,20 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
 /// Roadmap #397(4) - ValidateAsync ran repo.UserGetAsync on every authenticated request; now it should hit the cache on a second call within the TTL instead of the DB again.
 public class TokenRevocationValidatorTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new(MockBehavior.Strict);
 
     private TokenValidatedContext NewContext(string email, DateTime issuedAt)
     {
         var services = new ServiceCollection()
-            .AddSingleton(_repo.Object)
-            .AddSingleton<IRepository>(_repo.Object)
+            .AddSingleton<IUserRepository>(_repo.Object)
             .AddSingleton(_cache.Object)
             .BuildServiceProvider();
         var httpContext = new DefaultHttpContext { RequestServices = services };

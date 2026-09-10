@@ -8,6 +8,7 @@ using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
 using Agrumy.Api.Security;
+using Agrumy.Api.Tests.TestSupport;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -93,7 +94,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 {
     private readonly RelationalIntegrationFixture _fx;
     private AgrumyDbContext? _db;
-    private EfRepository _repo = null!;
+    private AllFacetsRepository _repo = null!;
 
     public RelationalIntegrationTests(RelationalIntegrationFixture fx) => _fx = fx;
 
@@ -122,7 +123,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     // NullCache: these tests verify query/translation correctness against the real engine, not cache behavior. Every Ef*Repository is stateless over its AgrumyDbContext, so constructing several against the same db is cheap and side-effect-free.
-    private static EfRepository BuildRepository(AgrumyDbContext db)
+    private static AllFacetsRepository BuildRepository(AgrumyDbContext db)
     {
         var settingsOptions = Options.Create(new AgrumySettings());
         var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider(), NullLogger<SecretProtector>.Instance);
@@ -133,7 +134,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository);
         var experimentRepository = new EfExperimentRepository(db);
 
-        return new EfRepository(db, NullLogger<EfRepository>.Instance,
+        return new AllFacetsRepository(db,
             new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db, experimentRepository),
             new EfDiscoveryRepository(db), tenantRepository, new EfGatewayRepository(db), serverConfigRepository,
             new EfCommandRepository(db), new EfFirmwareRepository(db),
@@ -1175,7 +1176,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
         Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
-        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, FirmwareTestSupport.NewCatalog(_repo));
+        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo));
         DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
         Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);
     }

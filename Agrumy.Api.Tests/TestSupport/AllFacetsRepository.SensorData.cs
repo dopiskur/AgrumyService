@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// ISensorDataRepository members - forwarded to the standalone EfSensorDataRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// ISensorDataRepository members - forwarded to the standalone EfSensorDataRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID) =>
             sensorDataRepository.SensorDataPushAsync(readings, deviceID, tenantID, deviceFarmUnitID, deviceFarmUnitZoneID);

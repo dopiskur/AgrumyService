@@ -187,7 +187,7 @@ namespace Agrumy.Shared.Models
             PurgedAtUtc = d.PurgedAtUtc,
         };
 
-        /// The internal round-trip shape EfRepository/IRepository speak - ApiId/ApiKey are left unset here on purpose; DeviceUpdateAsync's own whitelist never reads them off the payload anyway, only off the freshly-loaded row.
+        /// The internal round-trip shape IDeviceRepository speaks - ApiId/ApiKey are left unset here on purpose; DeviceUpdateAsync's own whitelist never reads them off the payload anyway, only off the freshly-loaded row.
         public static Device ToDevice(this DeviceDto dto) => new()
         {
             ConfigVersion = dto.ConfigVersion,

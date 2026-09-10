@@ -1,9 +1,9 @@
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// ITenantRepository members - forwarded to the standalone EfTenantRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// ITenantRepository members - forwarded to the standalone EfTenantRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<bool> TenantGetAsync(string tenantName) => tenantRepository.TenantGetAsync(tenantName);
 

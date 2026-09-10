@@ -10,7 +10,7 @@ namespace Agrumy.Api.Tests;
 /// Exercises FirmwareCatalogService with a mocked repository and a canned IFirmwareFetcher - no database, no network. The Local-repository paths write real files, but only into a per-test temp directory.
 public class FirmwareCatalogServiceTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IFirmwareRepository> _repo = new(MockBehavior.Strict);
     private readonly FakeFirmwareFetcher _fetcher = new();
     private readonly FirmwareStorage _storage;
     private readonly string _root;
@@ -34,7 +34,7 @@ public class FirmwareCatalogServiceTests
              .Returns((int id) => { _rows.RemoveAll(x => x.IDDeviceFirmware == id); return Task.CompletedTask; });
         _repo.Setup(r => r.FirmwareDeleteBySourceAsync(It.IsAny<FirmwareSource>()))
              .ReturnsAsync((FirmwareSource s) => _rows.RemoveAll(x => x.Source == s && x.Board != null));
-        // Mirrors the real EfRepository.FirmwareReplaceSourceRowsAsync's remove-then-add, minus the actual transaction.
+        // Mirrors the real EfFirmwareRepository.FirmwareReplaceSourceRowsAsync's remove-then-add, minus the actual transaction.
         _repo.Setup(r => r.FirmwareReplaceSourceRowsAsync(It.IsAny<FirmwareSource>(), It.IsAny<IReadOnlyList<DeviceFirmware>>()))
              .ReturnsAsync((FirmwareSource s, IReadOnlyList<DeviceFirmware> rows) =>
              {
@@ -48,10 +48,10 @@ public class FirmwareCatalogServiceTests
              });
     }
 
-    private FirmwareCatalogService NewService() => FirmwareTestSupport.NewCatalog(_repo.Object, _fetcher, _storage);
+    private FirmwareCatalogService NewService() => FirmwareTestSupport.NewCatalog(_repo, _fetcher, _storage);
 
     private void SetSource(FirmwareSource source, string? customUrl = null) =>
-        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig
+        _repo.As<IServerConfigRepository>().Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig
         {
             FirmwareSource = source,
             FirmwareGitHubRepository = "dopiskur/AgrumyFirmware",
@@ -357,7 +357,7 @@ public class FirmwareCatalogServiceTests
     [Fact]
     public async Task ResolveOffer_Falls_Back_To_Legacy_DeviceType_Row_When_Board_Unknown()
     {
-        _repo.Setup(r => r.DeviceFirmwareLatestGetAsync(3)).ReturnsAsync(new DeviceFirmware { Version = "0.1.5", Url = "legacy" });
+        _repo.As<IDeviceRepository>().Setup(r => r.DeviceFirmwareLatestGetAsync(3)).ReturnsAsync(new DeviceFirmware { Version = "0.1.5", Url = "legacy" });
 
         DeviceFirmware? offer = await NewService().ResolveOfferAsync(new Device { IDDevice = 1, FirmwareUpdate = true, DeviceRoleID = 3 }, board: null);
 
@@ -583,14 +583,14 @@ public class FirmwareCatalogServiceTests
         (Stream zipContent, _) = await NewService().BuildDownloadZipAsync(latestOnly: false, "https://api.agrumy.com");
 
         // A fresh catalog (own repo + storage root) importing the ZIP - proves the format round-trips, not just that Import already works.
-        var freshRepo = new Mock<IRepository>(MockBehavior.Strict);
+        var freshRepo = new Mock<IFirmwareRepository>(MockBehavior.Strict);
         var freshRows = new List<DeviceFirmware>();
         int freshNextId = 1;
         freshRepo.Setup(r => r.FirmwareListForBoardAsync(It.IsAny<string>(), It.IsAny<IReadOnlyCollection<FirmwareSource>>()))
                  .ReturnsAsync((string board, IReadOnlyCollection<FirmwareSource> sources) => freshRows.Where(x => x.Board == board && sources.Contains(x.Source)).ToList());
         freshRepo.Setup(r => r.FirmwareAddAsync(It.IsAny<DeviceFirmware>()))
                  .ReturnsAsync((DeviceFirmware f) => { f.IDDeviceFirmware = freshNextId++; freshRows.Add(f); return f.IDDeviceFirmware.Value; });
-        FirmwareCatalogService freshCatalog = FirmwareTestSupport.NewCatalog(freshRepo.Object, storage: FirmwareTestSupport.NewStorage(out _));
+        FirmwareCatalogService freshCatalog = FirmwareTestSupport.NewCatalog(freshRepo, storage: FirmwareTestSupport.NewStorage(out _));
 
         FirmwareSyncResult result = await freshCatalog.UploadZipAsync(zipContent, "https://api.agrumy.com");
 

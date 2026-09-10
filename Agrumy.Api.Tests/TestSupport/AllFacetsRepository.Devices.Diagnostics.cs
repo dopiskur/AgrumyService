@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IDeviceRepository diagnostics/fleet/events/alert members - forwarded to the standalone EfDeviceRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// IDeviceRepository diagnostics/fleet/events/alert members - forwarded to the standalone EfDeviceRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task DeviceDiagnosticUpsertAsync(int deviceID, int tenantID, DeviceConfigPoll poll) => deviceRepository.DeviceDiagnosticUpsertAsync(deviceID, tenantID, poll);
 

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IAuditLogRepository, extracted out of the EfRepository god class (roadmap #246) - a pure leaf, no dependency on any other facet.
+    /// IAuditLogRepository - a pure leaf, no dependency on any other facet.
     internal sealed class EfAuditLogRepository(AgrumyDbContext db) : IAuditLogRepository
     {
         public async Task AuditLogAddAsync(AuditLogEntry entry)

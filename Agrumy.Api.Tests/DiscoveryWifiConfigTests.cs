@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Moq;
+using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
@@ -16,7 +17,7 @@ namespace Agrumy.Api.Tests;
 /// ownership checks on cross-tenant Update/Delete.
 public class DiscoveryWifiConfigTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
     private DiscoveryApiController NewController(int? tenantId, params string[] roles)

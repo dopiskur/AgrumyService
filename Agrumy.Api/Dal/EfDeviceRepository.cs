@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 
 namespace Agrumy.Api.Dal
 {
-    /// IDeviceRepository, extracted out of the EfRepository god class (roadmap #246) - device CRUD, configs, fixed type lists, firmware's legacy board-less lookup, diagnostics/fleet, events, and the offline/low-battery alert queries. Needs IServerConfigRepository (hysteresis defaults on add, EventDedupeMinutes, active firmware source) - an already-extracted leaf facet, so no circular dependency.
+    /// IDeviceRepository - device CRUD, configs, fixed type lists, firmware's legacy board-less lookup, diagnostics/fleet, events, and the offline/low-battery alert queries. Needs IServerConfigRepository (hysteresis defaults on add, EventDedupeMinutes, active firmware source) - an already-extracted leaf facet, so no circular dependency.
     internal sealed class EfDeviceRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ICache cache, IServerConfigRepository serverConfigRepository) : IDeviceRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
@@ -350,7 +350,7 @@ namespace Agrumy.Api.Dal
             return rows > 0;
         }
 
-        /// internal, not private - EfGatewayRepository and EfRepository.DeviceFarmUnits.cs (not yet extracted) also map DeviceRow to Device.
+        /// internal, not private - EfGatewayRepository and EfDeviceFarmUnitRepository also map DeviceRow to Device.
         internal static Device ToDto(DeviceRow d) => new()
         {
             IDDevice = d.IDDevice,

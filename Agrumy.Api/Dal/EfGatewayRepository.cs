@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IGatewayRepository, extracted out of the EfRepository god class (roadmap #246) - reads db.Devices directly rather than calling into IDeviceRepository, and reuses EfDeviceRepository.ToDto for the one DeviceRow-to-Device mapping it needs.
+    /// IGatewayRepository - reads db.Devices directly rather than calling into IDeviceRepository, and reuses EfDeviceRepository.ToDto for the one DeviceRow-to-Device mapping it needs.
     internal sealed class EfGatewayRepository(AgrumyDbContext db) : IGatewayRepository
     {
         public async Task<IList<Device>> GatewayDevicesGetAllAsync()

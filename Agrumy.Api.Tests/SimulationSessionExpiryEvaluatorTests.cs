@@ -5,12 +5,18 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// Exercises SimulationSessionExpiryEvaluator directly - no database, IRepository is mocked.
+/// Exercises SimulationSessionExpiryEvaluator directly - no database, its two facets are mocked.
 public class SimulationSessionExpiryEvaluatorTests
 {
-    private readonly Mock<IRepository> _repo = new(MockBehavior.Strict);
+    private readonly Mock<ISimulationRepository> _repo = new(MockBehavior.Strict);
+    private IDeviceRepository DeviceRepo => _repo.As<IDeviceRepository>().Object;
 
-    private SimulationSessionExpiryEvaluator NewEvaluator() => new(_repo.Object);
+    // DeviceRepo (Mock.As&lt;T&gt;()) must be touched before _repo.Object is ever read - Moq locks the mock's interface set on first .Object access, and constructor args evaluate left to right.
+    private SimulationSessionExpiryEvaluator NewEvaluator()
+    {
+        IDeviceRepository deviceRepo = DeviceRepo;
+        return new(_repo.Object, deviceRepo);
+    }
 
     [Fact]
     public async Task NoExpiredSessions_DoesNothing()
@@ -33,12 +39,12 @@ public class SimulationSessionExpiryEvaluatorTests
         };
         _repo.Setup(r => r.SimulationSessionsExpiredButActiveGetAsync(It.IsAny<DateTimeOffset>())).ReturnsAsync(new List<SimulationSession> { session });
         _repo.Setup(r => r.VirtualDeviceIdsGetAsync(1)).ReturnsAsync(new List<int> { 9 }); // 9 is virtual, 8 is physical
-        _repo.Setup(r => r.DeviceSimulationSetAsync(8, It.Is<DeviceSimulation>(s => !s.Enabled))).Returns(Task.CompletedTask);
+        _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationSetAsync(8, It.Is<DeviceSimulation>(s => !s.Enabled))).Returns(Task.CompletedTask);
         _repo.Setup(r => r.SimulationSessionStopAsync(7)).Returns(Task.CompletedTask);
 
         await NewEvaluator().RunOnceAsync();
 
-        _repo.Verify(r => r.DeviceSimulationSetAsync(8, It.IsAny<DeviceSimulation>()), Times.Once);
+        _repo.As<IDeviceRepository>().Verify(r => r.DeviceSimulationSetAsync(8, It.IsAny<DeviceSimulation>()), Times.Once);
         // Strict mock: DeviceSimulationSetAsync(9, ...) has no setup, proving the virtual member was never touched.
     }
 

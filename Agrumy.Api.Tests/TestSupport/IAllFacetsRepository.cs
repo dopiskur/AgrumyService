@@ -1,7 +1,9 @@
-namespace Agrumy.Api.Dal.Interface
+using Agrumy.Api.Dal.Interface;
+
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// Full data-layer contract composed from the per-domain facets below - controllers inject this since their flows cross domains, narrow infrastructure injects just its facet, both resolve to the same scoped EfRepository instance.
-    public interface IRepository :
+    /// Test-only composed mock target - lets one strict Mock&lt;IAllFacetsRepository&gt; satisfy every narrow facet a controller/service constructor takes, the way a single IRepository mock did before production code moved off that broad interface. Public (not internal) because Castle DynamicProxy/Moq can't proxy a non-public interface without an InternalsVisibleTo grant.
+    public interface IAllFacetsRepository :
         ISystemRepository,
         IServerConfigRepository,
         IUserRepository,

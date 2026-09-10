@@ -4,23 +4,23 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Migration
 {
     /// Applies a TenantExport to this server (see Agrumy.Shared.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
-    public class TenantImportService(IRepository repo)
+    public class TenantImportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
     {
         /// ByName: ties to an existing tenant with this exact name, or creates one; GlobalAdmin-only at the controller layer.
         public async Task<TenantImportResult> ImportByNameAsync(TenantExport export, string targetTenantName)
         {
-            int tenantId = await repo.TenantGetIdAsync(targetTenantName) ?? await repo.TenantAddAsync(targetTenantName);
+            int tenantId = await tenantRepo.TenantGetIdAsync(targetTenantName) ?? await tenantRepo.TenantAddAsync(targetTenantName);
             return await ImportIntoTenantAsync(export, tenantId, targetTenantName);
         }
 
         /// AsSentinel: TenantID=0, only while TenantZeroIsEmptyAsync - reachable without an admin session (a brand-new self-hosted server has nobody to log in as yet); discards the pending bootstrap admin placeholder first.
         public async Task<(TenantImportResult? result, string? error)> ImportAsSentinelAsync(TenantExport export)
         {
-            if (!await repo.TenantZeroIsEmptyAsync())
+            if (!await tenantRepo.TenantZeroIsEmptyAsync())
             {
                 return (null, "TenantID 0 on this server already has data - import-as-sentinel refuses to merge into or overwrite an existing installation.");
             }
-            await repo.BootstrapAdminDiscardPendingAsync();
+            await userRepo.BootstrapAdminDiscardPendingAsync();
             return (await ImportIntoTenantAsync(export, 0, "Default"), null);
         }
 
@@ -31,7 +31,7 @@ namespace Agrumy.Api.Migration
             await ImportUsersAsync(export, tenantId, result);
             Dictionary<int, int> unitIdMap = await ImportUnitsAsync(export, tenantId, result);
             // TenantExport predates Farm and carries no farm data, so every imported unit lands farm-less; this is a no-op for an existing tenant that already has a farm, and otherwise sweeps the freshly-imported units into a new "First farm" same as a brand-new registration would.
-            await repo.EnsureFirstFarmAsync(tenantId);
+            await deviceFarmUnitRepo.EnsureFirstFarmAsync(tenantId);
             Dictionary<int, int> zoneIdMap = await ImportZonesAsync(export, tenantId, unitIdMap, result);
             await ImportZoneRulesAsync(export, tenantId, zoneIdMap, result);
             Dictionary<int, int> deviceIdMap = await ImportDevicesAsync(export, tenantId, unitIdMap, zoneIdMap, result);
@@ -45,13 +45,13 @@ namespace Agrumy.Api.Migration
             foreach (TenantExportUser eu in export.Users)
             {
                 // Email/Username carry a GLOBAL unique index (not per-tenant) - a collision (re-run import, or already has an account) is expected, so skip the row rather than fail the batch.
-                if (!string.IsNullOrEmpty(eu.User.Email) && await repo.UserGetAsync(null, eu.User.Email, null) is not null)
+                if (!string.IsNullOrEmpty(eu.User.Email) && await userRepo.UserGetAsync(null, eu.User.Email, null) is not null)
                 {
                     result.UsersSkipped++;
                     result.SkippedReasons.Add($"User {eu.User.Email}: an account with this email already exists on this server.");
                     continue;
                 }
-                if (!string.IsNullOrEmpty(eu.User.Username) && await repo.UserGetAsync(null, null, eu.User.Username) is not null)
+                if (!string.IsNullOrEmpty(eu.User.Username) && await userRepo.UserGetAsync(null, null, eu.User.Username) is not null)
                 {
                     result.UsersSkipped++;
                     result.SkippedReasons.Add($"User {eu.User.Email}: username '{eu.User.Username}' already exists on this server.");
@@ -72,10 +72,10 @@ namespace Agrumy.Api.Migration
                     // Portable hash, unproven identity on THIS server - see Agrumy.Shared.Models.User.MustChangePassword.
                     MustChangePassword = true,
                 };
-                await repo.UserAddAsync(newUser, new UserSecret { PwdHash = eu.PwdHash, PwdSalt = eu.PwdSalt });
+                await userRepo.UserAddAsync(newUser, new UserSecret { PwdHash = eu.PwdHash, PwdSalt = eu.PwdSalt });
 
                 // UserAddAsync doesn't return the new id - same re-fetch-by-email pattern as UserApiController.UserRegistration.
-                User? added = await repo.UserGetAsync(null, eu.User.Email, null);
+                User? added = await userRepo.UserGetAsync(null, eu.User.Email, null);
                 if (added?.IDUser is not int newId)
                 {
                     result.UsersSkipped++;
@@ -84,7 +84,7 @@ namespace Agrumy.Api.Migration
                 }
                 // Global-* roles are a server-level concept, not portable across a tenant export/import boundary - never let an imported user land on this server as a Global admin/reader/etc.
                 var importableRoles = eu.Roles.Where(r => !r.StartsWith("Global", StringComparison.Ordinal)).ToList();
-                await repo.UserRolesSetAsync(newId, importableRoles);
+                await userRepo.UserRolesSetAsync(newId, importableRoles);
                 result.UsersImported++;
             }
         }
@@ -94,7 +94,7 @@ namespace Agrumy.Api.Migration
             var map = new Dictionary<int, int>();
             foreach (DeviceFarmUnit u in export.Units)
             {
-                DeviceFarmUnit created = await repo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = tenantId, DeviceFarmUnitName = u.DeviceFarmUnitName });
+                DeviceFarmUnit created = await deviceFarmUnitRepo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = tenantId, DeviceFarmUnitName = u.DeviceFarmUnitName });
                 if (u.IDDeviceFarmUnit is int oldId && created.IDDeviceFarmUnit is int newId)
                 {
                     map[oldId] = newId;
@@ -113,7 +113,7 @@ namespace Agrumy.Api.Migration
             var map = new Dictionary<int, int>();
             foreach (DeviceFarmUnitZone z in export.Zones)
             {
-                DeviceFarmUnitZone created = await repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone
+                DeviceFarmUnitZone created = await deviceFarmUnitRepo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone
                 {
                     TenantID = tenantId,
                     DeviceFarmUnitID = RemapOrSentinel(z.DeviceFarmUnitID, unitIdMap),
@@ -148,7 +148,7 @@ namespace Agrumy.Api.Migration
                 {
                     continue; // the zone it belonged to failed to import - an orphaned rule is worse than a dropped one
                 }
-                await repo.RuleAddAsync(new DeviceFarmUnitZoneRule
+                await deviceFarmUnitRepo.RuleAddAsync(new DeviceFarmUnitZoneRule
                 {
                     TenantID = tenantId,
                     DeviceFarmUnitZoneID = newZoneId,
@@ -171,7 +171,7 @@ namespace Agrumy.Api.Migration
             foreach (TenantExportDevice ed in export.Devices)
             {
                 // ApiId is globally unique - a collision (re-run import, or already here under a different tenant) is skipped, not failed on.
-                if (!string.IsNullOrEmpty(ed.ApiId) && await repo.DeviceGetByApiIdAsync(ed.ApiId) is not null)
+                if (!string.IsNullOrEmpty(ed.ApiId) && await deviceRepo.DeviceGetByApiIdAsync(ed.ApiId) is not null)
                 {
                     result.DevicesSkipped++;
                     result.SkippedReasons.Add($"Device {ed.Device.DeviceName} ({ed.ApiId}): already exists on this server.");
@@ -179,7 +179,7 @@ namespace Agrumy.Api.Migration
                 }
 
                 // ApiId/ApiKey kept AS EXPORTED - a real device's firmware needs no reconfiguration to keep talking to whichever server now owns this row.
-                Device created = await repo.DeviceAddAsync(new Device
+                Device created = await deviceRepo.DeviceAddAsync(new Device
                 {
                     TenantID = tenantId,
                     DeviceRoleID = ed.Device.DeviceRoleID,
@@ -202,11 +202,11 @@ namespace Agrumy.Api.Migration
 
                 if (ed.Sensor != null)
                 {
-                    await repo.DeviceConfigSensorUpdateAsync(created.IDDevice, ed.Sensor);
+                    await deviceRepo.DeviceConfigSensorUpdateAsync(created.IDDevice, ed.Sensor);
                 }
                 if (ed.Controller != null)
                 {
-                    await repo.DeviceConfigControllerUpdateAsync(created.IDDevice, ed.Controller);
+                    await deviceRepo.DeviceConfigControllerUpdateAsync(created.IDDevice, ed.Controller);
                 }
                 if (ed.Device.IDDevice is int oldId && created.IDDevice is int newId)
                 {
@@ -256,7 +256,7 @@ namespace Agrumy.Api.Migration
             }
             if (rows.Count > 0)
             {
-                await repo.SensorDataImportAsync(rows);
+                await sensorDataRepo.SensorDataImportAsync(rows);
                 result.SensorDataRowsImported = rows.Count;
             }
         }

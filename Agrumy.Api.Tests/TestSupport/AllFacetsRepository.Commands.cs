@@ -1,10 +1,10 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 
-namespace Agrumy.Api.Dal
+namespace Agrumy.Api.Tests.TestSupport
 {
-    /// ICommandRepository members - forwarded to the standalone EfCommandRepository (roadmap #246) so IRepository's broad consumers keep working unchanged.
-    internal partial class EfRepository
+    /// ICommandRepository members - forwarded to the standalone EfCommandRepository so RelationalIntegrationTests can drive many facets through one object.
+    internal partial class AllFacetsRepository
     {
         public Task<bool> HasActiveCommandAsync(int deviceId, CommandActionType actionType, DateTime utcNow) =>
             commandRepository.HasActiveCommandAsync(deviceId, actionType, utcNow);
