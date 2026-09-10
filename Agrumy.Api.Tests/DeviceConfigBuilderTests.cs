@@ -106,6 +106,8 @@ public class DeviceConfigBuilderTests
         // Computed, not copied straight off Device - still required to actually be present, not left at their type default.
         Assert.NotNull(config.UtcOffsetSeconds);
         Assert.NotNull(config.ServerUtcEpoch);
+        // BuildAsync never sets this explicitly - it relies on DeviceConfig.SchemaVersion's own property-initializer default, so this guards against that default ever silently getting lost.
+        Assert.NotNull(config.SchemaVersion);
     }
 
     [Fact]
