@@ -250,7 +250,10 @@ download_and_install_app() {
   # pscp/scp losing the execute bit is a known trap (CLAUDE.md) - tar preserves it, but set it
   # explicitly anyway so a re-run after a manual file replacement can't silently regress this.
   as_root chmod +x "${install_dir}/${app}"
-  as_root chown -R "${service_user}:${service_user}" "$install_dir"
+  # Root keeps ownership of the binary and static assets (chmod +x above already gives every user
+  # read+execute) - a service_user chown -R here would let a compromised app process overwrite its
+  # own executable. Paths the running service actually needs to WRITE (appsettings.json, the
+  # DataProtection keys dir, Agrumy.Api's firmware-store) are chowned individually where created.
 }
 
 write_appsettings_api() {
@@ -345,14 +348,23 @@ install_reverse_proxy_hostname() {
 generate_self_signed_cert() {
   # $1 = IP, $2 = cert path, $3 = key path
   local ip="$1" cert_path="$2" key_path="$3"
-  [ -f "$cert_path" ] && return
-  ensure_cmd openssl openssl
-  as_root mkdir -p "$(dirname "$cert_path")"
-  log "Generating a self-signed TLS cert for ${ip} (Let's Encrypt cannot issue one for a bare IP)"
-  as_root openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
-    -keyout "$key_path" -out "$cert_path" \
-    -subj "/CN=${ip}" -addext "subjectAltName=IP:${ip}"
-  as_root chmod 600 "$key_path"
+  if [ -f "$cert_path" ]; then
+    log "Self-signed cert already exists for ${ip} - reusing it (re-run keeps devices pinned to the same cert)."
+  else
+    ensure_cmd openssl openssl
+    as_root mkdir -p "$(dirname "$cert_path")"
+    log "Generating a self-signed TLS cert for ${ip} (Let's Encrypt cannot issue one for a bare IP)"
+    as_root openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
+      -keyout "$key_path" -out "$cert_path" \
+      -subj "/CN=${ip}" -addext "subjectAltName=IP:${ip}"
+    as_root chmod 600 "$key_path"
+  fi
+  # Devices can't validate a self-signed cert against a public CA - printing the PEM every run
+  # (new or reused) lets whoever provisions firmware paste it in for certificate pinning.
+  echo
+  echo "Self-signed cert PEM for ${ip} - pin this in device firmware (unchanged across reinstalls):"
+  as_root cat "$cert_path"
+  echo
 }
 
 # Single domain (or bare IP), /api split by path instead of by hostname.
@@ -504,6 +516,12 @@ install_baremetal() {
 
   download_and_install_app "Agrumy.Api" "$tag" "$api_dir" "$SERVICE_USER"
   download_and_install_app "Agrumy.Web" "$tag" "$web_dir" "$SERVICE_USER"
+
+  # FirmwareStorage.SaveAsync (Agrumy.Api) writes .bin uploads here at runtime (Firmware:LocalPath,
+  # default "firmware-store") - pre-create and chown just this one writable subdirectory instead of
+  # the whole install dir.
+  as_root mkdir -p "${api_dir}/firmware-store"
+  as_root chown "${SERVICE_USER}:${SERVICE_USER}" "${api_dir}/firmware-store"
 
   local jwt_secret
   jwt_secret="$(random_secret)"
