@@ -18,21 +18,23 @@ public class DeviceConfigBuilderTests
     private IDeviceRepository DeviceRepo => _repo.As<IDeviceRepository>().Object;
     private ISimulationRepository SimulationRepo => _repo.As<ISimulationRepository>().Object;
     private IDeviceFarmUnitRepository FarmUnitRepo => _repo.As<IDeviceFarmUnitRepository>().Object;
+    private IFarmOpenfieldRepository FarmOpenfieldRepo => _repo.As<IFarmOpenfieldRepository>().Object;
     private IExperimentRepository ExperimentRepo => _repo.As<IExperimentRepository>().Object;
     private IFirmwareRepository FirmwareRepo => _repo.As<IFirmwareRepository>().Object;
 
-    // All six facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
+    // All seven facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
     public DeviceConfigBuilderTests()
     {
         _repo.As<ITenantRepository>();
         _repo.As<IDeviceRepository>();
         _repo.As<ISimulationRepository>();
         _repo.As<IDeviceFarmUnitRepository>();
+        _repo.As<IFarmOpenfieldRepository>();
         _repo.As<IExperimentRepository>();
         _repo.As<IFirmwareRepository>();
     }
 
-    private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, ExperimentRepo,
+    private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, FarmOpenfieldRepo, ExperimentRepo,
         FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo));
 
     [Fact]

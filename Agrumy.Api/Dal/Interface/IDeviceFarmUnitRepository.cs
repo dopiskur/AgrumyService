@@ -166,8 +166,14 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule scoped to exactly this farm (Farm scope, not the union of its units'/zones' own rules) - roadmap #384.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForFarmAsync(int idDeviceFarm);
 
-        /// Every rule at Global (per-tenant) scope - applies to every farm/unit/zone the tenant owns unless a more specific scope overrides it for that function/metric.
+        /// Every rule at Global (per-tenant) scope - applies to every farm/unit/zone/crop/parcel the tenant owns unless a more specific scope overrides it for that function/metric.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId);
+
+        /// Open-Field's mid-level equivalent of RulesGetForUnitAsync.
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForCropAsync(int idFarmOpenfieldCrop);
+
+        /// Open-Field's leaf-level equivalent of RulesGetForZoneAsync.
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForParcelAsync(int idFarmOpenfieldCropParcel);
 
         /// Every rule scoped to exactly this simulation session - evaluated ahead of a member device's real Zone>Unit>Farm>Global rules, falling back to that hierarchy for anything this session has no rule for.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSimulationAsync(int idSimulationSession);

@@ -1,0 +1,32 @@
+using Agrumy.Shared.Models;
+
+namespace Agrumy.Web.ViewModels
+{
+    /// Drives FarmOpenfield/Parcels.cshtml - one crop's parcel list, the Open-Field mirror of UnitZonesViewModel.
+    public class CropParcelsViewModel
+    {
+        public required FarmOpenfieldCrop Crop { get; init; }
+        public required DeviceFarm Farm { get; init; }
+        public IList<FarmOpenfieldCropParcel> Parcels { get; init; } = [];
+        /// Fleet rows for every device across this crop's parcels, filtered client-side per parcel by FarmOpenfieldCropParcelID - same "one shared fetch, filter in the view" reuse as ZoneViewModel.AllFleet.
+        public IList<DeviceFleetStatus> Fleet { get; init; } = [];
+    }
+
+    /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets, discovery, or day/night presets - fast-follow).
+    public class ParcelViewModel
+    {
+        public required FarmOpenfieldCropParcel Parcel { get; init; }
+        public required FarmOpenfieldCrop Crop { get; init; }
+        public required DeviceFarm Farm { get; init; }
+        public IList<DeviceFleetStatus> Devices { get; init; } = [];
+        public IList<DeviceFarmUnitZoneRule> Rules { get; init; } = [];
+    }
+
+    /// Drives FarmOpenfield/ParcelAssignPicker.cshtml - the Open-Field mirror of AssignPickerViewModel, kept separate rather than generalizing the Zone one (same "avoid cross-controller coupling" reasoning as EfFarmOpenfieldRepository's own doc comment).
+    public class ParcelAssignPickerViewModel
+    {
+        public int IDFarmOpenfieldCropParcel { get; set; }
+        public bool ControllerCapable { get; set; }
+        public IList<DeviceDto> Devices { get; set; } = [];
+    }
+}

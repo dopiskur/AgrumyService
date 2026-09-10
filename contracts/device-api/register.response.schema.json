@@ -363,6 +363,8 @@
         "deviceFarmID",
         "deviceFarmUnitID",
         "deviceFarmUnitZoneID",
+        "deviceFarmOpenfieldCropID",
+        "deviceFarmOpenfieldCropParcelID",
         "simulationSessionID",
         "experimentID",
         "actionType",
@@ -394,6 +396,12 @@
         "deviceFarmUnitZoneID": {
           "type": ["integer", "null"],
           "description": "Which zone this rule belongs to - redundant with the top-level deviceConfig.deviceFarmUnitZoneID (the device already knows its own zone). Never actually null on a rule that reached a device (a rule only reaches firmware after RuleHierarchyResolver has already pinned it to this specific zone), the type stays nullable here only because it mirrors the same always-present-class as the Unit/Global-scope rows the admin-API CRUD side also serializes with this definition."
+        },
+        "deviceFarmOpenfieldCropID": {
+          "type": ["integer", "null"]
+        },
+        "deviceFarmOpenfieldCropParcelID": {
+          "type": ["integer", "null"]
         },
         "simulationSessionID": {
           "type": ["integer", "null"],

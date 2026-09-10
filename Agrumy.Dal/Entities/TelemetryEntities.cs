@@ -7,6 +7,8 @@ namespace Agrumy.Dal.Entities
         public int DeviceID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        public int? FarmOpenfieldCropID { get; set; }
+        public int? FarmOpenfieldCropParcelID { get; set; }
         public int? Battery { get; set; }
         public double? Temperature { get; set; }
         public double? SoilTemperature { get; set; }

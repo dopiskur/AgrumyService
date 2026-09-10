@@ -103,6 +103,7 @@ builder.Services.AddScoped<ITenantRepository, EfTenantRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
 builder.Services.AddScoped<IDeviceRepository, EfDeviceRepository>();
 builder.Services.AddScoped<IDeviceFarmUnitRepository, EfDeviceFarmUnitRepository>();
+builder.Services.AddScoped<IFarmOpenfieldRepository, EfFarmOpenfieldRepository>();
 builder.Services.AddScoped<ICommandRepository, EfCommandRepository>();
 builder.Services.AddScoped<IFirmwareRepository, EfFirmwareRepository>();
 builder.Services.AddScoped<ISensorDataRepository, EfSensorDataRepository>();

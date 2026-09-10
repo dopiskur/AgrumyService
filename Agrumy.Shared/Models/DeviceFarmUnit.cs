@@ -306,6 +306,8 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        public int? DeviceFarmOpenfieldCropID { get; set; }
+        public int? DeviceFarmOpenfieldCropParcelID { get; set; }
         /// A device evaluates this ahead of its real Zone>Unit>Farm>Global rules while it's a member of this session, falling back to that real hierarchy for any RelayFunction/Name this scope has no rule for - lets a simulation test rule logic without a gap in coverage silently doing nothing.
         public int? SimulationSessionID { get; set; }
         /// Same "evaluated ahead of the real hierarchy, falls back for anything uncovered" precedence as SimulationSessionID, one tier below it - see RuleHierarchyResolver's Simulation&gt;Experiment&gt;Zone&gt;Unit&gt;Farm&gt;Global order. Unlike Simulation this controls real devices, so its rules are a real A/B test, not a sandboxed dry run.

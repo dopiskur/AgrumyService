@@ -146,6 +146,8 @@ namespace Agrumy.Api.Dal
             {
                 HierarchyNodeKind.Unit => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
                 HierarchyNodeKind.Zone => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                HierarchyNodeKind.Crop => await db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                HierarchyNodeKind.Parcel => await db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(group), group.Scope, "Unknown simulation group scope"),
             };
 
@@ -241,9 +243,13 @@ namespace Agrumy.Api.Dal
         {
             SimulationGroup dto = ToDtoGroup(row);
             dto.MemberDeviceCount = await db.SimulationSessionDevices.AsNoTracking().CountAsync(sd => sd.IDSimulationGroup == row.IDSimulationGroup);
-            dto.ScopeName = (HierarchyNodeKind)row.Scope == HierarchyNodeKind.Unit
-                ? (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName
-                : (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName;
+            dto.ScopeName = (HierarchyNodeKind)row.Scope switch
+            {
+                HierarchyNodeKind.Unit => (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName,
+                HierarchyNodeKind.Crop => (await db.FarmOpenfieldCrops.AsNoTracking().FirstOrDefaultAsync(c => c.IDFarmOpenfieldCrop == row.ScopeID))?.FarmOpenfieldCropName,
+                HierarchyNodeKind.Parcel => (await db.FarmOpenfieldCropParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == row.ScopeID))?.FarmOpenfieldCropParcelName,
+                _ => (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName,
+            };
             return dto;
         }
 

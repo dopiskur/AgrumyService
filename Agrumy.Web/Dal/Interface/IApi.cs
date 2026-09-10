@@ -356,6 +356,75 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Global/Rule")]
         Task GlobalRuleDelete(int? idDeviceFarmUnitZoneRule);
 
+        // ---- Open-Field: Crop/Parcel --------------------------
+
+        [Post("/api/FarmOpenfield")]
+        Task<DeviceFarm> FarmOpenfieldCreate([Body] string? farmName);
+
+        [Get("/api/FarmOpenfield/All")]
+        Task<IList<FarmOpenfield>> FarmOpenfieldsGet();
+
+        [Get("/api/FarmOpenfield/Crop/All")]
+        Task<IList<FarmOpenfieldCrop>> CropsGet();
+
+        [Get("/api/FarmOpenfield/Crop")]
+        Task<FarmOpenfieldCrop> CropGet(int? idFarmOpenfieldCrop);
+
+        [Post("/api/FarmOpenfield/Crop")]
+        Task<FarmOpenfieldCrop> CropAdd([Body] FarmOpenfieldCrop crop);
+
+        [Put("/api/FarmOpenfield/Crop")]
+        Task CropUpdate([Body] FarmOpenfieldCrop crop);
+
+        /// Persists the Farms page's drag-and-drop crop cube order, same convention as DeviceFarmUnitsReorder.
+        [Post("/api/FarmOpenfield/Crop/Reorder")]
+        Task CropsReorder([Body] List<int> orderedCropIds);
+
+        [Delete("/api/FarmOpenfield/Crop")]
+        Task CropDelete(int? idFarmOpenfieldCrop);
+
+        [Get("/api/FarmOpenfield/Parcel")]
+        Task<IList<FarmOpenfieldCropParcel>> ParcelsGet(int? idFarmOpenfieldCrop);
+
+        [Get("/api/FarmOpenfield/ParcelById")]
+        Task<FarmOpenfieldCropParcel> ParcelGetById(int? idFarmOpenfieldCropParcel);
+
+        [Post("/api/FarmOpenfield/Parcel")]
+        Task<FarmOpenfieldCropParcel> ParcelAdd([Body] FarmOpenfieldCropParcel parcel);
+
+        [Put("/api/FarmOpenfield/Parcel")]
+        Task ParcelUpdate([Body] FarmOpenfieldCropParcel parcel);
+
+        [Put("/api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Migrate")]
+        Task ParcelMigrate(int idFarmOpenfieldCropParcel, int idTargetFarmOpenfieldCrop);
+
+        [Delete("/api/FarmOpenfield/Parcel")]
+        Task ParcelDelete(int? idFarmOpenfieldCropParcel);
+
+        [Post("/api/FarmOpenfield/Assign")]
+        Task ParcelDeviceAssign([Body] DeviceParcelAssignment body);
+
+        [Post("/api/FarmOpenfield/Unassign")]
+        Task ParcelDeviceUnassign(int? idDevice);
+
+        [Get("/api/DeviceFarmUnit/Crop/Rule")]
+        Task<IList<DeviceFarmUnitZoneRule>> FarmOpenfieldCropRulesGet(int? idFarmOpenfieldCrop);
+
+        [Post("/api/DeviceFarmUnit/Crop/Rule")]
+        Task<RuleAddResult> FarmOpenfieldCropRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+
+        [Delete("/api/DeviceFarmUnit/Crop/Rule")]
+        Task FarmOpenfieldCropRuleDelete(int? idDeviceFarmUnitZoneRule);
+
+        [Get("/api/DeviceFarmUnit/Parcel/Rule")]
+        Task<IList<DeviceFarmUnitZoneRule>> FarmOpenfieldCropParcelRulesGet(int? idFarmOpenfieldCropParcel);
+
+        [Post("/api/DeviceFarmUnit/Parcel/Rule")]
+        Task<RuleAddResult> FarmOpenfieldCropParcelRuleAdd([Body] DeviceFarmUnitZoneRule rule);
+
+        [Delete("/api/DeviceFarmUnit/Parcel/Rule")]
+        Task FarmOpenfieldCropParcelRuleDelete(int? idDeviceFarmUnitZoneRule);
+
         [Get("/api/Simulation/Session/{idSimulationSession}/Rule")]
         Task<IList<DeviceFarmUnitZoneRule>> SessionRulesGet(int idSimulationSession);
 

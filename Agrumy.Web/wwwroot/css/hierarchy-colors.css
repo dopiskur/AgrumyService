@@ -1,0 +1,20 @@
+/* Roadmap #506 - distinguishes Open-Field from Greenhouse cubes at a glance; mid/leaf tiers share one color per branch so depth reads immediately. */
+.bg-hierarchy-openfield {
+    background-color: #a67c00;
+    color: #fff;
+}
+
+.bg-hierarchy-greenhouse {
+    background-color: #1a3d7c;
+    color: #fff;
+}
+
+.bg-hierarchy-mid {
+    background-color: #2e7d32;
+    color: #fff;
+}
+
+.bg-hierarchy-leaf {
+    background-color: #81c784;
+    color: #1b1b1b;
+}

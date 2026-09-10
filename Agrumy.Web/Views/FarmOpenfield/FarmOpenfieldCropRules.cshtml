@@ -1,0 +1,28 @@
+@model RuleEditorViewModel
+@{
+    ViewData["Title"] = "Crop rules";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
+        <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@Model.ScopeId">Parcels</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Crop rules</li>
+    </ol>
+</nav>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+@if (TempData["Warning"] is string scopeWarning)
+{
+    <div class="alert alert-info">@scopeWarning</div>
+}
+
+<p class="text-secondary">
+    Applies to every parcel in this crop that doesn't define its own rule for the same
+    function/metric (a parcel's own rule always wins - see the Parcel page's automation card).
+</p>
+
+<partial name="_RuleEditor" model="Model" />

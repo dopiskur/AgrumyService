@@ -81,6 +81,9 @@ namespace Agrumy.Dal.Entities
         public int? DeviceFarmID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        // Open-Field's Crop/Parcel scope equivalents of DeviceFarmUnitID/DeviceFarmUnitZoneID above.
+        public int? DeviceFarmOpenfieldCropID { get; set; }
+        public int? DeviceFarmOpenfieldCropParcelID { get; set; }
         public int? SimulationSessionID { get; set; }
         public int? ExperimentID { get; set; }
         public int ActionType { get; set; }
@@ -302,6 +305,9 @@ namespace Agrumy.Dal.Entities
         public int? DeviceRoleID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        // Open-Field's Crop/Parcel equivalents - FarmOpenfieldCropID has a real DB FK (mirrors DeviceFarmUnitID), FarmOpenfieldCropParcelID does not (mirrors DeviceFarmUnitZoneID).
+        public int? FarmOpenfieldCropID { get; set; }
+        public int? FarmOpenfieldCropParcelID { get; set; }
         public int? DeviceConfigSensorID { get; set; }
         public int? DeviceConfigControllerID { get; set; }
         public int? DeviceTypeServiceID { get; set; }

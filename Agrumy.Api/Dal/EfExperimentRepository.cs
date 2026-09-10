@@ -72,6 +72,31 @@ namespace Agrumy.Api.Dal
             return unit?.DeviceFarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
+        /// Open-Field's Parcel>Crop>Farm equivalent of ActiveExperimentIdForZoneAsync's Zone>Unit>Farm cascade - queries FarmOpenfield*Row directly, same "no repo dependency, just db" shape the Zone version already uses.
+        public async Task<int?> ActiveExperimentIdForParcelAsync(int idFarmOpenfieldCropParcel)
+        {
+            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Parcel, idFarmOpenfieldCropParcel) is int parcelExperimentId)
+            {
+                return parcelExperimentId;
+            }
+            FarmOpenfieldCropParcelRow? parcel = await db.FarmOpenfieldCropParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == idFarmOpenfieldCropParcel);
+            if (parcel == null)
+            {
+                return null;
+            }
+            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Crop, parcel.FarmOpenfieldCropID) is int cropExperimentId)
+            {
+                return cropExperimentId;
+            }
+            FarmOpenfieldCropRow? crop = await db.FarmOpenfieldCrops.AsNoTracking().FirstOrDefaultAsync(c => c.IDFarmOpenfieldCrop == parcel.FarmOpenfieldCropID);
+            if (crop == null)
+            {
+                return null;
+            }
+            FarmOpenfieldRow? openfield = await db.FarmOpenfields.AsNoTracking().FirstOrDefaultAsync(o => o.IDFarmOpenfield == crop.FarmOpenfieldID);
+            return openfield?.FarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
+        }
+
         private async Task<int?> ActiveExperimentIdForScopeAsync(HierarchyNodeKind scope, int scopeId)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;

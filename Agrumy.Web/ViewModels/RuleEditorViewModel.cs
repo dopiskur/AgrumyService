@@ -14,6 +14,10 @@ namespace Agrumy.Web.ViewModels
         UnitAlert,
         /// Same Farm scope/rule set as RuleScope.Farm, Notification-only like UnitAlert.
         FarmAlert,
+        /// Open-Field's mid-level equivalent of Unit.
+        Crop,
+        /// Open-Field's leaf-level equivalent of Zone.
+        Parcel,
     }
 
     /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the tenant-wide Global Rules page, a Simulation session's own Details page, and an Experiment's own Details page - the six scopes differ only in which API routes/hidden field they post to.
@@ -35,6 +39,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleAdd",
             RuleScope.Simulation => "SessionRuleAdd",
             RuleScope.Experiment => "ExperimentRuleAdd",
+            RuleScope.Crop => "FarmOpenfieldCropRuleAdd",
+            RuleScope.Parcel => "FarmOpenfieldCropParcelRuleAdd",
             _ => "GlobalRuleAdd",
         };
 
@@ -47,6 +53,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleDelete",
             RuleScope.Simulation => "SessionRuleDelete",
             RuleScope.Experiment => "ExperimentRuleDelete",
+            RuleScope.Crop => "FarmOpenfieldCropRuleDelete",
+            RuleScope.Parcel => "FarmOpenfieldCropParcelRuleDelete",
             _ => "GlobalRuleDelete",
         };
 
@@ -58,6 +66,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Farm or RuleScope.FarmAlert => "idDeviceFarm",
             RuleScope.Simulation => "idSimulationSession",
             RuleScope.Experiment => "idExperiment",
+            RuleScope.Crop => "idFarmOpenfieldCrop",
+            RuleScope.Parcel => "idFarmOpenfieldCropParcel",
             _ => "",
         };
 

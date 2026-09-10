@@ -39,9 +39,9 @@ public class SensorDetectionTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()), NullLogger<DeviceApiController>.Instance,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         controller.HttpContext.Items[DeviceAuth.ApiIdItemKey] = "api-guid";
         return controller;

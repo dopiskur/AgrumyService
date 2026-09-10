@@ -93,6 +93,8 @@ namespace Agrumy.Web.Controllers.View
         {
             Units = await api.DeviceFarmUnitDashboardGet(),
             Farms = await api.DeviceFarmsGet(),
+            Crops = await api.CropsGet(),
+            Openfields = await api.FarmOpenfieldsGet(),
         };
 
         // The Unit/Zone cube overview moved here from the old Dashboard (roadmap #238's wizard took that route over).
@@ -100,6 +102,8 @@ namespace Agrumy.Web.Controllers.View
         {
             Farms = await api.DeviceFarmsGet(),
             Units = await api.DeviceFarmUnitDashboardGet(),
+            Crops = await api.CropsGet(),
+            Openfields = await api.FarmOpenfieldsGet(),
         });
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -108,6 +112,15 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> FarmAdd(string deviceFarmName)
         {
             await api.DeviceFarmAdd(new DeviceFarm { DeviceFarmName = deviceFarmName });
+            return RedirectToAction(nameof(Farms));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FarmOpenfieldAdd(string deviceFarmName)
+        {
+            await api.FarmOpenfieldCreate(deviceFarmName);
             return RedirectToAction(nameof(Farms));
         }
 

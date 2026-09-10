@@ -1,0 +1,171 @@
+@model ParcelViewModel
+@{
+    var parcel = Model.Parcel;
+    ViewData["Title"] = parcel.FarmOpenfieldCropParcelName;
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool hasController = Model.Devices.Any(d => d.ControllerCapable);
+    var ruleEditorModel = new RuleEditorViewModel
+    {
+        Scope = RuleScope.Parcel,
+        ScopeId = parcel.IDFarmOpenfieldCropParcel,
+        Rules = Model.Rules,
+        RedirectActionName = "Parcel",
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
+        <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@Model.Crop.IDFarmOpenfieldCrop">@Model.Crop.FarmOpenfieldCropName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@parcel.FarmOpenfieldCropParcelName</li>
+    </ol>
+</nav>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" asp-validation-summary="ModelOnly"></div>
+}
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+@if (TempData["Warning"] is string scopeWarning)
+{
+    <div class="alert alert-info">@scopeWarning</div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">@parcel.FarmOpenfieldCropParcelName</h3>
+        @if (canManage)
+        {
+            <div class="float-end d-flex align-items-center gap-2">
+                @if (!hasController)
+                {
+                    <a asp-action="ParcelAssignPicker" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" asp-route-controllerCapable="true" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-cpu"></i> Add Controller
+                    </a>
+                }
+                <a asp-action="ParcelAssignPicker" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" asp-route-controllerCapable="false" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-broadcast"></i> Add Sensor
+                </a>
+                <form asp-action="ParcelRename" method="post" class="d-flex gap-1">
+                    <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                    <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" value="@parcel.FarmOpenfieldCropParcelName" required maxlength="120" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                </form>
+                <form asp-action="ParcelDelete" method="post" onsubmit="return confirm('Delete this parcel? Its devices are unassigned, not deleted.');">
+                    <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                    <input type="hidden" name="idFarmOpenfieldCrop" value="@Model.Crop.IDFarmOpenfieldCrop" />
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete parcel"><i class="bi bi-trash"></i></button>
+                </form>
+            </div>
+        }
+    </div>
+    <div class="card-body">
+        @if (Model.Devices.Count == 0)
+        {
+            <p class="text-secondary">No devices assigned yet.</p>
+        }
+        else
+        {
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Devices)
+                    {
+                        <tr>
+                            <td><a asp-controller="Device" asp-action="Details" asp-route-idDevice="@d.IDDevice">@d.DeviceName</a></td>
+                            <td>@(d.IsVirtual ? "Virtual" : d.Online ? "Online" : "Offline")</td>
+                            <td class="text-end">
+                                @if (canManage)
+                                {
+                                    <form asp-action="Remove" method="post" class="d-inline" onsubmit="return confirm('Remove this device from the parcel?');">
+                                        <input type="hidden" name="idDevice" value="@d.IDDevice" />
+                                        <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@if (canManage)
+{
+    <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title">Safety limits &amp; tank calibration</h3></div>
+        <div class="card-body">
+            <form asp-action="SafetyLimitsUpdate" method="post" class="row g-3">
+                <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                <div class="col-md-3">
+                    <label class="form-label small">WaterPump max run (s)</label>
+                    <input type="number" name="waterPumpMaxRunSeconds" class="form-control form-control-sm" value="@parcel.WaterPumpMaxRunSeconds" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">WaterPump cooldown (s)</label>
+                    <input type="number" name="waterPumpCooldownSeconds" class="form-control form-control-sm" value="@parcel.WaterPumpCooldownSeconds" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Heating max run (s)</label>
+                    <input type="number" name="heatingMaxRunSeconds" class="form-control form-control-sm" value="@parcel.HeatingMaxRunSeconds" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Ventilation max run (s)</label>
+                    <input type="number" name="ventilationMaxRunSeconds" class="form-control form-control-sm" value="@parcel.VentilationMaxRunSeconds" min="0" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="skipWaterPumpWhenRainPredicted" value="true" checked="@parcel.SkipWaterPumpWhenRainPredicted" id="skipRain" />
+                        <label class="form-check-label small" for="skipRain">Skip watering when rain predicted</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Heating fail-safe policy</label>
+                    <select name="heatingFailSafePolicy" class="form-select form-select-sm" asp-items="Html.GetEnumSelectList<HeatingFailSafePolicyType>()">
+                        <option value="">-- none --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Tank capacity (L)</label>
+                    <input type="number" step="0.1" name="tankCapacityLiters" class="form-control form-control-sm" value="@parcel.TankCapacityLiters" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Water level - empty (raw)</label>
+                    <input type="number" name="waterLevelRawEmpty" class="form-control form-control-sm" value="@parcel.WaterLevelRawEmpty" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Water level - full (raw)</label>
+                    <input type="number" name="waterLevelRawFull" class="form-control form-control-sm" value="@parcel.WaterLevelRawFull" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">WaterPump min level (%)</label>
+                    <input type="number" step="0.1" name="waterPumpMinLevel" class="form-control form-control-sm" value="@parcel.WaterPumpMinLevel" min="0" max="100" />
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (hasController)
+{
+    <partial name="_RuleEditor" model="ruleEditorModel" />
+}

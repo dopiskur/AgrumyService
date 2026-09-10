@@ -28,6 +28,9 @@ namespace Agrumy.Dal
         public DbSet<DeviceFarmRow> DeviceFarms => Set<DeviceFarmRow>();
         public DbSet<DeviceFarmUnitRow> DeviceFarmUnits => Set<DeviceFarmUnitRow>();
         public DbSet<DeviceFarmUnitZoneRow> DeviceFarmUnitZones => Set<DeviceFarmUnitZoneRow>();
+        public DbSet<FarmOpenfieldRow> FarmOpenfields => Set<FarmOpenfieldRow>();
+        public DbSet<FarmOpenfieldCropRow> FarmOpenfieldCrops => Set<FarmOpenfieldCropRow>();
+        public DbSet<FarmOpenfieldCropParcelRow> FarmOpenfieldCropParcels => Set<FarmOpenfieldCropParcelRow>();
         public DbSet<DeviceFarmUnitZoneRuleRow> DeviceFarmUnitZoneRules => Set<DeviceFarmUnitZoneRuleRow>();
         public DbSet<RuleNotificationStateRow> RuleNotificationStates => Set<RuleNotificationStateRow>();
         public DbSet<DeviceRoleRow> DeviceRoles => Set<DeviceRoleRow>();
@@ -239,7 +242,41 @@ namespace Agrumy.Dal
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
-            // Several rows may share (scope, RelayFunction/SensorMetric); OR semantics across them, and Zone>Unit>Farm>Global precedence, are resolved in EfRepository/RuleHierarchyResolver, not here. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID/DeviceFarmID is set (Global scope: all three null) - enforced in DeviceFarmUnitApiController, not the DB.
+            // Open-Field's parallel hierarchy - farmOpenfield is Farm's 1:1 type-extension row, farmOpenfieldCrop/farmOpenfieldCropParcel mirror farmGreenhouseUnit/farmGreenhouseUnitZone. No manual PK sentinel dance (unlike those two) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
+            modelBuilder.Entity<FarmOpenfieldRow>(e =>
+            {
+                e.ToTable("farmOpenfield");
+                e.HasKey(x => x.IDFarmOpenfield);
+                e.Property(x => x.IDFarmOpenfield).ValueGeneratedOnAdd();
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.FarmID).OnDelete(DeleteBehavior.NoAction);
+                e.HasQueryFilter(x => !x.Deleted);
+            });
+
+            modelBuilder.Entity<FarmOpenfieldCropRow>(e =>
+            {
+                e.ToTable("farmOpenfieldCrop");
+                e.HasKey(x => x.IDFarmOpenfieldCrop);
+                e.Property(x => x.IDFarmOpenfieldCrop).ValueGeneratedOnAdd();
+                e.Property(x => x.FarmOpenfieldCropName).HasMaxLength(100);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.Property(x => x.DisplayOrder).HasDefaultValue(0);
+                e.HasOne<FarmOpenfieldRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldID).OnDelete(DeleteBehavior.NoAction);
+                e.HasQueryFilter(x => !x.Deleted);
+            });
+
+            modelBuilder.Entity<FarmOpenfieldCropParcelRow>(e =>
+            {
+                e.ToTable("farmOpenfieldCropParcel");
+                e.HasKey(x => x.IDFarmOpenfieldCropParcel);
+                e.Property(x => x.IDFarmOpenfieldCropParcel).ValueGeneratedOnAdd();
+                e.Property(x => x.FarmOpenfieldCropParcelName).HasMaxLength(120);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.HasOne<FarmOpenfieldCropRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldCropID).OnDelete(DeleteBehavior.NoAction);
+                e.HasQueryFilter(x => !x.Deleted);
+            });
+
+            // Several rows may share (scope, RelayFunction/SensorMetric); OR semantics across them, and hierarchy precedence, are resolved in RuleHierarchyResolver, not here. Exactly one of the six scope FKs is set (Global scope: all six null) - enforced in the API controllers, not the DB.
             modelBuilder.Entity<DeviceFarmUnitZoneRuleRow>(e =>
             {
                 e.ToTable("deviceFarmUnitZoneRule");
@@ -250,13 +287,17 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceFarmUnitZoneRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitZoneID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.DeviceFarmID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
-                // Cascade (unlike the other three scopes above) - a simulation-scoped rule only ever makes sense alongside the session it was written for, so it goes away with it instead of becoming an orphaned, unreachable row.
+                e.HasOne<FarmOpenfieldCropRow>().WithMany().HasForeignKey(x => x.DeviceFarmOpenfieldCropID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
+                e.HasOne<FarmOpenfieldCropParcelRow>().WithMany().HasForeignKey(x => x.DeviceFarmOpenfieldCropParcelID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
+                // Cascade (unlike the scope FKs above) - a simulation-scoped rule only ever makes sense alongside the session it was written for, so it goes away with it instead of becoming an orphaned, unreachable row.
                 e.HasOne<SimulationSessionRow>().WithMany().HasForeignKey(x => x.SimulationSessionID).OnDelete(DeleteBehavior.Cascade).IsRequired(false);
                 // Cascade, same reasoning as SimulationSessionID above - an experiment-scoped rule only makes sense alongside the experiment it was written for.
                 e.HasOne<ExperimentRow>().WithMany().HasForeignKey(x => x.ExperimentID).OnDelete(DeleteBehavior.Cascade).IsRequired(false);
                 e.HasIndex(x => x.DeviceFarmUnitZoneID).HasDatabaseName("ix_deviceFarmUnitZoneRule_zone");
                 e.HasIndex(x => x.DeviceFarmUnitID).HasDatabaseName("ix_deviceFarmUnitZoneRule_unit");
                 e.HasIndex(x => x.DeviceFarmID).HasDatabaseName("ix_deviceFarmUnitZoneRule_farm");
+                e.HasIndex(x => x.DeviceFarmOpenfieldCropID).HasDatabaseName("ix_deviceFarmUnitZoneRule_crop");
+                e.HasIndex(x => x.DeviceFarmOpenfieldCropParcelID).HasDatabaseName("ix_deviceFarmUnitZoneRule_parcel");
                 e.HasIndex(x => x.SimulationSessionID).HasDatabaseName("ix_deviceFarmUnitZoneRule_simulationSession");
                 e.HasIndex(x => x.ExperimentID).HasDatabaseName("ix_deviceFarmUnitZoneRule_experiment");
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_deviceFarmUnitZoneRule_tenant");
@@ -392,6 +433,8 @@ namespace Agrumy.Dal
                 // Roadmap #406 - IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap tenant).
                 e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
+                // Open-Field equivalents - FarmOpenfieldCropID mirrors DeviceFarmUnitID's real FK, FarmOpenfieldCropParcelID mirrors DeviceFarmUnitZoneID's no-FK.
+                e.HasOne<FarmOpenfieldCropRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldCropID).OnDelete(DeleteBehavior.NoAction);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);
                 // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController explicitly IgnoreQueryFilters() for the recycle bin.
@@ -551,10 +594,14 @@ namespace Agrumy.Dal
                  .HasDatabaseName("ix_dataSensor_device_tenant_date");
                 e.HasIndex(x => new { x.DeviceFarmUnitZoneID, x.DateCreated })
                  .HasDatabaseName("ix_dataSensor_farmGreenhouseUnitZone_date"); // The 24h trend sparkline query filters directly by zone, not by device.
+                e.HasIndex(x => new { x.FarmOpenfieldCropParcelID, x.DateCreated })
+                 .HasDatabaseName("ix_dataSensor_farmOpenfieldCropParcel_date"); // Open-Field's equivalent of the zone-trend index above.
                 // Legacy fk_sensorData_* (no FK on dataSensor.TenantID).
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitZoneRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitZoneID).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<FarmOpenfieldCropRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldCropID).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<FarmOpenfieldCropParcelRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldCropParcelID).OnDelete(DeleteBehavior.NoAction);
             });
 
             modelBuilder.Entity<ControllerDataRow>(e =>

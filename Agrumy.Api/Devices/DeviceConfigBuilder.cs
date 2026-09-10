@@ -7,7 +7,7 @@ using Agrumy.Shared.Utils;
 namespace Agrumy.Api.Devices
 {
     /// Builds the DeviceConfig body a Config poll or Register response sends back, shared so GatewayApiController.Batch's Config entries produce byte-for-byte the same response as a direct POST /api/Device/Config.
-    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog)
+    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog)
     {
         /// Whether GetConfig/RunConfigAsync must send a full config this poll: a real version mismatch, a pending command, or - because BuildAsync recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh every call without either ever bumping ConfigVersion - the periodic heartbeat window has elapsed since the device's last full send. Not used by Register, which always sends a fresh config unconditionally.
         public async Task<bool> NeedsRefreshAsync(Device device, int? pollConfigVersion, PendingCommand? pendingCommand)
@@ -85,36 +85,56 @@ namespace Agrumy.Api.Devices
             {
                 // Relay-pin mapping comes from the device row, but Rules/safety limits come from its zone, merged into the same DeviceConfigController; no zone means an empty Rules list so every relay stays off.
                 DeviceConfigController? controller = await deviceRepo.DeviceConfigControllerGetAsync(device.DeviceConfigControllerID);
-                if (controller != null && device.DeviceFarmUnitZoneID is int idZone)
+                if (controller != null && (device.DeviceFarmUnitZoneID is int || device.FarmOpenfieldCropParcelID is int))
                 {
-                    // Most specific tier, checked ahead of the real hierarchy below - empty unless this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover.
+                    // Most specific tier, checked ahead of the real hierarchy below - empty unless this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover. Shared by both branches - a simulation session isn't itself Greenhouse/Open-Field-specific.
                     IList<DeviceFarmUnitZoneRule> simulationRules = await simulationRepo.DeviceActiveSimulationSessionIdGetAsync(device.IDDevice!.Value) is int idSession
                         ? await deviceFarmUnitRepo.RulesGetForSimulationAsync(idSession) : [];
-                    // One tier below Simulation; empty unless the zone is currently under an active Experiment (Zone>Unit>Farm cascade resolved by ActiveExperimentIdForZoneAsync itself).
-                    IList<DeviceFarmUnitZoneRule> experimentRules = await experimentRepo.ActiveExperimentIdForZoneAsync(idZone) is int idExperiment
-                        ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
-                    IList<DeviceFarmUnitZoneRule> zoneRules = await deviceFarmUnitRepo.RulesGetForZoneAsync(idZone);
-                    IList<DeviceFarmUnitZoneRule> unitRules = device.DeviceFarmUnitID is int idUnit ? await deviceFarmUnitRepo.RulesGetForUnitAsync(idUnit) : [];
-                    // Farm rules only apply when the device's own Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules at all, same "unassigned means no inheritance" rule as Global always applying regardless.
-                    IList<DeviceFarmUnitZoneRule> farmRules = device.DeviceFarmUnitID is int farmUnitId
-                        && (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(farmUnitId))?.DeviceFarmID is int idFarm
-                        ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
+
+                    IList<DeviceFarmUnitZoneRule> experimentRules, leafRules, midRules, farmRules;
+                    IFarmLeafLevelNode? leafNode;
+                    if (device.DeviceFarmUnitZoneID is int idZone)
+                    {
+                        // One tier below Simulation; empty unless the zone is currently under an active Experiment (Zone>Unit>Farm cascade resolved by ActiveExperimentIdForZoneAsync itself).
+                        experimentRules = await experimentRepo.ActiveExperimentIdForZoneAsync(idZone) is int idExperiment
+                            ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
+                        leafRules = await deviceFarmUnitRepo.RulesGetForZoneAsync(idZone);
+                        midRules = device.DeviceFarmUnitID is int idUnit ? await deviceFarmUnitRepo.RulesGetForUnitAsync(idUnit) : [];
+                        // Farm rules only apply when the device's own Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules at all, same "unassigned means no inheritance" rule as Global always applying regardless.
+                        farmRules = device.DeviceFarmUnitID is int farmUnitId
+                            && (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(farmUnitId))?.DeviceFarmID is int idFarm
+                            ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
+                        leafNode = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idZone);
+                    }
+                    else
+                    {
+                        // Open-Field's Parcel>Crop>Farm equivalent of the Greenhouse Zone>Unit>Farm cascade above.
+                        int idParcel = device.FarmOpenfieldCropParcelID!.Value;
+                        experimentRules = await experimentRepo.ActiveExperimentIdForParcelAsync(idParcel) is int idExperiment
+                            ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
+                        leafRules = await deviceFarmUnitRepo.RulesGetForParcelAsync(idParcel);
+                        midRules = device.FarmOpenfieldCropID is int idCrop ? await deviceFarmUnitRepo.RulesGetForCropAsync(idCrop) : [];
+                        farmRules = device.FarmOpenfieldCropID is int farmCropId
+                            && (await farmOpenfieldRepo.CropGetByIdAsync(farmCropId))?.FarmOpenfieldID is int idFarmOpenfield
+                            && (await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(idFarmOpenfield))?.FarmID is int idFarm
+                            ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
+                        leafNode = await farmOpenfieldRepo.ParcelGetByIdAsync(idParcel);
+                    }
                     IList<DeviceFarmUnitZoneRule> globalRules = device.TenantID is int globalTenantId ? await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(globalTenantId) : [];
-                    IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, zoneRules, unitRules, farmRules, globalRules);
+                    IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, leafRules, midRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
                     // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
                     double? lat = tenant?.Latitude ?? serverConfig.WeatherLocationLat;
                     double? lon = tenant?.Longitude ?? serverConfig.WeatherLocationLon;
                     controller.Rules = AstronomicalRuleResolver.Resolve(rules, lat, lon, localDate, utcOffsetSeconds);
-                    DeviceFarmUnitZone? zone = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idZone);
-                    controller.WaterPumpMaxRunSeconds = zone?.WaterPumpMaxRunSeconds;
-                    controller.WaterPumpCooldownSeconds = zone?.WaterPumpCooldownSeconds;
-                    controller.WaterPumpMinLevel = zone?.WaterPumpMinLevel;
-                    controller.WaterLevelRawEmpty = zone?.WaterLevelRawEmpty;
-                    controller.WaterLevelRawFull = zone?.WaterLevelRawFull;
+                    controller.WaterPumpMaxRunSeconds = leafNode?.WaterPumpMaxRunSeconds;
+                    controller.WaterPumpCooldownSeconds = leafNode?.WaterPumpCooldownSeconds;
+                    controller.WaterPumpMinLevel = leafNode?.WaterPumpMinLevel;
+                    controller.WaterLevelRawEmpty = leafNode?.WaterLevelRawEmpty;
+                    controller.WaterLevelRawFull = leafNode?.WaterLevelRawFull;
                     // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks.
-                    controller.SkipWaterPumpForRain = zone?.SkipWaterPumpWhenRainPredicted == true && serverConfig.WeatherRainPredicted;
-                    controller.HeatingFailSafePolicy = zone?.HeatingFailSafePolicy;
+                    controller.SkipWaterPumpForRain = leafNode?.SkipWaterPumpWhenRainPredicted == true && serverConfig.WeatherRainPredicted;
+                    controller.HeatingFailSafePolicy = leafNode?.HeatingFailSafePolicy;
 
                     // Roadmap #219 - only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.
                     IList<DeviceManualOverride> activeOverrides = await deviceFarmUnitRepo.ManualOverridesActiveForDeviceAsync(device.IDDevice!.Value);

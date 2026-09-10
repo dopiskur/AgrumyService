@@ -7,5 +7,7 @@ namespace Agrumy.Web.ViewModels
     {
         public IList<DeviceFarm> Farms { get; init; } = [];
         public IList<DeviceFarmUnitDashboard> Units { get; init; } = [];
+        public IList<FarmOpenfieldCrop> Crops { get; init; } = [];
+        public IList<FarmOpenfield> Openfields { get; init; } = [];
     }
 }

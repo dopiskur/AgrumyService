@@ -7,8 +7,10 @@
     var unassigned = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
     const string allUnitsContainerId = "unitCubes-all";
     const string unassignedUnitsContainerId = "unitCubes-unassigned";
+    // Crop.FarmOpenfieldID points at the Farm's FarmOpenfield extension row, not at the Farm directly - map Farm -> FarmOpenfieldID once here rather than per-card.
+    var openfieldIdByFarm = Model.Openfields.ToDictionary(o => o.FarmID, o => o.IDFarmOpenfield);
 }
-@if (!multipleFarms)
+@if (!multipleFarms && (Model.Farms.Count == 0 || Model.Farms[0].FarmType != FarmType.OpenField))
 {
     <div class="card">
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
@@ -42,6 +44,47 @@
                 </form>
             }
             <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = Model.Units, Farms = Model.Farms, ContainerId = allUnitsContainerId }" />
+        </div>
+    </div>
+}
+else if (!multipleFarms)
+{
+    // The sole farm is Open-Field typed - show its crops instead of the Units card above.
+    var farm = Model.Farms[0];
+    int? openfieldId = openfieldIdByFarm.GetValueOrDefault(farm.IDDeviceFarm ?? 0);
+    var crops = Model.Crops.Where(c => c.FarmOpenfieldID == openfieldId).ToList();
+    <div class="card">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
+            <h3 class="card-title mb-0">Crops</h3>
+            @if (canManage && openfieldId is int ofid)
+            {
+                <form asp-controller="FarmOpenfield" asp-action="CropAdd" method="post" class="d-flex gap-2 ms-auto">
+                    <input type="hidden" name="idFarmOpenfield" value="@ofid" />
+                    <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" placeholder="New crop name" required maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Crop</button>
+                </form>
+            }
+        </div>
+        <div class="card-body">
+            @if (crops.Count == 0)
+            {
+                <p class="text-secondary small fst-italic mb-0">No crops yet.</p>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var c in crops)
+                    {
+                        <div class="col-md-4">
+                            <div class="small-box bg-hierarchy-mid position-relative">
+                                <div class="inner"><h3 class="fs-4">@c.FarmOpenfieldCropName</h3></div>
+                                <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
+                                <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@c.IDFarmOpenfieldCrop" class="stretched-link" aria-label="Open @c.FarmOpenfieldCropName"></a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </div>
 }
@@ -91,30 +134,65 @@ else
                 </div>
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
-                    <input type="search" class="form-control form-control-sm unit-search" data-filter-target="@farmUnitsContainerId" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
-                </div>
-                @if (canManage && unassigned.Count > 0)
+                @if (farm.FarmType == FarmType.OpenField)
                 {
-                    <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
-                        <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
-                        <select name="idDeviceFarmUnit" class="form-select form-select-sm" style="width:auto" required>
-                            <option value="">-- add unit --</option>
-                            @foreach (var unit in unassigned)
+                    int? openfieldId = openfieldIdByFarm.GetValueOrDefault(farm.IDDeviceFarm ?? 0);
+                    var cropsInFarm = Model.Crops.Where(c => c.FarmOpenfieldID == openfieldId).ToList();
+                    @if (canManage && openfieldId is int ofid)
+                    {
+                        <form asp-controller="FarmOpenfield" asp-action="CropAdd" method="post" class="d-flex gap-2 mb-3">
+                            <input type="hidden" name="idFarmOpenfield" value="@ofid" />
+                            <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" placeholder="New crop name" required maxlength="100" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Crop</button>
+                        </form>
+                    }
+                    @if (cropsInFarm.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic mb-0">No crops yet.</p>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var c in cropsInFarm)
                             {
-                                <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
+                                <div class="col-md-4">
+                                    <div class="small-box bg-hierarchy-mid position-relative">
+                                        <div class="inner"><h3 class="fs-4">@c.FarmOpenfieldCropName</h3></div>
+                                        <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
+                                        <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@c.IDFarmOpenfieldCrop" class="stretched-link" aria-label="Open @c.FarmOpenfieldCropName"></a>
+                                    </div>
+                                </div>
                             }
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
-                    </form>
-                }
-                @if (unitsInFarm.Count == 0)
-                {
-                    <p class="text-secondary small fst-italic mb-0">No units assigned.</p>
+                        </div>
+                    }
                 }
                 else
                 {
-                    <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unitsInFarm, Farms = Model.Farms, ContainerId = farmUnitsContainerId }" />
+                    <div class="d-flex justify-content-end mb-2">
+                        <input type="search" class="form-control form-control-sm unit-search" data-filter-target="@farmUnitsContainerId" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
+                    </div>
+                    @if (canManage && unassigned.Count > 0)
+                    {
+                        <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
+                            <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
+                            <select name="idDeviceFarmUnit" class="form-select form-select-sm" style="width:auto" required>
+                                <option value="">-- add unit --</option>
+                                @foreach (var unit in unassigned)
+                                {
+                                    <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
+                        </form>
+                    }
+                    @if (unitsInFarm.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic mb-0">No units assigned.</p>
+                    }
+                    else
+                    {
+                        <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = unitsInFarm, Farms = Model.Farms, ContainerId = farmUnitsContainerId }" />
+                    }
                 }
             </div>
         </div>

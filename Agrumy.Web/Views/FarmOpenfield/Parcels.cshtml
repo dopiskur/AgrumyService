@@ -1,0 +1,77 @@
+@model CropParcelsViewModel
+@{
+    ViewData["Title"] = Model.Crop.FarmOpenfieldCropName;
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Crop.FarmOpenfieldCropName</li>
+    </ol>
+</nav>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0">@Model.Crop.FarmOpenfieldCropName <span class="text-secondary small">(@Model.Farm.DeviceFarmName)</span></h3>
+        @if (canManage)
+        {
+            <a asp-action="FarmOpenfieldCropRules" asp-route-idFarmOpenfieldCrop="@Model.Crop.IDFarmOpenfieldCrop" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-diagram-3"></i> Automation rules
+            </a>
+            <form asp-action="CropRename" method="post" class="d-flex gap-1">
+                <input type="hidden" name="idFarmOpenfieldCrop" value="@Model.Crop.IDFarmOpenfieldCrop" />
+                <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" value="@Model.Crop.FarmOpenfieldCropName" required maxlength="100" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+            </form>
+            <form asp-action="CropDelete" method="post" onsubmit="return confirm('Delete this crop? Its parcels and their devices are affected too.');" class="ms-auto">
+                <input type="hidden" name="idFarmOpenfieldCrop" value="@Model.Crop.IDFarmOpenfieldCrop" />
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete crop"><i class="bi bi-trash"></i></button>
+            </form>
+        }
+    </div>
+    <div class="card-body">
+        @if (canManage)
+        {
+            <form asp-action="ParcelAdd" method="post" class="d-flex gap-2 mb-3">
+                <input type="hidden" name="idFarmOpenfieldCrop" value="@Model.Crop.IDFarmOpenfieldCrop" />
+                <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
+                <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>
+            </form>
+        }
+
+        @if (Model.Parcels.Count == 0)
+        {
+            <p class="text-secondary">No parcels yet.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var p in Model.Parcels)
+                {
+                    int deviceCount = Model.Fleet.Count(f => f.FarmOpenfieldCropParcelID == p.IDFarmOpenfieldCropParcel);
+                    <div class="col-md-4">
+                        <div class="small-box bg-hierarchy-leaf position-relative">
+                            <div class="inner">
+                                <h3 class="fs-4">@p.FarmOpenfieldCropParcelName</h3>
+                                <p class="mb-0">@deviceCount device@(deviceCount == 1 ? "" : "s")</p>
+                            </div>
+                            <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
+                            <a asp-action="Parcel" asp-route-idFarmOpenfieldCropParcel="@p.IDFarmOpenfieldCropParcel" class="stretched-link" aria-label="Open @p.FarmOpenfieldCropParcelName"></a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

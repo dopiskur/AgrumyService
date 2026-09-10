@@ -28,6 +28,11 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmUnitID { get; set; }
         [HiddenInput(DisplayValue = true)]
         public int? DeviceFarmUnitZoneID { get; set; }
+        // Open-Field's Crop/Parcel equivalents - same nullable-not-0-default convention as DeviceFarmUnitID/DeviceFarmUnitZoneID above, and mutually exclusive with them (a device is assigned to at most one of the two hierarchies).
+        [HiddenInput(DisplayValue = true)]
+        public int? FarmOpenfieldCropID { get; set; }
+        [HiddenInput(DisplayValue = true)]
+        public int? FarmOpenfieldCropParcelID { get; set; }
         [HiddenInput(DisplayValue = true)]
         public int? DeviceConfigSensorID { get; set; }
         [HiddenInput(DisplayValue = true)]
@@ -113,6 +118,8 @@ namespace Agrumy.Shared.Models
         // No default (unlike DeviceRoleID above) - null means genuinely unassigned, see Device.DeviceFarmUnitID.
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
+        public int? FarmOpenfieldCropID { get; set; }
+        public int? FarmOpenfieldCropParcelID { get; set; }
         public int? DeviceConfigSensorID { get; set; }
         public int? DeviceConfigControllerID { get; set; }
         public int? DeviceTypeServiceID { get; set; } = 0;
@@ -169,6 +176,8 @@ namespace Agrumy.Shared.Models
             DeviceRoleID = d.DeviceRoleID,
             DeviceFarmUnitID = d.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = d.DeviceFarmUnitZoneID,
+            FarmOpenfieldCropID = d.FarmOpenfieldCropID,
+            FarmOpenfieldCropParcelID = d.FarmOpenfieldCropParcelID,
             DeviceConfigSensorID = d.DeviceConfigSensorID,
             DeviceConfigControllerID = d.DeviceConfigControllerID,
             DeviceTypeServiceID = d.DeviceTypeServiceID,
@@ -209,6 +218,8 @@ namespace Agrumy.Shared.Models
             DeviceRoleID = dto.DeviceRoleID,
             DeviceFarmUnitID = dto.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = dto.DeviceFarmUnitZoneID,
+            FarmOpenfieldCropID = dto.FarmOpenfieldCropID,
+            FarmOpenfieldCropParcelID = dto.FarmOpenfieldCropParcelID,
             DeviceConfigSensorID = dto.DeviceConfigSensorID,
             DeviceConfigControllerID = dto.DeviceConfigControllerID,
             DeviceTypeServiceID = dto.DeviceTypeServiceID,
@@ -418,6 +429,9 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmUnitZoneID { get; set; }
         public string? DeviceFarmUnitName { get; set; }
         public string? DeviceFarmUnitZoneName { get; set; }
+        /// Same "filter one shared response" role as DeviceFarmUnitZoneID above, for the Open-Field branch.
+        public int? FarmOpenfieldCropID { get; set; }
+        public int? FarmOpenfieldCropParcelID { get; set; }
         /// Only the relay functions this device has ever reported a state for - empty for a sensor-only device or one whose firmware predates ControllerData.
         public IList<ControllerDataStatus>? RelayStates { get; set; }
 

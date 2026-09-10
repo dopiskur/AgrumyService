@@ -3,13 +3,17 @@ DELETE,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Device/FirmwareUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Parcel/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Firmware,Global admin
 DELETE,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/HorticultureCatalog,Global admin
@@ -65,11 +69,13 @@ POST,api/Device/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceCommand,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Parcel/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
@@ -87,6 +93,12 @@ POST,api/Discovery/WifiConfigs,Global admin;Global Device;Tenant admin;Tenant De
 POST,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Experiment/{idExperiment}/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Crop/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Firmware/Import,Global admin
 POST,api/Firmware/Sync,Global admin
 POST,api/Firmware/Upload,Global admin
@@ -125,6 +137,9 @@ PUT,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Devic
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/HorticultureCatalog,Global admin
 PUT,api/ServerConfig,Global admin
 PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin

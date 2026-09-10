@@ -38,14 +38,14 @@ public class ApiControllerTests
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     // CommandQueueService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
-    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
+    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
 
     private DeviceApiController NewDeviceController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings, NewQuotaEnforcer());
     private DeviceCommandApiController NewDeviceCommandController() =>
@@ -64,7 +64,7 @@ public class ApiControllerTests
 
     private void AssertNoJobWasQueued() =>
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
-    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
+    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
         new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
@@ -586,7 +586,7 @@ public class ApiControllerTests
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
             Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
 

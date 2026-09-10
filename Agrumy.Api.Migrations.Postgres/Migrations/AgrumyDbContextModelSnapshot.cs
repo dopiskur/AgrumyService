@@ -675,6 +675,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("DeviceFarmID")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("DeviceFarmOpenfieldCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DeviceFarmOpenfieldCropParcelID")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("DeviceFarmUnitID")
                         .HasColumnType("integer");
 
@@ -718,6 +724,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("DeviceFarmID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_farm");
+
+                    b.HasIndex("DeviceFarmOpenfieldCropID")
+                        .HasDatabaseName("ix_deviceFarmUnitZoneRule_crop");
+
+                    b.HasIndex("DeviceFarmOpenfieldCropParcelID")
+                        .HasDatabaseName("ix_deviceFarmUnitZoneRule_parcel");
 
                     b.HasIndex("DeviceFarmUnitID")
                         .HasDatabaseName("ix_deviceFarmUnitZoneRule_unit");
@@ -958,6 +970,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<bool?>("Enabled")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("FarmOpenfieldCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FarmOpenfieldCropParcelID")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FirmwareTargetVersion")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -1048,6 +1066,8 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasIndex("DeviceRoleID");
 
                     b.HasIndex("DeviceTypeServiceID");
+
+                    b.HasIndex("FarmOpenfieldCropID");
 
                     b.HasIndex("ManualDeviceTypeID");
 
@@ -1334,6 +1354,142 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasDatabaseName("ix_experiment_tenant_scope");
 
                     b.ToTable("experiment", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldCropParcelRow", b =>
+                {
+                    b.Property<int>("IDFarmOpenfieldCropParcel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmOpenfieldCropParcel"));
+
+                    b.Property<string>("DashboardWidgetsJson")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Deleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FarmOpenfieldCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FarmOpenfieldCropParcelName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("HeatingFailSafePolicy")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HeatingMaxRunSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("SkipWaterPumpWhenRainPredicted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("TankCapacityLiters")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset?>("TankRefillNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VentilationMaxRunSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterLevelRawEmpty")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterLevelRawFull")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterPumpCooldownSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WaterPumpMaxRunSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("WaterPumpMinLevel")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("IDFarmOpenfieldCropParcel");
+
+                    b.HasIndex("FarmOpenfieldCropID");
+
+                    b.ToTable("farmOpenfieldCropParcel", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldCropRow", b =>
+                {
+                    b.Property<int>("IDFarmOpenfieldCrop")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmOpenfieldCrop"));
+
+                    b.Property<bool>("Deleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("FarmOpenfieldCropName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("FarmOpenfieldID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDFarmOpenfieldCrop");
+
+                    b.HasIndex("FarmOpenfieldID");
+
+                    b.ToTable("farmOpenfieldCrop", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldRow", b =>
+                {
+                    b.Property<int>("IDFarmOpenfield")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmOpenfield"));
+
+                    b.Property<bool>("Deleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FarmID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDFarmOpenfield");
+
+                    b.HasIndex("FarmID");
+
+                    b.ToTable("farmOpenfield", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.GatewayDeviceMappingRow", b =>
@@ -1857,6 +2013,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<double?>("Ec")
                         .HasColumnType("double precision");
 
+                    b.Property<int?>("FarmOpenfieldCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FarmOpenfieldCropParcelID")
+                        .HasColumnType("integer");
+
                     b.Property<double?>("Humidity")
                         .HasColumnType("double precision");
 
@@ -1906,8 +2068,13 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("DeviceFarmUnitID");
 
+                    b.HasIndex("FarmOpenfieldCropID");
+
                     b.HasIndex("DeviceFarmUnitZoneID", "DateCreated")
                         .HasDatabaseName("ix_dataSensor_farmGreenhouseUnitZone_date");
+
+                    b.HasIndex("FarmOpenfieldCropParcelID", "DateCreated")
+                        .HasDatabaseName("ix_dataSensor_farmOpenfieldCropParcel_date");
 
                     b.HasIndex("DeviceID", "TenantID", "DateCreated")
                         .HasDatabaseName("ix_dataSensor_device_tenant_date");
@@ -2763,6 +2930,16 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("DeviceFarmID")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceFarmOpenfieldCropID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropParcelRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceFarmOpenfieldCropParcelID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Agrumy.Dal.Entities.DeviceFarmUnitRow", null)
                         .WithMany()
                         .HasForeignKey("DeviceFarmUnitID")
@@ -2820,6 +2997,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("DeviceTypeServiceID")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmOpenfieldCropID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Agrumy.Dal.Entities.DeviceTypeRow", null)
                         .WithMany()
                         .HasForeignKey("ManualDeviceTypeID")
@@ -2854,6 +3036,33 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.EventTypeRow", null)
                         .WithMany()
                         .HasForeignKey("EventID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldCropParcelRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmOpenfieldCropID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldCropRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmOpenfieldID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceFarmRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });
@@ -2937,6 +3146,16 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("DeviceID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmOpenfieldCropID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldCropParcelRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmOpenfieldCropParcelID")
+                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.SimulationGroupRow", b =>

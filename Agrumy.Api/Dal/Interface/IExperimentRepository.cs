@@ -17,6 +17,9 @@ namespace Agrumy.Api.Dal.Interface
         /// The id of whichever active experiment covers this zone via the Zone&gt;Unit&gt;Farm cascade (a Zone-level and its parent Unit/Farm-level experiment can coexist - the most specific one wins here, same precedence the rule hierarchy itself uses), or null if none - DeviceConfigBuilder's per-device lookup.
         Task<int?> ActiveExperimentIdForZoneAsync(int idDeviceFarmUnitZone);
 
+        /// Open-Field's Parcel&gt;Crop&gt;Farm equivalent of ActiveExperimentIdForZoneAsync.
+        Task<int?> ActiveExperimentIdForParcelAsync(int idFarmOpenfieldCropParcel);
+
         /// Batched tenant-wide zone id -> active experiment id map (same cascade as the single-zone lookup above, resolved for every zone at once) - RuleNotificationEvaluator's per-tenant lookup, avoiding an N+1 zone-by-zone query.
         Task<IDictionary<int, int>> ActiveExperimentIdsByZoneAsync(int tenantID);
 

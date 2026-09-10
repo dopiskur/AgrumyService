@@ -381,6 +381,8 @@ namespace Agrumy.Api.Dal
             DeviceRoleID = d.DeviceRoleID,
             DeviceFarmUnitID = d.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = d.DeviceFarmUnitZoneID,
+            FarmOpenfieldCropID = d.FarmOpenfieldCropID,
+            FarmOpenfieldCropParcelID = d.FarmOpenfieldCropParcelID,
             DeviceConfigSensorID = d.DeviceConfigSensorID,
             DeviceConfigControllerID = d.DeviceConfigControllerID,
             DeviceTypeServiceID = d.DeviceTypeServiceID,
@@ -878,6 +880,8 @@ namespace Agrumy.Api.Dal
                     DeviceFarmUnitZoneID = r.Device.DeviceFarmUnitZoneID,
                     DeviceFarmUnitName = r.Device.DeviceFarmUnitID is int uid ? unitNames.GetValueOrDefault(uid) : null,
                     DeviceFarmUnitZoneName = r.Device.DeviceFarmUnitZoneID is int zid ? zoneNames.GetValueOrDefault(zid) : null,
+                    FarmOpenfieldCropID = r.Device.FarmOpenfieldCropID,
+                    FarmOpenfieldCropParcelID = r.Device.FarmOpenfieldCropParcelID,
                     RelayStates = relayStates.GetValueOrDefault(r.Device.IDDevice),
                 };
             }).ToList();

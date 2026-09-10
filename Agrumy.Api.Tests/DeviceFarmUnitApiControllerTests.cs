@@ -21,10 +21,10 @@ public class DeviceFarmUnitApiControllerTests
 
     private DeviceFarmUnitApiController NewController()
     {
-        var controller = new DeviceFarmUnitApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
+        var controller = new DeviceFarmUnitApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             Options.Create(new AgrumySettings()), new ManualActuateService(_repo.Object),
             new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()),
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
             new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
             new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object),
             _repo.Object);

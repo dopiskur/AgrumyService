@@ -26,7 +26,11 @@
     {
         <form asp-action="FarmAdd" method="post" class="d-flex gap-2">
             <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New farm name" required maxlength="100" />
-            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm</button>
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Greenhouse</button>
+        </form>
+        <form asp-action="FarmOpenfieldAdd" method="post" class="d-flex gap-2">
+            <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New farm name" required maxlength="100" />
+            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Open-Field</button>
         </form>
     }
     <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#manageFarmsCollapse">
