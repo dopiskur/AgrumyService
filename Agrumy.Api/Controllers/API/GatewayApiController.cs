@@ -23,6 +23,9 @@ namespace Agrumy.Api.Controllers.API
         FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, ILogger<GatewayApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
+        /// A gateway-relayed envelope's nested entry payload is deserialized manually here, unlike a direct HTTP push's [FromBody] binding (MVC's own input formatter already runs case-insensitive) - without this, a lowercase-JSON firmware field like "temperature" silently binds to null instead of SensorDataPushReading.Temperature.
+        private static readonly JsonSerializerOptions RelayedPayloadJson = new(JsonSerializerDefaults.Web);
+
         /// The caller's own device row, already confirmed to be a gateway - null (with the ActionResult already set) covers every failure mode, so every action below is one guard clause instead of repeating the same checks.
         private async Task<OwnedResult<Device>> GetCallerGatewayAsync()
         {
@@ -149,7 +152,7 @@ namespace Agrumy.Api.Controllers.API
         /// Same steps as DeviceApiController.GetConfig, in the same order - diagnostics upsert before the version check, so a batched device still bumps LastSeenAt even when nothing changed.
         private async Task<GatewayBatchEntryResult> RunConfigAsync(Device device, JsonElement payload)
         {
-            DeviceConfigPoll poll = payload.Deserialize<DeviceConfigPoll>() ?? new DeviceConfigPoll();
+            DeviceConfigPoll poll = payload.Deserialize<DeviceConfigPoll>(RelayedPayloadJson) ?? new DeviceConfigPoll();
 
             await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID ?? 0, poll);
 
@@ -175,7 +178,7 @@ namespace Agrumy.Api.Controllers.API
         /// loRaRssiDbm/loRaSnrDb come from the relaying gateway's own radio measurement (RelayUplink), never from the node's payload itself - a LoRa transmitter has no way to know its own reception quality at the far end.
         private async Task<GatewayBatchEntryResult> RunSensorDataAsync(Device device, JsonElement payload, int? loRaRssiDbm = null, int? loRaSnrDb = null)
         {
-            List<SensorDataPushReading> readings = payload.Deserialize<List<SensorDataPushReading>>()
+            List<SensorDataPushReading> readings = payload.Deserialize<List<SensorDataPushReading>>(RelayedPayloadJson)
                 ?? throw new JsonException("SensorData payload must be a JSON array.");
 
             if (loRaRssiDbm is not null || loRaSnrDb is not null)
@@ -196,7 +199,7 @@ namespace Agrumy.Api.Controllers.API
         /// Same steps as DeviceApiController.PushEvent.
         private async Task<GatewayBatchEntryResult> RunEventAsync(Device device, JsonElement payload)
         {
-            DeviceEventPush push = payload.Deserialize<DeviceEventPush>() ?? new DeviceEventPush();
+            DeviceEventPush push = payload.Deserialize<DeviceEventPush>(RelayedPayloadJson) ?? new DeviceEventPush();
             if (!Enum.TryParse<DeviceEventType>(push.EventType, ignoreCase: true, out var eventType))
             {
                 return new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = $"Unknown eventType: {push.EventType}" };
@@ -242,7 +245,7 @@ namespace Agrumy.Api.Controllers.API
         /// Same steps as DeviceApiController.AckCommand.
         private async Task<GatewayBatchEntryResult> RunCommandAckAsync(Device device, JsonElement payload)
         {
-            CommandAckRequest ack = payload.Deserialize<CommandAckRequest>() ?? new CommandAckRequest();
+            CommandAckRequest ack = payload.Deserialize<CommandAckRequest>(RelayedPayloadJson) ?? new CommandAckRequest();
             await commandQueue.AcknowledgeCommandAsync(ack.CommandId, device.IDDevice!.Value);
             return new GatewayBatchEntryResult { Success = true, StatusCode = 200 };
         }
