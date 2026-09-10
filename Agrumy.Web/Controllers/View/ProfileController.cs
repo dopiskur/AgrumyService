@@ -30,6 +30,9 @@ namespace Agrumy.Web.Controllers.View
                 return View(await RestoreDisplayFieldsAsync(value));
             }
 
+            // UIMode now moves exclusively through ToggleUIMode (header button) - this form no longer posts it, so keep the existing value instead of letting it bind to the default.
+            value.Profile.UIMode = User.GetUIMode();
+
             try
             {
                 await api.UserProfileSet(value.Profile);
@@ -42,9 +45,25 @@ namespace Agrumy.Web.Controllers.View
             }
 
             await RefreshTimeZoneClaimAsync(value.Profile.TimeZone);
-            await RefreshUIModeClaimAsync(value.Profile.UIMode);
             TempData["ProfileMessage"] = "Profile saved.";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ToggleUIMode(string? returnUrl)
+        {
+            User self = await api.UserGetSelf();
+            UIMode newMode = self.UIMode == UIMode.Simple ? UIMode.Advanced : UIMode.Simple;
+            await api.UserProfileSet(new UserProfileUpdate
+            {
+                FirstName = self.FirstName,
+                LastName = self.LastName,
+                TimeZone = self.TimeZone,
+                UIMode = newMode,
+            });
+            await RefreshUIModeClaimAsync(newMode);
+            return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/");
         }
 
         [HttpPost]

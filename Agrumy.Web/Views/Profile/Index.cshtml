@@ -39,11 +39,6 @@
                         <span asp-validation-for="Profile.TimeZone" class="text-danger"></span>
                         <div class="form-text">Timestamps (sensor charts, device events) are stored in UTC and shown in this time zone.</div>
                     </div>
-                    <div class="mb-3">
-                        <label asp-for="Profile.UIMode" class="form-label"></label>
-                        <select asp-for="Profile.UIMode" asp-items="Html.GetEnumSelectList<Agrumy.Shared.Models.UIMode>()" class="form-select"></select>
-                        <div class="form-text">Simple hides multi-condition rule grouping, derived metrics, and a few advanced menu items. Advanced shows everything. Switch anytime.</div>
-                    </div>
                     <div class="mb-0">
                         <input type="submit" value="Save" class="btn btn-primary" />
                     </div>
