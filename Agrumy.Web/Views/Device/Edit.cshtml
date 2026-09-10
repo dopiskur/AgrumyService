@@ -98,6 +98,25 @@
                 <span asp-validation-for="DeviceEdit.ServicePublicKey" class="text-danger"></span>
             </div>
             <div class="mb-3">
+                <label class="form-label">Location</label>
+                @if (device.LocationSource == Agrumy.Shared.Models.DeviceLocationSource.Gps)
+                {
+                    <p class="form-control-plaintext">From GPS: @device.Latitude, @device.Longitude</p>
+                    <div class="form-text">Reported by the device's own GPS module - entering coordinates below overrides this until the next GPS fix arrives.</div>
+                }
+                <div class="row g-2">
+                    <div class="col-auto">
+                        <input asp-for="DeviceEdit.Latitude" class="form-control" placeholder="Latitude" />
+                    </div>
+                    <div class="col-auto">
+                        <input asp-for="DeviceEdit.Longitude" class="form-control" placeholder="Longitude" />
+                    </div>
+                </div>
+                <span asp-validation-for="DeviceEdit.Latitude" class="text-danger"></span>
+                <span asp-validation-for="DeviceEdit.Longitude" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
                 <label asp-for="DeviceEdit.SleepSeconds" class="form-label"></label>
                 <input asp-for="DeviceEdit.SleepSeconds" class="form-control" />
                 <span asp-validation-for="DeviceEdit.SleepSeconds" class="text-danger"></span>

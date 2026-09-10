@@ -871,6 +871,13 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("character varying(64)")
                         .HasComputedColumnSql("(CASE WHEN NOT \"Deleted\" THEN \"MacAddress\" ELSE NULL END)", true);
 
+                    b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApiAuthToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -961,6 +968,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("LastSensorDetectionResult")
                         .HasColumnType("text");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
                     b.Property<bool?>("LoRaGatewayEnabled")
                         .HasColumnType("boolean");
 
@@ -970,6 +980,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<int>("LocationSource")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("MacAddress")
                         .HasMaxLength(64)

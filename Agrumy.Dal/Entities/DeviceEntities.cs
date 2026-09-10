@@ -309,6 +309,9 @@ namespace Agrumy.Dal.Entities
         public int? ManualDeviceTypeID { get; set; }
         public string ApiId { get; set; } = "";
         public string ApiKey { get; set; } = "";
+        // DB-backed fallback for DeviceSessionHandler's cache-miss path - re-validates a session the in-process cache lost (restart/redeploy/wrong instance) without forcing a fresh Authenticate; never mapped onto Device/DeviceDto, same secret-tier as ApiKey.
+        public string? ApiAuthToken { get; set; }
+        public DateTimeOffset? ApiAuthExpiresAtUtc { get; set; }
         public string? ServicePoint { get; set; }
         public string? ServicePublicKey { get; set; }
         public int? SleepSeconds { get; set; }
@@ -326,6 +329,11 @@ namespace Agrumy.Dal.Entities
         public int? ConfigVersion { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
+
+        // See Agrumy.Shared.Models.Device.Latitude/Longitude/LocationSource - stored as the enum's int value, same convention as GatewayProfile below.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public int LocationSource { get; set; }
 
         public bool IsGateway { get; set; }
         public int? GatewayProfile { get; set; }

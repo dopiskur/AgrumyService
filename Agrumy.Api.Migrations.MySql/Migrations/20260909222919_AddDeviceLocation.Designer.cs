@@ -4,6 +4,7 @@ using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909222919_AddDeviceLocation")]
+    partial class AddDeviceLocation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -870,13 +873,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
                         .HasComputedColumnSql("(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)", true);
-
-                    b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("ApiAuthToken")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("ApiId")
                         .IsRequired()
