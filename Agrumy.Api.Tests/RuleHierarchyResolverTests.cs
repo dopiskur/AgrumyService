@@ -24,13 +24,15 @@ public class RuleHierarchyResolverTests
         Root = Leaf(),
     };
 
-    private static DeviceFarmUnitZoneRule NotificationRule(string name, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, bool isSafetyRule = false) => new()
+    private static DeviceFarmUnitZoneRule NotificationRule(string name, int marker, int? zoneId = null, int? unitId = null, int? farmId = null, int? simulationId = null, int? experimentId = null, bool isSafetyRule = false) => new()
     {
         IDDeviceFarmUnitZoneRule = marker,
         TenantID = 1,
         DeviceFarmUnitZoneID = zoneId,
         DeviceFarmUnitID = unitId,
         DeviceFarmID = farmId,
+        SimulationSessionID = simulationId,
+        ExperimentID = experimentId,
         ActionType = ActionType.Notification,
         Name = name,
         IsSafetyRule = isSafetyRule,
@@ -187,6 +189,30 @@ public class RuleHierarchyResolverTests
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
 
+    /// Simulation is a consequence-free sandbox specifically meant to let a scenario test whether the safety rule actually fires (e.g. simulate cold, check frost-guard turns heating on); a global safety rule OR-ing back in would mask that. Only rule 1 (the Simulation-scoped one) should survive.
+    [Fact]
+    public void ResolveRelayRules_GlobalSafetyRule_SuspendedBySimulationOverride_DoesNotOrIn()
+    {
+        var simulationRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, simulationId: 3) };
+        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, [], [], [], [], globalRules);
+
+        Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
+    }
+
+    /// Experiment is NOT a sandbox (it drives a real device for a real A/B test), so unlike Simulation it keeps the normal safety-survives behavior: both the Experiment rule and the global safety rule should be present.
+    [Fact]
+    public void ResolveRelayRules_GlobalSafetyRule_SurvivesExperimentOverride_OrsInAlongside()
+    {
+        var experimentRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, experimentId: 9) };
+        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
+
+        var result = RuleHierarchyResolver.ResolveRelayRules([], experimentRules, [], [], [], globalRules);
+
+        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
+    }
+
     /// Roadmap #396(4) - Notification rules no longer group by SensorMetric (a rule can span several metrics now); a more specific scope's rule with the SAME Name replaces a less specific one instead.
     [Fact]
     public void ResolveNotificationRules_SameName_ZoneOverridesGlobal()
@@ -219,6 +245,30 @@ public class RuleHierarchyResolverTests
         var globalRule = NotificationRule("Frost Guard", 2, isSafetyRule: true);
 
         var result = RuleHierarchyResolver.ResolveNotificationRules([], [], [zoneRule], [], [], [globalRule]);
+
+        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
+    }
+
+    /// Same Simulation-suspends-safety exception as the Relay side, keyed by Name instead of RelayFunction.
+    [Fact]
+    public void ResolveNotificationRules_GlobalSafetyRule_SuspendedBySimulationOverride_WithSameName()
+    {
+        var simulationRule = NotificationRule("Frost Guard", 1, simulationId: 3);
+        var globalRule = NotificationRule("Frost Guard", 2, isSafetyRule: true);
+
+        var result = RuleHierarchyResolver.ResolveNotificationRules([simulationRule], [], [], [], [], [globalRule]);
+
+        Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
+    }
+
+    /// A safety rule for an UNRELATED Name must still survive a Simulation session that only overrides a different Name - the suspension is per-Name, not global to the whole resolve call.
+    [Fact]
+    public void ResolveNotificationRules_GlobalSafetyRule_SurvivesSimulationOverride_ForDifferentName()
+    {
+        var simulationRule = NotificationRule("Reminder", 1, simulationId: 3);
+        var globalRule = NotificationRule("Frost Guard", 2, isSafetyRule: true);
+
+        var result = RuleHierarchyResolver.ResolveNotificationRules([simulationRule], [], [], [], [], [globalRule]);
 
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }

@@ -297,6 +297,15 @@ else
     logic against this session's simulated readings without it silently doing nothing, or (for
     whatever you don't override here) still reaching a real notification/relay outside the simulation.
 </p>
+@if (running)
+{
+    <div class="alert alert-warning">
+        <strong>Simulation Mode: safety rules suspended.</strong> For any relay function you add a rule for
+        below, the real hierarchy's safety rule (e.g. frost-guard) does NOT OR in alongside it while this
+        session is running - on purpose, so you can actually test whether that safety rule fires (e.g.
+        simulate cold and check heating turns on), instead of it silently masking the result.
+    </div>
+}
 <partial name="_RuleEditor" model="ruleEditorModel" />
 
 <a asp-action="Index" class="btn btn-link mt-3">Back to simulations</a>
