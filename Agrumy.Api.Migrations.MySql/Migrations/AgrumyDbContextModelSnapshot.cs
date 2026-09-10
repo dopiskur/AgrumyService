@@ -1530,6 +1530,34 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("farmOpenfield", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.FirmwareSsrfAllowlistEntryRow", b =>
+                {
+                    b.Property<int>("IDFirmwareSsrfAllowlistEntry")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFirmwareSsrfAllowlistEntry"));
+
+                    b.Property<bool>("AllowInsecureHttp")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowPrivateNetwork")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("IDFirmwareSsrfAllowlistEntry");
+
+                    b.HasIndex("Pattern")
+                        .IsUnique()
+                        .HasDatabaseName("ux_firmwareSsrfAllowlistEntry_pattern");
+
+                    b.ToTable("firmwareSsrfAllowlistEntry", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.GatewayDeviceMappingRow", b =>
                 {
                     b.Property<int>("IDGatewayDeviceMapping")
@@ -2814,6 +2842,34 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasIndex("UserRoleID");
 
                     b.ToTable("userUserRole", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.WebhookSsrfAllowlistEntryRow", b =>
+                {
+                    b.Property<int>("IDWebhookSsrfAllowlistEntry")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDWebhookSsrfAllowlistEntry"));
+
+                    b.Property<bool>("AllowInsecureHttp")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("AllowPrivateNetwork")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("IDWebhookSsrfAllowlistEntry");
+
+                    b.HasIndex("Pattern")
+                        .IsUnique()
+                        .HasDatabaseName("ux_webhookSsrfAllowlistEntry_pattern");
+
+                    b.ToTable("webhookSsrfAllowlistEntry", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataExperimentRow", b =>

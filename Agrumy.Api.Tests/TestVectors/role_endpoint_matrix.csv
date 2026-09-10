@@ -18,6 +18,8 @@ DELETE,api/Firmware,Global admin
 DELETE,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/HorticultureCatalog,Global admin
 DELETE,api/SensorData,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/ServerConfig/FirmwareSsrfAllowlist/{id:int},Global admin
+DELETE,api/ServerConfig/WebhookSsrfAllowlist/{id:int},Global admin
 DELETE,api/Simulation/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
 DELETE,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin
 DELETE,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
@@ -46,7 +48,9 @@ GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;T
 GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Farm/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/ServerConfig,Global admin;Global reader
+GET,api/ServerConfig/FirmwareSsrfAllowlist,Global admin;Global reader
 GET,api/ServerConfig/Health,Global admin;Global reader
+GET,api/ServerConfig/WebhookSsrfAllowlist,Global admin;Global reader
 GET,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin;Global reader
@@ -112,9 +116,11 @@ POST,api/RecycleBin/Empty,Global admin
 POST,api/RecycleBin/Farm/{idDeviceFarm}/PurgeNow,Global admin
 POST,api/RecycleBin/Farm/{idDeviceFarm}/Restore,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/ServerConfig/ArchiveSettings,Global admin
+POST,api/ServerConfig/FirmwareSsrfAllowlist,Global admin
 POST,api/ServerConfig/TestArchiveDatabase,Global admin
 POST,api/ServerConfig/TestEmail,Global admin
 POST,api/ServerConfig/TestWebhook,Global admin
+POST,api/ServerConfig/WebhookSsrfAllowlist,Global admin
 POST,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
 POST,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin
 POST,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin

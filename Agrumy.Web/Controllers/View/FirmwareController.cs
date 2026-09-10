@@ -27,7 +27,35 @@ namespace Agrumy.Web.Controllers.View
                 Config = config,
                 Catalog = catalog,
                 InstallableBoards = InstallableBoards(catalog, config),
+                SsrfAllowlist = await api.FirmwareSsrfAllowlistGet(),
             });
+        }
+
+        /// Relaxes SsrfGuard's private-IP/https-only checks for this one hostname or CIDR range, firmware-only (ServerConfigController.WebhookSsrfAllowlistAdd is the separate webhook list).
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SsrfAllowlistAdd(SsrfAllowlistEntry entry)
+        {
+            try
+            {
+                await api.FirmwareSsrfAllowlistAdd(entry);
+                TempData["Message"] = $"'{entry.Pattern}' added to the firmware allowlist.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SsrfAllowlistDelete(int id)
+        {
+            await api.FirmwareSsrfAllowlistDelete(id);
+            return RedirectToAction(nameof(Index));
         }
 
         private static List<DeviceFirmware> InstallableBoards(IList<DeviceFirmware> catalog, ServerConfig config) =>

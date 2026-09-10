@@ -685,6 +685,26 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/ServerConfig/Public")]
         Task<PublicServerConfig> ServerConfigGetPublic();
 
+        // ---- SsrfGuard allowlists (Firmware and Webhook kept separate) ----
+
+        [Get("/api/ServerConfig/FirmwareSsrfAllowlist")]
+        Task<IReadOnlyList<SsrfAllowlistEntry>> FirmwareSsrfAllowlistGet();
+
+        [Post("/api/ServerConfig/FirmwareSsrfAllowlist")]
+        Task<SsrfAllowlistEntry> FirmwareSsrfAllowlistAdd([Body] SsrfAllowlistEntry entry);
+
+        [Delete("/api/ServerConfig/FirmwareSsrfAllowlist/{id}")]
+        Task FirmwareSsrfAllowlistDelete(int id);
+
+        [Get("/api/ServerConfig/WebhookSsrfAllowlist")]
+        Task<IReadOnlyList<SsrfAllowlistEntry>> WebhookSsrfAllowlistGet();
+
+        [Post("/api/ServerConfig/WebhookSsrfAllowlist")]
+        Task<SsrfAllowlistEntry> WebhookSsrfAllowlistAdd([Body] SsrfAllowlistEntry entry);
+
+        [Delete("/api/ServerConfig/WebhookSsrfAllowlist/{id}")]
+        Task WebhookSsrfAllowlistDelete(int id);
+
         // ---- Data maintenance -----------------------------
 
         /// Whether the current DB provider is MariaDB/MySQL - decides whether the Purge confirmation flow needs the extra "shrink files on disk?" dialog at all.

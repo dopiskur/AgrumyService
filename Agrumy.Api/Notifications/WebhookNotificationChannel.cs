@@ -7,7 +7,7 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Notifications
 {
     /// Posts a JSON event to an operator-configured URL, so an external system learns about an alert without polling Agrumy. Config lives in the DB-backed ServerConfig (Webhook* fields, admin-editable via Server Settings), not appsettings - read fresh on every call, same pattern as EmailNotificationChannel.
-    public sealed class WebhookNotificationChannel(IServerConfigRepository serverConfigRepo, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger) : INotificationChannel
+    public sealed class WebhookNotificationChannel(IServerConfigRepository serverConfigRepo, IHttpClientFactory httpClientFactory, ILogger<WebhookNotificationChannel> logger, ISsrfAllowlistRepository ssrfAllowlistRepo) : INotificationChannel
     {
         public const string ClientName = "WebhookNotificationChannel";
 
@@ -37,7 +37,7 @@ namespace Agrumy.Api.Notifications
             var uri = new Uri(config.WebhookUrl!); // https-scheme, valid absolute: IsConfigured
             try
             {
-                await SsrfGuard.EnsureAllowedAsync(uri, ct);
+                await SsrfGuard.EnsureAllowedAsync(uri, await ssrfAllowlistRepo.WebhookAllowlistGetAllAsync(), ct);
             }
             catch (SsrfBlockedException ex)
             {

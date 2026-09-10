@@ -7,6 +7,9 @@ namespace Agrumy.Web.ViewModels
         public required ServerConfig Config { get; init; }
         public required IList<DeviceFirmware> Catalog { get; init; }
         public required IList<DeviceFirmware> InstallableBoards { get; init; }
+
+        /// SsrfGuard exceptions for the Custom repository URL, firmware's own list (see SsrfAllowlistEntry remarks).
+        public required IReadOnlyList<SsrfAllowlistEntry> SsrfAllowlist { get; init; }
     }
 
     public class DeviceFirmwareViewModel

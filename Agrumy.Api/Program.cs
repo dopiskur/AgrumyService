@@ -1,5 +1,6 @@
 using Agrumy.Api;
 using Agrumy.Shared;
+using Agrumy.Shared.Models;
 using Asp.Versioning;
 using Agrumy.Api.BackgroundWorkers;
 using Agrumy.Api.Commands;
@@ -98,6 +99,7 @@ builder.Services.AddSingleton<ISecretProtector, SecretProtector>();
 builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<ISystemRepository, SchemaBootstrapper>();
 builder.Services.AddScoped<IServerConfigRepository, EfServerConfigRepository>();
+builder.Services.AddScoped<ISsrfAllowlistRepository, EfSsrfAllowlistRepository>();
 builder.Services.AddScoped<IUserRepository, EfUserRepository>();
 builder.Services.AddScoped<ITenantRepository, EfTenantRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
@@ -140,13 +142,26 @@ builder.Services.AddScoped<INotificationChannel, FcmPushNotificationChannel>();
 builder.Services.AddScoped<INotificationChannel, WebhookNotificationChannel>();
 builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
 
+// A pooled HttpClient's handler outlives any one request, so its ConnectCallback can't just capture a scoped ISsrfAllowlistRepository - it opens its own short-lived scope on every connection instead, reading whatever the admin has saved at that moment.
+static Func<CancellationToken, Task<IReadOnlyList<SsrfAllowlistEntry>>> SsrfAllowlistProvider(IServiceProvider rootServices, Func<ISsrfAllowlistRepository, Task<IReadOnlyList<SsrfAllowlistEntry>>> read) =>
+    async _ =>
+    {
+        using IServiceScope scope = rootServices.CreateScope();
+        return await read(scope.ServiceProvider.GetRequiredService<ISsrfAllowlistRepository>());
+    };
+
 // AllowAutoRedirect=false: a redirect response is treated as a delivery failure rather than followed, same SsrfGuard-bypass concern as HttpFirmwareFetcher below, simpler to just refuse it here.
+// ConnectCallback (not the plain HttpClientHandler this used to be) fixes a DNS-rebinding gap - it resolves+validates the host exactly once and dials that same address, instead of validating one lookup then letting SocketsHttpHandler silently re-resolve for the real connect.
 builder.Services.AddHttpClient(WebhookNotificationChannel.ClientName, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Agrumy.Api/1.0 (+https://github.com/dopiskur/AgrumyService)");
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+.ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
+{
+    AllowAutoRedirect = false,
+    ConnectCallback = SsrfGuard.CreateConnectCallback(SsrfAllowlistProvider(sp, r => r.WebhookAllowlistGetAllAsync())),
+});
 
 // Scoped, not singleton: it resolves scoped repositories/dispatcher itself, and PeriodicBackgroundService creates a fresh DI scope per tick.
 builder.Services.AddScoped<OfflineAlertEvaluator>();
@@ -216,8 +231,12 @@ builder.Services.AddHttpClient(HttpFirmwareFetcher.ClientName, client =>
     client.Timeout = TimeSpan.FromMinutes(5); // a full "pull from GitHub" streams several MB per file
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Agrumy.Api/1.0 (+https://github.com/dopiskur/AgrumyService)");
 })
-// AllowAutoRedirect=false: HttpFirmwareFetcher follows redirects itself so SsrfGuard re-validates every hop.
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+// AllowAutoRedirect=false: HttpFirmwareFetcher follows redirects itself so SsrfGuard re-validates every hop. ConnectCallback: see the Webhook registration's remark above, same DNS-rebinding fix.
+.ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
+{
+    AllowAutoRedirect = false,
+    ConnectCallback = SsrfGuard.CreateConnectCallback(SsrfAllowlistProvider(sp, r => r.FirmwareAllowlistGetAllAsync())),
+});
 builder.Services.AddSingleton<IFirmwareFetcher, HttpFirmwareFetcher>();
 builder.Services.AddSingleton<FirmwareStorage>();
 builder.Services.AddScoped<FirmwareCatalogService>();

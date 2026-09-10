@@ -1,4 +1,7 @@
+using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared;
+using Agrumy.Shared.Models;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 
 namespace Agrumy.Api.Firmware
@@ -13,7 +16,8 @@ namespace Agrumy.Api.Firmware
         Task<Stream> GetStreamAsync(string url, CancellationToken cancellationToken = default);
     }
 
-    public sealed class HttpFirmwareFetcher(IHttpClientFactory httpClientFactory, Microsoft.Extensions.Options.IOptions<AgrumySettings> settings) : IFirmwareFetcher
+    // Registered as a singleton (Program.cs), so the scoped ISsrfAllowlistRepository can't be a constructor dependency - a scope is opened per fetch instead, same pattern SsrfGuard.CreateConnectCallback needs for the same reason.
+    public sealed class HttpFirmwareFetcher(IHttpClientFactory httpClientFactory, Microsoft.Extensions.Options.IOptions<AgrumySettings> settings, IServiceScopeFactory scopeFactory) : IFirmwareFetcher
     {
         public const string ClientName = "firmware";
 
@@ -37,10 +41,13 @@ namespace Agrumy.Api.Firmware
         {
             HttpClient client = httpClientFactory.CreateClient(ClientName);
             Uri current = new(url);
+            // Same allowlist for every hop of one fetch - a redirect chain doesn't get to pick up a fresh admin-editable list mid-flight.
+            using IServiceScope scope = scopeFactory.CreateScope();
+            IReadOnlyList<SsrfAllowlistEntry> allowlist = await scope.ServiceProvider.GetRequiredService<ISsrfAllowlistRepository>().FirmwareAllowlistGetAllAsync();
 
             for (int hop = 0; ; hop++)
             {
-                await SsrfGuard.EnsureAllowedAsync(current, cancellationToken);
+                await SsrfGuard.EnsureAllowedAsync(current, allowlist, cancellationToken);
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, current);
                 if (gitHubApi)

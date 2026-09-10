@@ -160,6 +160,73 @@
                 }
 
                 <hr />
+                <h6 class="text-uppercase text-secondary small">Custom repository SSRF allowlist</h6>
+                <p class="text-secondary small">
+                    The Custom repository URL above is blocked by default if it points at a private/LAN
+                    address or isn't https - add an exact hostname or a CIDR range (e.g.
+                    <code>192.168.1.0/24</code>) here to relax either check for an offline/LAN-only
+                    repository you trust. This list is firmware-only; the Webhook allowlist on Server
+                    Settings is separate.
+                </p>
+                @if (Model.SsrfAllowlist.Count > 0)
+                {
+                    <table class="table table-sm align-middle" style="max-width:40rem">
+                        <thead>
+                            <tr>
+                                <th>Hostname / CIDR</th>
+                                <th>Allow private</th>
+                                <th>Allow http</th>
+                                @if (!isReadOnly)
+                                {
+                                    <th></th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in Model.SsrfAllowlist)
+                            {
+                                <tr>
+                                    <td><code>@entry.Pattern</code></td>
+                                    <td>@(entry.AllowPrivateNetwork ? "Yes" : "-")</td>
+                                    <td>@(entry.AllowInsecureHttp ? "Yes" : "-")</td>
+                                    @if (!isReadOnly)
+                                    {
+                                        <td>
+                                            <form asp-action="SsrfAllowlistDelete" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@entry.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                @if (!isReadOnly)
+                {
+                    <form asp-action="SsrfAllowlistAdd" method="post" class="row g-3 align-items-end mb-3" style="max-width:40rem">
+                        <div class="col-md-6">
+                            <label class="form-label">Hostname or CIDR</label>
+                            <input type="text" name="Pattern" class="form-control" placeholder="192.168.1.50 or 192.168.1.0/24" required />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="AllowPrivateNetwork" value="true" class="form-check-input" id="fwAllowPrivate" />
+                                <label class="form-check-label" for="fwAllowPrivate">Allow private</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" name="AllowInsecureHttp" value="true" class="form-check-input" id="fwAllowHttp" />
+                                <label class="form-check-label" for="fwAllowHttp">Allow http</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-plus-lg"></i> Add</button>
+                        </div>
+                    </form>
+                }
+
+                <hr />
                 <h6 class="text-uppercase text-secondary small">Sync the catalog</h6>
                 @if (!isReadOnly)
                 {

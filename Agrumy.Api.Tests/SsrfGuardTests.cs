@@ -1,12 +1,15 @@
 using System.Net;
 using Agrumy.Api.Firmware;
+using Agrumy.Shared.Models;
 using Xunit;
 
 namespace Agrumy.Api.Tests;
 
-/// IsPrivateOrReserved is tested directly as a pure function; EnsureAllowedAsync's scheme check needs no real DNS since it short-circuits first.
+/// IsPrivateOrReserved is tested directly as a pure function; EnsureAllowedAsync's scheme check needs no real DNS since it short-circuits first. The allowlist tests below use literal-IP hosts throughout so no real DNS is ever needed either.
 public class SsrfGuardTests
 {
+    private static readonly IReadOnlyList<SsrfAllowlistEntry> NoAllowlist = [];
+
     [Theory]
     [InlineData("127.0.0.1")]        // loopback
     [InlineData("10.0.0.1")]         // 10.0.0.0/8
@@ -48,7 +51,7 @@ public class SsrfGuardTests
     {
         // A bogus host that reached DNS resolution would throw/hang differently - this proves the scheme check runs first.
         var ex = await Assert.ThrowsAsync<SsrfBlockedException>(
-            () => SsrfGuard.EnsureAllowedAsync(new Uri("http://this-host-does-not-resolve.invalid/manifest.json"), CancellationToken.None));
+            () => SsrfGuard.EnsureAllowedAsync(new Uri("http://this-host-does-not-resolve.invalid/manifest.json"), NoAllowlist, CancellationToken.None));
 
         Assert.Contains("https", ex.Message);
     }
@@ -57,8 +60,72 @@ public class SsrfGuardTests
     public async Task EnsureAllowedAsync_RejectsUnresolvableHost()
     {
         var ex = await Assert.ThrowsAsync<SsrfBlockedException>(
-            () => SsrfGuard.EnsureAllowedAsync(new Uri("https://this-host-does-not-resolve.invalid/manifest.json"), CancellationToken.None));
+            () => SsrfGuard.EnsureAllowedAsync(new Uri("https://this-host-does-not-resolve.invalid/manifest.json"), NoAllowlist, CancellationToken.None));
 
         Assert.Contains("resolve", ex.Message);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_RejectsLiteralPrivateIp_WithNoAllowlist()
+    {
+        var ex = await Assert.ThrowsAsync<SsrfBlockedException>(
+            () => SsrfGuard.EnsureAllowedAsync(new Uri("https://192.168.1.50/manifest.json"), NoAllowlist, CancellationToken.None));
+
+        Assert.Contains("private/reserved", ex.Message);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_AllowsPrivateIp_WhenHostnamePatternMatchesAndAllowsPrivateNetwork()
+    {
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "192.168.1.50", AllowPrivateNetwork = true }];
+
+        await SsrfGuard.EnsureAllowedAsync(new Uri("https://192.168.1.50/manifest.json"), allowlist, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_AllowsPrivateIp_WhenCidrPatternContainsItAndAllowsPrivateNetwork()
+    {
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "192.168.1.0/24", AllowPrivateNetwork = true }];
+
+        await SsrfGuard.EnsureAllowedAsync(new Uri("https://192.168.1.50/manifest.json"), allowlist, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_StillRejectsPrivateIp_WhenAllowlistEntryDoesNotCoverIt()
+    {
+        // Pattern is a different host entirely - the private-IP block must not be relaxed for an unrelated request.
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "192.168.1.99", AllowPrivateNetwork = true }];
+
+        var ex = await Assert.ThrowsAsync<SsrfBlockedException>(
+            () => SsrfGuard.EnsureAllowedAsync(new Uri("https://192.168.1.50/manifest.json"), allowlist, CancellationToken.None));
+        Assert.Contains("private/reserved", ex.Message);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_AllowsHttp_WhenHostnamePatternAllowsInsecureHttp()
+    {
+        // A public IP here, so only the https-only check (not the private-IP block) is under test.
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "8.8.8.8", AllowInsecureHttp = true }];
+
+        await SsrfGuard.EnsureAllowedAsync(new Uri("http://8.8.8.8/manifest.json"), allowlist, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_AllowsHttp_WhenCidrPatternContainsLiteralIpHostAndAllowsInsecureHttp()
+    {
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "8.8.8.0/24", AllowInsecureHttp = true }];
+
+        await SsrfGuard.EnsureAllowedAsync(new Uri("http://8.8.8.8/manifest.json"), allowlist, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task EnsureAllowedAsync_HttpAllowanceDoesNotImplyPrivateNetworkAllowance()
+    {
+        // AllowInsecureHttp=true but AllowPrivateNetwork=false (the default) - the two switches are independent.
+        IReadOnlyList<SsrfAllowlistEntry> allowlist = [new SsrfAllowlistEntry { Pattern = "192.168.1.50", AllowInsecureHttp = true }];
+
+        var ex = await Assert.ThrowsAsync<SsrfBlockedException>(
+            () => SsrfGuard.EnsureAllowedAsync(new Uri("http://192.168.1.50/manifest.json"), allowlist, CancellationToken.None));
+        Assert.Contains("private/reserved", ex.Message);
     }
 }

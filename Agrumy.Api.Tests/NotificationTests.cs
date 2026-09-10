@@ -33,7 +33,9 @@ public class NotificationTests
     {
         var repo = new Mock<IServerConfigRepository>(MockBehavior.Strict);
         repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(config);
-        return new WebhookNotificationChannel(repo.Object, factory ?? new FakeHttpClientFactory(HttpStatusCode.OK), NullLogger<WebhookNotificationChannel>.Instance);
+        var ssrfAllowlistRepo = new Mock<ISsrfAllowlistRepository>(MockBehavior.Strict);
+        ssrfAllowlistRepo.Setup(r => r.WebhookAllowlistGetAllAsync()).ReturnsAsync((IReadOnlyList<SsrfAllowlistEntry>)[]);
+        return new WebhookNotificationChannel(repo.Object, factory ?? new FakeHttpClientFactory(HttpStatusCode.OK), NullLogger<WebhookNotificationChannel>.Instance, ssrfAllowlistRepo.Object);
     }
 
 

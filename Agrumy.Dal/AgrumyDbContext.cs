@@ -23,6 +23,8 @@ namespace Agrumy.Dal
         public DbSet<UserUserRoleRow> UserUserRoles => Set<UserUserRoleRow>();
         public DbSet<UserNotificationPreferenceRow> UserNotificationPreferences => Set<UserNotificationPreferenceRow>();
         public DbSet<ServerConfigRow> ServerConfigs => Set<ServerConfigRow>();
+        public DbSet<FirmwareSsrfAllowlistEntryRow> FirmwareSsrfAllowlistEntries => Set<FirmwareSsrfAllowlistEntryRow>();
+        public DbSet<WebhookSsrfAllowlistEntryRow> WebhookSsrfAllowlistEntries => Set<WebhookSsrfAllowlistEntryRow>();
 
         public DbSet<DeviceRow> Devices => Set<DeviceRow>();
         public DbSet<DeviceFarmRow> DeviceFarms => Set<DeviceFarmRow>();
@@ -200,6 +202,24 @@ namespace Agrumy.Dal
                 e.Property(x => x.ArchiveDatabaseName).HasMaxLength(64); // MySQL's own database-identifier limit
                 e.Property(x => x.ArchiveUsername).HasMaxLength(128);
                 e.Property(x => x.ArchivePassword).HasMaxLength(512);
+            });
+
+            modelBuilder.Entity<FirmwareSsrfAllowlistEntryRow>(e =>
+            {
+                e.ToTable("firmwareSsrfAllowlistEntry");
+                e.HasKey(x => x.IDFirmwareSsrfAllowlistEntry);
+                e.Property(x => x.IDFirmwareSsrfAllowlistEntry).ValueGeneratedOnAdd();
+                e.Property(x => x.Pattern).HasMaxLength(255).IsRequired();
+                e.HasIndex(x => x.Pattern).IsUnique().HasDatabaseName("ux_firmwareSsrfAllowlistEntry_pattern");
+            });
+
+            modelBuilder.Entity<WebhookSsrfAllowlistEntryRow>(e =>
+            {
+                e.ToTable("webhookSsrfAllowlistEntry");
+                e.HasKey(x => x.IDWebhookSsrfAllowlistEntry);
+                e.Property(x => x.IDWebhookSsrfAllowlistEntry).ValueGeneratedOnAdd();
+                e.Property(x => x.Pattern).HasMaxLength(255).IsRequired();
+                e.HasIndex(x => x.Pattern).IsUnique().HasDatabaseName("ux_webhookSsrfAllowlistEntry_pattern");
             });
 
             // Unlike DeviceFarmUnit/DeviceFarmUnitZone, Farm has no reserved "0" sentinel row (its optionality on DeviceFarmUnit is expressed via a nullable FK, not a sentinel) - plain AUTO_INCREMENT, no app-side Max+1 dance needed.

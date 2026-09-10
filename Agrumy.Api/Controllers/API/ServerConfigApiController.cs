@@ -10,7 +10,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Server-wide settings, admin-only; there is exactly one row (id 1), auto-created on first read.
     [Route("api/ServerConfig")]
-    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, Agrumy.Api.Diagnostics.IServerHealthService serverHealthService) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, Agrumy.Api.Diagnostics.IServerHealthService serverHealthService, ISsrfAllowlistRepository ssrfAllowlistRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // These are SERVER-WIDE settings, so Global admin only.
 
@@ -355,6 +355,107 @@ namespace Agrumy.Api.Controllers.API
                 return StatusCode(403, "Server-wide settings require the Global admin role");
             }
             return Ok(await serverHealthService.GetStatusesAsync());
+        }
+
+        /// HttpFirmwareFetcher's own SsrfGuard exceptions (Firmware/Webhook keep separate lists - see SsrfGuard/ISsrfAllowlistRepository remarks).
+        [HttpGet("FirmwareSsrfAllowlist")]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        public async Task<ActionResult<IReadOnlyList<SsrfAllowlistEntry>>> GetFirmwareSsrfAllowlist() =>
+            !CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader)
+                ? StatusCode(403, "Server-wide settings require the Global admin role")
+                : Ok(await ssrfAllowlistRepo.FirmwareAllowlistGetAllAsync());
+
+        [HttpPost("FirmwareSsrfAllowlist")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult<SsrfAllowlistEntry>> AddFirmwareSsrfAllowlistEntry([FromBody] SsrfAllowlistEntry entry)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            string? error = await ValidateAllowlistEntryAsync(entry, await ssrfAllowlistRepo.FirmwareAllowlistGetAllAsync());
+            if (error != null)
+            {
+                return BadRequest(error);
+            }
+            SsrfAllowlistEntry added = await ssrfAllowlistRepo.FirmwareAllowlistAddAsync(entry);
+            await WriteAuditAsync("ServerConfig.FirmwareSsrfAllowlistEntryAdded", null, "FirmwareSsrfAllowlistEntry", added.Id.ToString(), null);
+            return Ok(added);
+        }
+
+        [HttpDelete("FirmwareSsrfAllowlist/{id:int}")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> DeleteFirmwareSsrfAllowlistEntry(int id)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            await ssrfAllowlistRepo.FirmwareAllowlistDeleteAsync(id);
+            await WriteAuditAsync("ServerConfig.FirmwareSsrfAllowlistEntryDeleted", null, "FirmwareSsrfAllowlistEntry", id.ToString(), null);
+            return Ok();
+        }
+
+        [HttpGet("WebhookSsrfAllowlist")]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        public async Task<ActionResult<IReadOnlyList<SsrfAllowlistEntry>>> GetWebhookSsrfAllowlist() =>
+            !CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader)
+                ? StatusCode(403, "Server-wide settings require the Global admin role")
+                : Ok(await ssrfAllowlistRepo.WebhookAllowlistGetAllAsync());
+
+        [HttpPost("WebhookSsrfAllowlist")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult<SsrfAllowlistEntry>> AddWebhookSsrfAllowlistEntry([FromBody] SsrfAllowlistEntry entry)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            string? error = await ValidateAllowlistEntryAsync(entry, await ssrfAllowlistRepo.WebhookAllowlistGetAllAsync());
+            if (error != null)
+            {
+                return BadRequest(error);
+            }
+            SsrfAllowlistEntry added = await ssrfAllowlistRepo.WebhookAllowlistAddAsync(entry);
+            await WriteAuditAsync("ServerConfig.WebhookSsrfAllowlistEntryAdded", null, "WebhookSsrfAllowlistEntry", added.Id.ToString(), null);
+            return Ok(added);
+        }
+
+        [HttpDelete("WebhookSsrfAllowlist/{id:int}")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> DeleteWebhookSsrfAllowlistEntry(int id)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Server-wide settings require the Global admin role");
+            }
+            await ssrfAllowlistRepo.WebhookAllowlistDeleteAsync(id);
+            await WriteAuditAsync("ServerConfig.WebhookSsrfAllowlistEntryDeleted", null, "WebhookSsrfAllowlistEntry", id.ToString(), null);
+            return Ok();
+        }
+
+        /// Pattern must be a hostname (matched exactly against the request URI's Host, case-insensitive) or a CIDR range like "192.168.1.0/24" - SsrfGuard.IsCidrPattern decides which at request time, so validation here only rejects blank/duplicate/oversized input, not the two forms.
+        private static Task<string?> ValidateAllowlistEntryAsync(SsrfAllowlistEntry entry, IReadOnlyList<SsrfAllowlistEntry> existing)
+        {
+            string pattern = entry.Pattern?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                return Task.FromResult<string?>("Pattern is required.");
+            }
+            if (pattern.Length > 255)
+            {
+                return Task.FromResult<string?>("Pattern must be 255 characters or fewer.");
+            }
+            if (existing.Any(e => string.Equals(e.Pattern, pattern, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Task.FromResult<string?>($"'{pattern}' is already on the allowlist.");
+            }
+            if (!entry.AllowPrivateNetwork && !entry.AllowInsecureHttp)
+            {
+                return Task.FromResult<string?>("At least one of Allow private network / Allow plain http must be checked - otherwise this entry does nothing.");
+            }
+            entry.Pattern = pattern;
+            return Task.FromResult<string?>(null);
         }
 
         /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new tenant" field - this exposes only that one flag.

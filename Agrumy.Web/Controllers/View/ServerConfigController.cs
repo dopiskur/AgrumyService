@@ -14,7 +14,34 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Index()
         {
             await PopulateHealthAsync();
+            ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
             return View(await api.ServerConfigGet());
+        }
+
+        /// Relaxes SsrfGuard's private-IP/https-only checks for this one hostname or CIDR range, webhook-only (FirmwareController.SsrfAllowlistAdd is the separate firmware list). AJAX, not a redirect form post, since the Webhook tab lives inside this page's one big Server Settings <form> and can't nest a form of its own - see webhook-ssrf-allowlist.js.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WebhookSsrfAllowlistAdd([FromBody] SsrfAllowlistEntry entry)
+        {
+            try
+            {
+                await api.WebhookSsrfAllowlistAdd(entry);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WebhookSsrfAllowlistDelete(int id)
+        {
+            await api.WebhookSsrfAllowlistDelete(id);
+            return Ok();
         }
 
         /// Roadmap #419 - the "Server Health" tab's live-refresh.js poll target (Agrumy.Web's own passive proxy, not an on-demand test button).
@@ -40,6 +67,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Index(ServerConfig serverConfig)
         {
             await PopulateHealthAsync();
+            ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
             if (!ModelState.IsValid)
             {
                 return View(serverConfig);
