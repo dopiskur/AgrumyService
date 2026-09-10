@@ -201,9 +201,9 @@ namespace Agrumy.Dal
             // Unlike DeviceFarmUnit/DeviceFarmUnitZone, Farm has no reserved "0" sentinel row (its optionality on DeviceFarmUnit is expressed via a nullable FK, not a sentinel) - plain AUTO_INCREMENT, no app-side Max+1 dance needed.
             modelBuilder.Entity<DeviceFarmRow>(e =>
             {
-                e.ToTable("deviceFarm");
+                e.ToTable("farm");
                 e.HasKey(x => x.IDDeviceFarm);
-                e.Property(x => x.IDDeviceFarm).ValueGeneratedOnAdd();
+                e.Property(x => x.IDDeviceFarm).HasColumnName("IDFarm").ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmName).HasMaxLength(100);
                 e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
@@ -214,9 +214,10 @@ namespace Agrumy.Dal
 
             modelBuilder.Entity<DeviceFarmUnitRow>(e =>
             {
-                e.ToTable("deviceFarmUnit");
+                e.ToTable("farmGreenhouseUnit");
                 e.HasKey(x => x.IDDeviceFarmUnit);
-                e.Property(x => x.IDDeviceFarmUnit).ValueGeneratedNever();
+                e.Property(x => x.IDDeviceFarmUnit).HasColumnName("IDFarmGreenhouseUnit").ValueGeneratedNever();
+                e.Property(x => x.DeviceFarmID).HasColumnName("FarmID");
                 e.Property(x => x.DeviceFarmUnitName).HasMaxLength(100);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.DisplayOrder).HasDefaultValue(0);
@@ -227,9 +228,10 @@ namespace Agrumy.Dal
             // Real containment FK (Zone -> Unit) - see db/migrations/2026-09-02-deviceunit-zone-containment.sql.
             modelBuilder.Entity<DeviceFarmUnitZoneRow>(e =>
             {
-                e.ToTable("deviceFarmUnitZone");
+                e.ToTable("farmGreenhouseUnitZone");
                 e.HasKey(x => x.IDDeviceFarmUnitZone);
-                e.Property(x => x.IDDeviceFarmUnitZone).ValueGeneratedNever();
+                e.Property(x => x.IDDeviceFarmUnitZone).HasColumnName("IDFarmGreenhouseUnitZone").ValueGeneratedNever();
+                e.Property(x => x.DeviceFarmUnitID).HasColumnName("FarmGreenhouseUnitID");
                 e.Property(x => x.DeviceFarmUnitZoneName).HasMaxLength(120);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
@@ -377,7 +379,9 @@ namespace Agrumy.Dal
                         stored: true);
                 e.HasIndex("ActiveMacAddress", nameof(DeviceRow.TenantID)).IsUnique().HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE"); // Composite, not a bare MacAddress unique - a device can be legitimately resold across tenants.
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_device_tenant"); // TenantID is the second column of the unique index above, so it can't be used as a prefix for a plain WHERE TenantID = x.
-                // Legacy device FKs (fk_device_*). DeviceFarmUnitZoneID has no FK on device.
+                e.Property(x => x.DeviceFarmUnitID).HasColumnName("FarmGreenhouseUnitID");
+                e.Property(x => x.DeviceFarmUnitZoneID).HasColumnName("FarmGreenhouseUnitZoneID");
+                // Legacy device FKs (fk_device_*). FarmGreenhouseUnitZoneID has no FK on device.
                 e.HasOne<DeviceConfigControllerRow>().WithMany().HasForeignKey(x => x.DeviceConfigControllerID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceConfigSensorRow>().WithMany().HasForeignKey(x => x.DeviceConfigSensorID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceRoleRow>().WithMany().HasForeignKey(x => x.DeviceRoleID).OnDelete(DeleteBehavior.NoAction);
@@ -540,10 +544,12 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDSensorData);
                 e.Property(x => x.IDSensorData).ValueGeneratedOnAdd();
                 // Legacy Battery/Moisture/WaterLevel are tinyint(1); the DTO exposes them as int, so a fresh DB uses int (old tinyint(1) columns still read fine).
+                e.Property(x => x.DeviceFarmUnitID).HasColumnName("FarmGreenhouseUnitID");
+                e.Property(x => x.DeviceFarmUnitZoneID).HasColumnName("FarmGreenhouseUnitZoneID");
                 e.HasIndex(x => new { x.DeviceID, x.TenantID, x.DateCreated })
                  .HasDatabaseName("ix_dataSensor_device_tenant_date");
                 e.HasIndex(x => new { x.DeviceFarmUnitZoneID, x.DateCreated })
-                 .HasDatabaseName("ix_dataSensor_deviceFarmUnitZone_date"); // The 24h trend sparkline query filters directly by zone, not by device.
+                 .HasDatabaseName("ix_dataSensor_farmGreenhouseUnitZone_date"); // The 24h trend sparkline query filters directly by zone, not by device.
                 // Legacy fk_sensorData_* (no FK on dataSensor.TenantID).
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);

@@ -507,7 +507,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 {
                     b.Property<int>("IDDeviceFarm")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("IDFarm");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarm"));
 
@@ -541,13 +542,14 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasKey("IDDeviceFarm");
 
-                    b.ToTable("deviceFarm", (string)null);
+                    b.ToTable("farm", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitRow", b =>
                 {
                     b.Property<int>("IDDeviceFarmUnit")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("IDFarmGreenhouseUnit");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
@@ -558,7 +560,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceFarmID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmID");
 
                     b.Property<string>("DeviceFarmUnitName")
                         .HasMaxLength(100)
@@ -579,13 +582,14 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasIndex("DeviceFarmID");
 
-                    b.ToTable("deviceFarmUnit", (string)null);
+                    b.ToTable("farmGreenhouseUnit", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitZoneRow", b =>
                 {
                     b.Property<int>("IDDeviceFarmUnitZone")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("IDFarmGreenhouseUnitZone");
 
                     b.Property<string>("DashboardWidgetsJson")
                         .HasColumnType("longtext");
@@ -599,7 +603,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceFarmUnitID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<string>("DeviceFarmUnitZoneName")
                         .HasMaxLength(120)
@@ -645,7 +650,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasIndex("DeviceFarmUnitID");
 
-                    b.ToTable("deviceFarmUnitZone", (string)null);
+                    b.ToTable("farmGreenhouseUnitZone", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitZoneRuleRow", b =>
@@ -925,10 +930,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("DeviceFarmUnitID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmGreenhouseUnitZoneID");
 
                     b.Property<string>("DeviceName")
                         .HasMaxLength(128)
@@ -1832,10 +1839,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceFarmUnitID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("FarmGreenhouseUnitZoneID");
 
                     b.Property<int>("DeviceID")
                         .HasColumnType("int");
@@ -1893,7 +1902,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasIndex("DeviceFarmUnitID");
 
                     b.HasIndex("DeviceFarmUnitZoneID", "DateCreated")
-                        .HasDatabaseName("ix_dataSensor_deviceFarmUnitZone_date");
+                        .HasDatabaseName("ix_dataSensor_farmGreenhouseUnitZone_date");
 
                     b.HasIndex("DeviceID", "TenantID", "DateCreated")
                         .HasDatabaseName("ix_dataSensor_device_tenant_date");
