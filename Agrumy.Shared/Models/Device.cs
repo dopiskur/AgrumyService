@@ -524,18 +524,12 @@ namespace Agrumy.Shared.Models
         public IList<DeviceDto> Devices { get; set; } = [];
     }
 
-    public enum SimulationGroupScope
-    {
-        Unit = 1,
-        Zone = 2,
-    }
-
-    /// A whole Unit or Zone added to a simulation session at once - one set of sensor-override values fanned out to every member device's own DeviceSimulation, editable/removable as a single unit instead of per-device. Same fields as DeviceSimulation (minus the per-device Enabled, implicit here) plus the group's own identity.
+    /// A whole Unit/Zone/Crop/Parcel added to a simulation session at once - one set of sensor-override values fanned out to every member device's own DeviceSimulation, editable/removable as a single unit instead of per-device. Same fields as DeviceSimulation (minus the per-device Enabled, implicit here) plus the group's own identity. Only Unit/Zone/Crop/Parcel are valid here (not Farm/Global) - checked at the API layer, not the DB.
     public class SimulationGroup
     {
         public int? IDSimulationGroup { get; set; }
         public int? IDSimulationSession { get; set; }
-        public SimulationGroupScope Scope { get; set; }
+        public HierarchyNodeKind Scope { get; set; }
         public int ScopeID { get; set; }
         /// Populated on read only (the Unit/Zone's own name) - never required on a write, resolved server-side from ScopeID.
         public string? ScopeName { get; set; }

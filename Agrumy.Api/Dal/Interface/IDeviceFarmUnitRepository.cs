@@ -153,7 +153,7 @@ namespace Agrumy.Api.Dal.Interface
         Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone);
 
         /// Averages+Trend for one dashboard widget's own (level, levelId) scope - Farm rolls up every zone under every unit of that farm, Unit same narrowed to one unit's zones, Zone is a single zone's own reading.
-        Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId);
+        Task<DashboardAggregate> DashboardAggregateGetAsync(HierarchyNodeKind level, int levelId);
 
         // ---- Rules (Zone/Unit/Farm/Global scope) ------------------------------
 

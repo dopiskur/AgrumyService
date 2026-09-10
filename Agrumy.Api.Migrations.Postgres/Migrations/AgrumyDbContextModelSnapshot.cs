@@ -529,6 +529,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<int>("FarmType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2259,6 +2264,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("MaxControllersPerDevice")
                         .HasColumnType("integer");
 
+                    b.Property<int>("MaxCrops")
+                        .HasColumnType("integer");
+
                     b.Property<int>("MaxDataRetentionDays")
                         .HasColumnType("integer");
 
@@ -2266,6 +2274,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxFarms")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxParcels")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxSensorsPerDevice")

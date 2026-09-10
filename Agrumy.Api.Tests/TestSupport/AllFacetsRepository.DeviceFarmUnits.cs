@@ -125,7 +125,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDashboardForDisplayGetAsync(idDeviceFarmUnitZone);
 
-        public Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId) => deviceFarmUnitRepository.DashboardAggregateGetAsync(level, levelId);
+        public Task<DashboardAggregate> DashboardAggregateGetAsync(HierarchyNodeKind level, int levelId) => deviceFarmUnitRepository.DashboardAggregateGetAsync(level, levelId);
 
         public Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync() => deviceFarmUnitRepository.TankRefillAlertCandidatesGetAsync();
 

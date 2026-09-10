@@ -413,7 +413,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<DeviceFarmUnitZoneDashboard> DeviceFarmUnitZoneDashboardGet(int? idDeviceFarmUnitZone);
 
         [Get("/api/DeviceFarmUnit/Dashboard/Widget")]
-        Task<DashboardAggregate> DeviceFarmUnitDashboardWidgetAggregateGet(DashboardAggregationLevel level, int levelId);
+        Task<DashboardAggregate> DeviceFarmUnitDashboardWidgetAggregateGet(HierarchyNodeKind level, int levelId);
 
         // ---- Manual actuate (roadmap #219) ---------------------
 

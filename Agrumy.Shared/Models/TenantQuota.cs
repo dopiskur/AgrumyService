@@ -9,6 +9,9 @@ namespace Agrumy.Shared.Models
         public int MaxFarms { get; set; }
         public int MaxUnits { get; set; }
         public int MaxZones { get; set; }
+        // Open-Field's mid/leaf-level equivalents of MaxUnits/MaxZones - separate caps, not pooled with the Greenhouse branch.
+        public int MaxCrops { get; set; }
+        public int MaxParcels { get; set; }
         // Per device, not tenant-wide - DeviceConfigController.Relays.Count on any single device.
         public int MaxControllersPerDevice { get; set; }
         // Per device, not tenant-wide - count of enabled Sensor* fields on DeviceConfigSensor for any single device.
@@ -30,6 +33,8 @@ namespace Agrumy.Shared.Models
             MaxFarms = 1,
             MaxUnits = 1,
             MaxZones = 3,
+            MaxCrops = 1,
+            MaxParcels = 3,
             MaxControllersPerDevice = 1,
             MaxSensorsPerDevice = 3,
             MqttEnabled = false,

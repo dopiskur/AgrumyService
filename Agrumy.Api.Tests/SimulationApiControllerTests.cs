@@ -448,14 +448,14 @@ public class SimulationApiControllerTests
             IDSimulationSession = 5, TenantID = 1, StartedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1),
         });
         _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(9)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 9, TenantID = 1 });
-        var created = new SimulationGroup { IDSimulationGroup = 3, IDSimulationSession = 5, Scope = SimulationGroupScope.Zone, ScopeID = 9, ScopeName = "Zone A", MemberDeviceCount = 2 };
-        _repo.Setup(r => r.SimulationGroupAddAsync(It.Is<SimulationGroup>(g => g.IDSimulationSession == 5 && g.Scope == SimulationGroupScope.Zone && g.ScopeID == 9)))
+        var created = new SimulationGroup { IDSimulationGroup = 3, IDSimulationSession = 5, Scope = HierarchyNodeKind.Zone, ScopeID = 9, ScopeName = "Zone A", MemberDeviceCount = 2 };
+        _repo.Setup(r => r.SimulationGroupAddAsync(It.Is<SimulationGroup>(g => g.IDSimulationSession == 5 && g.Scope == HierarchyNodeKind.Zone && g.ScopeID == 9)))
             .ReturnsAsync(created);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
 
-        var result = await controller.SessionGroupAdd(5, new SimulationGroup { Scope = SimulationGroupScope.Zone, ScopeID = 9, Temperature = 30 });
+        var result = await controller.SessionGroupAdd(5, new SimulationGroup { Scope = HierarchyNodeKind.Zone, ScopeID = 9, Temperature = 30 });
 
         SimulationGroup body = Assert.IsType<SimulationGroup>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(2, body.MemberDeviceCount);
@@ -472,7 +472,7 @@ public class SimulationApiControllerTests
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
 
-        var result = await controller.SessionGroupAdd(5, new SimulationGroup { Scope = SimulationGroupScope.Zone, ScopeID = 9 });
+        var result = await controller.SessionGroupAdd(5, new SimulationGroup { Scope = HierarchyNodeKind.Zone, ScopeID = 9 });
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
         // MockBehavior.Strict: SimulationGroupAddAsync has no setup, proving a zone from a foreign tenant was rejected before any fan-out happened.
@@ -482,7 +482,7 @@ public class SimulationApiControllerTests
     public async Task SessionGroupDelete_BelongsToDifferentSession_Returns404_NeverDeletes()
     {
         _repo.Setup(r => r.SimulationSessionGetByIdAsync(5)).ReturnsAsync(new SimulationSession { IDSimulationSession = 5, TenantID = 1 });
-        _repo.Setup(r => r.SimulationGroupGetByIdAsync(3)).ReturnsAsync(new SimulationGroup { IDSimulationGroup = 3, IDSimulationSession = 6, Scope = SimulationGroupScope.Zone, ScopeID = 9 });
+        _repo.Setup(r => r.SimulationGroupGetByIdAsync(3)).ReturnsAsync(new SimulationGroup { IDSimulationGroup = 3, IDSimulationSession = 6, Scope = HierarchyNodeKind.Zone, ScopeID = 9 });
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);
 

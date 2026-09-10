@@ -10,6 +10,8 @@ namespace Agrumy.Shared.Models
         public int? IDDeviceFarm { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmName { get; set; }
+        /// Chosen once at creation - routes this farm's children to DeviceFarmUnit/DeviceFarmUnitZone (Greenhouse) or FarmOpenfieldCrop/FarmOpenfieldCropParcel (OpenField).
+        public FarmType FarmType { get; set; } = FarmType.Greenhouse;
         // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
         // Roadmap #409 - null unless this came from the Recycle Bin listing.
@@ -19,7 +21,7 @@ namespace Agrumy.Shared.Models
     }
 
     /// A physical/logical space (e.g. a greenhouse) containing DeviceFarmUnitZones; TenantID null only means the shared IDDeviceFarmUnit=0 "Default" sentinel every unzoned device points at.
-    public class DeviceFarmUnit
+    public class DeviceFarmUnit : IFarmMidLevelNode
     {
         [HiddenInput(DisplayValue = true)]
         public int? IDDeviceFarmUnit { get; set; }
@@ -29,10 +31,14 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmID { get; set; }
         // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
+
+        int? IFarmMidLevelNode.Id => IDDeviceFarmUnit;
+        int? IFarmMidLevelNode.FarmID => DeviceFarmID;
+        string? IFarmMidLevelNode.Name => DeviceFarmUnitName;
     }
 
     /// A growing zone within one DeviceFarmUnit - "one zone = one controller" at most, may be sensor-only; TenantID is denormalized from DeviceFarmUnit so a zone query needs no join to check ownership.
-    public class DeviceFarmUnitZone
+    public class DeviceFarmUnitZone : IFarmLeafLevelNode
     {
         [HiddenInput(DisplayValue = true)]
         public int? IDDeviceFarmUnitZone { get; set; }
@@ -66,6 +72,10 @@ namespace Agrumy.Shared.Models
 
         // Roadmap #238 - admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
+
+        int? IFarmLeafLevelNode.Id => IDDeviceFarmUnitZone;
+        int IFarmLeafLevelNode.MidLevelID => DeviceFarmUnitID;
+        string? IFarmLeafLevelNode.Name => DeviceFarmUnitZoneName;
     }
 
     public enum DashboardWidgetType
@@ -76,21 +86,13 @@ namespace Agrumy.Shared.Models
         Text = 4,
     }
 
-    /// Which scope a SensorValue/SensorTrend widget averages over - independent per widget, not a dashboard-wide selection every widget shares.
-    public enum DashboardAggregationLevel
-    {
-        Farm = 1,
-        Unit = 2,
-        Zone = 3,
-    }
-
-    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific Farm/Unit/Zone id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone id.
+    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific node id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone/parcel id.
     public class DashboardWidget
     {
         public DashboardWidgetType Type { get; set; }
         public SensorMetric? Metric { get; set; }
         public RelayFunction? RelayFunction { get; set; }
-        public DashboardAggregationLevel? AggregationLevel { get; set; }
+        public HierarchyNodeKind? AggregationLevel { get; set; }
         public int? LevelID { get; set; }
         public string? Label { get; set; }
     }
@@ -295,7 +297,7 @@ namespace Agrumy.Shared.Models
         public IList<string> RulesSkipped { get; set; } = [];
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmOpenfieldCropParcelID/DeviceFarmOpenfieldCropID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]

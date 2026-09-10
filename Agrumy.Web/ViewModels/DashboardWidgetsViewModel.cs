@@ -15,7 +15,7 @@ namespace Agrumy.Web.ViewModels
         public IList<DeviceFarmUnit> Units { get; init; } = [];
         public IList<ZoneOption> Zones { get; init; } = [];
         /// One precomputed DashboardAggregate per distinct (level, levelId) target used by this zone's widgets.
-        public IReadOnlyDictionary<(DashboardAggregationLevel Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
-            new Dictionary<(DashboardAggregationLevel, int), DashboardAggregate>();
+        public IReadOnlyDictionary<(HierarchyNodeKind Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
+            new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
     }
 }

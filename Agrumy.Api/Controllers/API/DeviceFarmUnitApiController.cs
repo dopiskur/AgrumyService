@@ -388,7 +388,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 if (w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend)
                 {
-                    if (w.AggregationLevel is not DashboardAggregationLevel level || w.LevelID is not int levelId)
+                    if (w.AggregationLevel is not HierarchyNodeKind level || w.LevelID is not int levelId)
                     {
                         return BadRequest("A sensor widget needs an aggregation level and target.");
                     }
@@ -930,7 +930,7 @@ namespace Agrumy.Api.Controllers.API
         /// One dashboard widget's own (level, levelId) scope - a widget on any zone's page can read a different Farm/Unit/Zone than the page itself, so ownership is checked against the widget's OWN target, not the page's.
         [Authorize]
         [HttpGet("Dashboard/Widget")]
-        public async Task<ActionResult<DashboardAggregate>> DashboardWidgetAggregateGet(DashboardAggregationLevel level, int levelId)
+        public async Task<ActionResult<DashboardAggregate>> DashboardWidgetAggregateGet(HierarchyNodeKind level, int levelId)
         {
             ActionResult? error = await EnsureOwnedAggregationTargetAsync(level, levelId, forWrite: false);
             if (error != null)
@@ -955,11 +955,11 @@ namespace Agrumy.Api.Controllers.API
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite);
 
         /// Routes a dashboard widget's own (level, levelId) target through whichever EnsureOwned*Async matches its level - a widget's data source is checked independently of the zone whose page it happens to be displayed on.
-        private async Task<ActionResult?> EnsureOwnedAggregationTargetAsync(DashboardAggregationLevel level, int levelId, bool forWrite) => level switch
+        private async Task<ActionResult?> EnsureOwnedAggregationTargetAsync(HierarchyNodeKind level, int levelId, bool forWrite) => level switch
         {
-            DashboardAggregationLevel.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite)).Error,
-            DashboardAggregationLevel.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite)).Error,
-            DashboardAggregationLevel.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite)).Error,
             _ => BadRequest("Unknown dashboard aggregation level."),
         };
 

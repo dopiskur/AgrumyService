@@ -142,9 +142,12 @@ namespace Agrumy.Api.Dal
             db.SimulationGroups.Add(row);
             await db.SaveChangesAsync();
 
-            List<int> candidateIds = group.Scope == SimulationGroupScope.Unit
-                ? await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == group.ScopeID).Select(d => d.IDDevice).ToListAsync()
-                : await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync();
+            List<int> candidateIds = group.Scope switch
+            {
+                HierarchyNodeKind.Unit => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                HierarchyNodeKind.Zone => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                _ => throw new ArgumentOutOfRangeException(nameof(group), group.Scope, "Unknown simulation group scope"),
+            };
 
             DeviceSimulation overrideValues = ToDeviceSimulation(group);
             foreach (int deviceId in candidateIds)
@@ -238,7 +241,7 @@ namespace Agrumy.Api.Dal
         {
             SimulationGroup dto = ToDtoGroup(row);
             dto.MemberDeviceCount = await db.SimulationSessionDevices.AsNoTracking().CountAsync(sd => sd.IDSimulationGroup == row.IDSimulationGroup);
-            dto.ScopeName = (SimulationGroupScope)row.Scope == SimulationGroupScope.Unit
+            dto.ScopeName = (HierarchyNodeKind)row.Scope == HierarchyNodeKind.Unit
                 ? (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName
                 : (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName;
             return dto;
@@ -269,7 +272,7 @@ namespace Agrumy.Api.Dal
         {
             IDSimulationGroup = r.IDSimulationGroup,
             IDSimulationSession = r.IDSimulationSession,
-            Scope = (SimulationGroupScope)r.Scope,
+            Scope = (HierarchyNodeKind)r.Scope,
             ScopeID = r.ScopeID,
             Temperature = r.Temperature,
             SoilTemperature = r.SoilTemperature,

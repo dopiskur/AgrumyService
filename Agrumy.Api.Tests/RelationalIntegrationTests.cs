@@ -1435,12 +1435,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
     // Same null-Farm/Unit/Zone shape as Simulation, same exclusion requirement.
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task Rule_ExperimentScope_ExcludedFromGlobalScope_ButFetchableByOwnExperiment(DbProviderKind provider)
+    public async Task Rule_HierarchyNodeKind_ExcludedFromGlobalScope_ButFetchableByOwnExperiment(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         var (_, zone) = await MakeUnitAndZone(tenantId);
-        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
 
         int experimentRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
@@ -1468,9 +1468,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         DeviceFarmUnitZone zoneWithOwnExperiment = await _repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone { TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, DeviceFarmUnitZoneName = "Zone_" + U() });
         DeviceFarmUnitZone zoneInheritsFromUnit = await _repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone { TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, DeviceFarmUnitZoneName = "Zone_" + U() });
 
-        Experiment farmExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Farm", Scope = ExperimentScope.Farm, ScopeID = farm.IDDeviceFarm!.Value });
-        Experiment unitExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Unit", Scope = ExperimentScope.Unit, ScopeID = unit.IDDeviceFarmUnit!.Value });
-        Experiment zoneExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Zone", Scope = ExperimentScope.Zone, ScopeID = zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value });
+        Experiment farmExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Farm", Scope = HierarchyNodeKind.Farm, ScopeID = farm.IDDeviceFarm!.Value });
+        Experiment unitExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Unit", Scope = HierarchyNodeKind.Unit, ScopeID = unit.IDDeviceFarmUnit!.Value });
+        Experiment zoneExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Zone", Scope = HierarchyNodeKind.Zone, ScopeID = zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value });
 
         Assert.Equal(zoneExperiment.IDExperiment, await _repo.ActiveExperimentIdForZoneAsync(zoneWithOwnExperiment.IDDeviceFarmUnitZone!.Value));
         Assert.Equal(unitExperiment.IDExperiment, await _repo.ActiveExperimentIdForZoneAsync(zoneInheritsFromUnit.IDDeviceFarmUnitZone!.Value));
@@ -1493,7 +1493,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (_, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
 
         await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 21.5 }], d.IDDevice!.Value, tenantId, zone.DeviceFarmUnitID, zone.IDDeviceFarmUnitZone);
 
@@ -1517,7 +1517,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (_, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = ExperimentScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
+        Experiment experiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "Test", Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value });
 
         await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Heating, IsOn = true } });
         await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Heating, IsOn = false } });
@@ -1589,7 +1589,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
         {
-            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            IDSimulationSession = session.IDSimulationSession, Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
             Temperature = 31.5,
         });
 
@@ -1623,7 +1623,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
         {
-            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            IDSimulationSession = session.IDSimulationSession, Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
             Humidity = 55,
         });
 
@@ -1643,7 +1643,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         SimulationGroup created = await _repo.SimulationGroupAddAsync(new SimulationGroup
         {
-            IDSimulationSession = session.IDSimulationSession, Scope = SimulationGroupScope.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
+            IDSimulationSession = session.IDSimulationSession, Scope = HierarchyNodeKind.Zone, ScopeID = zone.IDDeviceFarmUnitZone!.Value,
             Temperature = 20,
         });
 

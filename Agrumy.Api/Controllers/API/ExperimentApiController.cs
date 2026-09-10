@@ -34,19 +34,19 @@ namespace Agrumy.Api.Controllers.API
             return (experiment, null);
         }
 
-        private async Task<ActionResult?> ScopeErrorAsync(ExperimentScope scope, int scopeId)
+        private async Task<ActionResult?> ScopeErrorAsync(HierarchyNodeKind scope, int scopeId)
         {
             switch (scope)
             {
-                case ExperimentScope.Farm:
+                case HierarchyNodeKind.Farm:
                     DeviceFarm? farm = await deviceFarmUnitRepo.DeviceFarmGetByIdAsync(scopeId);
                     if (farm is null) { return NotFound("Farm not found."); }
                     return farm.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Farm belongs to a different tenant") : null;
-                case ExperimentScope.Unit:
+                case HierarchyNodeKind.Unit:
                     DeviceFarmUnit? unit = await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(scopeId);
                     if (unit is null) { return NotFound("Unit not found."); }
                     return unit.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Unit belongs to a different tenant") : null;
-                case ExperimentScope.Zone:
+                case HierarchyNodeKind.Zone:
                     DeviceFarmUnitZone? zone = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(scopeId);
                     if (zone is null) { return NotFound("Zone not found."); }
                     return zone.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Zone belongs to a different tenant") : null;

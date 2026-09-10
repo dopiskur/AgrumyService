@@ -36,7 +36,7 @@ namespace Agrumy.Web.ViewModels
         public IList<DeviceFleetStatus> AllFleet { get; init; } = [];
         public IList<DeviceFarmUnit> Units { get; init; } = [];
         public IList<ZoneOption> Zones { get; init; } = [];
-        public IReadOnlyDictionary<(DashboardAggregationLevel Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
-            new Dictionary<(DashboardAggregationLevel, int), DashboardAggregate>();
+        public IReadOnlyDictionary<(HierarchyNodeKind Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
+            new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
     }
 }

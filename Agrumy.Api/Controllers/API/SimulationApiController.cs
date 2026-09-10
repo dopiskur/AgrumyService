@@ -417,8 +417,8 @@ namespace Agrumy.Api.Controllers.API
 
             ActionResult? scopeError = group.Scope switch
             {
-                SimulationGroupScope.Unit => (await EnsureOwnedUnitAsync(group.ScopeID)).Error,
-                SimulationGroupScope.Zone => (await EnsureOwnedZoneAsync(group.ScopeID)).Error,
+                HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(group.ScopeID)).Error,
+                HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(group.ScopeID)).Error,
                 _ => BadRequest("Unknown group scope."),
             };
             if (scopeError != null)

@@ -205,6 +205,7 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDDeviceFarm);
                 e.Property(x => x.IDDeviceFarm).HasColumnName("IDFarm").ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmName).HasMaxLength(100);
+                e.Property(x => x.FarmType).HasDefaultValue(1); // Agrumy.Shared.Models.FarmType.Greenhouse - Agrumy.Dal has no reference to Agrumy.Shared, so this is deliberately a literal.
                 e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);

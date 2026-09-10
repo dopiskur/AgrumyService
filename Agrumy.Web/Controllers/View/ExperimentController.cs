@@ -40,7 +40,7 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create(string name, ExperimentScope scope, int scopeId, DateTimeOffset? expiresAtUtc)
+        public async Task<ActionResult> Create(string name, HierarchyNodeKind scope, int scopeId, DateTimeOffset? expiresAtUtc)
         {
             try
             {

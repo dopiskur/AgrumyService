@@ -55,7 +55,7 @@ namespace Agrumy.Api.Dal
 
         public async Task<int?> ActiveExperimentIdForZoneAsync(int idDeviceFarmUnitZone)
         {
-            if (await ActiveExperimentIdForScopeAsync(ExperimentScope.Zone, idDeviceFarmUnitZone) is int zoneExperimentId)
+            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Zone, idDeviceFarmUnitZone) is int zoneExperimentId)
             {
                 return zoneExperimentId;
             }
@@ -64,15 +64,15 @@ namespace Agrumy.Api.Dal
             {
                 return null;
             }
-            if (await ActiveExperimentIdForScopeAsync(ExperimentScope.Unit, zone.DeviceFarmUnitID) is int unitExperimentId)
+            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Unit, zone.DeviceFarmUnitID) is int unitExperimentId)
             {
                 return unitExperimentId;
             }
             DeviceFarmUnitRow? unit = await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == zone.DeviceFarmUnitID);
-            return unit?.DeviceFarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(ExperimentScope.Farm, idFarm) : null;
+            return unit?.DeviceFarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
-        private async Task<int?> ActiveExperimentIdForScopeAsync(ExperimentScope scope, int scopeId)
+        private async Task<int?> ActiveExperimentIdForScopeAsync(HierarchyNodeKind scope, int scopeId)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
             return await db.Experiments.AsNoTracking()
@@ -93,9 +93,9 @@ namespace Agrumy.Api.Dal
                 return map;
             }
 
-            Dictionary<int, int> zoneScoped = active.Where(e => (ExperimentScope)e.Scope == ExperimentScope.Zone).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
-            Dictionary<int, int> unitScoped = active.Where(e => (ExperimentScope)e.Scope == ExperimentScope.Unit).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
-            Dictionary<int, int> farmScoped = active.Where(e => (ExperimentScope)e.Scope == ExperimentScope.Farm).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> zoneScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Zone).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> unitScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Unit).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> farmScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Farm).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
 
             List<DeviceFarmUnitZoneRow> zones = await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.TenantID == tenantID).ToListAsync();
             Dictionary<int, int?> unitFarmById = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.TenantID == tenantID)
@@ -209,11 +209,11 @@ namespace Agrumy.Api.Dal
 
         private async Task<Experiment> WithScopeNameAsync(ExperimentRow row)
         {
-            var scope = (ExperimentScope)row.Scope;
+            var scope = (HierarchyNodeKind)row.Scope;
             string? scopeName = scope switch
             {
-                ExperimentScope.Farm => (await db.DeviceFarms.AsNoTracking().FirstOrDefaultAsync(f => f.IDDeviceFarm == row.ScopeID))?.DeviceFarmName,
-                ExperimentScope.Unit => (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName,
+                HierarchyNodeKind.Farm => (await db.DeviceFarms.AsNoTracking().FirstOrDefaultAsync(f => f.IDDeviceFarm == row.ScopeID))?.DeviceFarmName,
+                HierarchyNodeKind.Unit => (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName,
                 _ => (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName,
             };
             return new Experiment

@@ -7,6 +7,8 @@ namespace Agrumy.Dal.Entities
         public int IDDeviceFarm { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmName { get; set; }
+        // See Agrumy.Shared.Models.FarmType - stored as the enum's int value, same convention as Device.LocationSource.
+        public int FarmType { get; set; }
         public int DisplayOrder { get; set; }
 
         // Roadmap #408/#409 - soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.

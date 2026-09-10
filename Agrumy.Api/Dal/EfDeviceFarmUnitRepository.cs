@@ -63,7 +63,7 @@ namespace Agrumy.Api.Dal
             QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
                 int nextOrder = await db.DeviceFarms.Where(f => f.TenantID == farm.TenantID).Select(f => (int?)f.DisplayOrder).MaxAsync() ?? -1;
-                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName, DisplayOrder = nextOrder + 1 };
+                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName, FarmType = (int)farm.FarmType, DisplayOrder = nextOrder + 1 };
                 db.DeviceFarms.Add(row);
                 await db.SaveChangesAsync();
                 return ToDtoFarm(row);
@@ -78,7 +78,7 @@ namespace Agrumy.Api.Dal
                 return;
             }
 
-            var farm = new DeviceFarmRow { TenantID = tenantId, DeviceFarmName = "First farm" };
+            var farm = new DeviceFarmRow { TenantID = tenantId, DeviceFarmName = "First farm", FarmType = (int)FarmType.Greenhouse };
             db.DeviceFarms.Add(farm);
             await db.SaveChangesAsync();
 
@@ -1003,13 +1003,13 @@ namespace Agrumy.Api.Dal
         // ---- Dashboard widget aggregation -----------------
 
         /// One widget's own (level, levelId) scope, independent of whichever zone's page displays it.
-        public async Task<DashboardAggregate> DashboardAggregateGetAsync(DashboardAggregationLevel level, int levelId)
+        public async Task<DashboardAggregate> DashboardAggregateGetAsync(HierarchyNodeKind level, int levelId)
         {
             (SensorAverages averages, SensorTrend trend) = level switch
             {
-                DashboardAggregationLevel.Farm => await BuildFarmAggregateAsync(levelId),
-                DashboardAggregationLevel.Unit => await BuildUnitAggregateAsync(levelId),
-                DashboardAggregationLevel.Zone => await BuildZoneAggregateAsync(levelId),
+                HierarchyNodeKind.Farm => await BuildFarmAggregateAsync(levelId),
+                HierarchyNodeKind.Unit => await BuildUnitAggregateAsync(levelId),
+                HierarchyNodeKind.Zone => await BuildZoneAggregateAsync(levelId),
                 _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown dashboard aggregation level"),
             };
             return new DashboardAggregate { Averages = averages, Trend = trend };
@@ -1421,6 +1421,7 @@ namespace Agrumy.Api.Dal
             IDDeviceFarm = f.IDDeviceFarm,
             TenantID = f.TenantID,
             DeviceFarmName = f.DeviceFarmName,
+            FarmType = (FarmType)f.FarmType,
             DisplayOrder = f.DisplayOrder,
             DeletedAtUtc = f.DeletedAtUtc,
             PurgedAtUtc = f.PurgedAtUtc,

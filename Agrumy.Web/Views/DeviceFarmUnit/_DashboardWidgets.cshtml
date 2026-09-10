@@ -7,22 +7,22 @@
     // Resolves a widget's own (level, levelId) into a short "Farm/Unit/Zone: name" tag, so a tile's scope is visible even when it differs from the page it's shown on.
     string LevelTag(DashboardWidget w)
     {
-        if (w.AggregationLevel is not DashboardAggregationLevel level || w.LevelID is not int id)
+        if (w.AggregationLevel is not HierarchyNodeKind level || w.LevelID is not int id)
         {
             return "";
         }
         string? name = level switch
         {
-            DashboardAggregationLevel.Farm => Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == id)?.DeviceFarmName,
-            DashboardAggregationLevel.Unit => Model.Units.FirstOrDefault(u => u.IDDeviceFarmUnit == id)?.DeviceFarmUnitName,
-            DashboardAggregationLevel.Zone => Model.Zones.FirstOrDefault(z => z.IDDeviceFarmUnitZone == id)?.ZoneName,
+            HierarchyNodeKind.Farm => Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == id)?.DeviceFarmName,
+            HierarchyNodeKind.Unit => Model.Units.FirstOrDefault(u => u.IDDeviceFarmUnit == id)?.DeviceFarmUnitName,
+            HierarchyNodeKind.Zone => Model.Zones.FirstOrDefault(z => z.IDDeviceFarmUnitZone == id)?.ZoneName,
             _ => null,
         };
         return name == null ? "" : $"{level}: {name}";
     }
 
     DashboardAggregate? DataFor(DashboardWidget w) =>
-        w.AggregationLevel is DashboardAggregationLevel level && w.LevelID is int id && Model.WidgetData.TryGetValue((level, id), out var data) ? data : null;
+        w.AggregationLevel is HierarchyNodeKind level && w.LevelID is int id && Model.WidgetData.TryGetValue((level, id), out var data) ? data : null;
 }
 
 <div class="card">
@@ -146,9 +146,9 @@
                         <label class="form-label">2. Source</label>
                         <div class="d-flex flex-wrap gap-2 align-items-center">
                             <select id="levelSelect" class="form-select form-select-sm" style="max-width:10rem">
-                                <option value="@((int)DashboardAggregationLevel.Farm)">Farm-wide average</option>
-                                <option value="@((int)DashboardAggregationLevel.Unit)">Unit-specific average</option>
-                                <option value="@((int)DashboardAggregationLevel.Zone)" selected>Zone-specific</option>
+                                <option value="@((int)HierarchyNodeKind.Farm)">Farm-wide average</option>
+                                <option value="@((int)HierarchyNodeKind.Unit)">Unit-specific average</option>
+                                <option value="@((int)HierarchyNodeKind.Zone)" selected>Zone-specific</option>
                             </select>
                             <select id="farmTargetSelect" class="form-select form-select-sm" style="max-width:14rem;display:none">
                                 @foreach (var f in Model.Farms)
@@ -218,7 +218,7 @@
                     <input type="text" name="label" id="labelOverrideInput" class="form-control form-control-sm" maxlength="60" />
                 </div>
 
-                <input type="hidden" name="aggregationLevel" id="aggregationLevelInput" value="@((int)DashboardAggregationLevel.Zone)" />
+                <input type="hidden" name="aggregationLevel" id="aggregationLevelInput" value="@((int)HierarchyNodeKind.Zone)" />
                 <input type="hidden" name="levelId" id="levelIdInput" value="@idZone" />
 
                 <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add widget</button>
@@ -276,7 +276,7 @@
                     function updateTargetFields() {
                         var cat = currentCategory();
                         if (cat === 'relay') {
-                            aggregationLevelInput.value = '@((int)DashboardAggregationLevel.Zone)';
+                            aggregationLevelInput.value = '@((int)HierarchyNodeKind.Zone)';
                             levelIdInput.value = relayZoneSelect.value;
                             return;
                         }
@@ -287,11 +287,11 @@
                         }
                         var level = levelSelect.value;
                         aggregationLevelInput.value = level;
-                        farmTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Farm)' ? '' : 'none';
-                        unitTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Unit)' ? '' : 'none';
-                        zoneTargetSelect.style.display = level === '@((int)DashboardAggregationLevel.Zone)' ? '' : 'none';
-                        var activeSelect = level === '@((int)DashboardAggregationLevel.Farm)' ? farmTargetSelect
-                            : level === '@((int)DashboardAggregationLevel.Unit)' ? unitTargetSelect
+                        farmTargetSelect.style.display = level === '@((int)HierarchyNodeKind.Farm)' ? '' : 'none';
+                        unitTargetSelect.style.display = level === '@((int)HierarchyNodeKind.Unit)' ? '' : 'none';
+                        zoneTargetSelect.style.display = level === '@((int)HierarchyNodeKind.Zone)' ? '' : 'none';
+                        var activeSelect = level === '@((int)HierarchyNodeKind.Farm)' ? farmTargetSelect
+                            : level === '@((int)HierarchyNodeKind.Unit)' ? unitTargetSelect
                             : zoneTargetSelect;
                         levelIdInput.value = activeSelect.value || '';
                     }

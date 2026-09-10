@@ -210,8 +210,8 @@ else
         <div class="col-auto">
             <label class="form-label small mb-0">Scope</label>
             <select name="Scope" form="groupAddForm" id="groupScopeSelect" class="form-select form-select-sm">
-                <option value="@((int)SimulationGroupScope.Unit)">Whole Unit</option>
-                <option value="@((int)SimulationGroupScope.Zone)" selected>Whole Zone</option>
+                <option value="@((int)HierarchyNodeKind.Unit)">Whole Unit</option>
+                <option value="@((int)HierarchyNodeKind.Zone)" selected>Whole Zone</option>
             </select>
         </div>
         <div class="col-auto" id="groupUnitTargetWrap" style="display:none">
@@ -256,7 +256,7 @@ else
 
 <script nonce="@Context.CspNonce()">
     document.getElementById('groupScopeSelect')?.addEventListener('change', function () {
-        var isUnit = this.value === '@((int)SimulationGroupScope.Unit)';
+        var isUnit = this.value === '@((int)HierarchyNodeKind.Unit)';
         document.getElementById('groupUnitTargetWrap').style.display = isUnit ? '' : 'none';
         document.getElementById('groupZoneTargetWrap').style.display = isUnit ? 'none' : '';
         document.getElementById('groupUnitTargetSelect').disabled = !isUnit;
