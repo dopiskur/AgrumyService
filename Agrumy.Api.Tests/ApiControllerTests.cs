@@ -455,6 +455,9 @@ public class ApiControllerTests
 
         _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid"))
              .ReturnsAsync(new Device { IDDevice = 500, TenantID = 3, SleepSeconds = sleepSeconds });
+        // DB-backed session fallback - Authenticate persists the same token/expiry it just cached.
+        _repo.Setup(r => r.DeviceSessionSetAsync(500, It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+             .Returns(Task.CompletedTask);
 
         TimeSpan? capturedTtl = null;
         _cache.Setup(c => c.SetItemAsync(It.IsAny<string>(), It.IsAny<DeviceCache>(), It.IsAny<TimeSpan?>()))
@@ -465,6 +468,35 @@ public class ApiControllerTests
 
         Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal(TimeSpan.FromSeconds(expectedTtlSeconds), capturedTtl);
+    }
+
+    // DeviceSessionHandler's cache-miss fallback needs the DB row to carry the SAME token the cache got, with an expiry consistent with the cache's own TTL, or a restart-recovered session would authenticate with a stale/different token.
+    [Fact]
+    public async Task Authenticate_PersistsTheSameTokenAndAConsistentExpiryToTheDbFallback()
+    {
+        var controller = NewDeviceController();
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+        controller.HttpContext.Items[DeviceAuth.ApiIdItemKey] = "api-guid";
+
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid"))
+             .ReturnsAsync(new Device { IDDevice = 500, TenantID = 3, SleepSeconds = 60 });
+        _cache.Setup(c => c.SetItemAsync(It.IsAny<string>(), It.IsAny<DeviceCache>(), It.IsAny<TimeSpan?>()))
+              .Returns(Task.CompletedTask);
+
+        string? dbToken = null;
+        DateTimeOffset? dbExpiresAtUtc = null;
+        var before = DateTimeOffset.UtcNow;
+        _repo.Setup(r => r.DeviceSessionSetAsync(500, It.IsAny<string>(), It.IsAny<DateTimeOffset?>()))
+             .Callback<int, string?, DateTimeOffset?>((_, token, expiresAtUtc) => { dbToken = token; dbExpiresAtUtc = expiresAtUtc; })
+             .Returns(Task.CompletedTask);
+
+        var result = await controller.ReqAuth();
+
+        var body = Assert.IsType<DeviceAuthentication>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(body.apiAuth, dbToken);
+        Assert.NotNull(dbExpiresAtUtc);
+        // 1800s floor (SleepSeconds=60 -> 2x=120s, floored) - same TTL the cache entry got.
+        Assert.InRange(dbExpiresAtUtc!.Value, before.AddSeconds(1800), DateTimeOffset.UtcNow.AddSeconds(1800));
     }
 
 

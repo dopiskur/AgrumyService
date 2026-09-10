@@ -92,7 +92,7 @@ namespace Agrumy.Api.Security
 
     public sealed class DeviceSessionRequirement : IAuthorizationRequirement;
 
-    public sealed partial class DeviceSessionHandler(ICache cache, ILogger<DeviceSessionHandler> logger)
+    public sealed partial class DeviceSessionHandler(ICache cache, IDeviceRepository repo, ILogger<DeviceSessionHandler> logger)
         : AuthorizationHandler<DeviceSessionRequirement>
     {
         [LoggerMessage(Level = LogLevel.Warning, Message = "Device Session auth rejected: missing apiId header or Authorization token.")]
@@ -101,6 +101,9 @@ namespace Agrumy.Api.Security
         // A cache miss (never authenticated / evicted) and a TTL-expired entry both surface as GetDeviceCacheAsync returning an empty DeviceCache - indistinguishable from here, so both fall under this one category.
         [LoggerMessage(Level = LogLevel.Warning, Message = "Device Session auth rejected: no valid session for apiId {ApiId}.")]
         private static partial void LogExpiredSession(ILogger logger, string apiId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Device Session auth recovered from the DB fallback for apiId {ApiId} - the in-process cache missed it (server restart/redeploy, or a different instance behind a load balancer).")]
+        private static partial void LogRecoveredFromDb(ILogger logger, string apiId);
 
         protected override async Task HandleRequirementAsync(
             AuthorizationHandlerContext context, DeviceSessionRequirement requirement)
@@ -123,11 +126,23 @@ namespace Agrumy.Api.Security
             {
                 http.Items[DeviceAuth.ApiIdItemKey] = apiId;
                 context.Succeed(requirement);
+                return;
             }
-            else
+
+            // Cache miss, not necessarily a genuinely dead session - fall back to the DB-persisted token before rejecting, so a server restart doesn't force every device through a fresh Authenticate on its very next poll.
+            if (await repo.DeviceSessionGetAsync(apiId) is { } dbSession && dbSession.ExpiresAtUtc > DateTimeOffset.UtcNow
+                && DeviceAuth.ConstantTimeEquals(token, dbSession.Token))
             {
-                LogExpiredSession(logger, apiId);
+                http.Items[DeviceAuth.ApiIdItemKey] = apiId;
+                context.Succeed(requirement);
+                LogRecoveredFromDb(logger, apiId);
+                // Repopulate the fast-path cache (bounded by the DB row's own remaining expiry) so the NEXT request on this apiId doesn't need the DB again.
+                TimeSpan remaining = dbSession.ExpiresAtUtc - DateTimeOffset.UtcNow;
+                await cache.SetItemAsync(apiId, new DeviceCache { apiAuth = token }, remaining);
+                return;
             }
+
+            LogExpiredSession(logger, apiId);
         }
     }
 }

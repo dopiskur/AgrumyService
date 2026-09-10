@@ -4,6 +4,7 @@ using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909220129_AddDeviceSessionPersistence")]
+    partial class AddDeviceSessionPersistence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -968,9 +971,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LastSensorDetectionResult")
                         .HasColumnType("longtext");
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double");
-
                     b.Property<bool?>("LoRaGatewayEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -980,12 +980,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
-
-                    b.Property<int>("LocationSource")
-                        .HasColumnType("int");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double");
 
                     b.Property<string>("MacAddress")
                         .HasMaxLength(64)
