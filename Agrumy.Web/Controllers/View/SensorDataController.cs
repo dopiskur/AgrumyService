@@ -11,22 +11,24 @@ namespace Agrumy.Web.Controllers.View
     [Authorize]
     public class SensorDataController(IApi api) : Controller
     {
-        public async Task<ActionResult> Index(int? idDevice, int? timeRange = 60, int? timeMDMY = 0)
+        private static SelectList BucketSelectList(SensorDataBucket selected) =>
+            new(Enum.GetValues<SensorDataBucket>().Select(b => new { ID = (int)b, Name = b.ToString() }), "ID", "Name", (int)selected);
+
+        public async Task<ActionResult> Index(int? idDevice, DateTimeOffset? from = null, DateTimeOffset? to = null, SensorDataBucket bucket = SensorDataBucket.Hour)
         {
-            if (timeRange > 1440)
+            DateTimeOffset effectiveTo = to ?? DateTimeOffset.UtcNow;
+            DateTimeOffset effectiveFrom = from ?? effectiveTo.AddDays(-1);
+
+            var deviceView = new DeviceView
             {
-                timeRange = 1440; // cap at one day of minute-resolution data
-            }
+                Device = await api.DeviceGet(idDevice),
+                SensorDataFrom = effectiveFrom,
+                SensorDataTo = effectiveTo,
+                SensorDataBucket = bucket,
+            };
+            ViewBag.BucketList = BucketSelectList(bucket);
 
-            var deviceView = new DeviceView { Device = await api.DeviceGet(idDevice) };
-            deviceView.TimeRange!.Range = timeRange;
-
-            ViewBag.EnumList = new SelectList(
-                Enum.GetValues<TimeRangeMDMY>().Select(e => new { ID = (int)e, Name = e.ToString() }),
-                "ID", "Name", timeMDMY);
-            ViewBag.TimeMDMY = timeMDMY;
-
-            deviceView.SensorDataJson = await api.SensorDataGet(idDevice, timeRange, timeMDMY, 0);
+            deviceView.SensorDataJson = await api.SensorDataGet(idDevice, effectiveFrom, effectiveTo, bucket);
 
             // Chart x-axis shows the user's local time; storage stays UTC.
             string? timeZone = User.GetTimeZone();
@@ -36,43 +38,23 @@ namespace Agrumy.Web.Controllers.View
             return View(deviceView);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> GenerateReport(int? idDevice, int? timeRange = 60, int? timeMDMY = 0)
+        /// Same live bucketed query as Index, just its own route/form defaulting to a wider day-bucketed range - a formal "report" pull rather than the quick live view Index is for. No more saved snapshots (sensorDataReport is gone) - "generating a report" now just means picking a from/to/bucket and viewing it, same as Index.
+        public async Task<ActionResult> Report(int? idDevice, DateTimeOffset? from = null, DateTimeOffset? to = null, SensorDataBucket bucket = SensorDataBucket.Day)
         {
-            if (timeRange > 1440)
-            {
-                timeRange = 1440;
-            }
+            DateTimeOffset effectiveTo = to ?? DateTimeOffset.UtcNow;
+            DateTimeOffset effectiveFrom = from ?? effectiveTo.AddDays(-30);
 
-            await api.SensorDataGet(idDevice, timeRange, timeMDMY, 1);
-            TempData["Message"] = "Report generated.";
-            return RedirectToAction(nameof(Report), new { idDevice });
-        }
-
-        public async Task<ActionResult> Report(int? idDevice, int? idSensorDataReport = 0)
-        {
             var deviceView = new DeviceView
             {
                 Device = await api.DeviceGet(idDevice),
-                SensorDataReport = await api.SensorDataReportGet(idDevice, idSensorDataReport, 0),
+                SensorDataFrom = effectiveFrom,
+                SensorDataTo = effectiveTo,
+                SensorDataBucket = bucket,
             };
+            ViewBag.BucketList = BucketSelectList(bucket);
 
-            if (!deviceView.SensorDataReport.Any())
-            {
-                deviceView.SensorDataReport = new List<SensorDataReport>
-                {
-                    new() { IDSensorDataReport = idSensorDataReport, DeviceID = idDevice, ReportName = "No reports" },
-                };
-            }
+            deviceView.SensorDataJson = await api.SensorDataGet(idDevice, effectiveFrom, effectiveTo, bucket);
 
-            if (idSensorDataReport > 0)
-            {
-                var single = await api.SensorDataReportGet(idDevice, idSensorDataReport, 1);
-                deviceView.SensorDataJson = single.FirstOrDefault()?.SensorData;
-            }
-
-            // Reports store UTC snapshots; convert for display.
             string? timeZone = User.GetTimeZone();
             deviceView.SensorDataJson = SensorDataTimeLocalizer.LocalizeDates(deviceView.SensorDataJson, timeZone);
             ViewBag.DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone;

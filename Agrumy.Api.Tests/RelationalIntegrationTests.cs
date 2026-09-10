@@ -2965,7 +2965,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task SensorDataGet_NullsOutlierCo2_ButKeepsTheRestOfTheRow_AndWritesReport(DbProviderKind provider)
+    public async Task SensorDataGet_NullsOutlierCo2_ButKeepsTheRestOfTheRow(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
@@ -2989,7 +2989,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             await db.SaveChangesAsync();
         }
 
-        string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, 10, 0, 1);
+        string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, thisMinute.AddDays(-10), thisMinute.AddMinutes(1), SensorDataBucket.Minute);
         var arr = JsonDocument.Parse(json).RootElement.GetProperty("sensorData");
 
         // All 3 buckets present - a device with no working CO2 reading this minute must not lose its whole row, only the co2 field.
@@ -3004,15 +3004,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(30, arr[2].GetProperty("temperature").GetDouble());
         Assert.Equal(4000, arr[2].GetProperty("co2").GetInt32());
 
-        await using var db2 = _fx.NewContext(t);
-        Assert.True(await db2.SensorDataReports.AnyAsync(r => r.DeviceID == d.IDDevice && r.SensorData == json));
-
-        Assert.Equal("", await _repo.SensorDataGetAsync(tenantId, d.IDDevice, 10, 7, 0));
+        // An invalid window (to before from) never reaches the DB - "" same as an empty result.
+        Assert.Equal("", await _repo.SensorDataGetAsync(tenantId, d.IDDevice, thisMinute, thisMinute.AddDays(-10), SensorDataBucket.Minute));
     }
 
-    // Roadmap #301: a caller-supplied (timeRange, timeMDMY) is otherwise unbounded - a request for "100 years" would load the device's entire history into memory. The clamp caps the effective cutoff without erroring, so a request beyond it just returns less than asked rather than everything.
+    // A caller-supplied from/to is otherwise unbounded - a 100-year window would ask SQL to aggregate the device's entire history. The clamp caps the effective window without erroring, so a request beyond it just returns "" rather than everything.
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task SensorDataGet_ClampsAnUnreasonablyLargeTimeRange_ToTheSafetyCeiling(DbProviderKind provider)
+    public async Task SensorDataGet_ClampsAnUnreasonablyLargeWindow_ToTheSafetyCeiling(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
@@ -3022,48 +3020,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await using (var db = _fx.NewContext(t))
         {
             db.SensorData.AddRange(
-                // Well beyond the safety ceiling (400 days) - must be excluded even though the request below asks for 100 years.
+                // Well beyond the safety ceiling (400 days) - excluded once the window itself gets rejected below.
                 new SensorDataRow { DeviceID = d.IDDevice!.Value, TenantID = tenantId, Temperature = 999, DateCreated = now.AddYears(-5) },
-                // Inside the ceiling - must still come back.
                 new SensorDataRow { DeviceID = d.IDDevice!.Value, TenantID = tenantId, Temperature = 21, DateCreated = now.AddDays(-30) });
             await db.SaveChangesAsync();
         }
 
-        string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, 100, 3, 0); // 100 years
-        var arr = JsonDocument.Parse(json).RootElement.GetProperty("sensorData");
-
-        Assert.Equal(1, arr.GetArrayLength());
-        Assert.Equal(21, arr[0].GetProperty("temperature").GetDouble());
-    }
-
-    [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task SensorDataReportGet_Metadata_Then_Full_Row_TenantScoped(DbProviderKind provider)
-    {
-        var t = Use(provider);
-        var (tenantId, _, _) = await MakeUser(t);
-        var d = await MakeDevice(t, tenantId);
-
-        await using (var db = _fx.NewContext(t))
-        {
-            db.SensorDataReports.Add(new SensorDataReportRow { DeviceID = d.IDDevice, ReportName = "r1", SensorData = "{\"sensorData\":[]}", DateGenerated = DateTime.Now });
-            await db.SaveChangesAsync();
-        }
-
-        var meta = await _repo.SensorDataReportGetAsync(tenantId, 0, d.IDDevice, null);
-        var one = Assert.Single(meta);
-        Assert.Equal("r1", one.ReportName);
-        Assert.Null(one.SensorData);
-
-        // deviceID null lists every report in the tenant (the Reporting page), not just this one device.
-        var everyReport = await _repo.SensorDataReportGetAsync(tenantId, 0, null, null);
-        Assert.Contains(everyReport, r => r.IDSensorDataReport == one.IDSensorDataReport);
-        Assert.Empty(await _repo.SensorDataReportGetAsync(tenantId + 999, 0, null, null));
-
-        var full = await _repo.SensorDataReportGetAsync(tenantId, 1, null, one.IDSensorDataReport);
-        Assert.Equal("{\"sensorData\":[]}", Assert.Single(full).SensorData);
-
-        Assert.Empty(await _repo.SensorDataReportGetAsync(tenantId + 999, 0, d.IDDevice, null));
-        Assert.Empty(await _repo.SensorDataReportGetAsync(tenantId, -1, d.IDDevice, null));
+        Assert.Equal("", await _repo.SensorDataGetAsync(tenantId, d.IDDevice, now.AddYears(-100), now, SensorDataBucket.Day)); // 100 years - past the 400-day cap
     }
 
     /// DB UTC rows shaped to JSON, then dateCreated localized for display: chart payload shifts by the user's zone, or passes UTC through untouched if null.
@@ -3082,7 +3045,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             await db.SaveChangesAsync();
         }
 
-        string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, 10, 0, 0);
+        string json = await _repo.SensorDataGetAsync(tenantId, d.IDDevice, utcStamp.AddDays(-10), utcStamp.AddMinutes(1), SensorDataBucket.Minute);
         Assert.Contains(utcStamp.ToString("yyyy-MM-dd HH:mm:ss"), json);
 
         string? localized = Agrumy.Shared.Utils.SensorDataTimeLocalizer.LocalizeDates(json, "Europe/Zagreb");
@@ -3109,7 +3072,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             await db.SaveChangesAsync();
         }
 
-        await _repo.SensorDataDeleteAsync(tenantId, d.IDDevice, 5, 1);
+        await _repo.SensorDataDeleteAsync(tenantId, d.IDDevice, now.AddDays(-5));
 
         await using var db2 = _fx.NewContext(t);
         var left = await db2.SensorData.Where(r => r.DeviceID == d.IDDevice).ToListAsync();

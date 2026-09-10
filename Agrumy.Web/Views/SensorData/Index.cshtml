@@ -13,30 +13,21 @@
             <input type="hidden" name="idDevice" value="@Model.Device!.IDDevice" />
             <div class="row g-2 align-items-end">
                 <div class="col-auto">
-                    <label class="form-label" for="timeRange">Time range</label>
-                    <div class="input-group">
-                        @* Plain input on purpose - asp-for would emit name="TimeRange.Range" and break the flat "timeRange" query binding SensorDataController.Index expects. *@
-                        <input type="number" min="1" max="1440" id="timeRange" name="timeRange" value="@Model.TimeRange!.Range" class="form-control" />
-                        <div class="input-group-text"><span class="bi bi-clock-history"></span></div>
-                    </div>
+                    <label class="form-label" for="from">From</label>
+                    <input type="datetime-local" id="from" name="from" value="@Model.SensorDataFrom?.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
                 </div>
                 <div class="col-auto">
-                    <label class="form-label" for="timeMDMY">Period</label>
-                    <select id="timeMDMY" name="timeMDMY" class="form-select" asp-items="ViewBag.EnumList"></select>
+                    <label class="form-label" for="to">To</label>
+                    <input type="datetime-local" id="to" name="to" value="@Model.SensorDataTo?.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-success">Load live data</button>
+                    <label class="form-label" for="bucket">Bucket</label>
+                    <select id="bucket" name="bucket" class="form-select" asp-items="ViewBag.BucketList"></select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success">Load data</button>
                 </div>
             </div>
-        </form>
-
-        <hr class="my-3" />
-
-        <form asp-action="GenerateReport" method="post">
-            <input type="hidden" name="idDevice" value="@Model.Device!.IDDevice" />
-            <input type="hidden" name="timeRange" value="@Model.TimeRange!.Range" />
-            <input type="hidden" name="timeMDMY" value="@(ViewBag.TimeMDMY ?? 0)" />
-            <button type="submit" class="btn btn-danger">Generate report from shown data</button>
         </form>
     </div>
     <div class="card-footer">

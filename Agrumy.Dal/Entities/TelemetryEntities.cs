@@ -92,15 +92,6 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? DateCreated { get; set; }
     }
 
-    public class SensorDataReportRow
-    {
-        public int IDSensorDataReport { get; set; }
-        public int? DeviceID { get; set; }
-        public string? ReportName { get; set; }
-        public DateTimeOffset? DateGenerated { get; set; }
-        public string? SensorData { get; set; }
-    }
-
     /// Catalog of Agrumy.Shared.Models.DeviceEventType values, seeded 1:1 from that enum - backs EventDeviceRow.EventID so a future event type has one source of truth instead of a magic-number agreement.
     public class EventTypeRow
     {

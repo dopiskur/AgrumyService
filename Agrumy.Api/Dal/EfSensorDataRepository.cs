@@ -8,6 +8,30 @@ using Npgsql;
 
 namespace Agrumy.Api.Dal
 {
+    /// One 5-minute bucket's SQL-side aggregate, used only by OptimizeOldSensorDataAsync's retention downsampling - TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID come from MAX() (a device's own FK columns rarely change; MAX just needs to pick one consistent value per bucket, not the literal most-recent row).
+    internal sealed class OptimizedSensorBucket
+    {
+        public int? TenantID { get; set; }
+        public int? DeviceFarmUnitID { get; set; }
+        public int? DeviceFarmUnitZoneID { get; set; }
+        public double? Battery { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public double? Moisture { get; set; }
+        public double? Light { get; set; }
+        public double? Co2 { get; set; }
+        public double? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public double? RainLevel { get; set; }
+        public double? WaterLevel { get; set; }
+        public double? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
+        public DateTime BucketStart { get; set; }
+    }
+
     /// ISensorDataRepository, extracted out of the EfRepository god class - a leaf facet, its only cross-facet dependency being the experiment dual-write below.
     internal sealed class EfSensorDataRepository(AgrumyDbContext db, IExperimentRepository experimentRepository) : ISensorDataRepository
     {
@@ -57,150 +81,150 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        // A caller-supplied (timeRange, timeMDMY) pair is otherwise unbounded - years/decades would load the device's entire history into memory for in-process aggregation. Chosen generously above any legitimate chart/report window.
+        // Both the app's own window cap and the hardcoded provider-side units (BucketExpr only knows minute/hour/day/the fixed 5-minute retention bucket) - a from/to spanning more than this would load an unreasonably large bucketed result set even with SQL-side aggregation.
         private const int MaxLookbackDays = 400;
 
-        /// UTC so the cutoff compares against UTC DateCreated without a DST-sized skew; never further back than MaxLookbackDays regardless of what the caller asked for.
-        private static DateTime ClampedCutoff(DateTime now, int timeRange, int timeMDMY)
+        private static bool IsValidWindow(DateTimeOffset from, DateTimeOffset to) =>
+            to > from && (to - from) <= TimeSpan.FromDays(MaxLookbackDays);
+
+        /// date_trunc (Postgres, no TimescaleDB dependency - plain date_trunc covers minute/hour/day without needing time_bucket/hypertables) / DATE_FORMAT truncation (MySQL/MariaDB) for the column named literally in the SQL this builds - bucket is a closed 3-value enum, never user text, so splicing its mapped fragment directly into the query string carries no injection risk.
+        private static string BucketExpr(SensorDataBucket bucket, bool isNpgsql, string column)
         {
-            DateTime requested = timeMDMY switch
+            if (isNpgsql)
             {
-                0 => now.AddMinutes(-timeRange),
-                1 => now.AddDays(-timeRange),
-                2 => now.AddMonths(-timeRange),
-                _ => now.AddYears(-timeRange),
+                string unit = bucket switch { SensorDataBucket.Minute => "minute", SensorDataBucket.Hour => "hour", _ => "day" };
+                return $"date_trunc('{unit}', \"{column}\")";
+            }
+            string fmt = bucket switch
+            {
+                SensorDataBucket.Minute => "%Y-%m-%d %H:%i:00",
+                SensorDataBucket.Hour => "%Y-%m-%d %H:00:00",
+                _ => "%Y-%m-%d 00:00:00",
             };
-            DateTime hardFloor = now.AddDays(-MaxLookbackDays);
-            return requested < hardFloor ? hardFloor : requested;
+            return $"CAST(DATE_FORMAT(`{column}`, '{fmt}') AS DATETIME)";
         }
 
-        public async Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY, int? buildReport)
+        public async Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket)
         {
-            if (timeMDMY is not (0 or 1 or 2 or 3) || timeRange == null)
+            if (!IsValidWindow(from, to))
             {
                 return "";
             }
 
-            DateTime now = DateTime.UtcNow;
-            DateTime cutoff = ClampedCutoff(now, timeRange.Value, timeMDMY.Value);
+            bool npg = db.Database.IsNpgsql();
+            string bucketExpr = BucketExpr(bucket, npg, "DateCreated");
 
-            // A null tenantID means "no filter" here - a bare == would translate to SQL TenantID IS NULL and match nothing.
-            var rows = await db.SensorData.AsNoTracking()
-                .Where(r => r.DeviceID == deviceID
-                            && (tenantID == null || r.TenantID == tenantID)
-                            && r.DateCreated > cutoff)
+            // CCS811 sentinel/outlier guard, CO2 column only - <=400 means "not warmed up yet" (not a real reading), >=8000 means a bad reading; nulling just this field leaves every other column of the picked (latest-in-bucket) row untouched. ROW_NUMBER()-per-bucket picks that latest row entirely in SQL - the app never sees the raw rows a bucket was chosen from.
+            string sql = npg
+                ? $$"""
+                SELECT "Battery", "Temperature", "SoilTemperature", "Humidity", "Moisture", "Light",
+                       CASE WHEN "Co2" <= 400 OR "Co2" >= 8000 THEN NULL ELSE "Co2" END AS "Co2",
+                       "Tvoc", "Barometer", "LiquidPH", "RainLevel", "WaterLevel", "Wind", "Ec", "Weight",
+                       "Bucket" AS "BucketStart"
+                FROM (
+                    SELECT "Battery", "Temperature", "SoilTemperature", "Humidity", "Moisture", "Light", "Co2", "Tvoc",
+                           "Barometer", "LiquidPH", "RainLevel", "WaterLevel", "Wind", "Ec", "Weight",
+                           {{bucketExpr}} AS "Bucket",
+                           ROW_NUMBER() OVER (PARTITION BY {{bucketExpr}} ORDER BY "DateCreated" DESC) AS rn
+                    FROM "dataSensor"
+                    WHERE "DeviceID" = {0} AND ({1} IS NULL OR "TenantID" = {1})
+                      AND "DateCreated" >= {2} AND "DateCreated" <= {3}
+                ) t WHERE rn = 1 ORDER BY "BucketStart"
+                """
+                : $$"""
+                SELECT Battery, Temperature, SoilTemperature, Humidity, Moisture, Light,
+                       CASE WHEN Co2 <= 400 OR Co2 >= 8000 THEN NULL ELSE Co2 END AS Co2,
+                       Tvoc, Barometer, LiquidPH, RainLevel, WaterLevel, Wind, Ec, Weight,
+                       Bucket AS BucketStart
+                FROM (
+                    SELECT Battery, Temperature, SoilTemperature, Humidity, Moisture, Light, Co2, Tvoc,
+                           Barometer, LiquidPH, RainLevel, WaterLevel, Wind, Ec, Weight,
+                           {{bucketExpr}} AS Bucket,
+                           ROW_NUMBER() OVER (PARTITION BY {{bucketExpr}} ORDER BY DateCreated DESC) AS rn
+                    FROM dataSensor
+                    WHERE DeviceID = {0} AND ({1} IS NULL OR TenantID = {1})
+                      AND DateCreated >= {2} AND DateCreated <= {3}
+                ) t WHERE rn = 1 ORDER BY BucketStart
+                """;
+
+            List<BucketedSensorRow> rows = await db.Database
+                .SqlQueryRaw<BucketedSensorRow>(sql, (object?)deviceID ?? DBNull.Value, (object?)tenantID ?? DBNull.Value, from, to)
                 .ToListAsync();
 
-            // CCS811 sentinel/outlier guard, CO2 column only - <=400 means "not warmed up yet" (not a real reading), >=8000 means a bad reading; nulling just this field leaves every other reading on the same row (temperature, humidity, ...) untouched, unlike excluding the whole row would.
-            foreach (var row in rows)
-            {
-                if (row.Co2 is int co2 && (co2 <= 400 || co2 >= 8000))
-                {
-                    row.Co2 = null;
-                }
-            }
-
-            string json = SensorReportShaper.Build(rows, timeMDMY.Value);
-
-            if (json.Length > 0 && buildReport > 0)
-            {
-                db.SensorDataReports.Add(new SensorDataReportRow
-                {
-                    DeviceID = deviceID,
-                    ReportName = now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    SensorData = json,
-                });
-                await db.SaveChangesAsync();
-            }
-
-            return json;
+            return SensorReportShaper.Build(rows);
         }
 
-        public Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, int? timeRange, int? timeMDMY) =>
-            AveragedSensorJsonAsync(tenantID, q => q.Where(r => r.DeviceFarmUnitZoneID == deviceFarmUnitZoneID), timeRange, timeMDMY);
+        public Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket) =>
+            AveragedSensorJsonAsync(tenantID, "FarmGreenhouseUnitZoneID", deviceFarmUnitZoneID, from, to, bucket);
 
-        public Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, int? timeRange, int? timeMDMY) =>
-            AveragedSensorJsonAsync(tenantID, q => q.Where(r => r.DeviceFarmUnitID == deviceFarmUnitID), timeRange, timeMDMY);
+        public Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket) =>
+            AveragedSensorJsonAsync(tenantID, "FarmGreenhouseUnitID", deviceFarmUnitID, from, to, bucket);
 
-        /// Shared by the zone/unit averaged-chart endpoints - same time-cutoff/bucket logic as SensorDataGetAsync, scoped by the caller's predicate instead of a single device, shaped by BuildAveraged instead of Build.
-        private async Task<string> AveragedSensorJsonAsync(int? tenantID, Func<IQueryable<SensorDataRow>, IQueryable<SensorDataRow>> scope, int? timeRange, int? timeMDMY)
+        /// Shared by the zone/unit averaged-chart endpoints - scopeColumn is the REAL DB column name (FarmGreenhouseUnitID/FarmGreenhouseUnitZoneID, the legacy names DeviceFarmUnitID/DeviceFarmUnitZoneID are mapped to), never user input, so splicing it into the query string carries no injection risk.
+        private async Task<string> AveragedSensorJsonAsync(int? tenantID, string scopeColumn, int scopeId, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket)
         {
-            if (timeMDMY is not (0 or 1 or 2 or 3) || timeRange == null)
+            if (!IsValidWindow(from, to))
             {
                 return "";
             }
 
-            DateTime now = DateTime.UtcNow;
-            DateTime cutoff = ClampedCutoff(now, timeRange.Value, timeMDMY.Value);
+            bool npg = db.Database.IsNpgsql();
+            string bucketExpr = BucketExpr(bucket, npg, "DateCreated");
 
-            IQueryable<SensorDataRow> baseQuery = db.SensorData.AsNoTracking()
-                .Where(r => (tenantID == null || r.TenantID == tenantID) && r.DateCreated > cutoff);
-            var rows = await scope(baseQuery).ToListAsync();
+            string sql = npg
+                ? $$"""
+                SELECT AVG("Battery") AS "Battery", AVG("Temperature") AS "Temperature", AVG("SoilTemperature") AS "SoilTemperature",
+                       AVG("Humidity") AS "Humidity", AVG("Moisture") AS "Moisture", AVG("Light") AS "Light", AVG("Co2") AS "Co2",
+                       AVG("Tvoc") AS "Tvoc", AVG("Barometer") AS "Barometer", AVG("LiquidPH") AS "LiquidPH", AVG("RainLevel") AS "RainLevel",
+                       AVG("WaterLevel") AS "WaterLevel", AVG("Wind") AS "Wind", AVG("Ec") AS "Ec", AVG("Weight") AS "Weight",
+                       {{bucketExpr}} AS "BucketStart"
+                FROM "dataSensor"
+                WHERE "{{scopeColumn}}" = {0} AND ({1} IS NULL OR "TenantID" = {1})
+                  AND "DateCreated" >= {2} AND "DateCreated" <= {3}
+                GROUP BY {{bucketExpr}}
+                ORDER BY "BucketStart"
+                """
+                : $$"""
+                SELECT AVG(Battery) AS Battery, AVG(Temperature) AS Temperature, AVG(SoilTemperature) AS SoilTemperature,
+                       AVG(Humidity) AS Humidity, AVG(Moisture) AS Moisture, AVG(Light) AS Light, AVG(Co2) AS Co2,
+                       AVG(Tvoc) AS Tvoc, AVG(Barometer) AS Barometer, AVG(LiquidPH) AS LiquidPH, AVG(RainLevel) AS RainLevel,
+                       AVG(WaterLevel) AS WaterLevel, AVG(Wind) AS Wind, AVG(Ec) AS Ec, AVG(Weight) AS Weight,
+                       {{bucketExpr}} AS BucketStart
+                FROM dataSensor
+                WHERE `{{scopeColumn}}` = {0} AND ({1} IS NULL OR TenantID = {1})
+                  AND DateCreated >= {2} AND DateCreated <= {3}
+                GROUP BY {{bucketExpr}}
+                ORDER BY BucketStart
+                """;
 
-            return SensorReportShaper.BuildAveraged(rows, timeMDMY.Value);
+            List<AveragedSensorBucket> rows = await db.Database
+                .SqlQueryRaw<AveragedSensorBucket>(sql, scopeId, (object?)tenantID ?? DBNull.Value, from, to)
+                .ToListAsync();
+
+            return SensorReportShaper.BuildAveraged(rows);
         }
 
-        public async Task<IList<SensorDataReport>> SensorDataReportGetAsync(int? tenantID, int? getData, int? deviceID, int? reportID)
+        public async Task SensorDataDeleteAsync(int? tenantID, int? deviceID, DateTimeOffset olderThan)
         {
-
-            if (getData == 0)
-            {
-                // deviceID null lists every report in scope (the Reporting page) instead of one device's own (the per-device Report tab) - tenantID keeps its usual null-means-no-filter meaning.
-                return await (from r in db.SensorDataReports.AsNoTracking()
-                              join d in db.Devices.AsNoTracking() on r.DeviceID equals d.IDDevice
-                              where (deviceID == null || r.DeviceID == deviceID) && (tenantID == null || d.TenantID == tenantID)
-                              orderby r.DateGenerated descending
-                              select new SensorDataReport
-                              {
-                                  IDSensorDataReport = r.IDSensorDataReport,
-                                  DeviceID = r.DeviceID,
-                                  ReportName = r.ReportName,
-                                  DateGenerated = r.DateGenerated,
-                              }).ToListAsync();
-            }
-
-            if (getData > 0)
-            {
-                return await (from r in db.SensorDataReports.AsNoTracking()
-                              join d in db.Devices.AsNoTracking() on r.DeviceID equals d.IDDevice
-                              where r.IDSensorDataReport == reportID && (tenantID == null || d.TenantID == tenantID)
-                              select new SensorDataReport
-                              {
-                                  IDSensorDataReport = r.IDSensorDataReport,
-                                  DeviceID = r.DeviceID,
-                                  ReportName = r.ReportName,
-                                  DateGenerated = r.DateGenerated,
-                                  SensorData = r.SensorData,
-                              }).ToListAsync();
-            }
-
-            return new List<SensorDataReport>();
-        }
-
-        public async Task SensorDataDeleteAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY)
-        {
-            if (timeMDMY is not (0 or 1 or 2 or 3) || timeRange == null)
-            {
-                return;
-            }
-
-            // UTC so the delete cutoff compares against UTC DateCreated.
-            DateTime now = DateTime.UtcNow;
-            DateTime cutoff = timeMDMY switch
-            {
-                0 => now.AddMinutes(-timeRange.Value),
-                1 => now.AddDays(-timeRange.Value),
-                2 => now.AddMonths(-timeRange.Value),
-                _ => now.AddYears(-timeRange.Value),
-            };
-
             await db.SensorData
-                .Where(r => r.DeviceID == deviceID && r.TenantID == tenantID && r.DateCreated < cutoff)
+                .Where(r => r.DeviceID == deviceID && r.TenantID == tenantID && r.DateCreated < olderThan)
                 .ExecuteDeleteAsync();
         }
 
         private static readonly TimeSpan OptimizeBucketSize = TimeSpan.FromMinutes(5);
 
+        /// OptimizeBucketSize doesn't align with date_trunc's minute/hour/day units, so this uses the FLOOR(epoch/N)*N technique directly (same technique BucketExpr's MySQL branch already uses via DATE_FORMAT, just for a bucket size neither provider has a named unit for).
+        private static string FiveMinuteBucketExpr(bool isNpgsql, string column)
+        {
+            int seconds = (int)OptimizeBucketSize.TotalSeconds;
+            return isNpgsql
+                ? $"to_timestamp(floor(extract(epoch from \"{column}\") / {seconds}) * {seconds})"
+                : $"FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(`{column}`) / {seconds}) * {seconds})";
+        }
+
+        private static int? RoundToInt(double? value) => value.HasValue ? (int)Math.Round(value.Value, MidpointRounding.AwayFromZero) : null;
+
+        /// Replaces old rows past cutoffUtc with one 5-minute-bucket-averaged row per device - the SQL AVG() aggregation itself is what keeps this bounded (a device's raw history collapses to a handful of bucket rows before it ever reaches the app); no outlier trimming anymore (that needed the raw values in the app to compute IQR bounds), a deliberate simplification now that this is a pure retention policy, not a job that loads rows.
         public async Task OptimizeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct)
         {
             // Per-device, not one giant query - bounds each transaction's row count and lets a mid-run failure leave already-processed devices genuinely optimized instead of rolling everything back.
@@ -210,24 +234,67 @@ namespace Agrumy.Api.Dal
                 .Distinct()
                 .ToListAsync(ct);
 
+            bool npg = db.Database.IsNpgsql();
+            string bucketExpr = FiveMinuteBucketExpr(npg, "DateCreated");
+
             foreach (int deviceId in deviceIds)
             {
                 ct.ThrowIfCancellationRequested();
 
-                List<SensorDataRow> rows = await db.SensorData.AsNoTracking()
-                    .Where(r => r.DeviceID == deviceId && r.DateCreated < cutoffUtc && r.DateCreated != null)
-                    .OrderBy(r => r.DateCreated)
+                string sql = npg
+                    ? $$"""
+                    SELECT MAX("TenantID") AS "TenantID", MAX("FarmGreenhouseUnitID") AS "DeviceFarmUnitID", MAX("FarmGreenhouseUnitZoneID") AS "DeviceFarmUnitZoneID",
+                           AVG("Battery") AS "Battery", AVG("Temperature") AS "Temperature", AVG("SoilTemperature") AS "SoilTemperature", AVG("Humidity") AS "Humidity",
+                           AVG("Moisture") AS "Moisture", AVG("Light") AS "Light", AVG("Co2") AS "Co2", AVG("Tvoc") AS "Tvoc", AVG("Barometer") AS "Barometer",
+                           AVG("LiquidPH") AS "LiquidPH", AVG("RainLevel") AS "RainLevel", AVG("WaterLevel") AS "WaterLevel", AVG("Wind") AS "Wind",
+                           AVG("Ec") AS "Ec", AVG("Weight") AS "Weight", {{bucketExpr}} AS "BucketStart"
+                    FROM "dataSensor"
+                    WHERE "DeviceID" = {0} AND "DateCreated" < {1}
+                    GROUP BY {{bucketExpr}}
+                    """
+                    : $$"""
+                    SELECT MAX(TenantID) AS TenantID, MAX(FarmGreenhouseUnitID) AS DeviceFarmUnitID, MAX(FarmGreenhouseUnitZoneID) AS DeviceFarmUnitZoneID,
+                           AVG(Battery) AS Battery, AVG(Temperature) AS Temperature, AVG(SoilTemperature) AS SoilTemperature, AVG(Humidity) AS Humidity,
+                           AVG(Moisture) AS Moisture, AVG(Light) AS Light, AVG(Co2) AS Co2, AVG(Tvoc) AS Tvoc, AVG(Barometer) AS Barometer,
+                           AVG(LiquidPH) AS LiquidPH, AVG(RainLevel) AS RainLevel, AVG(WaterLevel) AS WaterLevel, AVG(Wind) AS Wind,
+                           AVG(Ec) AS Ec, AVG(Weight) AS Weight, {{bucketExpr}} AS BucketStart
+                    FROM dataSensor
+                    WHERE DeviceID = {0} AND DateCreated < {1}
+                    GROUP BY {{bucketExpr}}
+                    """;
+
+                List<OptimizedSensorBucket> buckets = await db.Database
+                    .SqlQueryRaw<OptimizedSensorBucket>(sql, deviceId, cutoffUtc)
                     .ToListAsync(ct);
 
-                if (rows.Count == 0)
+                if (buckets.Count == 0)
                 {
                     continue;
                 }
 
-                List<SensorDataRow> replacements = rows
-                    .GroupBy(r => BucketStart(r.DateCreated!.Value.UtcDateTime))
-                    .Select(bucket => BuildOptimizedRow(deviceId, bucket.Key, bucket.ToList()))
-                    .ToList();
+                List<SensorDataRow> replacements = buckets.Select(b => new SensorDataRow
+                {
+                    TenantID = b.TenantID ?? 0,
+                    DeviceID = deviceId,
+                    DeviceFarmUnitID = b.DeviceFarmUnitID,
+                    DeviceFarmUnitZoneID = b.DeviceFarmUnitZoneID,
+                    Battery = RoundToInt(b.Battery),
+                    Temperature = b.Temperature,
+                    SoilTemperature = b.SoilTemperature,
+                    Humidity = b.Humidity,
+                    Moisture = RoundToInt(b.Moisture),
+                    Light = RoundToInt(b.Light),
+                    Co2 = RoundToInt(b.Co2),
+                    Tvoc = RoundToInt(b.Tvoc),
+                    Barometer = b.Barometer,
+                    LiquidPH = b.LiquidPH,
+                    RainLevel = RoundToInt(b.RainLevel),
+                    WaterLevel = RoundToInt(b.WaterLevel),
+                    Wind = RoundToInt(b.Wind),
+                    Ec = b.Ec,
+                    Weight = b.Weight,
+                    DateCreated = b.BucketStart,
+                }).ToList();
 
                 // Delete-then-insert in one transaction - a crash between the two would otherwise duplicate or silently lose the bucket.
                 await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -289,79 +356,6 @@ namespace Agrumy.Api.Dal
         }
 
         private const int PurgeBatchSize = 10_000;
-
-        private static DateTime BucketStart(DateTime timestamp) =>
-            new(timestamp.Ticks - (timestamp.Ticks % OptimizeBucketSize.Ticks), DateTimeKind.Utc);
-
-        /// One replacement row for a 5-minute bucket: TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID come from the most recent raw row, every sensor column is the average-without-outliers of that bucket's values.
-        private static SensorDataRow BuildOptimizedRow(int deviceId, DateTime bucketStart, List<SensorDataRow> rows)
-        {
-            SensorDataRow mostRecent = rows[^1]; // rows arrive pre-sorted by DateCreated ascending
-            return new SensorDataRow
-            {
-                TenantID = mostRecent.TenantID,
-                DeviceID = deviceId,
-                DeviceFarmUnitID = mostRecent.DeviceFarmUnitID,
-                DeviceFarmUnitZoneID = mostRecent.DeviceFarmUnitZoneID,
-                Battery = TrimmedMeanInt(rows.Select(r => r.Battery)),
-                Temperature = TrimmedMean(rows.Select(r => r.Temperature)),
-                SoilTemperature = TrimmedMean(rows.Select(r => r.SoilTemperature)),
-                Humidity = TrimmedMean(rows.Select(r => r.Humidity)),
-                Moisture = TrimmedMeanInt(rows.Select(r => r.Moisture)),
-                Light = TrimmedMeanInt(rows.Select(r => r.Light)),
-                Co2 = TrimmedMeanInt(rows.Select(r => r.Co2)),
-                Tvoc = TrimmedMeanInt(rows.Select(r => r.Tvoc)),
-                Barometer = TrimmedMean(rows.Select(r => r.Barometer)),
-                LiquidPH = TrimmedMean(rows.Select(r => r.LiquidPH)),
-                RainLevel = TrimmedMeanInt(rows.Select(r => r.RainLevel)),
-                WaterLevel = TrimmedMeanInt(rows.Select(r => r.WaterLevel)),
-                Wind = TrimmedMeanInt(rows.Select(r => r.Wind)),
-                Ec = TrimmedMean(rows.Select(r => r.Ec)),
-                Weight = TrimmedMean(rows.Select(r => r.Weight)),
-                DateCreated = bucketStart,
-            };
-        }
-
-        /// IQR outlier rule (exclude anything outside 1.5x the interquartile range), falling back to a plain average under 4 points or when every value is flagged.
-        private static double? TrimmedMean(IEnumerable<double?> source)
-        {
-            List<double> values = source.Where(v => v.HasValue).Select(v => v!.Value).OrderBy(v => v).ToList();
-            if (values.Count == 0)
-            {
-                return null;
-            }
-            if (values.Count < 4)
-            {
-                return values.Average();
-            }
-
-            double q1 = Percentile(values, 0.25);
-            double q3 = Percentile(values, 0.75);
-            double iqr = q3 - q1;
-            double lower = q1 - 1.5 * iqr;
-            double upper = q3 + 1.5 * iqr;
-            List<double> kept = values.Where(v => v >= lower && v <= upper).ToList();
-            return kept.Count > 0 ? kept.Average() : values.Average();
-        }
-
-        private static int? TrimmedMeanInt(IEnumerable<int?> source)
-        {
-            double? mean = TrimmedMean(source.Select(v => (double?)v));
-            return mean.HasValue ? (int)Math.Round(mean.Value, MidpointRounding.AwayFromZero) : null;
-        }
-
-        private static double Percentile(List<double> sortedValues, double p)
-        {
-            double index = p * (sortedValues.Count - 1);
-            int lower = (int)Math.Floor(index);
-            int upper = (int)Math.Ceiling(index);
-            if (lower == upper)
-            {
-                return sortedValues[lower];
-            }
-            double fraction = index - lower;
-            return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * fraction;
-        }
 
         public async Task<IList<SensorData>> SensorDataExportGetAsync(int tenantID, DateTime? sinceUtc)
         {

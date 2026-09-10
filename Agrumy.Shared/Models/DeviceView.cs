@@ -14,9 +14,10 @@ namespace Agrumy.Shared.Models
         public IEnumerable<DeviceTypeRelay>? DeviceTypeRelay { get; set; }
         public IEnumerable<DeviceTypeSensor>? DeviceTypeSensor { get; set; }
 
-        public IEnumerable<SensorDataReport>? SensorDataReport { get; set; }
         public String? SensorDataJson { get; set; }
-        public TimeRange? TimeRange { get; set; } = new TimeRange();
+        public DateTimeOffset? SensorDataFrom { get; set; }
+        public DateTimeOffset? SensorDataTo { get; set; }
+        public SensorDataBucket SensorDataBucket { get; set; } = SensorDataBucket.Hour;
 
         public IList<DeviceEvent>? Events { get; set; }
         // Bound only by the Simulation page.

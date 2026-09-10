@@ -2822,26 +2822,29 @@ public class ApiControllerTests
         Assert.IsType<OkResult>(await controller.Update(new ServerConfig()));
     }
 
-    /// An out-of-range timeRange must 400 before reaching the repo - strict mock (SensorDataGetAsync never set up) proves it.
+    /// An out-of-range window must 400 before reaching the repo - strict mock (SensorDataGetAsync never set up) proves it.
     [Fact]
-    public async Task SensorDataGet_TimeRangeExceedsMaxForUnit_Returns400_NeverTouchesRepo()
+    public async Task SensorDataGet_WindowExceedsMaxDays_Returns400_NeverTouchesRepo()
     {
         var controller = NewSensorDataController();
         SetCallerRoles(controller, 4, "user", RoleNames.TenantReader);
+        DateTimeOffset to = DateTimeOffset.UtcNow;
 
-        var result = await controller.Get(deviceID: 7, timeRange: 50, timeMDMY: 3); // 50 years - way past the 10-year cap
+        var result = await controller.Get(deviceID: 7, from: to.AddDays(-401), to: to, bucket: SensorDataBucket.Day); // 401 days - past the 400-day cap
 
         Assert.Equal(400, Assert.IsType<BadRequestObjectResult>(result.Result).StatusCode);
     }
 
     [Fact]
-    public async Task SensorDataGet_TimeRangeWithinMaxForUnit_Succeeds()
+    public async Task SensorDataGet_WindowWithinMaxDays_Succeeds()
     {
         var controller = NewSensorDataController();
         SetCallerRoles(controller, 4, "user", RoleNames.TenantReader);
-        _repo.Setup(r => r.SensorDataGetAsync(4, 7, 10, 3, 0)).ReturnsAsync("[]"); // 10 years - at the cap
+        DateTimeOffset to = DateTimeOffset.UtcNow;
+        DateTimeOffset from = to.AddDays(-10);
+        _repo.Setup(r => r.SensorDataGetAsync(4, 7, from, to, SensorDataBucket.Hour)).ReturnsAsync("[]");
 
-        var result = await controller.Get(deviceID: 7, timeRange: 10, timeMDMY: 3);
+        var result = await controller.Get(deviceID: 7, from: from, to: to, bucket: SensorDataBucket.Hour);
 
         Assert.Equal("[]", Assert.IsType<OkObjectResult>(result.Result).Value);
     }
@@ -2892,15 +2895,16 @@ public class ApiControllerTests
     [Fact]
     public async Task SensorDataDelete_TenantDevice_DeletesWithTheDevicesOwnTenant()
     {
+        DateTimeOffset olderThan = DateTimeOffset.UtcNow.AddDays(-30);
         _repo.Setup(r => r.DeviceGetByIdAsync(7)).ReturnsAsync(new Device { IDDevice = 7, TenantID = 4 });
-        _repo.Setup(r => r.SensorDataDeleteAsync(4, 7, 0, 0)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SensorDataDeleteAsync(4, 7, olderThan)).Returns(Task.CompletedTask);
 
         var controller = NewSensorDataController();
         SetCallerRoles(controller, 4, "user", RoleNames.TenantReader, RoleNames.TenantDevice);
-        var result = await controller.Delete(7);
+        var result = await controller.Delete(7, olderThan);
 
         Assert.IsType<OkResult>(result);
-        _repo.Verify(r => r.SensorDataDeleteAsync(4, 7, 0, 0), Times.Once);
+        _repo.Verify(r => r.SensorDataDeleteAsync(4, 7, olderThan), Times.Once);
     }
 
     [Fact]
@@ -2910,7 +2914,7 @@ public class ApiControllerTests
 
         var controller = NewSensorDataController();
         SetCallerRoles(controller, 4, "user", RoleNames.TenantReader, RoleNames.TenantUser);
-        var result = await controller.Delete(7);
+        var result = await controller.Delete(7, DateTimeOffset.UtcNow.AddDays(-30));
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
     }

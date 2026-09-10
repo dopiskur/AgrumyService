@@ -11,27 +11,21 @@ namespace Agrumy.Api.Controllers.API
     [Route("/api/SensorData")]
     public class SensorDataController(ISensorDataRepository sensorDataRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        // Bounds SensorDataGetAsync's unbounded ToListAsync() and keeps DateTime.AddXxx clear of overflow.
-        private static bool IsWithinMaxTimeRange(int? timeMDMY, int timeRange) => timeMDMY switch
-        {
-            0 => timeRange <= 527040, // minutes, ~1 year
-            1 => timeRange <= 3660,   // days, ~10 years
-            2 => timeRange <= 120,    // months, ~10 years
-            3 => timeRange <= 10,     // years
-            _ => true,                // an invalid timeMDMY is handled downstream by SensorDataGetAsync's own check
-        };
+        // Bounds how large a window a bucketed query can ask the DB to aggregate - EfSensorDataRepository enforces the same cap as a backstop (returns "" rather than throwing), this is just so the caller gets a real 400 instead of a silently empty result.
+        private const int MaxWindowDays = 400;
+        private static bool IsValidWindow(DateTimeOffset from, DateTimeOffset to) => to > from && (to - from) <= TimeSpan.FromDays(MaxWindowDays);
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<string>> Get(int? deviceID, int? timeRange = 60, int? timeMDMY = 0, int? buildReport = 0)
+        public async Task<ActionResult<string>> Get(int? deviceID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket = SensorDataBucket.Hour)
         {
-            if (timeRange is int range && !IsWithinMaxTimeRange(timeMDMY, range))
+            if (!IsValidWindow(from, to))
             {
-                return BadRequest($"timeRange {range} exceeds the maximum allowed for this unit.");
+                return BadRequest($"Invalid window: 'to' must be after 'from', and the span must not exceed {MaxWindowDays} days.");
             }
 
             // Stays tenant-scoped even for a Global reader, unlike DevicesGet/DeviceFleetGet.
-            return Ok(await sensorDataRepo.SensorDataGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceID, timeRange, timeMDMY, buildReport));
+            return Ok(await sensorDataRepo.SensorDataGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceID, from, to, bucket));
         }
 
         // A real device batch is ~20-30 readings (RAM spills at 8192 bytes) - generous headroom.
@@ -71,7 +65,7 @@ namespace Agrumy.Api.Controllers.API
         /// Deleting telemetry is device management, gated to the device-manager roles; the target device's own tenant is resolved and checked explicitly.
         [HttpDelete]
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        public async Task<ActionResult> Delete(int deviceID, int timeMDMY = 0, int timeRange = 0)
+        public async Task<ActionResult> Delete(int deviceID, DateTimeOffset olderThan)
         {
             Device? device = await deviceRepo.DeviceGetByIdAsync(deviceID);
             if (device is null)
@@ -83,36 +77,30 @@ namespace Agrumy.Api.Controllers.API
                 return StatusCode(403, "Device belongs to a different tenant");
             }
 
-            await sensorDataRepo.SensorDataDeleteAsync(device.TenantID, deviceID, timeRange, timeMDMY);
+            await sensorDataRepo.SensorDataDeleteAsync(device.TenantID, deviceID, olderThan);
             return Ok();
         }
 
-        [HttpGet("Report")]
-        [Authorize]
-        public async Task<ActionResult<IEnumerable<SensorDataReport>>> ReportGet(int? getData, int? idDevice, int? iDSensorDataReport) =>
-            // Same tenant-scoping as Get above.
-            Ok(await sensorDataRepo.SensorDataReportGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, getData, idDevice, iDSensorDataReport));
-
         [HttpGet("ZoneAverage")]
         [Authorize]
-        public async Task<ActionResult<string>> ZoneAverageGet(int deviceFarmUnitZoneID, int? timeRange = 60, int? timeMDMY = 0)
+        public async Task<ActionResult<string>> ZoneAverageGet(int deviceFarmUnitZoneID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket = SensorDataBucket.Hour)
         {
-            if (timeRange is int range && !IsWithinMaxTimeRange(timeMDMY, range))
+            if (!IsValidWindow(from, to))
             {
-                return BadRequest($"timeRange {range} exceeds the maximum allowed for this unit.");
+                return BadRequest($"Invalid window: 'to' must be after 'from', and the span must not exceed {MaxWindowDays} days.");
             }
-            return Ok(await sensorDataRepo.SensorDataZoneAverageGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceFarmUnitZoneID, timeRange, timeMDMY));
+            return Ok(await sensorDataRepo.SensorDataZoneAverageGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceFarmUnitZoneID, from, to, bucket));
         }
 
         [HttpGet("UnitAverage")]
         [Authorize]
-        public async Task<ActionResult<string>> UnitAverageGet(int deviceFarmUnitID, int? timeRange = 60, int? timeMDMY = 0)
+        public async Task<ActionResult<string>> UnitAverageGet(int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket = SensorDataBucket.Hour)
         {
-            if (timeRange is int range && !IsWithinMaxTimeRange(timeMDMY, range))
+            if (!IsValidWindow(from, to))
             {
-                return BadRequest($"timeRange {range} exceeds the maximum allowed for this unit.");
+                return BadRequest($"Invalid window: 'to' must be after 'from', and the span must not exceed {MaxWindowDays} days.");
             }
-            return Ok(await sensorDataRepo.SensorDataUnitAverageGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceFarmUnitID, timeRange, timeMDMY));
+            return Ok(await sensorDataRepo.SensorDataUnitAverageGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceFarmUnitID, from, to, bucket));
         }
     }
 }

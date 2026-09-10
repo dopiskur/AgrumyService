@@ -2055,38 +2055,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("dataSensorExperiment", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataReportRow", b =>
-                {
-                    b.Property<int>("IDSensorDataReport")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSensorDataReport"));
-
-                    b.Property<DateTimeOffset?>("DateGenerated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<int?>("DeviceID")
-                        .HasColumnType("integer")
-                        .HasColumnName("deviceID");
-
-                    b.Property<string>("ReportName")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("SensorData")
-                        .HasColumnType("text")
-                        .HasColumnName("sensorData");
-
-                    b.HasKey("IDSensorDataReport");
-
-                    b.HasIndex("DeviceID");
-
-                    b.ToTable("sensorDataReport", (string)null);
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataRow", b =>
                 {
                     b.Property<int>("IDSensorData")
@@ -3312,14 +3280,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasForeignKey("IDExperiment")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataReportRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
-                        .WithMany()
-                        .HasForeignKey("DeviceID")
-                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.SensorDataRow", b =>

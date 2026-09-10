@@ -348,8 +348,8 @@ namespace Agrumy.Web.Controllers.View
                 Units = await api.DeviceFarmUnitsGet(),
                 Zones = zones,
                 DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone,
-                // Last 24h, hourly buckets - same window _ZoneDetails' sparkline trend already uses.
-                SensorDataJson = await api.SensorDataUnitAverageGet(idDeviceFarmUnit, 24, 1),
+                // Last 24 days, hourly buckets - same window _ZoneDetails' sparkline trend already uses.
+                SensorDataJson = await api.SensorDataUnitAverageGet(idDeviceFarmUnit, DateTimeOffset.UtcNow.AddDays(-24), DateTimeOffset.UtcNow, SensorDataBucket.Hour),
                 DiscoveredDevices = await api.DiscoveryResultsGet(idDeviceFarmUnit, null),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
             });
@@ -443,8 +443,8 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Zone(int idDeviceFarmUnitZone)
         {
             ZoneViewModel model = await BuildZoneViewAsync(idDeviceFarmUnitZone);
-            // Last 24h hourly buckets, only fetched here (not in the 10s-polled ZoneDetails fragment) - the chart lives outside that fragment.
-            model.SensorDataJson = await api.SensorDataZoneAverageGet(idDeviceFarmUnitZone, 24, 1);
+            // Last 24 days, hourly buckets - only fetched here (not in the 10s-polled ZoneDetails fragment), the chart lives outside that fragment.
+            model.SensorDataJson = await api.SensorDataZoneAverageGet(idDeviceFarmUnitZone, DateTimeOffset.UtcNow.AddDays(-24), DateTimeOffset.UtcNow, SensorDataBucket.Hour);
             return View(model);
         }
 

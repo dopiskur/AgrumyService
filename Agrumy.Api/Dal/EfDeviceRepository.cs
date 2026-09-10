@@ -212,7 +212,6 @@ namespace Agrumy.Api.Dal
             await db.DeviceVirtuals.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.SimulationSessionDevices.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.ControllerData.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
-            await db.SensorDataReports.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.GatewayDeviceMappings.Where(x => x.IDDevice == idDevice || x.IDGatewayDevice == idDevice).ExecuteDeleteAsync();
             await db.EventDevices.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
         }

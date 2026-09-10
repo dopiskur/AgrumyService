@@ -178,12 +178,6 @@
                                 <p>@Localizer["Fleet"]</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="Reporting" asp-action="Index" class="nav-link @navActive("Reporting")">
-                                <i class="nav-icon bi bi-file-earmark-bar-graph"></i>
-                                <p>@Localizer["Reporting"]</p>
-                            </a>
-                        </li>
                         @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
                             <li class="nav-item">

@@ -592,17 +592,14 @@ namespace Agrumy.Web.Dal.Interface
         // ---- SensorData ---------------------------------------------------
 
         [Get("/api/SensorData")]
-        Task<string> SensorDataGet(int? deviceID, int? timeRange, int? timeMDMY, int? buildReport);
+        Task<string> SensorDataGet(int? deviceID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
 
         /// Same JSON shape as SensorDataGet, time-bucket averaged across every device in the zone/unit.
         [Get("/api/SensorData/ZoneAverage")]
-        Task<string> SensorDataZoneAverageGet(int deviceFarmUnitZoneID, int? timeRange, int? timeMDMY);
+        Task<string> SensorDataZoneAverageGet(int deviceFarmUnitZoneID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
 
         [Get("/api/SensorData/UnitAverage")]
-        Task<string> SensorDataUnitAverageGet(int deviceFarmUnitID, int? timeRange, int? timeMDMY);
-
-        [Get("/api/SensorData/Report")]
-        Task<IEnumerable<SensorDataReport>> SensorDataReportGet(int? idDevice, int? iDSensorDataReport, int? getData);
+        Task<string> SensorDataUnitAverageGet(int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
 
         // ---- Tenant -------------------------------------------------------
 

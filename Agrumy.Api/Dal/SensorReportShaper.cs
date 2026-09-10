@@ -1,21 +1,14 @@
 using System.Text.Json;
-using Agrumy.Dal.Entities;
 using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.Dal
 {
-    /// Time-bucket grouping and JSON assembly only (the caller does the row filter) - timeMDMY buckets: 0=minute, 1=hour, 2/3=day; one row per bucket, pinned to latest by DateCreated.
+    /// One row per bucket, already aggregated in SQL (see EfSensorDataRepository) - JSON assembly only, no grouping left to do here.
     internal static class SensorReportShaper
     {
-        /// <returns>JSON {"sensorData":[...]}, or "" when no rows match.</returns>
-        public static string Build(IEnumerable<SensorDataRow> filteredRows, int timeMDMY)
+        /// <returns>JSON {"sensorData":[...]}, or "" when no buckets matched.</returns>
+        public static string Build(IReadOnlyList<BucketedSensorRow> buckets)
         {
-            var buckets = filteredRows
-                .GroupBy(r => BucketKey(r.DateCreated, timeMDMY))
-                .OrderBy(g => g.Key)
-                .Select(g => g.OrderByDescending(r => r.DateCreated).First())
-                .ToList();
-
             if (buckets.Count == 0)
             {
                 return "";
@@ -39,59 +32,84 @@ namespace Agrumy.Api.Dal
                 ["wind"] = r.Wind,
                 ["ec"] = r.Ec,
                 ["weight"] = r.Weight,
-                ["dateCreated"] = r.DateCreated?.ToString("yyyy-MM-dd HH:mm:ss"),
+                ["dateCreated"] = r.BucketStart.ToString("yyyy-MM-dd HH:mm:ss"),
             });
 
             return JsonSerializer.Serialize(new Dictionary<string, object?> { ["sensorData"] = records });
         }
 
-        /// Truncates a timestamp to the bucket boundary for the given range mode.
-        private static DateTime BucketKey(DateTimeOffset? dt, int timeMDMY)
+        /// Same shape as Build, but every column is already a SQL AVG() (a zone/unit spans several devices) - VPD is computed from the bucket's averaged temperature/humidity rather than averaged per-row, a deliberate approximation (Jensen's-inequality-scale, negligible at chart resolution) now that the per-row values never reach the app.
+        public static string BuildAveraged(IReadOnlyList<AveragedSensorBucket> buckets)
         {
-            DateTime d = dt?.UtcDateTime ?? DateTime.MinValue;
-            return timeMDMY switch
-            {
-                0 => new DateTime(d.Year, d.Month, d.Day, d.Hour, d.Minute, 0),
-                1 => new DateTime(d.Year, d.Month, d.Day, d.Hour, 0, 0),
-                _ => new DateTime(d.Year, d.Month, d.Day, 0, 0, 0),
-            };
-        }
-
-        /// Same bucketing as Build, but a zone/unit can span several devices - each bucket averages every contributing row instead of picking the single latest one, nulls excluded rather than treated as zero.
-        public static string BuildAveraged(IEnumerable<SensorDataRow> filteredRows, int timeMDMY)
-        {
-            var buckets = filteredRows
-                .GroupBy(r => BucketKey(r.DateCreated, timeMDMY))
-                .OrderBy(g => g.Key)
-                .ToList();
-
             if (buckets.Count == 0)
             {
                 return "";
             }
 
-            var records = buckets.Select(g => new Dictionary<string, object?>
+            var records = buckets.Select(r => new Dictionary<string, object?>
             {
-                ["battery"] = g.Average(r => r.Battery),
-                ["temperature"] = g.Average(r => r.Temperature),
-                ["soilTemperature"] = g.Average(r => r.SoilTemperature),
-                ["humidity"] = g.Average(r => r.Humidity),
-                ["vpd"] = g.Average(r => VpdCalculator.Compute(r.Temperature, r.Humidity)),
-                ["moisture"] = g.Average(r => r.Moisture),
-                ["light"] = g.Average(r => r.Light),
-                ["co2"] = g.Average(r => r.Co2),
-                ["tvoc"] = g.Average(r => r.Tvoc),
-                ["barometer"] = g.Average(r => r.Barometer),
-                ["liquidPH"] = g.Average(r => r.LiquidPH),
-                ["rainLevel"] = g.Average(r => r.RainLevel),
-                ["waterLevel"] = g.Average(r => r.WaterLevel),
-                ["wind"] = g.Average(r => r.Wind),
-                ["ec"] = g.Average(r => r.Ec),
-                ["weight"] = g.Average(r => r.Weight),
-                ["dateCreated"] = g.Key.ToString("yyyy-MM-dd HH:mm:ss"),
+                ["battery"] = r.Battery,
+                ["temperature"] = r.Temperature,
+                ["soilTemperature"] = r.SoilTemperature,
+                ["humidity"] = r.Humidity,
+                ["vpd"] = VpdCalculator.Compute(r.Temperature, r.Humidity),
+                ["moisture"] = r.Moisture,
+                ["light"] = r.Light,
+                ["co2"] = r.Co2,
+                ["tvoc"] = r.Tvoc,
+                ["barometer"] = r.Barometer,
+                ["liquidPH"] = r.LiquidPH,
+                ["rainLevel"] = r.RainLevel,
+                ["waterLevel"] = r.WaterLevel,
+                ["wind"] = r.Wind,
+                ["ec"] = r.Ec,
+                ["weight"] = r.Weight,
+                ["dateCreated"] = r.BucketStart.ToString("yyyy-MM-dd HH:mm:ss"),
             });
 
             return JsonSerializer.Serialize(new Dictionary<string, object?> { ["sensorData"] = records });
         }
+    }
+
+    /// One bucket's latest raw reading (not averaged) - SensorDataGetAsync's shape; int columns stay int since no averaging happens.
+    internal sealed class BucketedSensorRow
+    {
+        public int? Battery { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public int? Moisture { get; set; }
+        public int? Light { get; set; }
+        public int? Co2 { get; set; }
+        public int? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public int? RainLevel { get; set; }
+        public int? WaterLevel { get; set; }
+        public int? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
+        public DateTime BucketStart { get; set; }
+    }
+
+    /// One bucket's SQL AVG() across every contributing device - SensorDataZoneAverageGetAsync/SensorDataUnitAverageGetAsync's shape; every column is a double since AVG() always returns a fractional type, matching the old C# Enumerable.Average() behavior this replaces.
+    internal sealed class AveragedSensorBucket
+    {
+        public double? Battery { get; set; }
+        public double? Temperature { get; set; }
+        public double? SoilTemperature { get; set; }
+        public double? Humidity { get; set; }
+        public double? Moisture { get; set; }
+        public double? Light { get; set; }
+        public double? Co2 { get; set; }
+        public double? Tvoc { get; set; }
+        public double? Barometer { get; set; }
+        public double? LiquidPH { get; set; }
+        public double? RainLevel { get; set; }
+        public double? WaterLevel { get; set; }
+        public double? Wind { get; set; }
+        public double? Ec { get; set; }
+        public double? Weight { get; set; }
+        public DateTime BucketStart { get; set; }
     }
 }

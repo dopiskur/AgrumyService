@@ -9,20 +9,17 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID) =>
             sensorDataRepository.SensorDataPushAsync(readings, deviceID, tenantID, deviceFarmUnitID, deviceFarmUnitZoneID);
 
-        public Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY, int? buildReport) =>
-            sensorDataRepository.SensorDataGetAsync(tenantID, deviceID, timeRange, timeMDMY, buildReport);
+        public Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket) =>
+            sensorDataRepository.SensorDataGetAsync(tenantID, deviceID, from, to, bucket);
 
-        public Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, int? timeRange, int? timeMDMY) =>
-            sensorDataRepository.SensorDataZoneAverageGetAsync(tenantID, deviceFarmUnitZoneID, timeRange, timeMDMY);
+        public Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket) =>
+            sensorDataRepository.SensorDataZoneAverageGetAsync(tenantID, deviceFarmUnitZoneID, from, to, bucket);
 
-        public Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, int? timeRange, int? timeMDMY) =>
-            sensorDataRepository.SensorDataUnitAverageGetAsync(tenantID, deviceFarmUnitID, timeRange, timeMDMY);
+        public Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket) =>
+            sensorDataRepository.SensorDataUnitAverageGetAsync(tenantID, deviceFarmUnitID, from, to, bucket);
 
-        public Task<IList<SensorDataReport>> SensorDataReportGetAsync(int? tenantID, int? getData, int? deviceID, int? sensorDataReportID) =>
-            sensorDataRepository.SensorDataReportGetAsync(tenantID, getData, deviceID, sensorDataReportID);
-
-        public Task SensorDataDeleteAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY) =>
-            sensorDataRepository.SensorDataDeleteAsync(tenantID, deviceID, timeRange, timeMDMY);
+        public Task SensorDataDeleteAsync(int? tenantID, int? deviceID, DateTimeOffset olderThan) =>
+            sensorDataRepository.SensorDataDeleteAsync(tenantID, deviceID, olderThan);
 
         public Task<IList<SensorData>> SensorDataExportGetAsync(int tenantID, DateTime? sinceUtc) => sensorDataRepository.SensorDataExportGetAsync(tenantID, sinceUtc);
 

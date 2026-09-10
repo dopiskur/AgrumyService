@@ -35,14 +35,15 @@ namespace Agrumy.Api.Dal.Interface
     {
         /// Persists a telemetry batch - deviceID/tenantID/deviceFarmUnitID/deviceFarmUnitZoneID come from the authenticated identity and are applied to every row; matching fields on each reading itself are ignored.
         Task SensorDataPushAsync(IReadOnlyList<SensorDataPushReading> readings, int deviceID, int tenantID, int? deviceFarmUnitID, int? deviceFarmUnitZoneID);
-        Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY, int? buildReport);
 
-        /// Same JSON shape as SensorDataGetAsync, but time-bucket averaged across every device in the zone/unit instead of one device's own raw readings.
-        Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, int? timeRange, int? timeMDMY);
-        Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, int? timeRange, int? timeMDMY);
+        /// One row per bucket (latest raw reading in that bucket, not averaged) - aggregated in SQL (time_bucket/date_trunc on Postgres, DATE_FORMAT truncation on MySQL), never loads the raw row set into the app.
+        Task<string> SensorDataGetAsync(int? tenantID, int? deviceID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
 
-        Task<IList<SensorDataReport>> SensorDataReportGetAsync(int? tenantID, int? getData, int? deviceID, int? sensorDataReportID);
-        Task SensorDataDeleteAsync(int? tenantID, int? deviceID, int? timeRange, int? timeMDMY);
+        /// Same JSON shape as SensorDataGetAsync, but time-bucket AVERAGED (plain SQL AVG(), no outlier trimming) across every device in the zone/unit instead of one device's own raw readings.
+        Task<string> SensorDataZoneAverageGetAsync(int? tenantID, int deviceFarmUnitZoneID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
+        Task<string> SensorDataUnitAverageGetAsync(int? tenantID, int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
+
+        Task SensorDataDeleteAsync(int? tenantID, int? deviceID, DateTimeOffset olderThan);
 
         /// Raw, untransformed rows for a whole tenant (tenant export), not shaped for chart consumption like SensorDataGetAsync - sinceUtc null means every row ever recorded.
         Task<IList<SensorData>> SensorDataExportGetAsync(int tenantID, DateTime? sinceUtc);

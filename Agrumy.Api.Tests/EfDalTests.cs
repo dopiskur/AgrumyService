@@ -10,78 +10,53 @@ using Npgsql;
 
 namespace Agrumy.Api.Tests;
 
-/// Unit tests for the sensor-report shaping port and database-error classification. No database - pure functions only.
+/// Unit tests for the sensor-report shaping port - JSON assembly only now (grouping/CO2-nulling/averaging all happen in SQL, see EfSensorDataRepository, and are exercised there against real databases). No database - pure functions only.
 public class SensorReportShaperTests
 {
-    private static SensorDataRow Row(string dateCreated, int? co2 = 400, double? temp = 20.0) => new()
+    private static BucketedSensorRow Bucket(string bucketStart, double? temp = 20.0, double? humidity = null) => new()
     {
-        DeviceID = 1,
-        TenantID = 0,
-        // AssumeUniversal: these bare strings represent UTC instants - without it, DateTime.Parse's Kind=Unspecified result gets silently reinterpreted as the test host's local time by the implicit conversion to DateTimeOffset.
-        DateCreated = DateTime.Parse(dateCreated, System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal),
-        Co2 = co2,
         Temperature = temp,
+        Humidity = humidity,
+        BucketStart = DateTime.Parse(bucketStart, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal),
+    };
+
+    private static AveragedSensorBucket AveragedBucket(string bucketStart, double? temp = 20.0, double? soilTemp = null) => new()
+    {
+        Temperature = temp,
+        SoilTemperature = soilTemp,
+        BucketStart = DateTime.Parse(bucketStart, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal),
     };
 
     [Fact]
     public void Build_NoRows_ReturnsEmptyString()
     {
-        Assert.Equal("", SensorReportShaper.Build(Array.Empty<SensorDataRow>(), 0));
+        Assert.Equal("", SensorReportShaper.Build(Array.Empty<BucketedSensorRow>()));
     }
 
     [Fact]
-    public void Build_MinuteMode_GroupsByMinute_AndKeepsLatestRowPerBucket()
+    public void Build_OneRowPerBucket_ProducesOneRecordEach()
     {
-        var rows = new[]
+        var buckets = new[]
         {
-            Row("2026-08-29 09:50:10", temp: 1),
-            Row("2026-08-29 09:50:40", temp: 2),   // same minute, later -> this one wins
-            Row("2026-08-29 09:51:05", temp: 3),
+            Bucket("2026-08-29 09:50:00", temp: 2),
+            Bucket("2026-08-29 09:51:00", temp: 3),
         };
 
-        var json = SensorReportShaper.Build(rows, 0);
+        var json = SensorReportShaper.Build(buckets);
         using var doc = JsonDocument.Parse(json);
         var arr = doc.RootElement.GetProperty("sensorData");
 
         Assert.Equal(2, arr.GetArrayLength());
-        Assert.Equal(2, arr[0].GetProperty("temperature").GetDouble());   // 09:50 bucket -> latest
-        Assert.Equal(3, arr[1].GetProperty("temperature").GetDouble());   // 09:51 bucket
-    }
-
-    [Fact]
-    public void Build_DayMode_GroupsByHour()
-    {
-        var rows = new[]
-        {
-            Row("2026-08-29 09:05:00"),
-            Row("2026-08-29 09:55:00"),
-            Row("2026-08-29 10:01:00"),
-        };
-
-        var json = SensorReportShaper.Build(rows, 1);
-        using var doc = JsonDocument.Parse(json);
-        Assert.Equal(2, doc.RootElement.GetProperty("sensorData").GetArrayLength());
-    }
-
-    [Fact]
-    public void Build_MonthAndYearModes_GroupByDay()
-    {
-        var rows = new[]
-        {
-            Row("2026-08-29 01:00:00"),
-            Row("2026-08-29 23:00:00"),
-            Row("2026-08-30 12:00:00"),
-        };
-
-        Assert.Equal(2, JsonDocument.Parse(SensorReportShaper.Build(rows, 2)).RootElement.GetProperty("sensorData").GetArrayLength());
-        Assert.Equal(2, JsonDocument.Parse(SensorReportShaper.Build(rows, 3)).RootElement.GetProperty("sensorData").GetArrayLength());
+        Assert.Equal(2, arr[0].GetProperty("temperature").GetDouble());
+        Assert.Equal(3, arr[1].GetProperty("temperature").GetDouble());
     }
 
     [Fact]
     public void Build_Record_HasProcKeysAndDateFormat()
     {
-        var json = SensorReportShaper.Build(new[] { Row("2026-08-29 09:50:00") }, 0);
+        var json = SensorReportShaper.Build(new[] { Bucket("2026-08-29 09:50:00") });
         using var doc = JsonDocument.Parse(json);
         var rec = doc.RootElement.GetProperty("sensorData")[0];
 
@@ -95,11 +70,10 @@ public class SensorReportShaperTests
         Assert.Equal("2026-08-29 09:50:00", rec.GetProperty("dateCreated").GetString());
     }
 
-
     [Fact]
     public void Build_Vpd_NullWhenHumidityMissing()
     {
-        var json = SensorReportShaper.Build(new[] { Row("2026-08-29 09:50:00", temp: 20) }, 0);
+        var json = SensorReportShaper.Build(new[] { Bucket("2026-08-29 09:50:00", temp: 20) });
         var rec = JsonDocument.Parse(json).RootElement.GetProperty("sensorData")[0];
 
         Assert.Equal(JsonValueKind.Null, rec.GetProperty("vpd").ValueKind);
@@ -108,10 +82,7 @@ public class SensorReportShaperTests
     [Fact]
     public void Build_Vpd_ComputedWhenTemperatureAndHumidityBothPresent()
     {
-        var row = Row("2026-08-29 09:50:00", temp: 20);
-        row.Humidity = 60;
-
-        var json = SensorReportShaper.Build(new[] { row }, 0);
+        var json = SensorReportShaper.Build(new[] { Bucket("2026-08-29 09:50:00", temp: 20, humidity: 60) });
         var rec = JsonDocument.Parse(json).RootElement.GetProperty("sensorData")[0];
 
         Assert.True(Math.Abs(rec.GetProperty("vpd").GetDouble() - 0.9353) < 0.001);
@@ -120,61 +91,27 @@ public class SensorReportShaperTests
     [Fact]
     public void BuildAveraged_NoRows_ReturnsEmptyString()
     {
-        Assert.Equal("", SensorReportShaper.BuildAveraged(Array.Empty<SensorDataRow>(), 1));
+        Assert.Equal("", SensorReportShaper.BuildAveraged(Array.Empty<AveragedSensorBucket>()));
     }
 
     [Fact]
-    public void BuildAveraged_TwoDevicesSameBucket_AveragesTheMetric()
+    public void BuildAveraged_OneRowPerBucket_ProducesOneRecordEach()
     {
-        var rows = new[]
+        var buckets = new[]
         {
-            Row("2026-08-29 09:05:00", temp: 10),
-            Row("2026-08-29 09:40:00", temp: 20),
+            AveragedBucket("2026-08-29 09:00:00", temp: 15, soilTemp: 18),
+            AveragedBucket("2026-08-29 10:00:00", temp: 30),
         };
 
-        var json = SensorReportShaper.BuildAveraged(rows, 1);
+        var json = SensorReportShaper.BuildAveraged(buckets);
         using var doc = JsonDocument.Parse(json);
         var arr = doc.RootElement.GetProperty("sensorData");
 
-        Assert.Equal(1, arr.GetArrayLength());
+        Assert.Equal(2, arr.GetArrayLength());
         Assert.Equal(15, arr[0].GetProperty("temperature").GetDouble());
-    }
-
-    [Fact]
-    public void BuildAveraged_OnlyOneDeviceReportsAMetric_ShowsThatValueDirectly()
-    {
-        // One row has soilTemperature, the other doesn't - averaging over just the one value must equal that value, not zero.
-        var withSoil = Row("2026-08-29 09:05:00", temp: 10);
-        withSoil.SoilTemperature = 18;
-        var withoutSoil = Row("2026-08-29 09:10:00", temp: 12);
-
-        var json = SensorReportShaper.BuildAveraged(new[] { withSoil, withoutSoil }, 1);
-        var rec = JsonDocument.Parse(json).RootElement.GetProperty("sensorData")[0];
-
-        Assert.Equal(18, rec.GetProperty("soilTemperature").GetDouble());
-        Assert.Equal(11, rec.GetProperty("temperature").GetDouble());
-    }
-
-    [Fact]
-    public void BuildAveraged_NoDeviceReportsAMetric_StaysNull()
-    {
-        var json = SensorReportShaper.BuildAveraged(new[] { Row("2026-08-29 09:05:00") }, 1);
-        var rec = JsonDocument.Parse(json).RootElement.GetProperty("sensorData")[0];
-
-        Assert.Equal(JsonValueKind.Null, rec.GetProperty("soilTemperature").ValueKind);
-    }
-
-    [Fact]
-    public void BuildAveraged_DifferentBuckets_KeepsThemSeparate()
-    {
-        var rows = new[]
-        {
-            Row("2026-08-29 09:05:00", temp: 10),
-            Row("2026-08-29 10:05:00", temp: 30),
-        };
-
-        Assert.Equal(2, JsonDocument.Parse(SensorReportShaper.BuildAveraged(rows, 1))
-            .RootElement.GetProperty("sensorData").GetArrayLength());
+        Assert.Equal(18, arr[0].GetProperty("soilTemperature").GetDouble());
+        Assert.Equal(30, arr[1].GetProperty("temperature").GetDouble());
+        Assert.Equal(JsonValueKind.Null, arr[1].GetProperty("soilTemperature").ValueKind);
     }
 }
 

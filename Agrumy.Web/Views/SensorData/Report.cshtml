@@ -9,20 +9,23 @@
         <h3 class="card-title">Reports: @Html.DisplayFor(model => model.Device!.DeviceName)</h3>
     </div>
     <div class="card-body">
-        @if (TempData["Message"] is string message)
-        {
-            <div class="alert alert-success">@message</div>
-        }
         <form asp-action="Report" method="get">
             <input type="hidden" name="idDevice" value="@Model.Device!.IDDevice" />
             <div class="row g-2 align-items-end">
                 <div class="col-auto">
-                    <label class="form-label" for="idSensorDataReport">Report</label>
-                    <select id="idSensorDataReport" name="idSensorDataReport" class="form-select"
-                            asp-items="@(new SelectList(Model.SensorDataReport!, "IDSensorDataReport", "ReportName", Model.SensorDataReport!.First().IDSensorDataReport))"></select>
+                    <label class="form-label" for="from">From</label>
+                    <input type="datetime-local" id="from" name="from" value="@Model.SensorDataFrom?.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-success">Load report data</button>
+                    <label class="form-label" for="to">To</label>
+                    <input type="datetime-local" id="to" name="to" value="@Model.SensorDataTo?.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label" for="bucket">Bucket</label>
+                    <select id="bucket" name="bucket" class="form-select" asp-items="ViewBag.BucketList"></select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success">Generate report</button>
                 </div>
             </div>
         </form>

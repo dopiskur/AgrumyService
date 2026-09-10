@@ -61,7 +61,6 @@ namespace Agrumy.Dal
 
         public DbSet<SensorDataRow> SensorData => Set<SensorDataRow>();
         public DbSet<ControllerDataRow> ControllerData => Set<ControllerDataRow>();
-        public DbSet<SensorDataReportRow> SensorDataReports => Set<SensorDataReportRow>();
         public DbSet<EventTypeRow> EventTypes => Set<EventTypeRow>();
         public DbSet<EventDeviceRow> EventDevices => Set<EventDeviceRow>();
         public DbSet<TenantUsageSnapshotRow> TenantUsageSnapshots => Set<TenantUsageSnapshotRow>();
@@ -640,18 +639,6 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDControllerData);
                 e.Property(x => x.IDControllerData).ValueGeneratedOnAdd();
                 e.HasIndex(x => new { x.DeviceID, x.RelayFunction }).IsUnique().HasDatabaseName("ux_dataController_device_relayFunction");
-                e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
-            });
-
-            modelBuilder.Entity<SensorDataReportRow>(e =>
-            {
-                e.ToTable("sensorDataReport");
-                e.HasKey(x => x.IDSensorDataReport);
-                e.Property(x => x.IDSensorDataReport).ValueGeneratedOnAdd();
-                e.Property(x => x.DeviceID).HasColumnName("deviceID");
-                e.Property(x => x.ReportName).HasMaxLength(128);
-                e.Property(x => x.DateGenerated).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                e.Property(x => x.SensorData).HasColumnName("sensorData");
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
             });
 

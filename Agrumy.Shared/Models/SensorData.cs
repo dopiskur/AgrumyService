@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Agrumy.Shared.Json;
 
@@ -82,32 +81,11 @@ namespace Agrumy.Shared.Models
 
     }
 
-    public enum TimeRangeMDMY
+    /// The only bucket granularities SensorReportShaper's SQL ever groups by - the from/to window and this together fully replace the old timeRange+timeMDMY encoding.
+    public enum SensorDataBucket
     {
         Minute = 0,
-        Day = 1,
-        Month = 2,
-        Year = 3
+        Hour = 1,
+        Day = 2,
     }
-
-    public class TimeRange
-    {
-        // Must match SensorDataController's actual cap (one day of minute-resolution data).
-        [Range(1, 1440)]
-        public int? Range { get; set; } = 1;
-    }
-
-
-    public class SensorDataReport
-    {
-        public int? IDSensorDataReport { get; set; }
-        public int? DeviceID { get; set; }
-        public string? ReportName { get; set; }
-        public DateTimeOffset? DateGenerated { get; set; }
-
-        public string? SensorData { get; set; }
-
-    }
-
-
 }
