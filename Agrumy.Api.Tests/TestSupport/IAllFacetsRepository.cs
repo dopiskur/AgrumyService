@@ -12,7 +12,7 @@ namespace Agrumy.Api.Tests.TestSupport
         IDeviceRepository,
         IDeviceFarmUnitRepository,
         IFarmOpenfieldRepository,
-        ICommandRepository,
+        IDeviceOutboxRepository,
         IFirmwareRepository,
         ISensorDataRepository,
         IAuditLogRepository,

@@ -104,7 +104,7 @@ builder.Services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
 builder.Services.AddScoped<IDeviceRepository, EfDeviceRepository>();
 builder.Services.AddScoped<IDeviceFarmUnitRepository, EfDeviceFarmUnitRepository>();
 builder.Services.AddScoped<IFarmOpenfieldRepository, EfFarmOpenfieldRepository>();
-builder.Services.AddScoped<ICommandRepository, EfCommandRepository>();
+builder.Services.AddScoped<IDeviceOutboxRepository, EfDeviceOutboxRepository>();
 builder.Services.AddScoped<IFirmwareRepository, EfFirmwareRepository>();
 builder.Services.AddScoped<ISensorDataRepository, EfSensorDataRepository>();
 builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
@@ -178,8 +178,11 @@ builder.Services.AddHostedService<SensorDataArchiveBackgroundService>();
 builder.Services.AddScoped<SimulationSessionExpiryEvaluator>();
 builder.Services.AddHostedService<SimulationSessionExpiryBackgroundService>();
 
-builder.Services.AddScoped<DeviceCommandRetentionEvaluator>();
-builder.Services.AddHostedService<DeviceCommandRetentionBackgroundService>();
+builder.Services.AddScoped<DeviceOutboxRetentionEvaluator>();
+builder.Services.AddHostedService<DeviceOutboxRetentionBackgroundService>();
+
+builder.Services.AddScoped<DeviceOutboxDispatchEvaluator>();
+builder.Services.AddHostedService<DeviceOutboxDispatchBackgroundService>();
 
 builder.Services.AddScoped<TenantUsageSnapshotEvaluator>();
 builder.Services.AddHostedService<TenantUsageSnapshotBackgroundService>();
@@ -195,7 +198,7 @@ builder.Services.AddHostedService<WeatherBackgroundService>();
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
 builder.Services.AddSingleton<Agrumy.Api.Commands.IMqttConnectionManager, Agrumy.Api.Commands.MqttConnectionManager>();
 builder.Services.AddScoped<Agrumy.Api.Commands.IMqttCommandPublisher, Agrumy.Api.Commands.MqttCommandPublisher>();
-builder.Services.AddScoped<CommandQueueService>();
+builder.Services.AddScoped<DeviceOutboxService>();
 builder.Services.AddScoped<ManualActuateService>();
 builder.Services.AddScoped<Agrumy.Api.Devices.DeviceConfigBuilder>();
 builder.Services.AddScoped<Agrumy.Api.Devices.RuleValidationService>();

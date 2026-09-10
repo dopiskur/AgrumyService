@@ -14,10 +14,15 @@ namespace Agrumy.Api.Commands
 
     public sealed record IssueCommandResult(IssueCommandOutcome Outcome, IReadOnlyList<int> CreatedCommandIds, string? Message = null);
 
-    /// Dedup, target resolution/fan-out, FIFO pending-command lookup, and ack/execute state transitions; no background worker - expiry is lazy, applied the moment a stale Pending row is next looked at.
-    public sealed class CommandQueueService(ICommandRepository commandRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IMqttCommandPublisher mqttPublisher)
+    /// One device's pending outbox state as seen by a Config poll - Actionable is what rides in DeviceConfig.PendingCommand (needs an explicit Ack/Executed from firmware); ConfigChangePending/HardResetPending are synthetic signals consumed the moment they're acted on, never surfaced to firmware as a command.
+    public sealed record PendingItems(PendingCommand? Actionable, bool ConfigChangePending, bool HardResetPending);
+
+    /// Dedup, target resolution/fan-out, FIFO pending-item lookup, and ack/execute state transitions over the single deviceOutbox table; no background worker for the queue itself - expiry is lazy, applied the moment a stale Pending row is next looked at. DeviceOutboxDispatchBackgroundService separately sweeps for anything still owed an MQTT dispatch attempt.
+    public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IMqttCommandPublisher mqttPublisher)
     {
         private static readonly TimeSpan DefaultExpiry = TimeSpan.FromMinutes(30);
+        // A hard-reset intent must survive until the device actually checks in (which may be days away for a long-sleep node), not expire like an ordinary 30-minute command.
+        private static readonly TimeSpan HardResetExpiry = TimeSpan.FromDays(365);
 
         /// Resolves TargetType/TargetId to the actual device(s), then per-device dedup against an active unexpired command of that ActionType; a fan-out is Success unless EVERY resolved device already had one, which is AllDuplicates.
         public async Task<IssueCommandResult> IssueCommandAsync(CommandTargetType targetType, int targetId, CommandActionType actionType)
@@ -102,17 +107,17 @@ namespace Agrumy.Api.Commands
         public async Task<IssueCommandResult> IssueProvisionCommandAsync(int deviceId, string payloadJson)
         {
             DateTime utcNow = DateTime.UtcNow;
-            if (await commandRepo.HasActiveCommandAsync(deviceId, CommandActionType.ProvisionDevice, utcNow))
+            if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, CommandActionType.ProvisionDevice, utcNow))
             {
                 return new IssueCommandResult(IssueCommandOutcome.AllDuplicates, [], "A provisioning command is already pending for this device.");
             }
             DateTime expiresAt = utcNow + DefaultExpiry;
-            if (await commandRepo.AddCommandAsync(deviceId, CommandActionType.ProvisionDevice, utcNow, expiresAt, payloadJson) is int newCommandId)
+            if (await outboxRepo.AddOutboxItemAsync(deviceId, CommandActionType.ProvisionDevice, utcNow, expiresAt, payloadJson) is int newCommandId)
             {
                 Device? target = await deviceRepo.DeviceGetByIdAsync(deviceId);
                 if (target != null)
                 {
-                    await mqttPublisher.PublishAsync(target, new PendingCommand
+                    await PublishAndMarkAsync(target, new PendingCommand
                     {
                         IDDeviceCommand = newCommandId,
                         ActionType = CommandActionType.ProvisionDevice,
@@ -129,18 +134,18 @@ namespace Agrumy.Api.Commands
         public async Task<IssueCommandResult> IssueWifiUpdateCommandAsync(int deviceId, string ssid, string wifiPassword)
         {
             DateTime utcNow = DateTime.UtcNow;
-            if (await commandRepo.HasActiveCommandAsync(deviceId, CommandActionType.UpdateWifiCredentials, utcNow))
+            if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, CommandActionType.UpdateWifiCredentials, utcNow))
             {
                 return new IssueCommandResult(IssueCommandOutcome.AllDuplicates, [], "A WiFi update is already pending for this device.");
             }
             DateTime expiresAt = utcNow + DefaultExpiry;
             string payloadJson = JsonSerializer.Serialize(new WifiUpdatePayload { Ssid = ssid, WifiPassword = wifiPassword });
-            if (await commandRepo.AddCommandAsync(deviceId, CommandActionType.UpdateWifiCredentials, utcNow, expiresAt, payloadJson) is int newCommandId)
+            if (await outboxRepo.AddOutboxItemAsync(deviceId, CommandActionType.UpdateWifiCredentials, utcNow, expiresAt, payloadJson) is int newCommandId)
             {
                 Device? target = await deviceRepo.DeviceGetByIdAsync(deviceId);
                 if (target != null)
                 {
-                    await mqttPublisher.PublishAsync(target, new PendingCommand
+                    await PublishAndMarkAsync(target, new PendingCommand
                     {
                         IDDeviceCommand = newCommandId,
                         ActionType = CommandActionType.UpdateWifiCredentials,
@@ -156,7 +161,7 @@ namespace Agrumy.Api.Commands
         /// Finds the active ProvisionDevice command whose payload targeted this MacAddress and marks it Executed so a later re-registration of the same mac never reapplies a stale intent; null when this mac never went through that discovery/registration flow.
         public async Task<DiscoveryProvisionPayload?> ConsumePendingProvisionAsync(string macAddress)
         {
-            foreach (var candidate in await commandRepo.GetActiveProvisionCommandsAsync())
+            foreach (var candidate in await outboxRepo.GetActiveProvisionCommandsAsync())
             {
                 if (candidate.Payload is null)
                 {
@@ -173,7 +178,7 @@ namespace Agrumy.Api.Commands
                 }
                 if (payload != null && string.Equals(payload.DiscoveredApMac, macAddress, StringComparison.OrdinalIgnoreCase))
                 {
-                    await commandRepo.SetCommandStatusAsync(candidate.IDDeviceCommand, CommandStatus.Executed, DateTime.UtcNow);
+                    await outboxRepo.SetOutboxItemStatusAsync(candidate.IDDeviceCommand, CommandStatus.Executed, DateTime.UtcNow);
                     return payload;
                 }
             }
@@ -193,15 +198,15 @@ namespace Agrumy.Api.Commands
                 {
                     continue;
                 }
-                if (await commandRepo.HasActiveCommandAsync(deviceId, actionType, utcNow))
+                if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, actionType, utcNow))
                 {
                     continue; // this one device is skipped, not the whole batch
                 }
-                // AddCommandAsync can still return null here - the DB unique index closes the race, this in-memory check is only a fast-path.
-                if (await commandRepo.AddCommandAsync(deviceId, actionType, utcNow, expiresAt) is int newCommandId)
+                // AddOutboxItemAsync can still return null here - the DB unique index closes the race, this in-memory check is only a fast-path.
+                if (await outboxRepo.AddOutboxItemAsync(deviceId, actionType, utcNow, expiresAt) is int newCommandId)
                 {
                     created.Add(newCommandId);
-                    await mqttPublisher.PublishAsync(target, new PendingCommand
+                    await PublishAndMarkAsync(target, new PendingCommand
                     {
                         IDDeviceCommand = newCommandId,
                         ActionType = actionType,
@@ -215,24 +220,44 @@ namespace Agrumy.Api.Commands
                 : new IssueCommandResult(IssueCommandOutcome.AllDuplicates, [], "A command of that type is already pending for the targeted device(s).");
         }
 
-        /// The oldest non-expired Pending command for this device - lazily expires (and skips past) any that are, so a stuck expired command never hides a still-valid one of a different type.
-        public async Task<PendingCommand?> GetPendingCommandAsync(int deviceId)
+        /// Instant best-effort MQTT push at issue time, immediately marked published either way - a swallowed broker failure here is terminal (matches MqttCommandPublisher's own "never blocks the triggering request" contract), not something DeviceOutboxDispatchEvaluator's sweep should retry.
+        private async Task PublishAndMarkAsync(Device target, PendingCommand command)
+        {
+            await mqttPublisher.PublishAsync(target, command);
+            await outboxRepo.MarkPublishedAsync(command.IDDeviceCommand, DateTime.UtcNow);
+        }
+
+        /// The device's full pending-outbox state for one Config poll: the oldest non-expired actionable item (if any), and whether a ConfigChanged/HardReset signal is separately pending - lazily expires any stale Pending rows first so a stuck expired item never hides a still-valid one of a different type.
+        public async Task<PendingItems> GetPendingAsync(int deviceId)
         {
             DateTime utcNow = DateTime.UtcNow;
-            IList<DeviceCommand> candidates = await commandRepo.GetPendingCommandsAsync(deviceId); // oldest first
+            IList<DeviceCommand> candidates = await outboxRepo.GetPendingOutboxItemsAsync(deviceId); // oldest first
 
             if (candidates.Any(c => c.ExpiresAt <= utcNow))
             {
-                await commandRepo.ExpirePendingCommandsAsync(deviceId, utcNow); // one bulk statement, not one write per expired row
+                await outboxRepo.ExpirePendingOutboxItemsAsync(deviceId, utcNow); // one bulk statement, not one write per expired row
             }
 
+            PendingCommand? actionable = null;
+            bool configChangePending = false;
+            bool hardResetPending = false;
             foreach (var candidate in candidates)
             {
                 if (candidate.ExpiresAt <= utcNow)
                 {
                     continue;
                 }
-                return new PendingCommand
+                if (candidate.ActionType == CommandActionType.ConfigChanged)
+                {
+                    configChangePending = true;
+                    continue;
+                }
+                if (candidate.ActionType == CommandActionType.HardReset)
+                {
+                    hardResetPending = true;
+                    continue;
+                }
+                actionable ??= new PendingCommand
                 {
                     IDDeviceCommand = candidate.IDDeviceCommand,
                     ActionType = candidate.ActionType,
@@ -240,26 +265,61 @@ namespace Agrumy.Api.Commands
                     Payload = candidate.Payload,
                 };
             }
-            return null;
+            return new PendingItems(actionable, configChangePending, hardResetPending);
+        }
+
+        /// Marks any still-Pending ConfigChanged row(s) for this device Executed - called unconditionally whenever DeviceConfigBuilder.BuildAsync actually sends a full config, since that's true regardless of which of NeedsRefreshAsync's three reasons triggered the send; a no-op when nothing was pending.
+        public Task ConsumePendingConfigChangeAsync(int deviceId) =>
+            outboxRepo.ConsumePendingByTypeAsync(deviceId, CommandActionType.ConfigChanged, DateTime.UtcNow);
+
+        /// Queues a HardReset outbox item (GlobalAdmin-initiated, DeviceApiController.HardResetRequest) - pushed over MQTT immediately when possible, same instant-delivery treatment as a real command, alongside riding the next Config poll's Reset field / the anonymous HardResetPending fallback.
+        public async Task EnqueueHardResetAsync(int deviceId)
+        {
+            DateTime utcNow = DateTime.UtcNow;
+            if (await outboxRepo.AddOutboxItemAsync(deviceId, CommandActionType.HardReset, utcNow, utcNow + HardResetExpiry) is int newCommandId)
+            {
+                Device? target = await deviceRepo.DeviceGetByIdAsync(deviceId);
+                if (target != null)
+                {
+                    await PublishAndMarkAsync(target, new PendingCommand
+                    {
+                        IDDeviceCommand = newCommandId,
+                        ActionType = CommandActionType.HardReset,
+                        ExpiresAt = utcNow + HardResetExpiry,
+                    });
+                }
+            }
+        }
+
+        /// Fire-once consume: true only the first time a Pending HardReset row is observed for this device (by whichever path checks first - the normal poll's Reset field, or the anonymous HardResetPending fallback for a device whose apiKey itself is broken) - mirrors the old device.Reset boolean's exact semantics.
+        public async Task<bool> ConsumeHardResetIfPendingAsync(int deviceId)
+        {
+            IList<DeviceCommand> candidates = await outboxRepo.GetPendingOutboxItemsAsync(deviceId);
+            bool pending = candidates.Any(c => c.ActionType == CommandActionType.HardReset && c.ExpiresAt > DateTime.UtcNow);
+            if (pending)
+            {
+                await outboxRepo.ConsumePendingByTypeAsync(deviceId, CommandActionType.HardReset, DateTime.UtcNow);
+            }
+            return pending;
         }
 
         /// Only a genuinely Pending command can be acknowledged; a command belonging to a different device is treated as not found.
         public async Task AcknowledgeCommandAsync(int commandId, int deviceId)
         {
-            DeviceCommand? command = await commandRepo.GetCommandByIdAsync(commandId);
+            DeviceCommand? command = await outboxRepo.GetOutboxItemByIdAsync(commandId);
             if (command?.Status == CommandStatus.Pending && command.DeviceID == deviceId)
             {
-                await commandRepo.SetCommandStatusAsync(commandId, CommandStatus.Acknowledged);
+                await outboxRepo.SetOutboxItemStatusAsync(commandId, CommandStatus.Acknowledged);
             }
         }
 
         /// Accepts either Pending or Acknowledged as the prior state - Pending covers Reboot, which has no "after" to ack from; same ownership check as AcknowledgeCommandAsync. Returns the command actually marked executed (null if the ownership/state check failed) so a caller can branch on its ActionType, e.g. DeviceApiController.PushEvent persisting a DetectSensors result.
         public async Task<DeviceCommand?> MarkExecutedAsync(int commandId, int deviceId)
         {
-            DeviceCommand? command = await commandRepo.GetCommandByIdAsync(commandId);
+            DeviceCommand? command = await outboxRepo.GetOutboxItemByIdAsync(commandId);
             if (command != null && command.Status is CommandStatus.Pending or CommandStatus.Acknowledged && command.DeviceID == deviceId)
             {
-                await commandRepo.SetCommandStatusAsync(commandId, CommandStatus.Executed, DateTime.UtcNow);
+                await outboxRepo.SetOutboxItemStatusAsync(commandId, CommandStatus.Executed, DateTime.UtcNow);
                 return command;
             }
             return null;

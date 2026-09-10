@@ -203,14 +203,13 @@ public class ContractTests
     [Fact]
     public void ConfigRequest_FirmwareShapedPayload_MatchesSchemaAndBinds()
     {
-        // apiConfig(): PascalCase keys, ConfigVersion sent as a STRING; the diagnostics fields ride along as JSON numbers/string.
+        // apiConfig(): PascalCase keys, diagnostics fields ride along as JSON numbers/string.
         const string payload =
-            """{"ConfigVersion":"66","Uptime":3661,"Rssi":-67,"FreeHeap":153212,"FirmwareVersion":"0.1.2","Board":"esp32dev","Kit":""}""";
+            """{"Uptime":3661,"Rssi":-67,"FreeHeap":153212,"FirmwareVersion":"0.1.2","Board":"esp32dev","Kit":""}""";
 
         AssertValid("config.request.schema.json", payload);
 
         var bound = JsonSerializer.Deserialize<DeviceConfigPoll>(payload, Mvc)!;
-        Assert.Equal(66, bound.ConfigVersion);
         Assert.Equal(3661, bound.Uptime);
         Assert.Equal(-67, bound.Rssi);
         Assert.Equal(153212, bound.FreeHeap);
@@ -220,10 +219,21 @@ public class ContractTests
     }
 
     [Fact]
+    public void ConfigRequest_LegacyConfigVersionField_StillBindsHarmlessly()
+    {
+        // Real not-yet-reflashed firmware still sends this field - System.Text.Json's default deserialization ignores unmapped members, so it binds fine even though the field is no longer part of the schema/contract.
+        const string payload =
+            """{"ConfigVersion":"66","Uptime":3661,"Rssi":-67,"FreeHeap":153212,"FirmwareVersion":"0.1.2","Board":"esp32dev","Kit":""}""";
+
+        var bound = JsonSerializer.Deserialize<DeviceConfigPoll>(payload, Mvc)!;
+        Assert.Equal(3661, bound.Uptime);
+    }
+
+    [Fact]
     public void ConfigRequest_KitShapedPayload_MatchesSchemaAndBinds()
     {
         const string payload =
-            """{"ConfigVersion":"66","Uptime":3661,"Rssi":-67,"FreeHeap":153212,"FirmwareVersion":"0.1.2","Board":"kc868-a6","Kit":"KC868-A6"}""";
+            """{"Uptime":3661,"Rssi":-67,"FreeHeap":153212,"FirmwareVersion":"0.1.2","Board":"kc868-a6","Kit":"KC868-A6"}""";
 
         AssertValid("config.request.schema.json", payload);
 

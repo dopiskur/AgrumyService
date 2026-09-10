@@ -79,7 +79,6 @@ namespace Agrumy.Shared.Models
         public bool? BatteryEnabled { get; set; } = false;
 
         public bool? Debug { get; set; } = true;
-        public bool? Reset { get; set; } = false;
         public bool? FirmwareUpdate { get; set; }
         // Null = latest-for-board when FirmwareUpdate is set; a specific version pins rollback/downgrade. Both cleared by DeviceApiController.GetConfig once the heartbeat confirms that version.
         public string? FirmwareTargetVersion { get; set; }
@@ -138,7 +137,6 @@ namespace Agrumy.Shared.Models
         public bool? DeviceControllerEnabled { get; set; } = false;
         public bool? BatteryEnabled { get; set; } = false;
         public bool? Debug { get; set; } = true;
-        public bool? Reset { get; set; } = false;
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; }
         public bool? Enabled { get; set; } = false;
@@ -196,7 +194,6 @@ namespace Agrumy.Shared.Models
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,
             Debug = d.Debug,
-            Reset = d.Reset,
             FirmwareUpdate = d.FirmwareUpdate,
             FirmwareTargetVersion = d.FirmwareTargetVersion,
             Enabled = d.Enabled,
@@ -238,7 +235,6 @@ namespace Agrumy.Shared.Models
             DeviceControllerEnabled = dto.DeviceControllerEnabled,
             BatteryEnabled = dto.BatteryEnabled,
             Debug = dto.Debug,
-            Reset = dto.Reset,
             FirmwareUpdate = dto.FirmwareUpdate,
             FirmwareTargetVersion = dto.FirmwareTargetVersion,
             Enabled = dto.Enabled,
@@ -368,10 +364,9 @@ namespace Agrumy.Shared.Models
         public const int Current = 1;
     }
 
-    /// Body of POST /api/Device/Config - poll doubles as heartbeat, so all fields are nullable to keep older firmware sending only ConfigVersion binding cleanly.
+    /// Body of POST /api/Device/Config - poll doubles as heartbeat, so all fields are nullable to keep an older/minimal firmware payload binding cleanly. No ConfigVersion field - the server no longer compares a device-echoed value, resend decisions are outbox/heartbeat-driven (DeviceConfigBuilder.NeedsRefreshAsync); firmware still sending it is harmless, System.Text.Json ignores unknown members.
     public class DeviceConfigPoll()
     {
-        public int? ConfigVersion { get; set; }
         public long? Uptime { get; set; }
         public int? Rssi { get; set; }
         public long? FreeHeap { get; set; }
@@ -390,6 +385,8 @@ namespace Agrumy.Shared.Models
         // GPS fix from a device built with AGRUMY_GPS_ENABLED (Heltec V4 + GPS module); null when no module, no fix yet, or older firmware. Overwrites Device.Latitude/Longitude with LocationSource=Gps whenever present - see EfDeviceRepository.DeviceDiagnosticUpsertAsync.
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        // Real firmware never sets this - it's how VirtualDeviceClient (no reason to cache/track state between ticks) gets an unconditional full config every poll instead of waiting on a pending outbox item or the heartbeat interval.
+        public bool? ForceRefresh { get; set; }
     }
 
     /// One device's row on the fleet dashboard; Battery comes from the latest sensorData row, not the heartbeat, since the firmware's own battery sensor is a stub.

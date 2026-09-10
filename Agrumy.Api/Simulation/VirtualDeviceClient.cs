@@ -36,14 +36,14 @@ namespace Agrumy.Api.Simulation
             return auth?.apiAuth ?? throw new InvalidOperationException("Authenticate returned no apiAuth token.");
         }
 
-        /// Always sends a ConfigVersion that can never match the server's - the simulator has no reason to cache/track it, this way every tick gets the current rules unconditionally.
+        /// Always sends ForceRefresh - the simulator has no reason to cache/track outbox/heartbeat state, this way every tick gets the current rules unconditionally.
         public async Task<DeviceConfig?> PollConfigAsync(string apiId, string apiAuth, string kit)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/Device/Config")
             {
                 Content = JsonContent.Create(new DeviceConfigPoll
                 {
-                    ConfigVersion = -1,
+                    ForceRefresh = true,
                     Uptime = Environment.TickCount64 / 1000,
                     Rssi = -50,
                     FreeHeap = 100_000,
@@ -56,7 +56,7 @@ namespace Agrumy.Api.Simulation
             using var response = await http.SendAsync(request);
             response.EnsureSuccessStatusCode();
             return response.Content.Headers.ContentLength is 0 or null
-                ? null // config already up to date per this poll - never actually happens with ConfigVersion=-1, but handled for correctness anyway
+                ? null // config already up to date per this poll - never actually happens with ForceRefresh=true, but handled for correctness anyway
                 : await response.Content.ReadFromJsonAsync<DeviceConfig>(JsonOptions);
         }
 

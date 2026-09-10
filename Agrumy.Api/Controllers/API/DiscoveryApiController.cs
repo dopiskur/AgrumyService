@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// "Scan for new devices" - device-facing report intake, the admin scan trigger, the aggregated results list, and Register (PIN + WiFi credentials to the winning scanning device).
     [Route("/api/Discovery")]
-    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, CommandQueueService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, DeviceOutboxService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
         private readonly IUserRepository users = userRepo;
@@ -40,7 +40,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// Fans ScanForDevices out to every sensor-only device in scope (see CommandQueueService.IssueScanCommandAsync for Zone/Unit/Fleet-wide resolution) - Zone/Unit ownership is checked like DeviceCommandApiController's targets, Fleet-wide scopes by the caller's own tenant instead (null only for a global device manager).
+        /// Fans ScanForDevices out to every sensor-only device in scope (see DeviceOutboxService.IssueScanCommandAsync for Zone/Unit/Fleet-wide resolution) - Zone/Unit ownership is checked like DeviceCommandApiController's targets, Fleet-wide scopes by the caller's own tenant instead (null only for a global device manager).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Scan")]
         public async Task<ActionResult<IReadOnlyList<int>>> Scan([FromBody] DiscoveryScanRequest request)
@@ -177,7 +177,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await discoveryRepo.DiscoveryResultsGetAsync(tenantId, unitID, zoneID));
         }
 
-        /// Resolves the winning scanning device for DiscoveredApMac, resolves WiFi credentials (0/1/many saved TenantWifiConfig rows - see Agrumy.Shared.Models.DiscoveryRegisterRequest), (re)issues the caller's own device-PIN, and queues a ProvisionDevice command carrying both plus DeviceName/UnitID/ZoneID/ManualDeviceTypeID to that device, applied once it completes its own real registration (see CommandQueueService.ConsumePendingProvisionAsync).
+        /// Resolves the winning scanning device for DiscoveredApMac, resolves WiFi credentials (0/1/many saved TenantWifiConfig rows - see Agrumy.Shared.Models.DiscoveryRegisterRequest), (re)issues the caller's own device-PIN, and queues a ProvisionDevice command carrying both plus DeviceName/UnitID/ZoneID/ManualDeviceTypeID to that device, applied once it completes its own real registration (see DeviceOutboxService.ConsumePendingProvisionAsync).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Register")]
         public async Task<ActionResult<DiscoveryRegisterResult>> Register([FromBody] DiscoveryRegisterRequest request)

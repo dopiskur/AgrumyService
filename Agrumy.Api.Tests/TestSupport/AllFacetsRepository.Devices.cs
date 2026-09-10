@@ -49,8 +49,6 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId) => deviceRepository.DeviceSessionGetAsync(apiId);
 
-        public Task DeviceHardResetSetAsync(int deviceID, bool pending) => deviceRepository.DeviceHardResetSetAsync(deviceID, pending);
-
         public Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt) => deviceRepository.DeviceSensorDetectionResultSetAsync(deviceID, resultJson, detectedAt);
 
         public Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID) => deviceRepository.DeviceLoRaPrivateKeyGenerateAsync(deviceID);

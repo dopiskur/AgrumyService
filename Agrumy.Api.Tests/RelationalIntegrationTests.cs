@@ -128,17 +128,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var settingsOptions = Options.Create(new AgrumySettings());
         var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider(), NullLogger<SecretProtector>.Instance);
         var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector);
-        var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository);
+        var outboxRepository = new EfDeviceOutboxRepository(db);
+        var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository, outboxRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
-        var farmOpenfieldRepository = new EfFarmOpenfieldRepository(db, settingsOptions, serverConfigRepository, deviceRepository);
-        var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository, farmOpenfieldRepository);
+        var farmOpenfieldRepository = new EfFarmOpenfieldRepository(db, settingsOptions, serverConfigRepository, deviceRepository, outboxRepository);
+        var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository, farmOpenfieldRepository, outboxRepository);
         var experimentRepository = new EfExperimentRepository(db);
 
         return new AllFacetsRepository(db,
             new EfAuditLogRepository(db), refreshTokenRepository, new EfControllerDataRepository(db, experimentRepository),
             new EfDiscoveryRepository(db), tenantRepository, new EfGatewayRepository(db), serverConfigRepository,
-            new EfCommandRepository(db), new EfFirmwareRepository(db),
+            outboxRepository, new EfFirmwareRepository(db, outboxRepository),
             new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository, new NullCache()), deviceRepository,
             new EfSimulationRepository(db, deviceRepository),
             deviceFarmUnitRepository,
@@ -277,18 +278,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         await using (var db = _fx.NewContext(t))
         {
-            db.DeviceCommands.AddRange(
-                new DeviceCommandRow { DeviceID = d.IDDevice!.Value, ActionType = (int)CommandActionType.Reboot, Status = (int)CommandStatus.Executed, IssuedAt = now.AddDays(-40), ExpiresAt = now.AddDays(-40) }, // old + terminal - purged
-                new DeviceCommandRow { DeviceID = d.IDDevice!.Value, ActionType = (int)CommandActionType.ForceOTA, Status = (int)CommandStatus.Expired, IssuedAt = now.AddDays(-40), ExpiresAt = now.AddDays(-40) }, // old + terminal - purged
-                new DeviceCommandRow { DeviceID = d.IDDevice!.Value, ActionType = (int)CommandActionType.ForceConfigSync, Status = (int)CommandStatus.Executed, IssuedAt = now.AddDays(-1), ExpiresAt = now.AddDays(-1) }, // terminal but recent - kept
-                new DeviceCommandRow { DeviceID = d.IDDevice!.Value, ActionType = (int)CommandActionType.Reboot, Status = (int)CommandStatus.Pending, ExpiresAt = now.AddDays(40), IssuedAt = now.AddDays(-40) }); // old but still active - kept
+            db.DeviceOutboxItems.AddRange(
+                new DeviceOutboxRow { DeviceID = d.IDDevice!.Value, Type = (int)CommandActionType.Reboot, Status = (int)CommandStatus.Executed, CreatedAt = now.AddDays(-40), ExpiresAt = now.AddDays(-40) }, // old + terminal - purged
+                new DeviceOutboxRow { DeviceID = d.IDDevice!.Value, Type = (int)CommandActionType.ForceOTA, Status = (int)CommandStatus.Expired, CreatedAt = now.AddDays(-40), ExpiresAt = now.AddDays(-40) }, // old + terminal - purged
+                new DeviceOutboxRow { DeviceID = d.IDDevice!.Value, Type = (int)CommandActionType.ForceConfigSync, Status = (int)CommandStatus.Executed, CreatedAt = now.AddDays(-1), ExpiresAt = now.AddDays(-1) }, // terminal but recent - kept
+                new DeviceOutboxRow { DeviceID = d.IDDevice!.Value, Type = (int)CommandActionType.Reboot, Status = (int)CommandStatus.Pending, ExpiresAt = now.AddDays(40), CreatedAt = now.AddDays(-40) }); // old but still active - kept
             await db.SaveChangesAsync();
         }
 
-        await _repo.PurgeOldCommandsAsync(now.AddDays(-30));
+        await _repo.PurgeOldOutboxItemsAsync(now.AddDays(-30));
 
         await using var verify = _fx.NewContext(t);
-        List<int> remainingStatuses = await verify.DeviceCommands.Where(c => c.DeviceID == d.IDDevice!.Value).Select(c => c.Status).ToListAsync();
+        List<int> remainingStatuses = await verify.DeviceOutboxItems.Where(c => c.DeviceID == d.IDDevice!.Value).Select(c => c.Status).ToListAsync();
         Assert.Equal(2, remainingStatuses.Count);
         Assert.Contains((int)CommandStatus.Executed, remainingStatuses); // the recent one
         Assert.Contains((int)CommandStatus.Pending, remainingStatuses);  // the old-but-active one
@@ -1041,7 +1042,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(DeviceLocationSource.Manual, afterManual.LocationSource);
 
         await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId,
-            new DeviceConfigPoll { ConfigVersion = 1, Latitude = 46.1, Longitude = 16.2 });
+            new DeviceConfigPoll { Latitude = 46.1, Longitude = 16.2 });
 
         var afterGps = await _repo.DeviceGetByIdAsync(d.IDDevice);
         Assert.Equal(46.1, afterGps!.Latitude);
@@ -1061,7 +1062,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         d.LocationSource = DeviceLocationSource.Manual;
         await _repo.DeviceUpdateAsync(d);
 
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { });
 
         var back = await _repo.DeviceGetByIdAsync(d.IDDevice);
         Assert.Equal(45.8, back!.Latitude);
@@ -1110,12 +1111,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         basicUnknownKit.DeviceControllerEnabled = false;
         await _repo.DeviceUpdateAsync(basicUnknownKit);
         await _repo.DeviceDiagnosticUpsertAsync(basicUnknownKit.IDDevice!.Value, tenantId,
-            new DeviceConfigPoll { ConfigVersion = 1, Kit = "" });
+            new DeviceConfigPoll { Kit = "" });
 
         recognizedKit.DeviceControllerEnabled = false;
         await _repo.DeviceUpdateAsync(recognizedKit);
         await _repo.DeviceDiagnosticUpsertAsync(recognizedKit.IDDevice!.Value, tenantId,
-            new DeviceConfigPoll { ConfigVersion = 1, Kit = "KC868-A6" });
+            new DeviceConfigPoll { Kit = "KC868-A6" });
 
         var fleet = await _repo.DeviceFleetGetAsync(tenantId);
         Assert.False(fleet.Single(f => f.IDDevice == basicUnknownKit.IDDevice).ControllerCapable);
@@ -1133,7 +1134,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.DoesNotContain(await _repo.DeviceTypeGetAsync(), x => x.Kit == newKit);
 
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1, Kit = newKit });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { Kit = newKit });
 
         DeviceType registered = Assert.Single(await _repo.DeviceTypeGetAsync(), x => x.Kit == newKit);
         Assert.False(registered.ControllerCapable); // auto-registered, not curated - capability defaults closed, admin can promote it later
@@ -1157,7 +1158,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True((await _repo.DeviceFleetGetAsync(tenantId)).Single(f => f.IDDevice == d.IDDevice).ControllerCapable);
 
         // A real, unrecognized diagnostic Kit now takes priority over ManualDeviceTypeID, even though ManualDeviceTypeID is still a capable one.
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1, Kit = "esp32dev-unrecognized" });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { Kit = "esp32dev-unrecognized" });
         Assert.False((await _repo.DeviceFleetGetAsync(tenantId)).Single(f => f.IDDevice == d.IDDevice).ControllerCapable);
     }
 
@@ -1223,7 +1224,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
         Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
-        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo));
+        var outboxService = new Agrumy.Api.Commands.DeviceOutboxService(_repo, _repo, _repo, new NoOpMqttCommandPublisher());
+        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo), outboxService);
         DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
         Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);
     }
@@ -1927,7 +1929,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
 
         // FKs from diagnostic/controllerData/deviceSimulation to device are all NoAction, not Cascade - none of the three must block delete.
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { });
         await _repo.ControllerDataPushAsync(d.IDDevice!.Value, tenantId, new List<ControllerDataPush> { new() { RelayFunction = RelayFunction.Heating, IsOn = true } });
         await _repo.DeviceSimulationSetAsync(d.IDDevice!.Value, new DeviceSimulation { Enabled = true, Temperature = 20 });
 
@@ -2028,7 +2030,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll
         {
-            ConfigVersion = 1, Uptime = 3600, Rssi = -67, FreeHeap = 153212, FirmwareVersion = "0.1.2",
+            Uptime = 3600, Rssi = -67, FreeHeap = 153212, FirmwareVersion = "0.1.2",
         });
 
         row = Assert.Single(await _repo.DeviceFleetGetAsync(tenantId), f => f.IDDevice == d.IDDevice);
@@ -2040,7 +2042,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal("0.1.2", row.FirmwareVersion);
 
         DateTimeOffset firstSeen = row.LastSeenAt!.Value;
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         row = Assert.Single(await _repo.DeviceFleetGetAsync(tenantId), f => f.IDDevice == d.IDDevice);
         Assert.True(row.LastSeenAt >= firstSeen);
         Assert.Equal("0.1.2", row.FirmwareVersion);
@@ -2073,7 +2075,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Null(candidate.LastSeenAt);
         Assert.Null(candidate.OfflineNotifiedAt);
 
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { });
         candidate = Assert.Single(await _repo.OfflineAlertCandidatesGetAsync(), c => c.IDDevice == d.IDDevice);
         Assert.NotNull(candidate.LastSeenAt);
         Assert.Null(candidate.OfflineNotifiedAt);
@@ -2140,7 +2142,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.FirmwareAddAsync(new DeviceFirmware { Board = board, Version = "1.9.0", Source = FirmwareSource.GitHub, Url = "a" });
         await _repo.FirmwareAddAsync(new DeviceFirmware { Board = board, Version = "1.10.0", Source = FirmwareSource.Local, Url = "b" }); // Local always visible; semver-newest
 
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1, FirmwareVersion = "1.9.0", Board = board });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { FirmwareVersion = "1.9.0", Board = board });
         Assert.Equal(board, await _repo.DeviceBoardGetAsync(d.IDDevice.Value));
 
         var row = Assert.Single(await _repo.DeviceFleetGetAsync(tenantId), f => f.IDDevice == d.IDDevice);
@@ -2156,7 +2158,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal((false, (string?)null), (back.FirmwareUpdate, back.FirmwareTargetVersion));
 
         // A heartbeat without a Board field must not erase one already recorded.
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         Assert.Equal(board, await _repo.DeviceBoardGetAsync(d.IDDevice.Value));
     }
 
@@ -2170,7 +2172,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         string longVersion = "1.2.3-47-gabcdef1234567890abcdef1234567890-dirty"; // past the 40-char column cap
         Assert.True(longVersion.Length > 40);
 
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1, FirmwareVersion = longVersion });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { FirmwareVersion = longVersion });
 
         await using var db = _fx.NewContext(t);
         string? stored = await db.DeviceDiagnostics.AsNoTracking().Where(x => x.DeviceID == d.IDDevice).Select(x => x.FirmwareVersion).SingleAsync();
@@ -2591,7 +2593,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
 
         var dashboard = Assert.Single(await _repo.DeviceFarmUnitDashboardGetAsync(tenantId), u => u.IDDeviceFarmUnit == unit.IDDeviceFarmUnit);
         Assert.Equal(ZoneStatus.Green, dashboard.Status);
@@ -2605,7 +2607,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
 
         var dashboard = Assert.Single(await _repo.DeviceFarmUnitDashboardGetAsync(tenantId), u => u.IDDeviceFarmUnit == unit.IDDeviceFarmUnit);
@@ -2624,7 +2626,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
 
         int idEventDevice = Assert.Single(await _repo.EventDeviceGetAsync(d.IDDevice, tenantId)).IDEventDevice!.Value;
@@ -2644,7 +2646,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
         int idEventDevice = Assert.Single(await _repo.EventDeviceGetAsync(d.IDDevice, tenantId)).IDEventDevice!.Value;
 
@@ -2663,7 +2665,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
 
         ServerConfig original = await _repo.ServerConfigGetAsync();
@@ -2692,7 +2694,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.AuthFailed, "test");
 
         await using (var db = _fx.NewContext(t))
@@ -2726,7 +2728,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
         await _repo.EventDevicePushAsync(d.IDDevice.Value, tenantId, DeviceEventType.NoInternet, "test");
 
         var dashboard = Assert.Single(await _repo.DeviceFarmUnitDashboardGetAsync(tenantId), u => u.IDDeviceFarmUnit == unit.IDDeviceFarmUnit);
@@ -2756,7 +2758,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (unit, zone) = await MakeUnitAndZone(tenantId);
         var d = await MakeEnabledDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice.Value, tenantId, new DeviceConfigPoll { });
 
         await using (var db = _fx.NewContext(t))
         {

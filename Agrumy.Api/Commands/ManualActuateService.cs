@@ -48,7 +48,7 @@ namespace Agrumy.Api.Commands
             return await StartForTargetsAsync([(deviceId, zone)], request);
         }
 
-        /// Fans out to every zone under the unit that has a controller - a zone with no controller is simply skipped, not an error (same "absent zones are fine" reasoning as CommandQueueService's Unit fan-out for ScanForDevices).
+        /// Fans out to every zone under the unit that has a controller - a zone with no controller is simply skipped, not an error (same "absent zones are fine" reasoning as DeviceOutboxService's Unit fan-out for ScanForDevices).
         public async Task<ManualActuateResult> StartForUnitAsync(int idDeviceFarmUnit, ManualActuateRequest request)
         {
             IList<Device> controllers = await unitRepo.DeviceFarmUnitGetControllersAsync(idDeviceFarmUnit);

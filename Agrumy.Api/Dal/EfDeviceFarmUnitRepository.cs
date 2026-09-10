@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Dal
 {
     /// IDeviceFarmUnitRepository - Unit/Zone CRUD, device assignment, and the hierarchical dashboard aggregation. Needs IServerConfigRepository (dashboard's ProblemEvent settings), IDeviceRepository (fleet-cache invalidation after assign/unassign, plus its ToDto mapper), and IFarmOpenfieldRepository (Crop/Parcel arms of DashboardAggregateGetAsync's switch - that facet deliberately does NOT depend back on this one, see its own doc comment, so this one-way dependency is safe).
-    internal sealed class EfDeviceFarmUnitRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository, IFarmOpenfieldRepository farmOpenfieldRepository) : IDeviceFarmUnitRepository
+    internal sealed class EfDeviceFarmUnitRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository, IFarmOpenfieldRepository farmOpenfieldRepository, IDeviceOutboxRepository outboxRepository) : IDeviceFarmUnitRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -510,11 +510,24 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
-        /// Bumps ConfigVersion for every device in the zone (bulk update, not fetch-then-loop) so the next poll picks up a zone-level rule/safety-limit change.
-        public async Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone)
+        /// Bumps ConfigVersion for every device in the zone (bulk update, not fetch-then-loop) so the next poll picks up a zone-level rule/safety-limit change, and enqueues each of those devices' own ConfigChanged outbox signal.
+        public Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone) =>
+            BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone));
+
+        /// Shared by every rule/safety-limit change that must reach a whole set of devices: bumps their (informational) ConfigVersion in one bulk statement, then enqueues one ConfigChanged outbox item per device (the actual resend trigger) - device IDs are fetched once up front since ExecuteUpdateAsync alone never returns which rows it touched.
+        private async Task BumpConfigVersionAndMarkChangedAsync(IQueryable<DeviceRow> devices)
         {
-            await db.Devices.Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone)
+            List<int> deviceIds = await devices.Select(d => d.IDDevice).ToListAsync();
+            if (deviceIds.Count == 0)
+            {
+                return;
+            }
+            await db.Devices.Where(d => deviceIds.Contains(d.IDDevice))
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+            foreach (int deviceId in deviceIds)
+            {
+                await outboxRepository.AddOutboxItemAsync(deviceId, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            }
         }
 
         public async Task DeviceFarmUnitZoneDeleteAsync(int idDeviceFarmUnitZone)
@@ -659,32 +672,27 @@ namespace Agrumy.Api.Dal
             }
             else if (rule.DeviceFarmUnitID is int idUnit)
             {
-                await db.Devices.Where(d => d.DeviceFarmUnitID == idUnit)
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.DeviceFarmUnitID == idUnit));
             }
             else if (rule.DeviceFarmID is int idFarm)
             {
                 var unitIdsInFarm = db.DeviceFarmUnits.AsNoTracking().Where(u => u.DeviceFarmID == idFarm).Select(u => u.IDDeviceFarmUnit);
-                await db.Devices.Where(d => d.DeviceFarmUnitID != null && unitIdsInFarm.Contains(d.DeviceFarmUnitID!.Value))
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.DeviceFarmUnitID != null && unitIdsInFarm.Contains(d.DeviceFarmUnitID!.Value)));
             }
             else if (rule.SimulationSessionID is int idSession)
             {
                 // Only the session's own member devices, not the whole tenant - a simulation rule change must not force every other device in the tenant to re-fetch a config that didn't actually change for them.
                 var memberIds = db.SimulationSessionDevices.AsNoTracking().Where(m => m.IDSimulationSession == idSession).Select(m => m.DeviceID);
-                await db.Devices.Where(d => memberIds.Contains(d.IDDevice))
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => memberIds.Contains(d.IDDevice)));
             }
             else if (rule.ExperimentID != null)
             {
                 // An experiment's rule membership is dynamic (Scope+ScopeID, not a snapshotted device list) - bumping every device in the tenant is broader than strictly needed, but resolving the exact current membership here would duplicate ActiveExperimentIdForZoneAsync's own cascade for a rare admin action.
-                await db.Devices.Where(d => d.TenantID == rule.TenantID)
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.TenantID == rule.TenantID));
             }
             else
             {
-                await db.Devices.Where(d => d.TenantID == rule.TenantID)
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.TenantID == rule.TenantID));
             }
             return row.IDDeviceFarmUnitZoneRule;
         }
@@ -726,19 +734,16 @@ namespace Agrumy.Api.Dal
             }
             else if (row.DeviceFarmUnitID is int idUnit)
             {
-                await db.Devices.Where(d => d.DeviceFarmUnitID == idUnit)
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.DeviceFarmUnitID == idUnit));
             }
             else if (row.SimulationSessionID is int idSession)
             {
                 var memberIds = db.SimulationSessionDevices.AsNoTracking().Where(m => m.IDSimulationSession == idSession).Select(m => m.DeviceID);
-                await db.Devices.Where(d => memberIds.Contains(d.IDDevice))
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => memberIds.Contains(d.IDDevice)));
             }
             else
             {
-                await db.Devices.Where(d => d.TenantID == row.TenantID)
-                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+                await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.TenantID == row.TenantID));
             }
         }
 
@@ -886,6 +891,7 @@ namespace Agrumy.Api.Dal
             // Bumped (unlike Unassign below) - the device learns its new assignment on its next poll.
             device.ConfigVersion = (device.ConfigVersion ?? 0) + 1;
             await db.SaveChangesAsync();
+            await outboxRepository.AddOutboxItemAsync(idDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
             await deviceRepository.InvalidateFleetCacheAsync(device.TenantID);
         }
 
@@ -1082,7 +1088,7 @@ namespace Agrumy.Api.Dal
             return (Average(snapshots), await BuildTrendAsync(zoneIds));
         }
 
-        /// Single ServerConfig read shared by every dashboard aggregation call this request needs it in.
+        /// Shared by every dashboard aggregation call this request needs it in - tenantID's own TenantAlertConfig override wins over the ServerConfig default; null (a cross-tenant combined view, or a call site where Status/ProblemAlerts is never read) falls back to the server-wide default.
         private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync(int? tenantID)
         {
             ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);

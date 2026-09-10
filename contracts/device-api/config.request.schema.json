@@ -7,7 +7,6 @@
   "additionalProperties": false,
   "$comment": "Required request headers (contract record only): 'apiId': device ApiId GUID; 'Authorization': apiAuth token from POST /api/Device/Authenticate.",
   "required": [
-    "ConfigVersion",
     "Uptime",
     "Rssi",
     "FreeHeap",
@@ -16,10 +15,6 @@
     "Kit"
   ],
   "properties": {
-    "ConfigVersion": {
-      "type": ["integer", "string", "null"],
-      "description": "Firmware sends a string (e.g. \"66\"); an integer is also accepted by the server. If the value differs from the server's stored ConfigVersion, the response is the full config object (config.response.schema.json). If it is equal, the server returns HTTP 200 with an EMPTY body."
-    },
     "Uptime": {
       "type": ["integer", "string", "null"],
       "minimum": 0,
@@ -79,6 +74,9 @@
     },
     "Longitude": {
       "type": ["number", "string", "null"]
+    },
+    "ForceRefresh": {
+      "type": ["boolean", "null"]
     }
   }
 }

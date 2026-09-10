@@ -11,7 +11,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet("All")]
@@ -103,7 +103,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        // ---- Alert config (roadmap #509) -------------------------------------
+        // ---- Alert config -----------------------------------------------------
 
         /// Always the caller's own tenant - a Tenant admin's Battery/Tank/problem-event alert overrides, no idTenant parameter to avoid needing a separate ownership check. Global reader can view (read-only, same as the ServerConfig-backed Alerts page), write stays Admins-only below.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]

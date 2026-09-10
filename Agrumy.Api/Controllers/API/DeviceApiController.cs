@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Controllers.API
 {
     [Route("/api/Device")]
-    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions, ILogger<DeviceApiController> logger, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, DeviceOutboxService commandQueue, FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, IOptions<AgrumySettings> settingsOptions, ILogger<DeviceApiController> logger, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
@@ -270,7 +270,8 @@ namespace Agrumy.Api.Controllers.API
             await deviceRepo.DeviceDiagnosticUpsertAsync(device.IDDevice!.Value, device.TenantID ?? 0, value);
 
             // Compared against the device row read above (not a stale/absent session-cache copy) - config-unchanged alone is no longer enough to skip the response, since a pending command must ride along on this same poll.
-            PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice.Value);
+            PendingItems pending = await commandQueue.GetPendingAsync(device.IDDevice.Value);
+            PendingCommand? pendingCommand = pending.Actionable;
 
             // The heartbeat is also how the server learns an OTA actually took - the first poll reporting the requested version fulfils the request (flags cleared, event logged). A still-pending ForceOTA keeps the offer alive even when the running version already matches: that command exists to re-flash regardless, and needs firmwareUrl in this same response.
             bool forceOtaPending = pendingCommand?.ActionType == CommandActionType.ForceOTA;
@@ -281,7 +282,7 @@ namespace Agrumy.Api.Controllers.API
                 await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID ?? 0, DeviceEventType.FirmwareUpdated, "version=" + value.FirmwareVersion);
             }
 
-            if (!await configBuilder.NeedsRefreshAsync(device, value.ConfigVersion, pendingCommand))
+            if (!await configBuilder.NeedsRefreshAsync(device, value.ForceRefresh == true || pending.ConfigChangePending, pendingCommand))
             {
                 return Ok(); // device is up to date, nothing is queued for it, and no heartbeat resend is due - do nothing
             }
@@ -368,7 +369,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
-            await deviceRepo.DeviceHardResetSetAsync(device!.IDDevice!.Value, true);
+            await commandQueue.EnqueueHardResetAsync(device!.IDDevice!.Value);
             await WriteAuditAsync("Device.HardResetRequested", device.TenantID, "Device", idDevice.ToString(), device.DeviceName);
             return Ok();
         }
@@ -385,11 +386,10 @@ namespace Agrumy.Api.Controllers.API
                 return false;
             }
             Device? device = await deviceRepo.DeviceGetByApiIdAsync(apiId);
-            if (device?.IDDevice is not int idDevice || device.Reset != true)
+            if (device?.IDDevice is not int idDevice || !await commandQueue.ConsumeHardResetIfPendingAsync(idDevice))
             {
                 return false; // unknown apiId and "not pending" look identical - never confirm whether an apiId exists
             }
-            await deviceRepo.DeviceHardResetSetAsync(idDevice, false);
             return true;
         }
 
@@ -527,7 +527,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             // The PIN is deliberately NOT consumed here (stays valid for repeated registrations until its own 24h expiry), and Register also handles re-registration, where a pending command could legitimately still be queued.
-            PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice!.Value);
+            PendingCommand? pendingCommand = (await commandQueue.GetPendingAsync(device.IDDevice!.Value)).Actionable;
             // Register carries no Board - null falls back to the legacy per-type lookup.
             return Ok(await configBuilder.BuildAsync(device, pendingCommand, board: null));
         }

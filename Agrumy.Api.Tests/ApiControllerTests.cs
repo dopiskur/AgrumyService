@@ -37,19 +37,20 @@ public class ApiControllerTests
     // None of these tests are about quota behavior (that's TenantQuotaEnforcerTests) - every tenant is unlimited by default here.
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
-    // CommandQueueService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
+    // DeviceOutboxService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
     private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
 
     private DeviceApiController NewDeviceController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
+            outboxService, catalog,
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings, NewQuotaEnforcer());
     private DeviceCommandApiController NewDeviceCommandController() =>
-        new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// UserApiController enqueues notification jobs instead of dispatching them inline (roadmap #305) - this runs the one job a test expects to have been queued against a fake scope resolving the same mocks, then lets the test assert on _notifications/_repo as before.
     private async Task RunOneQueuedJobAsync()
@@ -65,12 +66,12 @@ public class ApiControllerTests
     private void AssertNoJobWasQueued() =>
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
-        new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
+        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
-        new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId)
@@ -364,9 +365,10 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceDiagnosticUpsertAsync(500, 3, It.IsAny<DeviceConfigPoll>()))
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig()); // NeedsRefreshAsync's heartbeat check
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
-        var result = await controller.GetConfig(new DeviceConfigPoll { ConfigVersion = 66, Rssi = -60 });
+        var result = await controller.GetConfig(new DeviceConfigPoll { Rssi = -60 });
 
         _repo.Verify(r => r.DeviceDiagnosticUpsertAsync(500, 3, It.Is<DeviceConfigPoll>(p => p.Rssi == -60)), Times.Once);
         Assert.IsType<OkResult>(result.Result); // empty body: device is up to date
@@ -386,12 +388,13 @@ public class ApiControllerTests
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig()); // BuildDeviceConfigAsync always reads this
         _repo.Setup(r => r.TenantGetByIdAsync(3)).ReturnsAsync(new Tenant { IDTenant = 3 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceMarkConfigSentAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(500)).ReturnsAsync((DeviceSimulation?)null);
 
-        // Version mismatch must return the full config from the DB read, not a cache lookup that no longer carries ConfigVersion.
-        var result = await controller.GetConfig(new DeviceConfigPoll { ConfigVersion = 65 });
+        // ForceRefresh must return the full config from the DB read, not a cache lookup.
+        var result = await controller.GetConfig(new DeviceConfigPoll { ForceRefresh = true });
 
         Assert.IsType<OkObjectResult>(result.Result);
         _cache.Verify(c => c.GetDeviceCacheAsync(It.IsAny<string>()), Times.Never);
@@ -412,11 +415,12 @@ public class ApiControllerTests
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { ConfigHeartbeatHours = 24 });
         _repo.Setup(r => r.TenantGetByIdAsync(3)).ReturnsAsync(new Tenant { IDTenant = 3 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceMarkConfigSentAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(500)).ReturnsAsync((DeviceSimulation?)null);
 
-        var result = await controller.GetConfig(new DeviceConfigPoll { ConfigVersion = 66 });
+        var result = await controller.GetConfig(new DeviceConfigPoll { });
 
         Assert.IsType<OkObjectResult>(result.Result);
         _repo.Verify(r => r.DeviceMarkConfigSentAsync(500, It.IsAny<DateTime>()), Times.Once);
@@ -434,9 +438,9 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceDiagnosticUpsertAsync(500, 3, It.IsAny<DeviceConfigPoll>()))
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { ConfigHeartbeatHours = 0 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>());
 
-        var result = await controller.GetConfig(new DeviceConfigPoll { ConfigVersion = 66 });
+        var result = await controller.GetConfig(new DeviceConfigPoll { });
 
         Assert.IsType<OkResult>(result.Result); // empty body: 0 disables the heartbeat entirely, even with no prior send recorded
         // Strict mock: an un-set-up DeviceMarkConfigSentAsync call would throw, proving no config was sent.
@@ -546,7 +550,8 @@ public class ApiControllerTests
              .ReturnsAsync(new Device { IDDevice = 500, TenantID = 1, DeviceSensorEnabled = false, DeviceControllerEnabled = false });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig()); // BuildDeviceConfigAsync always reads this now
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(500)).ReturnsAsync((DeviceSimulation?)null);
 
         var result = await NewDeviceController().DeviceRegistration(PinRegistration("abc234"));
@@ -564,8 +569,10 @@ public class ApiControllerTests
              .ReturnsAsync(new Device { IDDevice = 501, TenantID = 1, DeviceSensorEnabled = false, DeviceControllerEnabled = false });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig()); // BuildDeviceConfigAsync always reads this now
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
-        _repo.Setup(r => r.GetPendingCommandsAsync(501)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(500)).ReturnsAsync(new List<DeviceCommand>()); // none pending
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(501)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(501, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(It.IsAny<int>())).ReturnsAsync((DeviceSimulation?)null);
 
         var first = await NewDeviceController().DeviceRegistration(PinRegistration("ABC234"));
@@ -584,9 +591,10 @@ public class ApiControllerTests
     private DeviceApiController NewDeviceControllerWithGatewaySecret(string? serverSecret)
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            outboxService, catalog,
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
             Options.Create(new AgrumySettings { GatewayRegistrationSecret = serverSecret }), NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
 
@@ -601,7 +609,8 @@ public class ApiControllerTests
              .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(900, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand>());
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
 
@@ -631,7 +640,8 @@ public class ApiControllerTests
              .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(900, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand>());
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
 
@@ -661,7 +671,8 @@ public class ApiControllerTests
              .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(900, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand>());
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
 
@@ -688,7 +699,8 @@ public class ApiControllerTests
              .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(1)).ReturnsAsync(new Tenant { IDTenant = 1 });
-        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(900, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
         captured = () => c;
     }
@@ -706,7 +718,8 @@ public class ApiControllerTests
              .Callback<Device, Func<Task<string?>>?>((d, _) => captured = d)
              .ReturnsAsync((Device d, Func<Task<string?>>? _) => { d.IDDevice = 900; return d; });
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.GetPendingCommandsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(900)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(900, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(900)).ReturnsAsync((DeviceSimulation?)null);
         _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand>());
 
@@ -769,7 +782,7 @@ public class ApiControllerTests
             }),
         };
         _repo.Setup(r => r.GetActiveProvisionCommandsAsync()).ReturnsAsync(new List<DeviceCommand> { provisionCommand });
-        _repo.Setup(r => r.SetCommandStatusAsync(55, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SetOutboxItemStatusAsync(55, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
         var result = await NewDeviceController().DeviceRegistration(new DeviceRegistration
         {
@@ -1810,12 +1823,13 @@ public class ApiControllerTests
         Assert.Equal(403, obj.StatusCode);
     }
 
-    /// #357: the admin-set side - sets the flag and audits, same EnsureOwnedDeviceAsync ownership check as every other write on this controller.
+    /// The admin-set side - enqueues a HardReset outbox item and audits, same EnsureOwnedDeviceAsync ownership check as every other write on this controller.
     [Fact]
     public async Task HardResetRequest_SetsFlag_AndWritesAudit()
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 0, DeviceName = "Greenhouse-1" });
-        _repo.Setup(r => r.DeviceHardResetSetAsync(8, true)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AddOutboxItemAsync(8, CommandActionType.HardReset, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(1);
+        _repo.Setup(r => r.MarkPublishedAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         AuditLogEntry? written = null;
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>()))
              .Callback<AuditLogEntry>(e => written = e)
@@ -1839,7 +1853,7 @@ public class ApiControllerTests
         var result = await controller.HardResetRequest(8);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
-        // Strict mock: DeviceHardResetSetAsync was never set up - a call to it here would throw.
+        // Strict mock: AddOutboxItemAsync was never set up - a call to it here would throw.
     }
 
     /// Roadmap #395 finding 3 / #401 - generates a fresh key and audits the rotation, without ever putting the key itself in the audit trail.
@@ -1879,32 +1893,37 @@ public class ApiControllerTests
     private static void SetRequestScheme(ControllerBase controller, string scheme) =>
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Request = { Scheme = scheme } } };
 
-    /// #357: the device-poll side - reachable with apiId alone (no apiKey/session), which is the whole point. Self-clears the moment it reports true.
+    /// The device-poll side - reachable with apiId alone (no apiKey/session), which is the whole point. Self-clears the moment it reports true.
     [Fact]
     public async Task HardResetPending_FlagSet_ReturnsTrue_AndClearsIt()
     {
-        _repo.Setup(r => r.DeviceGetByApiIdAsync("device-api-id")).ReturnsAsync(new Device { IDDevice = 8, Reset = true });
-        _repo.Setup(r => r.DeviceHardResetSetAsync(8, false)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("device-api-id")).ReturnsAsync(new Device { IDDevice = 8 });
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(8)).ReturnsAsync(new List<DeviceCommand>
+        {
+            new() { IDDeviceCommand = 1, DeviceID = 8, ActionType = CommandActionType.HardReset, Status = CommandStatus.Pending, ExpiresAt = DateTime.UtcNow.AddDays(365) },
+        });
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(8, CommandActionType.HardReset, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
         SetRequestScheme(controller, "https");
         var result = await controller.HardResetPending("device-api-id");
 
         Assert.True(result.Value);
-        _repo.Verify(r => r.DeviceHardResetSetAsync(8, false), Times.Once);
+        _repo.Verify(r => r.ConsumePendingByTypeAsync(8, CommandActionType.HardReset, It.IsAny<DateTime>()), Times.Once);
     }
 
     [Fact]
     public async Task HardResetPending_FlagNotSet_ReturnsFalse()
     {
-        _repo.Setup(r => r.DeviceGetByApiIdAsync("device-api-id")).ReturnsAsync(new Device { IDDevice = 8, Reset = false });
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("device-api-id")).ReturnsAsync(new Device { IDDevice = 8 });
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(8)).ReturnsAsync(new List<DeviceCommand>());
 
         var controller = NewDeviceController();
         SetRequestScheme(controller, "https");
         var result = await controller.HardResetPending("device-api-id");
 
         Assert.False(result.Value);
-        // Strict mock: DeviceHardResetSetAsync was never set up - "nothing pending" must not attempt a clear-write.
+        // Strict mock: ConsumePendingByTypeAsync was never set up - "nothing pending" must not attempt a clear-write.
     }
 
     /// An unknown apiId must look identical to "not pending" - never confirm whether an apiId exists to an unauthenticated caller.
@@ -1929,7 +1948,7 @@ public class ApiControllerTests
         var result = await controller.HardResetPending("device-api-id");
 
         Assert.False(result.Value);
-        // Strict mock: DeviceGetByApiIdAsync/DeviceHardResetSetAsync were never set up - the plain-HTTP gate must short-circuit before either is reached.
+        // Strict mock: DeviceGetByApiIdAsync/GetPendingOutboxItemsAsync were never set up - the plain-HTTP gate must short-circuit before either is reached.
     }
 
 
@@ -2023,10 +2042,11 @@ public class ApiControllerTests
         _repo.Setup(r => r.TenantEmergencyStopSetAsync(5, true)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device> { new() { IDDevice = 500 }, new() { IDDevice = 501 } });
-        _repo.Setup(r => r.HasActiveCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
-        _repo.Setup(r => r.HasActiveCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
-        _repo.Setup(r => r.AddCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(1);
-        _repo.Setup(r => r.AddCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(2);
+        _repo.Setup(r => r.HasActiveOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _repo.Setup(r => r.HasActiveOutboxItemAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _repo.Setup(r => r.AddOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(1);
+        _repo.Setup(r => r.AddOutboxItemAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(2);
+        _repo.Setup(r => r.MarkPublishedAsync(It.IsAny<int>(), It.IsAny<DateTime>())).Returns(Task.CompletedTask);
 
         var controller = NewTenantController();
         SetCallerRoles(controller, 5, RoleNames.TenantDevice);
@@ -2034,8 +2054,8 @@ public class ApiControllerTests
         var result = await controller.EmergencyStopActivate();
 
         Assert.IsType<OkResult>(result);
-        _repo.Verify(r => r.AddCommandAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
-        _repo.Verify(r => r.AddCommandAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
+        _repo.Verify(r => r.AddOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
+        _repo.Verify(r => r.AddOutboxItemAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null), Times.Once);
     }
 
     [Fact]
@@ -2975,7 +2995,7 @@ public class ApiControllerTests
     [Fact]
     public async Task GetCommand_OwnTenant_ReturnsStatus()
     {
-        _repo.Setup(r => r.GetCommandByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending });
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending });
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 1 });
 
         var controller = NewDeviceCommandController();
@@ -2998,7 +3018,7 @@ public class ApiControllerTests
             Ssid = "HomeWifi",
             WifiPassword = "supersecret",
         });
-        _repo.Setup(r => r.GetCommandByIdAsync(9)).ReturnsAsync(new DeviceCommand
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9)).ReturnsAsync(new DeviceCommand
         {
             IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.ProvisionDevice, Status = CommandStatus.Pending, Payload = payloadJson,
         });
@@ -3020,7 +3040,7 @@ public class ApiControllerTests
     [Fact]
     public async Task GetCommand_NoPayload_ReturnsUnchanged()
     {
-        _repo.Setup(r => r.GetCommandByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending, Payload = null });
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending, Payload = null });
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 1 });
 
         var controller = NewDeviceCommandController();
@@ -3034,7 +3054,7 @@ public class ApiControllerTests
     [Fact]
     public async Task GetCommand_UnknownId_Returns404()
     {
-        _repo.Setup(r => r.GetCommandByIdAsync(9)).ReturnsAsync((DeviceCommand?)null);
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9)).ReturnsAsync((DeviceCommand?)null);
 
         var controller = NewDeviceCommandController();
         SetCallerRoles(controller, 1, "user", RoleNames.TenantDevice);
@@ -3046,7 +3066,7 @@ public class ApiControllerTests
     [Fact]
     public async Task GetCommand_ForeignTenant_Returns403()
     {
-        _repo.Setup(r => r.GetCommandByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending });
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9)).ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 8, ActionType = CommandActionType.Reboot, Status = CommandStatus.Pending });
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 99 });
 
         var controller = NewDeviceCommandController();

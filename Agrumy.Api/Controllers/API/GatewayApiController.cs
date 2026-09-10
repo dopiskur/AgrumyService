@@ -19,7 +19,7 @@ namespace Agrumy.Api.Controllers.API
     [Route("/api/Gateway")]
     public class GatewayApiController(
         IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, ISensorDataRepository sensorDataRepo, IGatewayRepository gatewayRepo,
-        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue,
+        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, DeviceOutboxService commandQueue,
         FirmwareCatalogService firmwareCatalog, DeviceConfigBuilder configBuilder, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, ILogger<GatewayApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
@@ -163,8 +163,9 @@ namespace Agrumy.Api.Controllers.API
                 await deviceRepo.EventDevicePushAsync(device.IDDevice.Value, device.TenantID ?? 0, DeviceEventType.FirmwareUpdated, "version=" + poll.FirmwareVersion);
             }
 
-            PendingCommand? pendingCommand = await commandQueue.GetPendingCommandAsync(device.IDDevice.Value);
-            if (!await configBuilder.NeedsRefreshAsync(device, poll.ConfigVersion, pendingCommand))
+            PendingItems pending = await commandQueue.GetPendingAsync(device.IDDevice.Value);
+            PendingCommand? pendingCommand = pending.Actionable;
+            if (!await configBuilder.NeedsRefreshAsync(device, poll.ForceRefresh == true || pending.ConfigChangePending, pendingCommand))
             {
                 return new GatewayBatchEntryResult { Success = true, StatusCode = 200 }; // up to date, nothing queued, no heartbeat due - mirrors GetConfig's empty-200
             }

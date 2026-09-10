@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Dal
 {
     /// IFarmOpenfieldRepository - Crop/Parcel CRUD, device assignment, and per-widget dashboard aggregation. Needs IServerConfigRepository (ProblemEvent settings, same as EfDeviceFarmUnitRepository) and IDeviceRepository (fleet-cache invalidation after assign/unassign) - deliberately NOT IDeviceFarmUnitRepository, since that facet in turn needs this one (Crop/Parcel arms of its dashboard-aggregation switch), and a two-way dependency between them isn't resolvable by the DI container.
-    internal sealed class EfFarmOpenfieldRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository) : IFarmOpenfieldRepository
+    internal sealed class EfFarmOpenfieldRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository, IDeviceOutboxRepository outboxRepository) : IFarmOpenfieldRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -234,8 +234,20 @@ namespace Agrumy.Api.Dal
 
         public async Task ParcelConfigVersionBumpAsync(int idFarmOpenfieldCropParcel)
         {
-            await db.Devices.Where(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel)
+            List<int> deviceIds = await db.Devices.AsNoTracking()
+                .Where(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel)
+                .Select(d => d.IDDevice)
+                .ToListAsync();
+            if (deviceIds.Count == 0)
+            {
+                return;
+            }
+            await db.Devices.Where(d => deviceIds.Contains(d.IDDevice))
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+            foreach (int deviceId in deviceIds)
+            {
+                await outboxRepository.AddOutboxItemAsync(deviceId, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            }
         }
 
         public async Task ParcelDeleteAsync(int idFarmOpenfieldCropParcel)
@@ -276,6 +288,7 @@ namespace Agrumy.Api.Dal
             device.DeviceFarmUnitZoneID = null;
             device.ConfigVersion = (device.ConfigVersion ?? 0) + 1;
             await db.SaveChangesAsync();
+            await outboxRepository.AddOutboxItemAsync(idDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
             await deviceRepository.InvalidateFleetCacheAsync(device.TenantID);
         }
 

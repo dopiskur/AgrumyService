@@ -23,7 +23,7 @@ public class DeviceFarmUnitApiControllerTests
     {
         var controller = new DeviceFarmUnitApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             Options.Create(new AgrumySettings()), new ManualActuateService(_repo.Object),
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()),
+            new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()),
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
             new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
             new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object),
@@ -51,10 +51,11 @@ public class DeviceFarmUnitApiControllerTests
             new() { IDDevice = 10, DeviceName = "A" },
             new() { IDDevice = 11, DeviceName = "B" },
         });
-        _repo.Setup(r => r.HasActiveCommandAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(false);
-        _repo.Setup(r => r.AddCommandAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string>())).ReturnsAsync(101);
+        _repo.Setup(r => r.HasActiveOutboxItemAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _repo.Setup(r => r.AddOutboxItemAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string>())).ReturnsAsync(101);
         _repo.Setup(r => r.DeviceGetByIdAsync(10)).ReturnsAsync(new Device { IDDevice = 10, ApiId = "a1" });
-        _repo.Setup(r => r.HasActiveCommandAsync(11, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(true);
+        _repo.Setup(r => r.MarkPublishedAsync(101, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.HasActiveOutboxItemAsync(11, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(true);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         var controller = NewController();
         SetCaller(controller, 1, "user", RoleNames.TenantAdmin);

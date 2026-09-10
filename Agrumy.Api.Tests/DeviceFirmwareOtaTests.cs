@@ -15,7 +15,7 @@ public class DeviceFirmwareOtaTests
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
-    private DeviceConfig RegisterAndGetConfig(Device device)
+    private DeviceConfig RegisterAndGetConfig(Device device, IList<DeviceCommand>? pendingOutboxItems = null)
     {
         _repo.Setup(r => r.UserGetAsync(null, "owner@example.com", null))
              .ReturnsAsync(new User { IDUser = 77, TenantID = device.TenantID, DevicePin = "ABC234", DevicePinExpires = DateTime.UtcNow.AddHours(1) });
@@ -24,14 +24,16 @@ public class DeviceFirmwareOtaTests
         // BuildDeviceConfigAsync always reads ServerConfig and the device's own tenant (UtcOffsetSeconds); no ScheduleTimeZone configured, so the response's offset is 0/UTC.
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.Setup(r => r.TenantGetByIdAsync(device.TenantID!.Value)).ReturnsAsync(new Tenant { IDTenant = device.TenantID });
-        // DeviceRegistration always checks for a pending command before returning.
-        _repo.Setup(r => r.GetPendingCommandsAsync(device.IDDevice!.Value)).ReturnsAsync(new List<DeviceCommand>());
+        // DeviceRegistration always checks for a pending command before returning; BuildAsync also unconditionally consumes any pending ConfigChanged row.
+        _repo.Setup(r => r.GetPendingOutboxItemsAsync(device.IDDevice!.Value)).ReturnsAsync(pendingOutboxItems ?? new List<DeviceCommand>());
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(device.IDDevice!.Value, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSimulationGetAsync(device.IDDevice!.Value)).ReturnsAsync((DeviceSimulation?)null);
 
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            outboxService, catalog,
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DeviceApiController>.Instance,
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
@@ -98,24 +100,27 @@ public class DeviceFirmwareOtaTests
     public void ResetFlagSet_ClearsImmediately_NotOnConfirmation()
     {
         var device = BaseDevice();
-        device.Reset = true;
-        _repo.Setup(r => r.DeviceHardResetSetAsync(500, false)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.ConsumePendingByTypeAsync(500, CommandActionType.HardReset, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        var pendingHardReset = new List<DeviceCommand>
+        {
+            new() { IDDeviceCommand = 1, DeviceID = 500, ActionType = CommandActionType.HardReset, Status = CommandStatus.Pending, ExpiresAt = DateTime.UtcNow.AddDays(365) },
+        };
 
-        var cfg = RegisterAndGetConfig(device);
+        var cfg = RegisterAndGetConfig(device, pendingHardReset);
 
         Assert.True(cfg.Reset);
-        _repo.Verify(r => r.DeviceHardResetSetAsync(500, false), Times.Once);
+        _repo.Verify(r => r.ConsumePendingByTypeAsync(500, CommandActionType.HardReset, It.IsAny<DateTime>()), Times.Once);
     }
 
     [Fact]
     public void ResetFlagClear_NeverCallsHardResetSet()
     {
         var device = BaseDevice();
-        device.Reset = false;
 
-        RegisterAndGetConfig(device);
+        var cfg = RegisterAndGetConfig(device);
 
-        // Strict mock: DeviceHardResetSetAsync was never set up - a call to it here would throw.
+        Assert.False(cfg.Reset);
+        // Strict mock: ConsumePendingByTypeAsync(..., HardReset, ...) was never set up - no pending row must not attempt a clear-write.
     }
 
     [Fact]

@@ -127,7 +127,7 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Config heartbeat (hours, 0 = off)")]
         public int ConfigHeartbeatHours { get; set; } = 1;
 
-        // Opt-in alternative alongside the HTTP/JWT poll cycle: when enabled, a newly-queued command is also published immediately to this broker so a persistently-connected device (AgrumyFirmware's MqttController) can act before its next HTTP poll, instead of only through CommandQueueService/GetPendingCommandAsync; OTA/registration/firmware distribution stay on HTTP (see Agrumy.Api.Commands.MqttCommandPublisher).
+        // Opt-in alternative alongside the HTTP/JWT poll cycle: when enabled, a newly-queued command is also published immediately to this broker so a persistently-connected device (AgrumyFirmware's MqttController) can act before its next HTTP poll, instead of only through DeviceOutboxService/GetPendingAsync; OTA/registration/firmware distribution stay on HTTP (see Agrumy.Api.Commands.MqttCommandPublisher).
         [Display(Name = "Enable MQTT instant command push")]
         public bool MqttTransportEnabled { get; set; }
 

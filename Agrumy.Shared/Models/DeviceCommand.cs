@@ -9,6 +9,10 @@ namespace Agrumy.Shared.Models
         ProvisionDevice = 5,
         UpdateWifiCredentials = 6,
         DetectSensors = 7,
+        /// Synthetic - never delivered to firmware as a PendingCommand, only drives DeviceConfigBuilder.NeedsRefreshAsync.
+        ConfigChanged = 8,
+        /// Synthetic - never delivered to firmware as a PendingCommand, only drives DeviceConfig.Reset.
+        HardReset = 9,
     }
 
     /// Device acknowledges before executing, so a command stuck at Acknowledged (never reaching Executed) means it took the command but crashed or lost power before confirming the outcome.
@@ -20,7 +24,7 @@ namespace Agrumy.Shared.Models
         Expired = 3,
     }
 
-    /// Target resolved server-side to the device(s) implied by Zone/Unit; see CommandQueueService.IssueCommandAsync.
+    /// Target resolved server-side to the device(s) implied by Zone/Unit; see DeviceOutboxService.IssueCommandAsync.
     public enum CommandTargetType
     {
         Device = 1,

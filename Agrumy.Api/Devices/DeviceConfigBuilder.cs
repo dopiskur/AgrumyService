@@ -1,3 +1,4 @@
+using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
 using Agrumy.Rules;
@@ -7,12 +8,12 @@ using Agrumy.Shared.Utils;
 namespace Agrumy.Api.Devices
 {
     /// Builds the DeviceConfig body a Config poll or Register response sends back, shared so GatewayApiController.Batch's Config entries produce byte-for-byte the same response as a direct POST /api/Device/Config.
-    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog)
+    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog, DeviceOutboxService outboxService)
     {
-        /// Whether GetConfig/RunConfigAsync must send a full config this poll: a real version mismatch, a pending command, or - because BuildAsync recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh every call without either ever bumping ConfigVersion - the periodic heartbeat window has elapsed since the device's last full send. Not used by Register, which always sends a fresh config unconditionally.
-        public async Task<bool> NeedsRefreshAsync(Device device, int? pollConfigVersion, PendingCommand? pendingCommand)
+        /// Whether GetConfig/RunConfigAsync must send a full config this poll: a pending ConfigChanged outbox signal, a pending actionable command, or - because BuildAsync recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh every call without either ever consuming a signal for it - the periodic heartbeat window has elapsed since the device's last full send. Not used by Register, which always sends a fresh config unconditionally.
+        public async Task<bool> NeedsRefreshAsync(Device device, bool configChangePending, PendingCommand? pendingCommand)
         {
-            if (pollConfigVersion != device.ConfigVersion || pendingCommand != null)
+            if (configChangePending || pendingCommand != null)
             {
                 return true;
             }
@@ -54,7 +55,6 @@ namespace Agrumy.Api.Devices
                 DeviceControllerEnabled = device.DeviceControllerEnabled,
                 BatteryEnabled = device.BatteryEnabled,
                 Debug = device.Debug,
-                Reset = device.Reset,
                 FirmwareUpdate = device.FirmwareUpdate,
                 Enabled = device.Enabled,
                 EmergencyStop = tenant?.EmergencyStopActive == true,
@@ -62,11 +62,11 @@ namespace Agrumy.Api.Devices
                 SimulationModeEnabled = (await deviceRepo.DeviceSimulationGetAsync(device.IDDevice!.Value))?.Enabled == true,
             };
 
+            // Consumed unconditionally - BuildAsync only ever runs when NeedsRefreshAsync said yes, so any pending ConfigChanged signal is satisfied by this send regardless of which of its three reasons actually triggered it; a no-op when nothing was pending.
+            await outboxService.ConsumePendingConfigChangeAsync(device.IDDevice!.Value);
+
             // Fire-once, cleared the instant it's included rather than waiting for a confirmation that can never come back - a device told to reset() wipes itself and restarts before it could ever report anything, so "wait for the device to confirm" (FirmwareUpdate's pattern) would leave this stuck true and re-trigger on every future poll after the device re-registers.
-            if (device.Reset == true)
-            {
-                await deviceRepo.DeviceHardResetSetAsync(device.IDDevice!.Value, false);
-            }
+            deviceConfig.Reset = await outboxService.ConsumeHardResetIfPendingAsync(device.IDDevice!.Value);
 
             // Firmware compares versions itself, so an offer present on every Config sync is fine, and harmless on Register too since ResolveOfferAsync returns null for a freshly-created device.
             DeviceFirmware? firmware = await firmwareCatalog.ResolveOfferAsync(device, board);

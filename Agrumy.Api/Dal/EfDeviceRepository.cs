@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 namespace Agrumy.Api.Dal
 {
     /// IDeviceRepository - device CRUD, configs, fixed type lists, firmware's legacy board-less lookup, diagnostics/fleet, events, and the offline/low-battery alert queries. Needs IServerConfigRepository (hysteresis defaults on add, EventDedupeMinutes, active firmware source) - an already-extracted leaf facet, so no circular dependency.
-    internal sealed class EfDeviceRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ICache cache, IServerConfigRepository serverConfigRepository) : IDeviceRepository
+    internal sealed class EfDeviceRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ICache cache, IServerConfigRepository serverConfigRepository, IDeviceOutboxRepository outboxRepository) : IDeviceRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -203,7 +203,7 @@ namespace Agrumy.Api.Dal
         private async Task PurgeDeviceChildRowsAsync(int idDevice)
         {
             await db.SensorData.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
-            await db.DeviceCommands.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
+            await db.DeviceOutboxItems.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.DeviceManualOverrides.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
             await db.DeviceDiscoveryReports.Where(x => x.ScanningDeviceID == idDevice).ExecuteDeleteAsync();
             await db.DeviceDiagnostics.Where(x => x.DeviceID == idDevice).ExecuteDeleteAsync();
@@ -323,6 +323,8 @@ namespace Agrumy.Api.Dal
             // row's own value, not the payload's - the payload can be stale under two concurrent edits, which would otherwise let ConfigVersion regress or collide instead of growing monotonically.
             row.ConfigVersion = (row.ConfigVersion ?? 0) + 1;
             await db.SaveChangesAsync();
+            // Dedup via the outbox's own unique (DeviceID, ActiveKey) index - a null return (already-pending ConfigChanged row) is expected, not an error.
+            await outboxRepository.AddOutboxItemAsync(row.IDDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
         }
 
         public Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc) =>
@@ -344,10 +346,6 @@ namespace Agrumy.Api.Dal
                 ? (token, expiresAtUtc)
                 : null;
         }
-
-        public Task DeviceHardResetSetAsync(int deviceID, bool pending) =>
-            db.Devices.Where(d => d.IDDevice == deviceID)
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.Reset, pending));
 
         public Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt) =>
             db.Devices.Where(d => d.IDDevice == deviceID)
@@ -402,7 +400,6 @@ namespace Agrumy.Api.Dal
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,
             Debug = d.Debug,
-            Reset = d.Reset,
             FirmwareUpdate = d.FirmwareUpdate,
             FirmwareTargetVersion = d.FirmwareTargetVersion,
             Enabled = d.Enabled,
@@ -579,6 +576,12 @@ namespace Agrumy.Api.Dal
 
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            // Outside the transaction on purpose - AddOutboxItemAsync's dedup relies on catching a unique-constraint violation, which on Postgres would poison this same transaction for what's a routine, expected outcome, not a rare edge case.
+            if (deviceRow != null)
+            {
+                await outboxRepository.AddOutboxItemAsync(deviceRow.IDDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            }
             return null;
         }
 
@@ -629,6 +632,10 @@ namespace Agrumy.Api.Dal
             }
 
             await db.SaveChangesAsync();
+            if (deviceRow != null)
+            {
+                await outboxRepository.AddOutboxItemAsync(deviceRow.IDDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            }
         }
 
         private static DeviceConfigSensor ToDto(DeviceConfigSensorRow c) => new()
@@ -891,7 +898,7 @@ namespace Agrumy.Api.Dal
 
         public async Task<bool> EventDevicePushAsync(int deviceID, int tenantID, DeviceEventType eventType, string? message)
         {
-            // ServerConfigGetAsync may auto-generate the row (and its EventDedupeMinutes default) on a brand-new install, same as DeviceAddAsync's own call. Tenant's own override (roadmap #509) wins over the server-wide default.
+            // ServerConfigGetAsync may auto-generate the row (and its EventDedupeMinutes default) on a brand-new install, same as DeviceAddAsync's own call. Tenant's own override wins over the server-wide default.
             int? tenantDedupeMinutes = await db.Tenants.AsNoTracking().Where(t => t.IDTenant == tenantID).Select(t => t.EventDedupeMinutes).FirstOrDefaultAsync();
             int dedupeMinutes = tenantDedupeMinutes ?? (await serverConfigRepository.ServerConfigGetAsync(1)).EventDedupeMinutes ?? settings.EventDedupeMinutes;
             DateTime cutoff = DateTime.UtcNow.AddMinutes(-dedupeMinutes);

@@ -37,9 +37,10 @@ public class SensorDetectionTests
     private DeviceApiController NewController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            outboxService, catalog,
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()), NullLogger<DeviceApiController>.Instance,
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
@@ -79,9 +80,9 @@ public class SensorDetectionTests
     {
         _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid")).ReturnsAsync(new Device { IDDevice = 500, TenantID = 3 });
         _repo.Setup(r => r.EventDevicePushAsync(500, 3, DeviceEventType.CommandExecuted, It.IsAny<string?>())).ReturnsAsync(true);
-        _repo.Setup(r => r.GetCommandByIdAsync(9))
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9))
              .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 500, ActionType = CommandActionType.DetectSensors, Status = CommandStatus.Acknowledged });
-        _repo.Setup(r => r.SetCommandStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SetOutboxItemStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DeviceSensorDetectionResultSetAsync(500,
                 It.Is<string?>(json => json != null && json.Contains("1005")), It.IsAny<DateTimeOffset>()))
              .Returns(Task.CompletedTask);
@@ -102,9 +103,9 @@ public class SensorDetectionTests
     {
         _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid")).ReturnsAsync(new Device { IDDevice = 500, TenantID = 3 });
         _repo.Setup(r => r.EventDevicePushAsync(500, 3, DeviceEventType.CommandExecuted, It.IsAny<string?>())).ReturnsAsync(true);
-        _repo.Setup(r => r.GetCommandByIdAsync(9))
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9))
              .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 500, ActionType = CommandActionType.DetectSensors, Status = CommandStatus.Acknowledged });
-        _repo.Setup(r => r.SetCommandStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SetOutboxItemStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         // Strict mock: DeviceSensorDetectionResultSetAsync deliberately NOT set up - a malformed payload must never reach it.
 
         var result = await NewController().PushEvent(new DeviceEventPush
@@ -122,9 +123,9 @@ public class SensorDetectionTests
     {
         _repo.Setup(r => r.DeviceGetByApiIdAsync("api-guid")).ReturnsAsync(new Device { IDDevice = 500, TenantID = 3 });
         _repo.Setup(r => r.EventDevicePushAsync(500, 3, DeviceEventType.CommandExecuted, It.IsAny<string?>())).ReturnsAsync(true);
-        _repo.Setup(r => r.GetCommandByIdAsync(9))
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(9))
              .ReturnsAsync(new DeviceCommand { IDDeviceCommand = 9, DeviceID = 500, ActionType = CommandActionType.ForceConfigSync, Status = CommandStatus.Acknowledged });
-        _repo.Setup(r => r.SetCommandStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.SetOutboxItemStatusAsync(9, CommandStatus.Executed, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         // Strict mock: DeviceSensorDetectionResultSetAsync not set up - an unrelated command's CommandExecuted must not call it.
 
         var result = await NewController().PushEvent(new DeviceEventPush

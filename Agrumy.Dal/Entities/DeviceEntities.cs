@@ -385,18 +385,19 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset DateReported { get; set; }
     }
 
-    /// One discrete, one-shot device action - see Agrumy.Shared.Models.CommandStatus for why Acknowledged is a real, persisted state.
-    public class DeviceCommandRow
+    /// One discrete, one-shot device delivery item (a real command, a ConfigChanged signal, or a HardReset signal) - see Agrumy.Shared.Models.CommandStatus for why Acknowledged is a real, persisted state.
+    public class DeviceOutboxRow
     {
-        public int IDDeviceCommand { get; set; }
+        public int IDDeviceOutbox { get; set; }
         public int DeviceID { get; set; }
-        public int ActionType { get; set; }
+        public int Type { get; set; }
         public int Status { get; set; }
-        public DateTimeOffset IssuedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset ExpiresAt { get; set; }
         public DateTimeOffset? ExecutedAt { get; set; }
-        public int? ActiveKey { get; set; } // Mirrors ActionType while active, NULL once terminal; backs the unique (DeviceID, ActiveKey) index IssueCommandAsync's dedup relies on.
+        public int? ActiveKey { get; set; } // Mirrors Type while active, NULL once terminal; backs the unique (DeviceID, ActiveKey) index IssueCommandAsync's dedup relies on.
         public string? Payload { get; set; }
+        public DateTimeOffset? PublishedAt { get; set; } // Set once DeviceOutboxDispatchEvaluator (or a synchronous issue-path publish) has attempted an MQTT push for this row - null means still owed a dispatch attempt.
     }
 
     /// One active manual actuation (roadmap #219) - upserted on (DeviceID, RelayFunction), so starting a new command for an already-active function replaces it rather than stacking rows.

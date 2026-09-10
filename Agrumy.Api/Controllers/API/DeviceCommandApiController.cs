@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Issues a device command, resolved/fanned-out server-side by CommandQueueService - ownership checks reuse ApiControllerBase.EnsureOwnedDeviceEntityAsync, always as a write since issuing a command is never a read-only action.
+    /// Issues a device command, resolved/fanned-out server-side by DeviceOutboxService - ownership checks reuse ApiControllerBase.EnsureOwnedDeviceEntityAsync, always as a write since issuing a command is never a read-only action.
     [Route("/api/DeviceCommand")]
-    public class DeviceCommandApiController(ICommandRepository commandRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, CommandQueueService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceCommandApiController(IDeviceOutboxRepository commandRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, DeviceOutboxService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
@@ -48,7 +48,7 @@ namespace Agrumy.Api.Controllers.API
         [HttpGet("{idDeviceCommand}")]
         public async Task<ActionResult<DeviceCommand>> GetCommand(int idDeviceCommand)
         {
-            DeviceCommand? command = await commandRepo.GetCommandByIdAsync(idDeviceCommand);
+            DeviceCommand? command = await commandRepo.GetOutboxItemByIdAsync(idDeviceCommand);
             if (command == null)
             {
                 return NotFound();

@@ -1,3 +1,4 @@
+using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Devices;
 using Agrumy.Shared.Models;
@@ -21,8 +22,9 @@ public class DeviceConfigBuilderTests
     private IFarmOpenfieldRepository FarmOpenfieldRepo => _repo.As<IFarmOpenfieldRepository>().Object;
     private IExperimentRepository ExperimentRepo => _repo.As<IExperimentRepository>().Object;
     private IFirmwareRepository FirmwareRepo => _repo.As<IFirmwareRepository>().Object;
+    private IDeviceOutboxRepository OutboxRepo => _repo.As<IDeviceOutboxRepository>().Object;
 
-    // All seven facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
+    // All eight facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
     public DeviceConfigBuilderTests()
     {
         _repo.As<ITenantRepository>();
@@ -32,10 +34,19 @@ public class DeviceConfigBuilderTests
         _repo.As<IFarmOpenfieldRepository>();
         _repo.As<IExperimentRepository>();
         _repo.As<IFirmwareRepository>();
+        _repo.As<IDeviceOutboxRepository>();
     }
 
     private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, FarmOpenfieldRepo, ExperimentRepo,
-        FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo));
+        FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo),
+        new DeviceOutboxService(OutboxRepo, DeviceRepo, FarmUnitRepo, new NoOpMqttCommandPublisher()));
+
+    /// Every BuildAsync call now unconditionally consumes any pending ConfigChanged/HardReset outbox rows for the device - an empty pending list means ConsumeHardResetIfPendingAsync's own GetPendingOutboxItemsAsync read is the only outbox call, no HardReset means config.Reset comes back false.
+    private void SetUpNoPendingOutboxItems(int deviceId)
+    {
+        _repo.As<IDeviceOutboxRepository>().Setup(r => r.GetPendingOutboxItemsAsync(deviceId)).ReturnsAsync(new List<DeviceCommand>());
+        _repo.As<IDeviceOutboxRepository>().Setup(r => r.ConsumePendingByTypeAsync(deviceId, CommandActionType.ConfigChanged, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+    }
 
     [Fact]
     public async Task BuildAsync_RealBuilder_PopulatesEveryTopLevelFieldFromDevice()
@@ -59,7 +70,6 @@ public class DeviceConfigBuilderTests
             DeviceControllerEnabled = false,
             BatteryEnabled = true,
             Debug = true,
-            Reset = false,
             FirmwareUpdate = false, // keeps ResolveOfferAsync a no-DB-call short circuit - firmware-offer mapping is covered by FirmwareCatalogServiceTests, not this test's concern
             Enabled = true,
         };
@@ -67,6 +77,7 @@ public class DeviceConfigBuilderTests
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(7)).ReturnsAsync(new Tenant { IDTenant = 7, EmergencyStopActive = false });
         _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(1000038)).ReturnsAsync((DeviceSimulation?)null);
+        SetUpNoPendingOutboxItems(1000038);
 
         var builder = NewBuilder();
 
@@ -89,7 +100,7 @@ public class DeviceConfigBuilderTests
         Assert.Equal(device.DeviceControllerEnabled, config.DeviceControllerEnabled);
         Assert.Equal(device.BatteryEnabled, config.BatteryEnabled);
         Assert.Equal(device.Debug, config.Debug);
-        Assert.Equal(device.Reset, config.Reset);
+        Assert.False(config.Reset); // no pending HardReset outbox item
         Assert.Equal(device.FirmwareUpdate, config.FirmwareUpdate);
         Assert.Equal(device.Enabled, config.Enabled);
         // Computed, not copied straight off Device - still required to actually be present, not left at their type default.
@@ -104,6 +115,7 @@ public class DeviceConfigBuilderTests
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9, EmergencyStopActive = true });
         _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
+        SetUpNoPendingOutboxItems(5);
 
         var builder = NewBuilder();
         DeviceConfig config = await builder.BuildAsync(device, pendingCommand: null, board: null);
@@ -119,6 +131,7 @@ public class DeviceConfigBuilderTests
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
         _repo.As<ITenantRepository>().Setup(r => r.TenantGetByIdAsync(9)).ReturnsAsync(new Tenant { IDTenant = 9 });
         _repo.As<IDeviceRepository>().Setup(r => r.DeviceSimulationGetAsync(5)).ReturnsAsync((DeviceSimulation?)null);
+        SetUpNoPendingOutboxItems(5);
 
         var builder = NewBuilder();
         DeviceConfig config = await builder.BuildAsync(device, pending, board: null);

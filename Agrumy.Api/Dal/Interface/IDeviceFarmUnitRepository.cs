@@ -106,7 +106,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Whether this Zone already has a controller-capable device assigned - a Zone has at most one controller.
         Task<bool> DeviceFarmUnitZoneHasControllerAsync(int idDeviceFarmUnitZone);
 
-        /// The zone's one controller device, or null if none - CommandQueueService's Zone-target fan-out errors (does not silently no-op) when this is null.
+        /// The zone's one controller device, or null if none - DeviceOutboxService's Zone-target fan-out errors (does not silently no-op) when this is null.
         Task<Device?> DeviceFarmUnitZoneGetControllerAsync(int idDeviceFarmUnitZone);
 
         /// Every controller device across every zone under this unit - zones with no controller are simply absent, not an error.

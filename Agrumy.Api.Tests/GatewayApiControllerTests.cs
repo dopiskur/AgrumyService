@@ -38,9 +38,10 @@ public class GatewayApiControllerTests
     private GatewayApiController NewJwtController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new GatewayApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-            new CommandQueueService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog),
+            outboxService, catalog,
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
             new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object), NullLogger<GatewayApiController>.Instance);
     }
 
@@ -106,7 +107,7 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.DeviceGetByApiIdAsync("gateway1")).ReturnsAsync(gateway);
         _repo.Setup(r => r.DeviceGetByApiIdAsync("dev1")).ReturnsAsync(device);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
-        _repo.Setup(r => r.GetCommandByIdAsync(5)).ReturnsAsync((DeviceCommand?)null);
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(5)).ReturnsAsync((DeviceCommand?)null);
 
         var payload = JsonDocument.Parse("{\"CommandId\":5}").RootElement;
         var controller = NewController("gateway1");
@@ -129,7 +130,7 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.DeviceGetByApiIdAsync("gateway1")).ReturnsAsync(gateway);
         _repo.Setup(r => r.DeviceGetByApiIdAsync("dev1")).ReturnsAsync(device);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
-        _repo.Setup(r => r.GetCommandByIdAsync(5)).ReturnsAsync((DeviceCommand?)null);
+        _repo.Setup(r => r.GetOutboxItemByIdAsync(5)).ReturnsAsync((DeviceCommand?)null);
 
         string token = GatewayDeviceToken.Issue("dev1", "realKey");
         var payload = JsonDocument.Parse("{\"CommandId\":5}").RootElement;

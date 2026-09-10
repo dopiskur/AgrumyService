@@ -110,9 +110,6 @@ namespace Agrumy.Api.Dal.Interface
         /// DeviceSessionHandler's cache-miss fallback read - null when never authenticated or the row's ApiAuthToken was cleared; an ExpiresAtUtc in the past is the caller's job to check, same as the cache path's TTL.
         Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId);
 
-        /// Sets/clears the admin-triggered hard-reset flag - carried to the device via a normal authenticated config poll (DeviceConfigBuilder) AND, since that path may be exactly what's broken, via DeviceApiController.HardResetPending's apiId-only lookup.
-        Task DeviceHardResetSetAsync(int deviceID, bool pending);
-
         /// Persists the device's latest DetectSensors command result (JSON) plus when it was reported - null resultJson clears a stale/malformed result rather than leaving a previous scan's stale data displayed.
         Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt);
 

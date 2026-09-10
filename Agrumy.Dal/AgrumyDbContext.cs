@@ -51,7 +51,7 @@ namespace Agrumy.Dal
         public DbSet<ExperimentRow> Experiments => Set<ExperimentRow>();
         public DbSet<SensorDataExperimentRow> SensorDataExperiments => Set<SensorDataExperimentRow>();
         public DbSet<ControllerDataExperimentRow> ControllerDataExperiments => Set<ControllerDataExperimentRow>();
-        public DbSet<DeviceCommandRow> DeviceCommands => Set<DeviceCommandRow>();
+        public DbSet<DeviceOutboxRow> DeviceOutboxItems => Set<DeviceOutboxRow>();
         public DbSet<DeviceManualOverrideRow> DeviceManualOverrides => Set<DeviceManualOverrideRow>();
         public DbSet<GatewayDeviceMappingRow> GatewayDeviceMappings => Set<GatewayDeviceMappingRow>();
         public DbSet<DeviceDiscoveryReportRow> DeviceDiscoveryReports => Set<DeviceDiscoveryReportRow>();
@@ -453,13 +453,14 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.IDDevice).OnDelete(DeleteBehavior.NoAction);
             });
 
-            modelBuilder.Entity<DeviceCommandRow>(e =>
+            modelBuilder.Entity<DeviceOutboxRow>(e =>
             {
-                e.ToTable("deviceCommand");
-                e.HasKey(x => x.IDDeviceCommand);
-                e.Property(x => x.IDDeviceCommand).ValueGeneratedOnAdd();
-                e.HasIndex(x => new { x.DeviceID, x.Status }).HasDatabaseName("ix_deviceCommand_device_status");
-                e.HasIndex(x => new { x.DeviceID, x.ActiveKey }).IsUnique().HasDatabaseName("ux_deviceCommand_device_activekey"); // See DeviceCommandRow.ActiveKey; both providers allow multiple NULLs through a unique index, avoiding MySQL's unsupported partial-index syntax.
+                e.ToTable("deviceOutbox");
+                e.HasKey(x => x.IDDeviceOutbox);
+                e.Property(x => x.IDDeviceOutbox).ValueGeneratedOnAdd();
+                e.HasIndex(x => new { x.DeviceID, x.Status }).HasDatabaseName("ix_deviceOutbox_device_status");
+                e.HasIndex(x => new { x.DeviceID, x.ActiveKey }).IsUnique().HasDatabaseName("ux_deviceOutbox_device_activekey"); // See DeviceOutboxRow.ActiveKey; both providers allow multiple NULLs through a unique index, avoiding MySQL's unsupported partial-index syntax.
+                e.HasIndex(x => new { x.Status, x.PublishedAt }).HasDatabaseName("ix_deviceOutbox_pending_unpublished"); // DeviceOutboxDispatchEvaluator's sweep query.
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
             });
 
