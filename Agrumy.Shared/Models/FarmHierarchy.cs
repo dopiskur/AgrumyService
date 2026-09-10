@@ -105,4 +105,32 @@ namespace Agrumy.Shared.Models
         public int IDDevice { get; set; }
         public int IDFarmOpenfieldCropParcel { get; set; }
     }
+
+    /// Roadmap #513(1) - Open-Field's Crop-level cube, same sensor-average/status/trend shape as DeviceFarmUnitDashboard so the Farms page renders both branches with identical styling.
+    public class FarmOpenfieldCropDashboard
+    {
+        public int IDFarmOpenfieldCrop { get; set; }
+        public string? FarmOpenfieldCropName { get; set; }
+        public int FarmOpenfieldID { get; set; }
+        public int DisplayOrder { get; set; }
+        public int ParcelCount { get; set; }
+        public int DeviceCount { get; set; }
+        public SensorAverages Averages { get; set; } = new();
+        public ZoneStatus Status { get; set; }
+        public SensorTrend Trend { get; set; } = new();
+        public IList<UnitZoneProblemAlert> ProblemAlerts { get; set; } = new List<UnitZoneProblemAlert>();
+    }
+
+    /// Roadmap #513(1) - Open-Field's Parcel-level cube, same shape as DeviceFarmUnitZoneDashboard narrowed to one parcel.
+    public class FarmOpenfieldCropParcelDashboard
+    {
+        public int IDFarmOpenfieldCropParcel { get; set; }
+        public int IDFarmOpenfieldCrop { get; set; }
+        public string? FarmOpenfieldCropParcelName { get; set; }
+        public int DeviceCount { get; set; }
+        public SensorAverages Averages { get; set; } = new();
+        public ZoneStatus Status { get; set; }
+        public SensorTrend Trend { get; set; } = new();
+        public IList<UnitZoneProblemAlert> ProblemAlerts { get; set; } = new List<UnitZoneProblemAlert>();
+    }
 }

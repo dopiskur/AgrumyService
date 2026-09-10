@@ -45,6 +45,12 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<IList<FarmOpenfieldCrop>>> CropsGet() =>
             Ok(await farmOpenfieldRepo.CropsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
 
+        /// Roadmap #513(1) - Farm page's Crop cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitDashboardGet.
+        [Authorize]
+        [HttpGet("Crop/Dashboard")]
+        public async Task<ActionResult<IList<FarmOpenfieldCropDashboard>>> CropDashboardGet() =>
+            Ok(await farmOpenfieldRepo.CropDashboardGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
+
         [Authorize]
         [HttpGet("Crop")]
         public async Task<ActionResult<FarmOpenfieldCrop>> CropGet(int? idFarmOpenfieldCrop)
@@ -146,6 +152,19 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
             return Ok(await farmOpenfieldRepo.ParcelsGetAsync(crop!.IDFarmOpenfieldCrop!.Value));
+        }
+
+        /// Roadmap #513(1) - Crop detail page's Parcel cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitZoneDashboardListGet.
+        [Authorize]
+        [HttpGet("Crop/Parcel/Dashboard")]
+        public async Task<ActionResult<IList<FarmOpenfieldCropParcelDashboard>>> ParcelDashboardListGet(int? idFarmOpenfieldCrop)
+        {
+            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await farmOpenfieldRepo.ParcelDashboardListGetAsync(crop!.IDFarmOpenfieldCrop!.Value));
         }
 
         [Authorize]

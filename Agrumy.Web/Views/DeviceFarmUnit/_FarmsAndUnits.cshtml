@@ -76,8 +76,12 @@ else if (!multipleFarms)
                     @foreach (var c in crops)
                     {
                         <div class="col-md-4">
-                            <div class="small-box bg-hierarchy-mid position-relative">
-                                <div class="inner"><h3 class="fs-4">@c.FarmOpenfieldCropName</h3></div>
+                            <div class="small-box text-bg-primary position-relative">
+                                <div class="inner">
+                                    <h3 class="fs-4">@c.FarmOpenfieldCropName <partial name="_ZoneStatusBadge" model="(c.Status, c.ProblemAlerts)" /></h3>
+                                    <p class="mb-2">@c.ParcelCount parcel@(c.ParcelCount == 1 ? "" : "s") &middot; @c.DeviceCount device@(c.DeviceCount == 1 ? "" : "s")</p>
+                                    <partial name="_SensorAverages" model="new SensorSummaryViewModel { Averages = c.Averages, Trend = c.Trend }" />
+                                </div>
                                 <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
                                 <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@c.IDFarmOpenfieldCrop" class="stretched-link" aria-label="Open @c.FarmOpenfieldCropName"></a>
                             </div>

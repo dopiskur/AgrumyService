@@ -15,9 +15,9 @@ namespace Agrumy.Api.Dal
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
-        /// Same shape as EfDeviceFarmUnitRepository's private UnitZoneDeviceSnapshot - kept as its own copy rather than shared, since the two repositories are otherwise independent (see this class's own doc comment).
+        /// Same shape as EfDeviceFarmUnitRepository's private UnitZoneDeviceSnapshot - kept as its own copy rather than shared, since the two repositories are otherwise independent (see this class's own doc comment). CropID/ParcelID ride along unused by the single-scope CropAggregateAsync/ParcelAggregateAsync call sites, only read by the batched CropDashboardGetAsync/ParcelDashboardListGetAsync below.
         private sealed record CropParcelDeviceSnapshot(
-            bool Enabled, bool Online, bool HasRecentProblemEvent,
+            int? FarmOpenfieldCropID, int? FarmOpenfieldCropParcelID, bool Enabled, bool Online, bool HasRecentProblemEvent,
             double? Temperature, double? SoilTemperature, double? Humidity, int? Moisture, int? Light,
             int? Co2, int? Tvoc, double? Barometer, double? LiquidPH, int? RainLevel, int? WaterLevel, double? Wind,
             double? Ec, double? Weight)
@@ -311,7 +311,8 @@ namespace Agrumy.Api.Dal
         public async Task<(SensorAverages Averages, SensorTrend Trend)> CropAggregateAsync(int idFarmOpenfieldCrop)
         {
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropID == idFarmOpenfieldCrop);
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            int? tenantID = await db.FarmOpenfieldCrops.AsNoTracking().Where(c => c.IDFarmOpenfieldCrop == idFarmOpenfieldCrop).Select(c => c.TenantID).FirstOrDefaultAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(tenantID);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var parcelIds = await db.FarmOpenfieldCropParcels.AsNoTracking()
                 .Where(p => p.FarmOpenfieldCropID == idFarmOpenfieldCrop)
@@ -323,16 +324,150 @@ namespace Agrumy.Api.Dal
         public async Task<(SensorAverages Averages, SensorTrend Trend)> ParcelAggregateAsync(int idFarmOpenfieldCropParcel)
         {
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel);
-            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync();
+            int? tenantID = await db.FarmOpenfieldCropParcels.AsNoTracking().Where(p => p.IDFarmOpenfieldCropParcel == idFarmOpenfieldCropParcel).Select(p => p.TenantID).FirstOrDefaultAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(tenantID);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             return (Average(snapshots), await BuildTrendAsync([idFarmOpenfieldCropParcel]));
         }
 
-        private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync()
+        // ---- Dashboard (roadmap #513) - Crop/Parcel equivalents of EfDeviceFarmUnitRepository.DeviceFarmUnitDashboardGetAsync/DeviceFarmUnitZoneDashboardListGetAsync, same sensor-average-cube-with-status styling. ----
+
+        public async Task<IList<FarmOpenfieldCropDashboard>> CropDashboardGetAsync(int? tenantID)
+        {
+            IQueryable<FarmOpenfieldCropRow> crops = db.FarmOpenfieldCrops.AsNoTracking();
+            if (tenantID != null)
+            {
+                crops = crops.Where(c => c.TenantID == tenantID);
+            }
+            var cropRows = await crops.OrderBy(c => c.DisplayOrder).ThenBy(c => c.FarmOpenfieldCropName).ToListAsync();
+
+            IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropID != null);
+            IQueryable<FarmOpenfieldCropParcelRow> scopedParcels = db.FarmOpenfieldCropParcels.AsNoTracking();
+            if (tenantID != null)
+            {
+                scopedDevices = scopedDevices.Where(d => d.TenantID == tenantID);
+                scopedParcels = scopedParcels.Where(p => p.TenantID == tenantID);
+            }
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(tenantID);
+            var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
+            var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
+            var parcelCountByCrop = (await scopedParcels.Select(p => p.FarmOpenfieldCropID).ToListAsync())
+                .GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+
+            var result = new List<FarmOpenfieldCropDashboard>();
+            foreach (FarmOpenfieldCropRow c in cropRows)
+            {
+                var scoped = snapshots.Where(s => s.FarmOpenfieldCropID == c.IDFarmOpenfieldCrop).ToList();
+                var parcelIds = await db.FarmOpenfieldCropParcels.AsNoTracking()
+                    .Where(p => p.FarmOpenfieldCropID == c.IDFarmOpenfieldCrop).Select(p => p.IDFarmOpenfieldCropParcel).ToListAsync();
+                result.Add(new FarmOpenfieldCropDashboard
+                {
+                    IDFarmOpenfieldCrop = c.IDFarmOpenfieldCrop,
+                    FarmOpenfieldCropName = c.FarmOpenfieldCropName,
+                    FarmOpenfieldID = c.FarmOpenfieldID,
+                    DisplayOrder = c.DisplayOrder,
+                    ParcelCount = parcelCountByCrop.GetValueOrDefault(c.IDFarmOpenfieldCrop),
+                    DeviceCount = scoped.Count,
+                    Averages = Average(scoped),
+                    Status = ComputeStatus(scoped),
+                    Trend = await BuildTrendAsync(parcelIds),
+                    ProblemAlerts = alerts.Where(a => a.FarmOpenfieldCropID == c.IDFarmOpenfieldCrop).Select(ToDtoAlert).ToList(),
+                });
+            }
+            return result;
+        }
+
+        public async Task<IList<FarmOpenfieldCropParcelDashboard>> ParcelDashboardListGetAsync(int idFarmOpenfieldCrop)
+        {
+            var parcelRows = await db.FarmOpenfieldCropParcels.AsNoTracking()
+                .Where(p => p.FarmOpenfieldCropID == idFarmOpenfieldCrop).ToListAsync();
+
+            IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID != null
+                && db.FarmOpenfieldCropParcels.Where(p => p.FarmOpenfieldCropID == idFarmOpenfieldCrop).Select(p => p.IDFarmOpenfieldCropParcel).Contains(d.FarmOpenfieldCropParcelID.Value));
+            int? tenantID = await db.FarmOpenfieldCrops.AsNoTracking().Where(c => c.IDFarmOpenfieldCrop == idFarmOpenfieldCrop).Select(c => c.TenantID).FirstOrDefaultAsync();
+            (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(tenantID);
+            var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
+            var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
+
+            var result = new List<FarmOpenfieldCropParcelDashboard>();
+            foreach (FarmOpenfieldCropParcelRow p in parcelRows)
+            {
+                var scoped = snapshots.Where(s => s.FarmOpenfieldCropParcelID == p.IDFarmOpenfieldCropParcel).ToList();
+                result.Add(new FarmOpenfieldCropParcelDashboard
+                {
+                    IDFarmOpenfieldCropParcel = p.IDFarmOpenfieldCropParcel,
+                    IDFarmOpenfieldCrop = p.FarmOpenfieldCropID,
+                    FarmOpenfieldCropParcelName = p.FarmOpenfieldCropParcelName,
+                    DeviceCount = scoped.Count,
+                    Averages = Average(scoped),
+                    Status = ComputeStatus(scoped),
+                    Trend = await BuildTrendAsync([p.IDFarmOpenfieldCropParcel]),
+                    ProblemAlerts = alerts.Where(a => a.FarmOpenfieldCropParcelID == p.IDFarmOpenfieldCropParcel).Select(ToDtoAlert).ToList(),
+                });
+            }
+            return result;
+        }
+
+        /// Same "Red beats Orange beats Green" rule as EfDeviceFarmUnitRepository.ComputeStatus.
+        private static ZoneStatus ComputeStatus(IReadOnlyCollection<CropParcelDeviceSnapshot> snapshots)
+        {
+            if (snapshots.Any(s => s.Enabled && !s.Online))
+            {
+                return ZoneStatus.Red;
+            }
+            if (snapshots.Any(s => s.HasRecentProblemEvent) || snapshots.Any(s => !s.Enabled))
+            {
+                return ZoneStatus.Orange;
+            }
+            return ZoneStatus.Green;
+        }
+
+        private sealed record CropParcelProblemAlertRow(int? FarmOpenfieldCropID, int? FarmOpenfieldCropParcelID, int IDEventDevice, int DeviceID, string? DeviceName, int EventID, DateTimeOffset? Date, string? Message);
+
+        /// Same predicate as GetDeviceSnapshotsAsync's HasRecentProblemEvent, but returns the actual rows - same shape as EfDeviceFarmUnitRepository.GetProblemAlertsAsync.
+        private async Task<List<CropParcelProblemAlertRow>> GetProblemAlertsAsync(IQueryable<DeviceRow> devices, int problemEventExpiryHours, bool problemEventAlertsEnabled)
+        {
+            if (!problemEventAlertsEnabled)
+            {
+                return [];
+            }
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddHours(-problemEventExpiryHours);
+            var rows = await devices
+                .Join(
+                    db.EventDevices.AsNoTracking().Where(e => e.AcknowledgedAt == null && e.Date >= cutoff && ProblemEventTypeIds.Contains(e.EventID)),
+                    d => d.IDDevice, e => e.DeviceID,
+                    (d, e) => new { d.FarmOpenfieldCropID, d.FarmOpenfieldCropParcelID, e.IDEventDevice, d.IDDevice, d.DeviceName, e.EventID, e.Date, e.Message })
+                .OrderByDescending(a => a.Date)
+                .ToListAsync();
+            return rows.Select(a => new CropParcelProblemAlertRow(a.FarmOpenfieldCropID, a.FarmOpenfieldCropParcelID, a.IDEventDevice, a.IDDevice, a.DeviceName, a.EventID, a.Date, a.Message)).ToList();
+        }
+
+        private static UnitZoneProblemAlert ToDtoAlert(CropParcelProblemAlertRow a) => new()
+        {
+            IDEventDevice = a.IDEventDevice,
+            DeviceID = a.DeviceID,
+            DeviceName = a.DeviceName,
+            EventType = Enum.IsDefined(typeof(DeviceEventType), a.EventID) ? ((DeviceEventType)a.EventID).ToString() : $"Unknown({a.EventID})",
+            Date = a.Date,
+            Message = a.Message,
+        };
+
+        /// Tenant's own TenantAlertConfig override (roadmap #509) wins over the ServerConfig default, same cascade as EfDeviceFarmUnitRepository's own copy.
+        private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync(int? tenantID)
         {
             ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);
-            int expiryHours = config.ProblemEventExpiryHours > 0 ? config.ProblemEventExpiryHours : 24;
-            return (expiryHours, config.ProblemEventAlertsEnabled);
+            bool? tenantAlertsEnabled = null;
+            int? tenantExpiryHours = null;
+            if (tenantID is int id)
+            {
+                var row = await db.Tenants.AsNoTracking().Where(t => t.IDTenant == id)
+                    .Select(t => new { t.ProblemEventAlertsEnabled, t.ProblemEventExpiryHours }).FirstOrDefaultAsync();
+                tenantAlertsEnabled = row?.ProblemEventAlertsEnabled;
+                tenantExpiryHours = row?.ProblemEventExpiryHours;
+            }
+            int expiryHoursRaw = tenantExpiryHours ?? config.ProblemEventExpiryHours;
+            int expiryHours = expiryHoursRaw > 0 ? expiryHoursRaw : 24;
+            return (expiryHours, tenantAlertsEnabled ?? config.ProblemEventAlertsEnabled);
         }
 
         /// Same "latest telemetry per device via portable scalar subqueries" shape as EfDeviceFarmUnitRepository.GetDeviceSnapshotsAsync.
@@ -344,6 +479,8 @@ namespace Agrumy.Api.Dal
             var deviceLatestIds = await devices
                 .Select(d => new
                 {
+                    d.FarmOpenfieldCropID,
+                    d.FarmOpenfieldCropParcelID,
                     d.Enabled,
                     d.SleepSeconds,
                     LastSeenAt = db.DeviceDiagnostics.AsNoTracking()
@@ -378,7 +515,7 @@ namespace Agrumy.Api.Dal
                 bool enabled = d.Enabled == true;
                 bool online = !enabled || DeviceFleetStatus.ComputeOnline(d.LastSeenAt, d.SleepSeconds, utcNow);
                 return new CropParcelDeviceSnapshot(
-                    enabled, online, d.HasRecentProblemEvent,
+                    d.FarmOpenfieldCropID, d.FarmOpenfieldCropParcelID, enabled, online, d.HasRecentProblemEvent,
                     s?.Temperature, s?.SoilTemperature, s?.Humidity, s?.Moisture, s?.Light,
                     s?.Co2, s?.Tvoc, s?.Barometer, s?.LiquidPH, s?.RainLevel, s?.WaterLevel, s?.Wind,
                     s?.Ec, s?.Weight);

@@ -48,5 +48,9 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<(SensorAverages Averages, SensorTrend Trend)> CropAggregateAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.CropAggregateAsync(idFarmOpenfieldCrop);
 
         public Task<(SensorAverages Averages, SensorTrend Trend)> ParcelAggregateAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelAggregateAsync(idFarmOpenfieldCropParcel);
+
+        public Task<IList<FarmOpenfieldCropDashboard>> CropDashboardGetAsync(int? tenantID) => farmOpenfieldRepository.CropDashboardGetAsync(tenantID);
+
+        public Task<IList<FarmOpenfieldCropParcelDashboard>> ParcelDashboardListGetAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.ParcelDashboardListGetAsync(idFarmOpenfieldCrop);
     }
 }

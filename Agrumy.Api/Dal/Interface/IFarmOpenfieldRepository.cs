@@ -64,5 +64,12 @@ namespace Agrumy.Api.Dal.Interface
         Task<(SensorAverages Averages, SensorTrend Trend)> CropAggregateAsync(int idFarmOpenfieldCrop);
 
         Task<(SensorAverages Averages, SensorTrend Trend)> ParcelAggregateAsync(int idFarmOpenfieldCropParcel);
+
+        // ---- Dashboard (roadmap #513) -----------------------------------
+
+        /// Crop/Parcel arms of the Farms page's own sensor-average cube grid, Crop/Parcel equivalents of IDeviceFarmUnitRepository.DeviceFarmUnitDashboardGetAsync.
+        Task<IList<FarmOpenfieldCropDashboard>> CropDashboardGetAsync(int? tenantID);
+
+        Task<IList<FarmOpenfieldCropParcelDashboard>> ParcelDashboardListGetAsync(int idFarmOpenfieldCrop);
     }
 }

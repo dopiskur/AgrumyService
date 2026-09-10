@@ -58,8 +58,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 Crop = crop,
                 Farm = farm ?? new DeviceFarm(),
-                Parcels = await api.ParcelsGet(idFarmOpenfieldCrop),
-                Fleet = await api.DeviceFleetGet(),
+                Parcels = await api.ParcelDashboardListGet(idFarmOpenfieldCrop),
             });
         }
 

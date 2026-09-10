@@ -59,16 +59,17 @@
             <div class="row g-3">
                 @foreach (var p in Model.Parcels)
                 {
-                    int deviceCount = Model.Fleet.Count(f => f.FarmOpenfieldCropParcelID == p.IDFarmOpenfieldCropParcel);
                     <div class="col-md-4">
-                        <div class="small-box bg-hierarchy-leaf position-relative">
-                            <div class="inner">
-                                <h3 class="fs-4">@p.FarmOpenfieldCropParcelName</h3>
-                                <p class="mb-0">@deviceCount device@(deviceCount == 1 ? "" : "s")</p>
+                        <a asp-action="Parcel" asp-route-idFarmOpenfieldCropParcel="@p.IDFarmOpenfieldCropParcel" class="text-decoration-none text-reset">
+                            <div class="small-box text-bg-info h-100">
+                                <div class="inner">
+                                    <h3 class="fs-4">@p.FarmOpenfieldCropParcelName <partial name="_ZoneStatusBadge" model="(p.Status, p.ProblemAlerts)" /></h3>
+                                    <p class="mb-2">@p.DeviceCount device@(p.DeviceCount == 1 ? "" : "s")</p>
+                                    <partial name="_SensorAverages" model="new SensorSummaryViewModel { Averages = p.Averages, Trend = p.Trend }" />
+                                </div>
+                                <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
                             </div>
-                            <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
-                            <a asp-action="Parcel" asp-route-idFarmOpenfieldCropParcel="@p.IDFarmOpenfieldCropParcel" class="stretched-link" aria-label="Open @p.FarmOpenfieldCropParcelName"></a>
-                        </div>
+                        </a>
                     </div>
                 }
             </div>

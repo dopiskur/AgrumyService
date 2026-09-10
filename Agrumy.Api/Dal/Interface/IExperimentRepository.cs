@@ -20,7 +20,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Open-Field's Parcel&gt;Crop&gt;Farm equivalent of ActiveExperimentIdForZoneAsync.
         Task<int?> ActiveExperimentIdForParcelAsync(int idFarmOpenfieldCropParcel);
 
-        /// Batched tenant-wide zone id -> active experiment id map (same cascade as the single-zone lookup above, resolved for every zone at once) - RuleNotificationEvaluator's per-tenant lookup, avoiding an N+1 zone-by-zone query.
+        /// Batched tenant-wide zone/parcel id -> active experiment id map (same Zone>Unit>Farm and Parcel>Crop>Farm cascades as the single-leaf lookups above, resolved for every zone and parcel at once, same dictionary) - RuleNotificationEvaluator's per-tenant lookup, avoiding an N+1 zone/parcel-by-zone/parcel query.
         Task<IDictionary<int, int>> ActiveExperimentIdsByZoneAsync(int tenantID);
 
         /// Appends one row per reading, tagged with idExperiment - called from EfSensorDataRepository.SensorDataPushAsync alongside its own normal dataSensor insert, never instead of it.

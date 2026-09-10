@@ -13,7 +13,7 @@ namespace Agrumy.Api.BackgroundWorkers
     /// rule's OR-across-rules/AND-OR-within-a-rule fold happens on-device, this is the server-side
     /// equivalent for the action type firmware has no way to perform itself.
     public sealed class RuleNotificationEvaluator(
-        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IUserRepository userRepo,
+        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository openfieldRepo, IUserRepository userRepo,
         INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo,
         IExperimentRepository experimentRepo)
     {
@@ -117,6 +117,69 @@ namespace Agrumy.Api.BackgroundWorkers
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, zoneId);
                         items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend));
+                    }
+                }
+            }
+
+            // Open-Field's own Farm>Crop>Parcel walk, mirrors the Unit>Zone loop above field-for-field - simulationSessionIdByZone/experimentIdByZone already cover Parcel ids too (see ActiveSimulationSessionIdsByZoneAsync/ActiveExperimentIdsByZoneAsync), and the *ScopedByExperiment/BySession caches above are shared across both branches since they're keyed by session/experiment id, not by zone/parcel.
+            IList<FarmOpenfield> openfields = await openfieldRepo.FarmOpenfieldsGetAsync(tenantId);
+            Dictionary<int, int> farmIdByOpenfieldId = openfields.Where(o => o.IDFarmOpenfield is int).ToDictionary(o => o.IDFarmOpenfield!.Value, o => o.FarmID);
+
+            foreach (FarmOpenfieldCrop crop in await openfieldRepo.CropsGetAsync(tenantId))
+            {
+                if (crop.IDFarmOpenfieldCrop is not int cropId)
+                {
+                    continue;
+                }
+                var cropScoped = notificationRules.Where(r => r.DeviceFarmOpenfieldCropID == cropId).ToList();
+                var farmScoped = farmIdByOpenfieldId.TryGetValue(crop.FarmOpenfieldID, out int cropFarmId)
+                    ? notificationRules.Where(r => r.DeviceFarmID == cropFarmId).ToList()
+                    : [];
+                var globalScoped = notificationRules.Where(r => r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
+                    && r.DeviceFarmOpenfieldCropID == null && r.DeviceFarmOpenfieldCropParcelID == null).ToList();
+
+                foreach (FarmOpenfieldCropParcel parcel in await openfieldRepo.ParcelsGetAsync(cropId))
+                {
+                    if (parcel.IDFarmOpenfieldCropParcel is not int parcelId)
+                    {
+                        continue;
+                    }
+                    var parcelScoped = notificationRules.Where(r => r.DeviceFarmOpenfieldCropParcelID == parcelId).ToList();
+                    List<DeviceFarmUnitZoneRule> simulationScoped = [];
+                    if (simulationSessionIdByZone.TryGetValue(parcelId, out int simSessionId))
+                    {
+                        if (!simulationRulesBySession.TryGetValue(simSessionId, out List<DeviceFarmUnitZoneRule>? cached))
+                        {
+                            cached = (await unitRepo.RulesGetForSimulationAsync(simSessionId)).Where(r => r.ActionType == ActionType.Notification).ToList();
+                            simulationRulesBySession[simSessionId] = cached;
+                        }
+                        simulationScoped = cached;
+                    }
+                    List<DeviceFarmUnitZoneRule> experimentScoped = [];
+                    if (experimentIdByZone.TryGetValue(parcelId, out int experimentId))
+                    {
+                        if (!experimentRulesByExperiment.TryGetValue(experimentId, out List<DeviceFarmUnitZoneRule>? cachedExperiment))
+                        {
+                            cachedExperiment = (await unitRepo.RulesGetForExperimentAsync(experimentId)).Where(r => r.ActionType == ActionType.Notification).ToList();
+                            experimentRulesByExperiment[experimentId] = cachedExperiment;
+                        }
+                        experimentScoped = cachedExperiment;
+                    }
+                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, experimentScoped, parcelScoped, cropScoped, farmScoped, globalScoped);
+                    if (effective.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    (SensorAverages averages, SensorTrend trend) = await openfieldRepo.ParcelAggregateAsync(parcelId);
+                    foreach (DeviceFarmUnitZoneRule rule in effective)
+                    {
+                        if (rule.IDDeviceFarmUnitZoneRule is not int ruleId)
+                        {
+                            continue;
+                        }
+                        bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, parcelId);
+                        items.Add(new EvalItem(rule, parcelId, tenantId, wasTrue, averages, utcOffsetSeconds, trend));
                     }
                 }
             }

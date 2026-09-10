@@ -327,16 +327,28 @@ namespace Agrumy.Api.Dal
         public async Task<IDictionary<int, int>> ActiveSimulationSessionIdsByZoneAsync(int tenantID)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            var rows = await db.SimulationSessionDevices.AsNoTracking()
+            var activeMembers = db.SimulationSessionDevices.AsNoTracking()
                 .Join(db.SimulationSessions.AsNoTracking().Where(s => s.TenantID == tenantID && s.StoppedAtUtc == null && s.ExpiresAtUtc > now),
-                    sd => sd.IDSimulationSession, s => s.IDSimulationSession, (sd, s) => new { sd.DeviceID, s.IDSimulationSession })
+                    sd => sd.IDSimulationSession, s => s.IDSimulationSession, (sd, s) => new { sd.DeviceID, s.IDSimulationSession });
+
+            var zoneRows = await activeMembers
                 .Join(db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID != null),
-                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { ZoneID = d.DeviceFarmUnitZoneID!.Value, ms.IDSimulationSession })
+                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.DeviceFarmUnitZoneID!.Value, ms.IDSimulationSession })
                 .ToListAsync();
+            // Open-Field's Parcel is Zone's own equivalent leaf - same dictionary, same "last write wins on overlap" convention, so RuleNotificationEvaluator's single per-tenant lookup covers both branches.
+            var parcelRows = await activeMembers
+                .Join(db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID != null),
+                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.FarmOpenfieldCropParcelID!.Value, ms.IDSimulationSession })
+                .ToListAsync();
+
             var map = new Dictionary<int, int>();
-            foreach (var r in rows)
+            foreach (var r in zoneRows)
             {
-                map[r.ZoneID] = r.IDSimulationSession;
+                map[r.LeafID] = r.IDSimulationSession;
+            }
+            foreach (var r in parcelRows)
+            {
+                map[r.LeafID] = r.IDSimulationSession;
             }
             return map;
         }

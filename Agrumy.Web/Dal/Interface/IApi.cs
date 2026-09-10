@@ -367,6 +367,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<FarmOpenfieldCrop>> CropsGet();
 
+        [Get("/api/FarmOpenfield/Crop/Dashboard")]
+        Task<IList<FarmOpenfieldCropDashboard>> CropDashboardGet();
+
         [Get("/api/FarmOpenfield/Crop")]
         Task<FarmOpenfieldCrop> CropGet(int? idFarmOpenfieldCrop);
 
@@ -385,6 +388,9 @@ namespace Agrumy.Web.Dal.Interface
 
         [Get("/api/FarmOpenfield/Parcel")]
         Task<IList<FarmOpenfieldCropParcel>> ParcelsGet(int? idFarmOpenfieldCrop);
+
+        [Get("/api/FarmOpenfield/Crop/Parcel/Dashboard")]
+        Task<IList<FarmOpenfieldCropParcelDashboard>> ParcelDashboardListGet(int? idFarmOpenfieldCrop);
 
         [Get("/api/FarmOpenfield/ParcelById")]
         Task<FarmOpenfieldCropParcel> ParcelGetById(int? idFarmOpenfieldCropParcel);

@@ -48,7 +48,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Sessions past ExpiresAtUtc but not yet StoppedAtUtc, Devices populated - SimulationSessionExpiryEvaluator's own worklist.
         Task<IList<SimulationSession>> SimulationSessionsExpiredButActiveGetAsync(DateTimeOffset nowUtc);
 
-        /// Zone id -> the active session id owning at least one member device assigned to that zone, for every zone in tenantID - RuleNotificationEvaluator's per-zone "which simulation-scoped rules (if any) apply here" lookup. A zone with two overlapping sessions' devices (should not normally happen - AddDeviceToSession already rejects a device already active elsewhere) resolves to whichever session the query happens to return last, not both.
+        /// Zone or Parcel id (Open-Field's own leaf level, same dictionary) -> the active session id owning at least one member device assigned there, for every zone/parcel in tenantID - RuleNotificationEvaluator's per-leaf "which simulation-scoped rules (if any) apply here" lookup. A leaf with two overlapping sessions' devices (should not normally happen - AddDeviceToSession already rejects a device already active elsewhere) resolves to whichever session the query happens to return last, not both.
         Task<IDictionary<int, int>> ActiveSimulationSessionIdsByZoneAsync(int tenantID);
 
         // ---- Simulation groups - a whole Unit/Zone added together, one override value set fanned out to every member device's own DeviceSimulation. ----

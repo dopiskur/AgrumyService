@@ -93,7 +93,7 @@ namespace Agrumy.Web.Controllers.View
         {
             Units = await api.DeviceFarmUnitDashboardGet(),
             Farms = await api.DeviceFarmsGet(),
-            Crops = await api.CropsGet(),
+            Crops = await api.CropDashboardGet(),
             Openfields = await api.FarmOpenfieldsGet(),
         };
 
@@ -102,7 +102,7 @@ namespace Agrumy.Web.Controllers.View
         {
             Farms = await api.DeviceFarmsGet(),
             Units = await api.DeviceFarmUnitDashboardGet(),
-            Crops = await api.CropsGet(),
+            Crops = await api.CropDashboardGet(),
             Openfields = await api.FarmOpenfieldsGet(),
         });
 

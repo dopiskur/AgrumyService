@@ -121,6 +121,8 @@ namespace Agrumy.Api.Dal
             Dictionary<int, int> zoneScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Zone).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
             Dictionary<int, int> unitScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Unit).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
             Dictionary<int, int> farmScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Farm).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> cropScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Crop).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> parcelScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Parcel).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
 
             List<DeviceFarmUnitZoneRow> zones = await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.TenantID == tenantID).ToListAsync();
             Dictionary<int, int?> unitFarmById = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.TenantID == tenantID)
@@ -139,6 +141,28 @@ namespace Agrumy.Api.Dal
                 else if (unitFarmById.TryGetValue(zone.DeviceFarmUnitID, out int? idFarm) && idFarm is int farmId && farmScoped.TryGetValue(farmId, out int farmExperimentId))
                 {
                     map[zone.IDDeviceFarmUnitZone] = farmExperimentId;
+                }
+            }
+
+            // Open-Field's own Crop>Parcel>Farm cascade, same resolution order as Unit>Zone>Farm above.
+            List<FarmOpenfieldCropParcelRow> parcels = await db.FarmOpenfieldCropParcels.AsNoTracking().Where(p => p.TenantID == tenantID).ToListAsync();
+            Dictionary<int, int?> cropFarmById = await db.FarmOpenfieldCrops.AsNoTracking().Where(c => c.TenantID == tenantID)
+                .Join(db.FarmOpenfields.AsNoTracking(), c => c.FarmOpenfieldID, o => o.IDFarmOpenfield, (c, o) => new { c.IDFarmOpenfieldCrop, o.FarmID })
+                .ToDictionaryAsync(x => x.IDFarmOpenfieldCrop, x => (int?)x.FarmID);
+
+            foreach (FarmOpenfieldCropParcelRow parcel in parcels)
+            {
+                if (parcelScoped.TryGetValue(parcel.IDFarmOpenfieldCropParcel, out int parcelExperimentId))
+                {
+                    map[parcel.IDFarmOpenfieldCropParcel] = parcelExperimentId;
+                }
+                else if (cropScoped.TryGetValue(parcel.FarmOpenfieldCropID, out int cropExperimentId))
+                {
+                    map[parcel.IDFarmOpenfieldCropParcel] = cropExperimentId;
+                }
+                else if (cropFarmById.TryGetValue(parcel.FarmOpenfieldCropID, out int? idFarm) && idFarm is int farmId && farmScoped.TryGetValue(farmId, out int farmExperimentId))
+                {
+                    map[parcel.IDFarmOpenfieldCropParcel] = farmExperimentId;
                 }
             }
             return map;

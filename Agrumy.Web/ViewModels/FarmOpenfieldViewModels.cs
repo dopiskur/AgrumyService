@@ -7,9 +7,7 @@ namespace Agrumy.Web.ViewModels
     {
         public required FarmOpenfieldCrop Crop { get; init; }
         public required DeviceFarm Farm { get; init; }
-        public IList<FarmOpenfieldCropParcel> Parcels { get; init; } = [];
-        /// Fleet rows for every device across this crop's parcels, filtered client-side per parcel by FarmOpenfieldCropParcelID - same "one shared fetch, filter in the view" reuse as ZoneViewModel.AllFleet.
-        public IList<DeviceFleetStatus> Fleet { get; init; } = [];
+        public IList<FarmOpenfieldCropParcelDashboard> Parcels { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets, discovery, or day/night presets - fast-follow).
