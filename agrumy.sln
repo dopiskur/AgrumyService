@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agrumy.ContractGen", "tools\Agrumy.ContractGen\Agrumy.ContractGen.csproj", "{A5E6A2CB-8CC1-4756-B688-7BD390733E4B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agrumy.MqttCredentialSync", "tools\Agrumy.MqttCredentialSync\Agrumy.MqttCredentialSync.csproj", "{767CE501-468A-4B2B-8A47-D37A5101A2A2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -155,12 +157,25 @@ Global
 		{A5E6A2CB-8CC1-4756-B688-7BD390733E4B}.Release|x64.Build.0 = Release|Any CPU
 		{A5E6A2CB-8CC1-4756-B688-7BD390733E4B}.Release|x86.ActiveCfg = Release|Any CPU
 		{A5E6A2CB-8CC1-4756-B688-7BD390733E4B}.Release|x86.Build.0 = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|x64.Build.0 = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Debug|x86.Build.0 = Debug|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|x64.ActiveCfg = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|x64.Build.0 = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|x86.ActiveCfg = Release|Any CPU
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A5E6A2CB-8CC1-4756-B688-7BD390733E4B} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+		{767CE501-468A-4B2B-8A47-D37A5101A2A2} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1993BD83-8FDD-4397-B1F6-4EC63949F33A}

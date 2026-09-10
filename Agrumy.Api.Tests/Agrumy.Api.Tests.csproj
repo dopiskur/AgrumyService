@@ -27,6 +27,7 @@
     <ProjectReference Include="..\Agrumy.Web\Agrumy.Web.csproj" />
     <ProjectReference Include="..\Agrumy.Gateway\Agrumy.Gateway.csproj" />
     <ProjectReference Include="..\tools\Agrumy.ContractGen\Agrumy.ContractGen.csproj" />
+    <ProjectReference Include="..\tools\Agrumy.MqttCredentialSync\Agrumy.MqttCredentialSync.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,18 @@
+# Per-device credentials: each device's own ApiId/ApiKey (already its REST bearer
+# credential, DeviceAuth.cs) doubles as its MQTT username/password. password_file/acl_file are
+# generated and kept in sync by `dotnet run --project tools/Agrumy.MqttCredentialSync`, never
+# hand-edited - a tenant with MqttEnabled=false (TenantQuota) simply has no entry in either file,
+# so it cannot authenticate to the broker at all, not just get its server-push commands withheld
+# (MqttEnabled previously only gated server->device push, never the device's own broker connect).
+
+listener {{BROKER_PORT}}
+allow_anonymous false
+password_file {{PASSWORD_FILE}}
+acl_file {{ACL_FILE}}
+
+# Same self-signed-cert convention as install.sh's own generate_self_signed_cert (nginx/apache
+# path-based templates) - a bare IP has no real hostname for Let's Encrypt to issue against.
+# A self-signed cert is its own CA, so cafile and certfile are deliberately the same file.
+cafile {{CERT_PATH}}
+certfile {{CERT_PATH}}
+keyfile {{KEY_PATH}}
