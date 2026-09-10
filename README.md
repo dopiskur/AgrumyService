@@ -606,6 +606,42 @@ Safe to re-run - every step checks whether it's already done before acting, so
 re-running later (e.g. to turn on Redis) doesn't repeat completed steps or
 overwrite existing secrets.
 
+### Backup / restore (bare-metal installs)
+
+`install.sh --backup <file.tar.gz>` bundles the database, the DataProtection
+key ring and the firmware store into one archive, all read at the same
+moment - a DB dump alone is not a real backup, since a key ring newer or
+older than the data it encrypted just fails differently later:
+
+```
+sudo ./install.sh --backup /var/backups/agrumy-$(date +%F).tar.gz
+```
+
+Restore with the matching flag against an already-installed instance (run the
+normal installer against a fresh database first if starting over, then
+restore over it):
+
+```
+sudo ./install.sh --restore /var/backups/agrumy-2026-09-11.tar.gz
+```
+
+Both flags read the connection string straight out of the installed
+`appsettings.json` and detect MySQL vs. PostgreSQL from its shape, so no
+separate DB flags are needed. Every real device gets exactly one `401` on its
+next poll after a restore (its cached session token predates the restore
+point) and silently re-authenticates - expected, not a fault. A device
+registered after the backup's timestamp isn't in the restored database at all
+and needs re-provisioning from scratch.
+
+**Container installs** back up the named Docker/Podman volumes directly
+(`docker compose config --volumes`, then the usual volume-backup tooling) -
+`install.sh --backup`/`--restore` only knows the bare-metal filesystem
+layout. **Kubernetes** (`deploy/k8s/`) has no built-in backup command either;
+back up the DB the same way as any other Postgres/MySQL StatefulSet, and
+include the `api-keys` PVC (the DataProtection key ring) in that same backup
+policy - it's exactly as load-bearing as the DB dump and easy to overlook
+since it's a separate PVC.
+
 ## Deployment
 
 CI (`.github/workflows/build.yml`) builds and tests on every push to `master`;

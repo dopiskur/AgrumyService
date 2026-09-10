@@ -89,6 +89,123 @@ ensure_cmd() {
 }
 
 # ============================================================================================
+# 0. Backup / restore (bare-metal only - bypasses the interactive installer entirely). The
+# DataProtection key ring is load-bearing (encrypted-secrets Unprotect throws, not silently
+# returns ciphertext, once the ring that encrypted them is gone) - a DB dump alone is not a
+# real backup, it just fails differently later.
+# ============================================================================================
+
+# $1 = appsettings.json path -> echoes the raw ADO.NET connection string, or empty if unset/unconfigured.
+read_connection_string() {
+  grep -o '"DefaultConnection"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" 2>/dev/null | sed -E 's/.*: *"([^"]*)"/\1/'
+}
+
+# $1 = key (Server/Uid/Pwd/Host/Username/Password/...), $2 = connection string -> the value, or empty.
+conn_value() {
+  echo "$2" | tr ';' '\n' | grep -i "^$1=" | head -1 | cut -d= -f2-
+}
+
+do_backup() {
+  local out_path="$1"
+  local api_dir="/opt/agrumy/api" keys_dir="/opt/agrumy/dataprotection-keys"
+  local appsettings="${api_dir}/appsettings.json"
+  [ -f "$appsettings" ] || err "No ${appsettings} found - is Agrumy.Api installed at the standard bare-metal path (/opt/agrumy)? A container/K8s install backs up its own DB volume + the api-keys PVC directly, not through this flag."
+
+  local conn
+  conn="$(read_connection_string "$appsettings")"
+  [ -n "$conn" ] || err "ConnectionStrings.DefaultConnection is empty in ${appsettings} - the setup wizard hasn't run yet, nothing to back up."
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+
+  log "Dumping database"
+  local host db user pwd port
+  if echo "$conn" | grep -qi "Uid="; then
+    # MySQL/MariaDB (Pomelo shape: Server=...;Database=...;Uid=...;Pwd=...)
+    host="$(conn_value Server "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Uid "$conn")"; pwd="$(conn_value Pwd "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-3306}"
+    ensure_cmd mysqldump mariadb-client
+    MYSQL_PWD="$pwd" mysqldump -h "$host" -P "$port" -u "$user" "$db" > "${tmp_dir}/db.sql"
+  else
+    # Postgres/Npgsql shape: Host=...;Port=...;Database=...;Username=...;Password=...
+    host="$(conn_value Host "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Username "$conn")"; pwd="$(conn_value Password "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-5432}"
+    ensure_cmd pg_dump postgresql-client
+    PGPASSWORD="$pwd" pg_dump -h "$host" -p "$port" -U "$user" "$db" > "${tmp_dir}/db.sql"
+  fi
+
+  log "Bundling database dump + DataProtection keys + firmware-store into ${out_path} - same moment, so a restore never has keys/firmware newer or older than the data that references them"
+  as_root tar -czf "$out_path" -C "$tmp_dir" db.sql -C "$(dirname "$keys_dir")" "$(basename "$keys_dir")" -C "${api_dir}" firmware-store
+  as_root chmod 600 "$out_path"
+  log "Backup written to ${out_path} ($(du -h "$out_path" | cut -f1))."
+  echo "Restore with: $0 --restore ${out_path}"
+}
+
+do_restore() {
+  local in_path="$1"
+  [ -f "$in_path" ] || err "No such backup file: ${in_path}"
+  local api_dir="/opt/agrumy/api" keys_dir="/opt/agrumy/dataprotection-keys"
+  local appsettings="${api_dir}/appsettings.json"
+  [ -f "$appsettings" ] || err "No ${appsettings} found - restore expects Agrumy.Api already installed (the same bare-metal layout that made the backup), just with different/lost data - run install.sh's normal path against a fresh DB first, then restore over it."
+
+  local conn
+  conn="$(read_connection_string "$appsettings")"
+  [ -n "$conn" ] || err "ConnectionStrings.DefaultConnection is empty in ${appsettings} - run the setup wizard against a fresh database first, THEN restore over it."
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+  tar -xzf "$in_path" -C "$tmp_dir"
+
+  as_root systemctl stop agrumy-api.service agrumy-web.service 2>/dev/null || true
+
+  log "Restoring database"
+  local host db user pwd port
+  if echo "$conn" | grep -qi "Uid="; then
+    host="$(conn_value Server "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Uid "$conn")"; pwd="$(conn_value Pwd "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-3306}"
+    MYSQL_PWD="$pwd" mysql -h "$host" -P "$port" -u "$user" "$db" < "${tmp_dir}/db.sql"
+  else
+    host="$(conn_value Host "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Username "$conn")"; pwd="$(conn_value Password "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-5432}"
+    PGPASSWORD="$pwd" psql -h "$host" -p "$port" -U "$user" -d "$db" -f "${tmp_dir}/db.sql" >/dev/null
+  fi
+
+  local owner
+  owner="$(stat -c '%U:%G' "$api_dir")"
+
+  log "Restoring DataProtection keys"
+  as_root rm -rf "$keys_dir"
+  as_root cp -r "${tmp_dir}/$(basename "$keys_dir")" "$keys_dir"
+  as_root chown -R "$owner" "$keys_dir"
+
+  log "Restoring firmware-store"
+  as_root rm -rf "${api_dir}/firmware-store"
+  as_root cp -r "${tmp_dir}/firmware-store" "${api_dir}/firmware-store"
+  as_root chown -R "$owner" "${api_dir}/firmware-store"
+
+  as_root systemctl start agrumy-api.service agrumy-web.service 2>/dev/null || true
+
+  log "Restore complete."
+  echo "Expected next: every real device gets ONE 401 on its next poll (its cached session token predates this restore point) and silently re-authenticates - this is normal, not a fault, no manual action needed. A device registered AFTER this backup's timestamp does not exist in the restored DB at all and needs re-provisioning from scratch."
+}
+
+if [ "${1:-}" = "--backup" ]; then
+  [ -n "${2:-}" ] || err "Usage: $0 --backup <output-file.tar.gz>"
+  do_backup "$2"
+  exit 0
+elif [ "${1:-}" = "--restore" ]; then
+  [ -n "${2:-}" ] || err "Usage: $0 --restore <backup-file.tar.gz>"
+  do_restore "$2"
+  exit 0
+fi
+
+# ============================================================================================
 # 1. Top-level menu
 # ============================================================================================
 
