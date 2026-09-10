@@ -17,11 +17,11 @@
     </div>
     <div class="card-body">
         <ul class="nav nav-tabs mb-3">
-            @foreach (var tab in Enum.GetValues<Agrumy.Shared.Models.HorticultureCatalogType>())
+            @foreach (var tab in Agrumy.Shared.Models.HorticultureCatalogTypeDisplay.Order)
             {
                 <li class="nav-item">
                     <a class="nav-link @(tab == type ? "active" : "")" asp-action="Index" asp-route-type="@tab">
-                        @(tab switch { Agrumy.Shared.Models.HorticultureCatalogType.Crop => "Crop culture", Agrumy.Shared.Models.HorticultureCatalogType.Perma => "Permaculture", Agrumy.Shared.Models.HorticultureCatalogType.Hydroponic => "Hydroponics", _ => tab.ToString() })
+                        @(tab switch { Agrumy.Shared.Models.HorticultureCatalogType.Crop => "Crop culture", Agrumy.Shared.Models.HorticultureCatalogType.Fruit => "Fruit", Agrumy.Shared.Models.HorticultureCatalogType.Perma => "Permaculture", Agrumy.Shared.Models.HorticultureCatalogType.Hydroponic => "Hydroponics", _ => tab.ToString() })
                     </a>
                 </li>
             }

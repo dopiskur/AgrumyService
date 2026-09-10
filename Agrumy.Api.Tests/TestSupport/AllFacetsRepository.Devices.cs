@@ -45,6 +45,10 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc) => deviceRepository.DeviceMarkConfigSentAsync(deviceID, sentAtUtc);
 
+        public Task DeviceSessionSetAsync(int deviceID, string? token, DateTimeOffset? expiresAtUtc) => deviceRepository.DeviceSessionSetAsync(deviceID, token, expiresAtUtc);
+
+        public Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId) => deviceRepository.DeviceSessionGetAsync(apiId);
+
         public Task DeviceHardResetSetAsync(int deviceID, bool pending) => deviceRepository.DeviceHardResetSetAsync(deviceID, pending);
 
         public Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt) => deviceRepository.DeviceSensorDetectionResultSetAsync(deviceID, resultJson, detectedAt);

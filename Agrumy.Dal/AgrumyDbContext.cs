@@ -66,6 +66,7 @@ namespace Agrumy.Dal
         public DbSet<HorticultureCatalogCropRow> HorticultureCatalogCrops => Set<HorticultureCatalogCropRow>();
         public DbSet<HorticultureCatalogPermaRow> HorticultureCatalogPermas => Set<HorticultureCatalogPermaRow>();
         public DbSet<HorticultureCatalogHydroponicRow> HorticultureCatalogHydroponics => Set<HorticultureCatalogHydroponicRow>();
+        public DbSet<HorticultureCatalogFruitRow> HorticultureCatalogFruits => Set<HorticultureCatalogFruitRow>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -139,7 +140,7 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every tenant-scoped user list filters by TenantID alone.
             });
 
-            // Three tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
+            // Four tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
             void ConfigureHorticultureCatalog<TEntity>(string tableName) where TEntity : class
             {
                 modelBuilder.Entity<TEntity>(e =>
@@ -154,6 +155,7 @@ namespace Agrumy.Dal
             ConfigureHorticultureCatalog<HorticultureCatalogCropRow>("horticultureCatalogCrop");
             ConfigureHorticultureCatalog<HorticultureCatalogPermaRow>("horticultureCatalogPerma");
             ConfigureHorticultureCatalog<HorticultureCatalogHydroponicRow>("horticultureCatalogHydroponic");
+            ConfigureHorticultureCatalog<HorticultureCatalogFruitRow>("horticultureCatalogFruit");
 
             modelBuilder.Entity<UserNotificationPreferenceRow>(e =>
             {
@@ -359,6 +361,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.FirmwareTargetVersion).HasMaxLength(20); // same cap as deviceFirmware.Version
                 e.Property(x => x.ApiId).HasMaxLength(128).IsRequired();
                 e.Property(x => x.ApiKey).HasMaxLength(128).IsRequired();
+                e.Property(x => x.ApiAuthToken).HasMaxLength(64); // AuthenticationProvider.GetSecureToken() is base64(256-bit CSPRNG), 44 chars
                 e.Property(x => x.LoRaPrivateKeyHex).HasMaxLength(64); // AES-256 key, hex-encoded (32 raw bytes)
                 e.Property(x => x.ServicePoint).HasMaxLength(200);
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");

@@ -549,6 +549,62 @@ namespace Agrumy.Api.Controllers.API
             return Ok(new HorticultureCatalogApplyResult { RulesAdded = added, RulesSkipped = skipped });
         }
 
+        /// "Day/Night targets" preset, same AddRuleAsync reuse as ApplyHorticultureCatalog. Rejects Screen/Vent (positional, no plain on/off threshold) and a day window that isn't a proper subset of the day (0 &lt;= start &lt; end &lt;= 86400, and not the whole day - a full-day "day" window leaves no room for a night rule to ever fire).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Zone/ApplyDayNightPreset")]
+        public async Task<ActionResult<DayNightPresetApplyResult>> ApplyDayNightPreset(int? idDeviceFarmUnitZone, [FromBody] DayNightTargetPresetRequest request)
+        {
+            var (zone, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (request.Function.IsPositional())
+            {
+                return BadRequest("Day/Night targets only apply to a plain on/off function, not Screen/Vent.");
+            }
+            if (request.Operator == ComparisonOperator.Between)
+            {
+                return BadRequest("Day/Night targets take one threshold per period, not a Between range.");
+            }
+            if (request.DayStartSeconds < 0 || request.DayEndSeconds > 86400 || request.DayStartSeconds >= request.DayEndSeconds
+                || (request.DayStartSeconds == 0 && request.DayEndSeconds == 86400))
+            {
+                return BadRequest("Day window must start before it ends, both within one day, and leave room for a night window.");
+            }
+            if (string.IsNullOrWhiteSpace(request.NamePrefix))
+            {
+                return BadRequest("A name prefix is required.");
+            }
+
+            int zoneId = zone!.IDDeviceFarmUnitZone!.Value;
+            (DeviceFarmUnitZoneRule day, DeviceFarmUnitZoneRule night) = DayNightTargetPresetBuilder.BuildRules(
+                zoneId, request.Function, request.Metric, request.Operator, request.DayValue, request.NightValue, request.Hysteresis,
+                request.DayStartSeconds, request.DayEndSeconds, request.NamePrefix.Trim());
+
+            int tenantId = zone.TenantID ?? CallerTenantId ?? 0;
+            day.TenantID = tenantId;
+            night.TenantID = tenantId;
+            int existingCount = (await deviceFarmUnitRepo.RulesGetForZoneAsync(zoneId)).Count;
+            int added = 0;
+            var skipped = new List<string>();
+            foreach (DeviceFarmUnitZoneRule rule in new[] { day, night })
+            {
+                ActionResult<RuleAddResult> result = await AddRuleAsync(rule, existingCount + added, scopeLabel: $"zone {zoneId}");
+                if (result.Result is OkObjectResult)
+                {
+                    added++;
+                }
+                else
+                {
+                    skipped.Add(rule.Name);
+                }
+            }
+
+            await WriteAuditAsync("DeviceFarmUnitZone.DayNightPresetApplied", tenantId, "DeviceFarmUnitZone", zoneId.ToString(), $"{request.Function}/{request.NamePrefix}: {added} rule(s) added");
+            return Ok(new DayNightPresetApplyResult { RulesAdded = added, RulesSkipped = skipped });
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Unit/Rule")]
         public async Task<ActionResult<RuleAddResult>> DeviceFarmUnitRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)

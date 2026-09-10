@@ -463,6 +463,7 @@ namespace Agrumy.Web.Controllers.View
             IList<HorticultureCatalogEntry> cropCatalog = [];
             IList<HorticultureCatalogEntry> permaCatalog = [];
             IList<HorticultureCatalogEntry> hydroponicCatalog = [];
+            IList<HorticultureCatalogEntry> fruitCatalog = [];
             if (hasController)
             {
                 rules = await api.DeviceFarmUnitZoneRulesGet(idDeviceFarmUnitZone);
@@ -470,6 +471,7 @@ namespace Agrumy.Web.Controllers.View
                 cropCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop);
                 permaCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Perma);
                 hydroponicCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Hydroponic);
+                fruitCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Fruit);
             }
 
             // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
@@ -488,6 +490,7 @@ namespace Agrumy.Web.Controllers.View
                 CropCatalog = cropCatalog,
                 PermaCatalog = permaCatalog,
                 HydroponicCatalog = hydroponicCatalog,
+                FruitCatalog = fruitCatalog,
                 DiscoveredDevices = await api.DiscoveryResultsGet(null, idDeviceFarmUnitZone),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
                 UnitName = unit.DeviceFarmUnitName,
@@ -509,6 +512,38 @@ namespace Agrumy.Web.Controllers.View
             TempData["Message"] = result.RulesSkipped.Count == 0
                 ? $"Added {result.RulesAdded} rule(s) from the catalog template."
                 : $"Added {result.RulesAdded} rule(s); skipped {result.RulesSkipped.Count} (zone's rule limit reached): {string.Join(", ", result.RulesSkipped)}.";
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        /// Day/night start/end come in as plain HH:mm time-of-day fields; converted to seconds-since-midnight here so the API only ever deals with the same Schedule-node units the rest of the rule builder already uses.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DayNightPresetAdd(int idDeviceFarmUnitZone, DayNightPresetFormInput input)
+        {
+            var request = new DayNightTargetPresetRequest
+            {
+                Function = input.Function,
+                Metric = input.Metric,
+                Operator = input.Operator,
+                DayValue = input.DayValue,
+                NightValue = input.NightValue,
+                Hysteresis = input.Hysteresis,
+                DayStartSeconds = (int)input.DayStart.ToTimeSpan().TotalSeconds,
+                DayEndSeconds = (int)input.DayEnd.ToTimeSpan().TotalSeconds,
+                NamePrefix = input.NamePrefix,
+            };
+            try
+            {
+                DayNightPresetApplyResult result = await api.DayNightPresetApplyToZone(idDeviceFarmUnitZone, request);
+                TempData["Message"] = result.RulesSkipped.Count == 0
+                    ? $"Added {result.RulesAdded} rule(s) from the day/night preset."
+                    : $"Added {result.RulesAdded} rule(s); skipped {result.RulesSkipped.Count} (zone's rule limit reached): {string.Join(", ", result.RulesSkipped)}.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 

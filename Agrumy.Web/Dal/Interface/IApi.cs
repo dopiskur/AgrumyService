@@ -326,6 +326,9 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog")]
         Task<HorticultureCatalogApplyResult> HorticultureCatalogApplyToZone(int idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId);
 
+        [Post("/api/DeviceFarmUnit/Zone/ApplyDayNightPreset")]
+        Task<DayNightPresetApplyResult> DayNightPresetApplyToZone(int idDeviceFarmUnitZone, [Body] DayNightTargetPresetRequest request);
+
         [Get("/api/DeviceFarmUnit/Unit/Rule")]
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmUnitRulesGet(int? idDeviceFarmUnit);
 

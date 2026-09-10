@@ -1021,6 +1021,51 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(2, back.ConfigVersion);
     }
 
+    // A manual Edit-form save sets Manual, a later GPS fix always overwrites it back to Gps - device-reported location wins over a stale manual entry.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLocation_ManualThenGpsFix_GpsOverwritesManual(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        d.Latitude = 45.8;
+        d.Longitude = 15.9;
+        d.LocationSource = DeviceLocationSource.Manual;
+        await _repo.DeviceUpdateAsync(d);
+
+        var afterManual = await _repo.DeviceGetByIdAsync(d.IDDevice);
+        Assert.Equal(45.8, afterManual!.Latitude);
+        Assert.Equal(DeviceLocationSource.Manual, afterManual.LocationSource);
+
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId,
+            new DeviceConfigPoll { ConfigVersion = 1, Latitude = 46.1, Longitude = 16.2 });
+
+        var afterGps = await _repo.DeviceGetByIdAsync(d.IDDevice);
+        Assert.Equal(46.1, afterGps!.Latitude);
+        Assert.Equal(16.2, afterGps.Longitude);
+        Assert.Equal(DeviceLocationSource.Gps, afterGps.LocationSource);
+    }
+
+    // A poll with no GPS fix (module absent, or no lock yet) must never blank an already-recorded location.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLocation_PollWithoutGpsFix_LeavesExistingLocationUntouched(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        d.Latitude = 45.8;
+        d.Longitude = 15.9;
+        d.LocationSource = DeviceLocationSource.Manual;
+        await _repo.DeviceUpdateAsync(d);
+
+        await _repo.DeviceDiagnosticUpsertAsync(d.IDDevice!.Value, tenantId, new DeviceConfigPoll { ConfigVersion = 1 });
+
+        var back = await _repo.DeviceGetByIdAsync(d.IDDevice);
+        Assert.Equal(45.8, back!.Latitude);
+        Assert.Equal(DeviceLocationSource.Manual, back.LocationSource);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceConfig_Updates_Persist_And_Bump_Device_ConfigVersion(DbProviderKind provider)
     {

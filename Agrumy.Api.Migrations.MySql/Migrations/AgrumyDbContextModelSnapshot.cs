@@ -871,6 +871,13 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("varchar(64)")
                         .HasComputedColumnSql("(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)", true);
 
+                    b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ApiAuthToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -961,6 +968,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LastSensorDetectionResult")
                         .HasColumnType("longtext");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double");
+
                     b.Property<bool?>("LoRaGatewayEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -970,6 +980,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
+
+                    b.Property<int>("LocationSource")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double");
 
                     b.Property<string>("MacAddress")
                         .HasMaxLength(64)
@@ -1411,6 +1427,76 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("horticultureCatalogCrop", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogFruitRow", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<double?>("AirHumidityMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("AirHumidityMin")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("AirTempMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("AirTempMin")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("Co2Max")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("Co2Min")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<double?>("LightMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("LightMin")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<double?>("SoilECMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilECMin")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilMoistureMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilMoistureMin")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilPHMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilPHMin")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilTempMax")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SoilTempMin")
+                        .HasColumnType("double");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("horticultureCatalogFruit", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogHydroponicRow", b =>

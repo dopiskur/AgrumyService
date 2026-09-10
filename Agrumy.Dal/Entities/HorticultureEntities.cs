@@ -70,4 +70,27 @@ namespace Agrumy.Dal.Entities
         public double? Co2Min { get; set; }
         public double? Co2Max { get; set; }
     }
+
+    public class HorticultureCatalogFruitRow
+    {
+        public int ID { get; set; }
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public double? AirTempMin { get; set; }
+        public double? AirTempMax { get; set; }
+        public double? SoilTempMin { get; set; }
+        public double? SoilTempMax { get; set; }
+        public double? AirHumidityMin { get; set; }
+        public double? AirHumidityMax { get; set; }
+        public double? SoilMoistureMin { get; set; }
+        public double? SoilMoistureMax { get; set; }
+        public double? LightMin { get; set; }
+        public double? LightMax { get; set; }
+        public double? SoilPHMin { get; set; }
+        public double? SoilPHMax { get; set; }
+        public double? SoilECMin { get; set; }
+        public double? SoilECMax { get; set; }
+        public double? Co2Min { get; set; }
+        public double? Co2Max { get; set; }
+    }
 }

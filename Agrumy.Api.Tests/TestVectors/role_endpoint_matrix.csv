@@ -75,6 +75,7 @@ POST,api/DeviceFarmUnit/Unassign,Global admin;Global Device;Tenant admin;Tenant 
 POST,api/DeviceFarmUnit/Unit/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/ApplyDayNightPreset,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device

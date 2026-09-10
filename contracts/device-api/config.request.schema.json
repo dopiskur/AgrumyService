@@ -73,6 +73,12 @@
       "type": ["integer", "string", "null"],
       "minimum": 0,
       "description": "Roadmap #451(23). AgrumyFirmware's own CONFIG_SCHEMA_VERSION constant (DeviceModel.h) - which config wire-format version this running firmware understands. Informational only, server doesn't currently act on a mismatch. Optional, absent from pre-#451 firmware."
+    },
+    "Latitude": {
+      "type": ["number", "string", "null"]
+    },
+    "Longitude": {
+      "type": ["number", "string", "null"]
     }
   }
 }

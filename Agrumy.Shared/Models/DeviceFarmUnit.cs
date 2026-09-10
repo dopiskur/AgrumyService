@@ -274,6 +274,27 @@ namespace Agrumy.Shared.Models
         public string? ScopeConflictWarning { get; set; }
     }
 
+    /// Request for POST .../Zone/ApplyDayNightPreset. DayStartSeconds/DayEndSeconds mark the day window (0-86399/1-86400, DayStartSeconds &lt; DayEndSeconds); night is the complement, computed server-side (Agrumy.Rules.DayNightTargetPresetBuilder). Screen/Vent aren't valid Function values here - a day/night target is a plain on/off threshold, not a positional TargetPercent.
+    public class DayNightTargetPresetRequest
+    {
+        public RelayFunction Function { get; set; }
+        public SensorMetric Metric { get; set; }
+        public ComparisonOperator Operator { get; set; }
+        public double DayValue { get; set; }
+        public double NightValue { get; set; }
+        public double Hysteresis { get; set; }
+        public int DayStartSeconds { get; set; }
+        public int DayEndSeconds { get; set; }
+        public string NamePrefix { get; set; } = "";
+    }
+
+    /// Response of POST .../Zone/ApplyDayNightPreset - same "capped, not failed" shape as HorticultureCatalogApplyResult, since the same zone rule-count cap can stop the night rule after the day rule already saved.
+    public class DayNightPresetApplyResult
+    {
+        public int RulesAdded { get; set; }
+        public IList<string> RulesSkipped { get; set; } = [];
+    }
+
     /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all five null means Global (per-tenant: every farm/unit/zone the tenant owns). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {

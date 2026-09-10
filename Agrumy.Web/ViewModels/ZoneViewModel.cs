@@ -22,6 +22,7 @@ namespace Agrumy.Web.ViewModels
         public IList<HorticultureCatalogEntry> CropCatalog { get; init; } = [];
         public IList<HorticultureCatalogEntry> PermaCatalog { get; init; } = [];
         public IList<HorticultureCatalogEntry> HydroponicCatalog { get; init; } = [];
+        public IList<HorticultureCatalogEntry> FruitCatalog { get; init; } = [];
 
         public IList<DiscoveryResult> DiscoveredDevices { get; set; } = [];
         public IList<TenantWifiConfig> WifiConfigs { get; set; } = [];
