@@ -327,6 +327,11 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }
 
+        // See Agrumy.Shared.Models.Device.Latitude/Longitude/LocationSource - stored as the enum's int value, same convention as GatewayProfile below.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public int LocationSource { get; set; }
+
         public bool IsGateway { get; set; }
         public int? GatewayProfile { get; set; }
 
