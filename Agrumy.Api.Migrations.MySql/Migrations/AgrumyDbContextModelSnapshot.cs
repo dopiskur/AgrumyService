@@ -871,6 +871,13 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("varchar(64)")
                         .HasComputedColumnSql("(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)", true);
 
+                    b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ApiAuthToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -961,6 +968,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LastSensorDetectionResult")
                         .HasColumnType("longtext");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double");
+
                     b.Property<bool?>("LoRaGatewayEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -970,6 +980,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
+
+                    b.Property<int>("LocationSource")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double");
 
                     b.Property<string>("MacAddress")
                         .HasMaxLength(64)

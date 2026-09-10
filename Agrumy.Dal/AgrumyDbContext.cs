@@ -361,6 +361,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.FirmwareTargetVersion).HasMaxLength(20); // same cap as deviceFirmware.Version
                 e.Property(x => x.ApiId).HasMaxLength(128).IsRequired();
                 e.Property(x => x.ApiKey).HasMaxLength(128).IsRequired();
+                e.Property(x => x.ApiAuthToken).HasMaxLength(64); // AuthenticationProvider.GetSecureToken() is base64(256-bit CSPRNG), 44 chars
                 e.Property(x => x.LoRaPrivateKeyHex).HasMaxLength(64); // AES-256 key, hex-encoded (32 raw bytes)
                 e.Property(x => x.ServicePoint).HasMaxLength(200);
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");

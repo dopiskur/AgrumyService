@@ -104,6 +104,12 @@ namespace Agrumy.Api.Dal.Interface
         /// Stamps the device row with when a full DeviceConfig body was actually sent - drives DeviceConfigBuilder.NeedsRefreshAsync's periodic heartbeat resend (ServerConfig.ConfigHeartbeatHours).
         Task DeviceMarkConfigSentAsync(int deviceID, DateTime sentAtUtc);
 
+        /// Persists the session token DeviceApiController.Authenticate just cached, so DeviceSessionHandler's cache-miss fallback survives a server restart without every device redoing a full Authenticate. Null token clears it (never actually called with null today - a session simply expires via ExpiresAtUtc).
+        Task DeviceSessionSetAsync(int deviceID, string? token, DateTimeOffset? expiresAtUtc);
+
+        /// DeviceSessionHandler's cache-miss fallback read - null when never authenticated or the row's ApiAuthToken was cleared; an ExpiresAtUtc in the past is the caller's job to check, same as the cache path's TTL.
+        Task<(string Token, DateTimeOffset ExpiresAtUtc)?> DeviceSessionGetAsync(string apiId);
+
         /// Sets/clears the admin-triggered hard-reset flag - carried to the device via a normal authenticated config poll (DeviceConfigBuilder) AND, since that path may be exactly what's broken, via DeviceApiController.HardResetPending's apiId-only lookup.
         Task DeviceHardResetSetAsync(int deviceID, bool pending);
 
