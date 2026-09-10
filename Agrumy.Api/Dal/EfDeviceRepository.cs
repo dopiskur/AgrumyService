@@ -360,6 +360,8 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(d => d.LoRaPrivateKeyHex, hex)
                     .SetProperty(d => d.LoRaLastUplinkCounter, (long?)null));
+            // Every existing v2 session was derived from the key just replaced - leaving them would let a session opened under the OLD key keep accepting uplinks encrypted under the new one only by coincidence of a repeated bootNonce (astronomically unlikely, but there is no reason to rely on that).
+            await db.DeviceLoRaSessions.Where(s => s.DeviceID == deviceID).ExecuteDeleteAsync();
             return hex;
         }
 
@@ -369,6 +371,54 @@ namespace Agrumy.Api.Dal
                 .Where(d => d.IDDevice == deviceID && (d.LoRaLastUplinkCounter == null || d.LoRaLastUplinkCounter < counter))
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LoRaLastUplinkCounter, counter));
             return rows > 0;
+        }
+
+        public async Task<bool> DeviceLoRaSessionAcceptAsync(int deviceID, byte[] bootNonce, uint counter)
+        {
+            string bootNonceHex = Convert.ToHexString(bootNonce);
+
+            // Atomic check-and-advance on an already-known session - the WHERE clause IS the replay check, so two gateways forwarding the same frame can't both pass.
+            int updated = await db.DeviceLoRaSessions
+                .Where(s => s.DeviceID == deviceID && s.BootNonceHex == bootNonceHex && s.MaxCounter < counter)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.MaxCounter, counter)
+                    .SetProperty(x => x.LastSeenUtc, DateTimeOffset.UtcNow));
+            if (updated > 0)
+            {
+                return true;
+            }
+            bool alreadyKnown = await db.DeviceLoRaSessions.AsNoTracking()
+                .AnyAsync(s => s.DeviceID == deviceID && s.BootNonceHex == bootNonceHex);
+            if (alreadyKnown)
+            {
+                return false; // known session, counter <= its MaxCounter - replay
+            }
+
+            // Unknown bootNonce - a fresh boot. Insert; a unique-PK race against a concurrent first-uplink from the SAME boot is resolved by retrying the check-and-advance above against the row the other request just won.
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var candidate = new DeviceLoRaSessionRow { DeviceID = deviceID, BootNonceHex = bootNonceHex, MaxCounter = counter, FirstSeenUtc = now, LastSeenUtc = now };
+            db.DeviceLoRaSessions.Add(candidate);
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (DbExceptionClassifier.Classify(ex) == DbFailureKind.ConstraintViolation)
+            {
+                db.Entry(candidate).State = EntityState.Detached;
+                return await DeviceLoRaSessionAcceptAsync(deviceID, bootNonce, counter);
+            }
+
+            // Cap at the 32 most-recently-started sessions per device - a crash-looping node re-bootstrapping every few seconds must not grow this table unbounded.
+            List<string> keep = await db.DeviceLoRaSessions.AsNoTracking()
+                .Where(s => s.DeviceID == deviceID)
+                .OrderByDescending(s => s.FirstSeenUtc)
+                .Take(32)
+                .Select(s => s.BootNonceHex)
+                .ToListAsync();
+            await db.DeviceLoRaSessions
+                .Where(s => s.DeviceID == deviceID && !keep.Contains(s.BootNonceHex))
+                .ExecuteDeleteAsync();
+            return true;
         }
 
         /// internal, not private - EfGatewayRepository and EfDeviceFarmUnitRepository also map DeviceRow to Device.

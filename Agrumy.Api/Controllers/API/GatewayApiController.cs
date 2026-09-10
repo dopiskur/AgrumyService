@@ -311,13 +311,16 @@ namespace Agrumy.Api.Controllers.API
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = "Malformed payload: " + ex.Message });
             }
 
-            (string? plaintext, ulong counter) = LoRaPrivatePayloadCrypto.Decrypt(key, wirePayload);
+            (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wirePayload);
             if (plaintext is null)
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Decryption failed - wrong key, or the payload was corrupted or tampered with." });
             }
-            // Atomic check-and-advance - the WHERE clause inside this call IS the replay check, so two concurrent RelayUplink calls for the same device can never both pass (unlike a separate read-then-compare-then-write, which had exactly that race).
-            if (!await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter))
+            // v2 (bootNonce present) replays against deviceLoRaSession; v1 keeps the plain monotonic-counter check - see LoRaPrivatePayloadCrypto's remarks for why the two can't share one check.
+            bool accepted = bootNonce != null
+                ? await deviceRepo.DeviceLoRaSessionAcceptAsync(idDevice, bootNonce, (uint)counter)
+                : await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter);
+            if (!accepted)
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 409, Error = "Replayed or out-of-order uplink." });
             }

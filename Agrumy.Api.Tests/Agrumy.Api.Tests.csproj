@@ -40,6 +40,8 @@
     <None Update="TestVectors\rule_tree_limits.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- independent role-per-endpoint source of truth for HttpEndpointTests - see its own header comment -->
     <None Update="TestVectors\role_endpoint_matrix.csv" CopyToOutputDirectory="PreserveNewest" />
+    <!-- shared with AgrumyFirmware's test_native_lora_private_session_logic and contracts/lora-private-v2.vectors.json there - see LoRaPrivatePayloadCryptoTests.cs's own header comment -->
+    <None Update="TestVectors\lora_private_v2_vectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

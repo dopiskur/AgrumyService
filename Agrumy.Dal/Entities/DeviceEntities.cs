@@ -355,7 +355,7 @@ namespace Agrumy.Dal.Entities
         public string? LastSensorDetectionResult { get; set; } // See Agrumy.Shared.Models.Device.LastSensorDetectionResult.
         public DateTimeOffset? LastSensorDetectionAt { get; set; }
 
-        // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
+        // LoRa private-protocol uplink encryption key - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
         // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.
         public long? LoRaLastUplinkCounter { get; set; }
@@ -367,6 +367,16 @@ namespace Agrumy.Dal.Entities
         // Roadmap #427 - still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceRepository.DeviceRecycleBinPurgeAsync).
         public bool Purged { get; set; }
         public DateTimeOffset? PurgedAtUtc { get; set; }
+    }
+
+    /// One v2 boot session's replay-protection state (LoRaPrivatePayloadCrypto's per-boot HKDF session key never repeats a (bootNonce, counter) pair by construction; this table is what actually enforces that server-side). PK (DeviceID, BootNonceHex) - a device gets a fresh row every reboot, so EfDeviceRepository.DeviceLoRaSessionAcceptAsync caps it at the 32 most recent per device.
+    public class DeviceLoRaSessionRow
+    {
+        public int DeviceID { get; set; }
+        public string BootNonceHex { get; set; } = "";
+        public long MaxCounter { get; set; }
+        public DateTimeOffset FirstSeenUtc { get; set; }
+        public DateTimeOffset LastSeenUtc { get; set; }
     }
 
     /// One LoRaWAN end-device's DevEUI mapped to the Agrumy device (ApiId/ApiKey) a LoRaGateway acts on behalf of for that DevEUI's uplinks.

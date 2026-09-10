@@ -54,5 +54,7 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID) => deviceRepository.DeviceLoRaPrivateKeyGenerateAsync(deviceID);
 
         public Task<bool> DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter) => deviceRepository.DeviceLoRaUplinkCounterSetAsync(deviceID, counter);
+
+        public Task<bool> DeviceLoRaSessionAcceptAsync(int deviceID, byte[] bootNonce, uint counter) => deviceRepository.DeviceLoRaSessionAcceptAsync(deviceID, bootNonce, counter);
     }
 }

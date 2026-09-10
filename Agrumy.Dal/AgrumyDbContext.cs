@@ -52,6 +52,7 @@ namespace Agrumy.Dal
         public DbSet<SensorDataExperimentRow> SensorDataExperiments => Set<SensorDataExperimentRow>();
         public DbSet<ControllerDataExperimentRow> ControllerDataExperiments => Set<ControllerDataExperimentRow>();
         public DbSet<DeviceOutboxRow> DeviceOutboxItems => Set<DeviceOutboxRow>();
+        public DbSet<DeviceLoRaSessionRow> DeviceLoRaSessions => Set<DeviceLoRaSessionRow>();
         public DbSet<DeviceManualOverrideRow> DeviceManualOverrides => Set<DeviceManualOverrideRow>();
         public DbSet<GatewayDeviceMappingRow> GatewayDeviceMappings => Set<GatewayDeviceMappingRow>();
         public DbSet<DeviceDiscoveryReportRow> DeviceDiscoveryReports => Set<DeviceDiscoveryReportRow>();
@@ -461,6 +462,15 @@ namespace Agrumy.Dal
                 e.HasIndex(x => new { x.DeviceID, x.Status }).HasDatabaseName("ix_deviceOutbox_device_status");
                 e.HasIndex(x => new { x.DeviceID, x.ActiveKey }).IsUnique().HasDatabaseName("ux_deviceOutbox_device_activekey"); // See DeviceOutboxRow.ActiveKey; both providers allow multiple NULLs through a unique index, avoiding MySQL's unsupported partial-index syntax.
                 e.HasIndex(x => new { x.Status, x.PublishedAt }).HasDatabaseName("ix_deviceOutbox_pending_unpublished"); // DeviceOutboxDispatchEvaluator's sweep query.
+                e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<DeviceLoRaSessionRow>(e =>
+            {
+                e.ToTable("deviceLoRaSession");
+                e.HasKey(x => new { x.DeviceID, x.BootNonceHex });
+                e.Property(x => x.BootNonceHex).HasMaxLength(16); // 8 raw bytes, hex-encoded - same convention as Device.LoRaPrivateKeyHex.
+                e.HasIndex(x => new { x.DeviceID, x.FirstSeenUtc }).HasDatabaseName("ix_deviceLoRaSession_device_firstseen"); // Backs the "keep only the 32 newest sessions per device" cap.
                 e.HasOne<DeviceRow>().WithMany().HasForeignKey(x => x.DeviceID).OnDelete(DeleteBehavior.NoAction);
             });
 

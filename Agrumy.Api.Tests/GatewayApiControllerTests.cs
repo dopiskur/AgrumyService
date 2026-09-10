@@ -76,7 +76,30 @@ public class GatewayApiControllerTests
         return Convert.ToBase64String(wire);
     }
 
+    /// v2 LoRa wire format - mirrors AgrumyFirmware's LoRaPrivateController (session key via HKDF, not the master key directly).
+    private static string EncryptForWireV2(byte[] masterKey, byte[] bootNonce, uint counter, string plaintext)
+    {
+        byte[] sessionKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, masterKey, 16, salt: bootNonce, info: "agrumy-lora-v2"u8.ToArray());
+        byte[] nonce = new byte[12];
+        bootNonce.CopyTo(nonce, 0);
+        BinaryPrimitives.WriteUInt32BigEndian(nonce.AsSpan(8), counter);
+        byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
+        byte[] ciphertext = new byte[plaintextBytes.Length];
+        byte[] tag = new byte[16];
+        using var gcm = new AesGcm(sessionKey, 16);
+        gcm.Encrypt(nonce, plaintextBytes, ciphertext, tag);
+
+        byte[] wire = new byte[1 + 8 + 4 + ciphertext.Length + 16];
+        wire[0] = 0x02;
+        bootNonce.CopyTo(wire, 1);
+        BinaryPrimitives.WriteUInt32BigEndian(wire.AsSpan(9, 4), counter);
+        ciphertext.CopyTo(wire, 13);
+        tag.CopyTo(wire, 13 + ciphertext.Length);
+        return Convert.ToBase64String(wire);
+    }
+
     private static readonly byte[] TestLoRaKey = Convert.FromHexString("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F");
+    private static readonly byte[] TestBootNonce = Convert.FromHexString("0102030405060708");
 
     [Fact]
     public async Task Batch_DeviceInDifferentTenant_RejectsEntryWithoutForwarding()
@@ -121,7 +144,7 @@ public class GatewayApiControllerTests
         Assert.Equal(200, result.StatusCode);
     }
 
-    /// Roadmap #395 finding (7): a GatewayDeviceToken (what GET /api/Gateway/DeviceMapping now hands out instead of a device's real ApiKey) must be accepted by Batch alongside the device's genuine ApiKey.
+    /// A GatewayDeviceToken (what GET /api/Gateway/DeviceMapping now hands out instead of a device's real ApiKey) must be accepted by Batch alongside the device's genuine ApiKey.
     [Fact]
     public async Task Batch_ValidGatewayDeviceToken_Forwards()
     {
@@ -278,6 +301,56 @@ public class GatewayApiControllerTests
         Assert.Equal(-87, reading.LoRaRssiDbm);
         Assert.Equal(6, reading.LoRaSnrDb);
         Assert.Null(reading.WifiRssiDbm); // never set by a LoRa-only node
+    }
+
+    /// A v2 frame (leading 0x02) must route replay-protection through DeviceLoRaSessionAcceptAsync, never the v1 monotonic-counter path - a Strict mock proves DeviceLoRaUplinkCounterSetAsync is never even called.
+    [Fact]
+    public async Task RelayUplink_V2Frame_UsesSessionAcceptNotMonotonicCounter()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        _repo.Setup(r => r.DeviceLoRaSessionAcceptAsync(2, TestBootNonce, 1u)).ReturnsAsync(true);
+        _repo.Setup(r => r.EventDevicePushAsync(2, 1, DeviceEventType.NoInternet, "relayed")).ReturnsAsync(true);
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWireV2(TestLoRaKey, TestBootNonce, 1, "{\"t\":\"event\",\"EventType\":\"NoInternet\",\"Message\":\"relayed\"}"),
+        });
+
+        var result = Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value);
+        Assert.True(result.Success);
+        Assert.Equal(200, result.StatusCode);
+    }
+
+    /// A replayed v2 (bootNonce, counter) pair must 409, exactly like a replayed v1 counter - same outcome, different check underneath.
+    [Fact]
+    public async Task RelayUplink_V2Frame_ReplayedSession_Returns409()
+    {
+        var gateway = new Device { IDDevice = 1, ApiId = "node1", LoRaGatewayEnabled = true, TenantID = 1 };
+        var mappedDevice = new Device { IDDevice = 2, ApiId = "dev2", TenantID = 1, LoRaPrivateKeyHex = Convert.ToHexString(TestLoRaKey) };
+        _repo.Setup(r => r.DeviceGetByApiIdAsync("node1")).ReturnsAsync(gateway);
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { GatewayEnabled = true });
+        _repo.Setup(r => r.GatewayDeviceMappingsGetAsync(1)).ReturnsAsync(
+            [new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "42", IDDevice = 2 }]);
+        _repo.Setup(r => r.DeviceGetByIdAsync(2)).ReturnsAsync(mappedDevice);
+        _repo.Setup(r => r.DeviceLoRaSessionAcceptAsync(2, TestBootNonce, 1u)).ReturnsAsync(false);
+
+        var controller = NewController("node1");
+        var response = await controller.RelayUplink(new GatewayRelayUplinkRequest
+        {
+            SourceAddress = 42,
+            Payload = EncryptForWireV2(TestLoRaKey, TestBootNonce, 1, "{\"t\":\"event\"}"),
+        });
+
+        // Strict mock: an un-set-up EventDevicePushAsync/dispatch call would throw, proving the replay was rejected before any dispatch.
+        Assert.Equal(409, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
     }
 
     [Fact]

@@ -1,0 +1,41 @@
+{
+  "description": "LoRa private-protocol v2 (roadmap #468) shared test vectors. sessionKey = HKDF-SHA256(salt=bootNonce, ikm=masterKey, info=\"agrumy-lora-v2\", length=16). nonce = bootNonce(8) || counter(4, big-endian). frame (uplink wire) = 0x02 || bootNonce(8) || counter(4 BE) || ciphertext || tag(16). downlinkAck = 0x02 || bootNonce(8) || counter(4 BE), 13 bytes. AES-128-GCM (16-byte derived session key, not the 32-byte master key). Consumed by AgrumyService (xUnit, full crypto round-trip against these vectors) and AgrumyFirmware (native tests, frame/nonce byte-layout only - no mbedtls in the native/host PlatformIO toolchain, so ciphertext/tag/sessionKey fields there are reference-only, not independently recomputed).",
+  "vectors": [
+    {
+      "masterKeyHex": "5df0783a5d2a5aa93e981141c5da18a2c5d57a4e994f251ffc499a6b30abe5bc",
+      "bootNonceHex": "4761a8a78ec407a7",
+      "counter": 1,
+      "plaintextUtf8": "{\"battery\":87}",
+      "sessionKeyHex": "5c6729d4223d90114ceb4c3d652751e2",
+      "nonceHex": "4761a8a78ec407a700000001",
+      "ciphertextHex": "605c6764900205e47355e7bdb9f6",
+      "tagHex": "9b1a32e2ca88599020d905a20e674d61",
+      "frameHex": "024761a8a78ec407a700000001605c6764900205e47355e7bdb9f69b1a32e2ca88599020d905a20e674d61",
+      "downlinkAckHex": "024761a8a78ec407a700000001"
+    },
+    {
+      "masterKeyHex": "73cdd383be121df14877974a595f49289562bd42ca190d635c2a92298e2b806c",
+      "bootNonceHex": "44938bb8ed332eb6",
+      "counter": 4294967295,
+      "plaintextUtf8": "{\"battery\":42,\"temp\":21.5}",
+      "sessionKeyHex": "0c681da52eec5f6792fd354e936ef510",
+      "nonceHex": "44938bb8ed332eb6ffffffff",
+      "ciphertextHex": "fe1677c8085ba36feaf03ea936cf15b9392c4b714ff1b5daa164",
+      "tagHex": "f135f86054c785db4ec710547dae77f9",
+      "frameHex": "0244938bb8ed332eb6fffffffffe1677c8085ba36feaf03ea936cf15b9392c4b714ff1b5daa164f135f86054c785db4ec710547dae77f9",
+      "downlinkAckHex": "0244938bb8ed332eb6ffffffff"
+    },
+    {
+      "masterKeyHex": "32a349b75ab1011a82ec6dccbcb2a12f84d61ef5008401320c268296c8f9a0b6",
+      "bootNonceHex": "108d00174407fddb",
+      "counter": 0,
+      "plaintextUtf8": "{}",
+      "sessionKeyHex": "d666c91c0e8d0aa18c77a479ac42ec8d",
+      "nonceHex": "108d00174407fddb00000000",
+      "ciphertextHex": "fa4e",
+      "tagHex": "e487f49983a4e795801570b42593bffb",
+      "frameHex": "02108d00174407fddb00000000fa4ee487f49983a4e795801570b42593bffb",
+      "downlinkAckHex": "02108d00174407fddb00000000"
+    }
+  ]
+}

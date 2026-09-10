@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Agrumy.Shared;
@@ -441,7 +442,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(70.0, back.WeatherRainSkipThreshold);
     }
 
-    /// Roadmap #395(5) regression - ServerConfigGetAsync must return the real, decrypted password so MqttCommandPublisher/EmailNotificationChannel can actually authenticate; only the API/edit-form boundary (ServerConfigApiController.Get) redacts it.
+    /// ServerConfigGetAsync must return the real, decrypted password so MqttCommandPublisher/EmailNotificationChannel can actually authenticate; only the API/edit-form boundary (ServerConfigApiController.Get) redacts it.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task ServerConfig_MqttAndEmailPassword_UpdateAndGet_RoundTripsTheRealValue_NotNull(DbProviderKind provider)
     {
@@ -2293,6 +2294,70 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 5));
         Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 3));
         Assert.True(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 6));
+    }
+
+    // v2 replay check - a never-seen bootNonce always starts a new session regardless of counter value, then behaves like the v1 monotonic check WITHIN that same bootNonce.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaSessionAccept_NewBootNonce_StartsFreshSession_ThenGuardsReplayWithinIt(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        byte[] bootNonce = RandomNumberGenerator.GetBytes(8);
+
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 1));
+        Assert.False(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 1)); // exact replay
+        Assert.False(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 0)); // lower than this session's own high-water mark
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 2));
+    }
+
+    // A power-cycle gets a fresh bootNonce - the whole point is that counter=0 under a NEW bootNonce is not a replay of a HIGH counter under the old one, unlike the v1 monotonic-forever counter.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaSessionAccept_DifferentBootNonce_RestartsCounterFromZero(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        byte[] firstBoot = RandomNumberGenerator.GetBytes(8);
+        byte[] secondBoot = RandomNumberGenerator.GetBytes(8);
+
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, firstBoot, 500));
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, secondBoot, 0));
+    }
+
+    // A crash-looping node re-bootstrapping constantly must not grow deviceLoRaSession unbounded; only the 32 most-recently-STARTED sessions survive per device.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaSessionAccept_CapsAt32SessionsPerDevice_OldestEvicted(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        byte[] firstBoot = RandomNumberGenerator.GetBytes(8);
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, firstBoot, 1));
+
+        for (int i = 0; i < 32; i++)
+        {
+            Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, RandomNumberGenerator.GetBytes(8), 1));
+        }
+
+        // The very first session is now the 33rd-oldest and should have been evicted - a new bootNonce equal to it is astronomically unlikely, so re-accepting it must look like a genuinely new session (true), not a replay of the evicted one.
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, firstBoot, 1));
+    }
+
+    // Rotating the LoRa key must not leave a stale session able to keep accepting frames under the OLD key's derivation.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaPrivateKeyGenerate_ClearsExistingSessions(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+        byte[] bootNonce = RandomNumberGenerator.GetBytes(8);
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 5));
+
+        await _repo.DeviceLoRaPrivateKeyGenerateAsync(d.IDDevice!.Value);
+
+        // The old session is gone, so the SAME bootNonce is treated as brand new (accepted at any counter, including one lower than the pre-rotation high-water mark).
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 1));
     }
 
     // DeviceFleetGetAsync must surface ControllerData without a per-device round trip - see BuildFleetStatusesAsync's relayStates dictionary.

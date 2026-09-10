@@ -771,6 +771,32 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("deviceFirmware", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceLoRaSessionRow", b =>
+                {
+                    b.Property<int>("DeviceID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BootNonceHex")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTimeOffset>("FirstSeenUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTimeOffset>("LastSeenUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("MaxCounter")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("DeviceID", "BootNonceHex");
+
+                    b.HasIndex("DeviceID", "FirstSeenUtc")
+                        .HasDatabaseName("ix_deviceLoRaSession_device_firstseen");
+
+                    b.ToTable("deviceLoRaSession", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceManualOverrideRow", b =>
                 {
                     b.Property<int>("IDDeviceManualOverride")
@@ -2983,6 +3009,15 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .WithMany()
                         .HasForeignKey("SimulationSessionID")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceLoRaSessionRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceManualOverrideRow", b =>
