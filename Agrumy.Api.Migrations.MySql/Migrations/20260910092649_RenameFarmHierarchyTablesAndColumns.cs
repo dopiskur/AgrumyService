@@ -54,6 +54,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 name: "PK_deviceFarmUnit",
                 table: "deviceFarmUnit");
 
+            // MySQL refuses DROP PRIMARY KEY on an AUTO_INCREMENT column outright - strip it first, restored after AddPrimaryKey below.
+            migrationBuilder.Sql("ALTER TABLE deviceFarm MODIFY COLUMN IDDeviceFarm int NOT NULL;");
+
             migrationBuilder.DropPrimaryKey(
                 name: "PK_deviceFarm",
                 table: "deviceFarm");
@@ -154,6 +157,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 name: "PK_farm",
                 table: "farm",
                 column: "IDFarm");
+
+            migrationBuilder.Sql("ALTER TABLE farm MODIFY COLUMN IDFarm int NOT NULL AUTO_INCREMENT;");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_dataSensor_farmGreenhouseUnitZone_FarmGreenhouseUnitZoneID",
@@ -266,6 +271,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 name: "PK_farmGreenhouseUnit",
                 table: "farmGreenhouseUnit");
 
+            migrationBuilder.Sql("ALTER TABLE farm MODIFY COLUMN IDFarm int NOT NULL;");
+
             migrationBuilder.DropPrimaryKey(
                 name: "PK_farm",
                 table: "farm");
@@ -366,6 +373,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                 name: "PK_deviceFarm",
                 table: "deviceFarm",
                 column: "IDDeviceFarm");
+
+            migrationBuilder.Sql("ALTER TABLE deviceFarm MODIFY COLUMN IDDeviceFarm int NOT NULL AUTO_INCREMENT;");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_dataSensor_deviceFarmUnitZone_DeviceFarmUnitZoneID",

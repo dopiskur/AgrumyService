@@ -33,19 +33,32 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        /// Seeds the IDDeviceFarmUnit=0/IDDeviceFarmUnitZone=0 sentinel pair, also reserving ID 0 so DeviceFarmUnitAddAsync/DeviceFarmUnitZoneAddAsync's MAX+1 never assigns it to a real Unit/Zone.
+        /// Seeds the IDDeviceFarmUnit=0/IDDeviceFarmUnitZone=0 sentinel pair, also reserving ID 0 so DeviceFarmUnitAddAsync/DeviceFarmUnitZoneAddAsync's MAX+1 never assigns it to a real Unit/Zone. Same NO_AUTO_VALUE_ON_ZERO need as SeedDefaultTenantAsync's IDTenant=0 insert (both columns are AUTO_INCREMENT on MySQL even though the C# model marks them ValueGeneratedNever) - without it a literal 0 silently becomes 1, and DeviceFarmUnitZoneRow.DeviceFarmUnitID=0 then has no unit to reference.
         private static async Task SeedDeviceFarmUnitSentinelsAsync(AgrumyDbContext db)
         {
-            if (!await db.DeviceFarmUnits.AnyAsync())
+            bool needsUnit = !await db.DeviceFarmUnits.AnyAsync();
+            bool needsZone = !await db.DeviceFarmUnitZones.AnyAsync();
+            if (!needsUnit && !needsZone)
+            {
+                return;
+            }
+
+            await using var tx = await db.Database.BeginTransactionAsync();
+            if (db.Database.IsMySql())
+            {
+                await db.Database.ExecuteSqlRawAsync("SET SESSION sql_mode=(SELECT CONCAT(@@sql_mode, ',NO_AUTO_VALUE_ON_ZERO'))");
+            }
+            if (needsUnit)
             {
                 db.DeviceFarmUnits.Add(new DeviceFarmUnitRow { IDDeviceFarmUnit = 0, TenantID = null, DeviceFarmUnitName = "Default" });
                 await db.SaveChangesAsync();
             }
-            if (!await db.DeviceFarmUnitZones.AnyAsync())
+            if (needsZone)
             {
                 db.DeviceFarmUnitZones.Add(new DeviceFarmUnitZoneRow { IDDeviceFarmUnitZone = 0, TenantID = null, DeviceFarmUnitID = 0, DeviceFarmUnitZoneName = "Disabled" });
                 await db.SaveChangesAsync();
             }
+            await tx.CommitAsync();
         }
 
         /// TenantID=0 is the shared default tenant every bootstrap admin relies on - since tenant.IDTenant stays auto-increment, inserting IDTenant=0 needs raw SQL, and MySQL additionally needs NO_AUTO_VALUE_ON_ZERO or it silently reassigns a literal 0 (confirmed empirically).
