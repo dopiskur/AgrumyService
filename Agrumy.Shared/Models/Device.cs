@@ -587,11 +587,13 @@ namespace Agrumy.Shared.Models
         public static readonly (double Min, double Max) Light = (0, 100000);
         public static readonly (double Min, double Max) Co2 = (401, 8000);
         public static readonly (double Min, double Max) Tvoc = (0, 60000);
-        public static readonly (double Min, double Max) Barometer = (30000, 110000);
+        // 800-1100 hPa (the old 30000-110000, i.e. 300-1100 hPa, went low enough to be physically impossible at sea level).
+        public static readonly (double Min, double Max) Barometer = (80000, 110000);
         public static readonly (double Min, double Max) LiquidPH = (0, 14);
         public static readonly (double Min, double Max) RainLevel = (0, 100);
         public static readonly (double Min, double Max) WaterLevel = (0, 100);
-        public static readonly (double Min, double Max) Wind = (0, 100);
+        // m/s, calm to heavy-storm conditions (a typical cup-anemometer range) - the old (0,100) had no implied unit.
+        public static readonly (double Min, double Max) Wind = (0, 40);
         public static readonly (double Min, double Max) Ec = (0, 20);
         public static readonly (double Min, double Max) Weight = (0, 5000);
     }
