@@ -1,6 +1,5 @@
 namespace Agrumy.Dal.Entities
 {
-    /// TenantID null means the shared global sentinel row (IDDeviceFarmUnit=0 "Default", see EfRepository.SeedDeviceFarmUnitSentinelsAsync), not a real per-tenant Unit.
     /// Roadmap #384 - top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarmRow
     {
@@ -35,7 +34,7 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
-    /// DeviceFarmUnitID is the real "Unit contains many Zones" FK (see db/migrations/2026-09-02-deviceunit-zone-containment.sql) - TenantID null means the shared global sentinel row (IDDeviceFarmUnitZone=0 "Disabled"), same convention as DeviceFarmUnitRow.
+    /// DeviceFarmUnitID is the real "Unit contains many Zones" FK (see db/migrations/2026-09-02-deviceunit-zone-containment.sql).
     public class DeviceFarmUnitZoneRow
     {
         public int IDDeviceFarmUnitZone { get; set; }

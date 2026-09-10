@@ -104,9 +104,13 @@ namespace Agrumy.Api.Migration
             return map;
         }
 
-        // IDDeviceFarmUnit/IDDeviceFarmUnitZone=0 are shared "unassigned"/"Disabled" sentinels, same meaning on every server - never remapped, just passed through.
+        // 0 is not a real id on either table - used here purely as an in-memory "not found in map" marker, checked by callers below.
         private static int RemapOrSentinel(int oldId, Dictionary<int, int> map) =>
-            oldId == 0 ? 0 : map.GetValueOrDefault(oldId, 0);
+            map.GetValueOrDefault(oldId, 0);
+
+        // Same "not found" case as RemapOrSentinel, but for the nullable Device.DeviceFarmUnitID/DeviceFarmUnitZoneID - null (unassigned), not 0, is the correct fallback there.
+        private static int? RemapOrNull(int? oldId, Dictionary<int, int> map) =>
+            oldId is int id && map.TryGetValue(id, out int newId) ? newId : null;
 
         private async Task<Dictionary<int, int>> ImportZonesAsync(TenantExport export, int tenantId, Dictionary<int, int> unitIdMap, TenantImportResult result)
         {
@@ -183,8 +187,8 @@ namespace Agrumy.Api.Migration
                 {
                     TenantID = tenantId,
                     DeviceRoleID = ed.Device.DeviceRoleID,
-                    DeviceFarmUnitID = ed.Device.DeviceFarmUnitID is int u ? RemapOrSentinel(u, unitIdMap) : null,
-                    DeviceFarmUnitZoneID = ed.Device.DeviceFarmUnitZoneID is int z ? RemapOrSentinel(z, zoneIdMap) : null,
+                    DeviceFarmUnitID = RemapOrNull(ed.Device.DeviceFarmUnitID, unitIdMap),
+                    DeviceFarmUnitZoneID = RemapOrNull(ed.Device.DeviceFarmUnitZoneID, zoneIdMap),
                     DeviceName = ed.Device.DeviceName,
                     MacAddress = ed.Device.MacAddress,
                     ApiId = ed.ApiId,

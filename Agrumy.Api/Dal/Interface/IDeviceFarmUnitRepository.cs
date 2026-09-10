@@ -64,7 +64,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // ---- Unit CRUD -------------------------------------------------
 
-        /// Every real Unit in the tenant, or every tenant when tenantID is null (caller must check CallerReadsDevicesGlobally) - never includes the IDDeviceFarmUnit=0 "Default" sentinel.
+        /// Every Unit in the tenant, or every tenant when tenantID is null (caller must check CallerReadsDevicesGlobally).
         Task<IList<DeviceFarmUnit>> DeviceFarmUnitsGetAsync(int? tenantID);
 
         /// The Unit with this id (no tenant filter), for ownership checks before an authorized write - same pattern as IDeviceRepository.DeviceGetByIdAsync - or null if none.
@@ -83,7 +83,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // ---- Zone CRUD ------------------------------------------------
 
-        /// Every Zone belonging to this Unit - never includes the IDDeviceFarmUnitZone=0 "Disabled" sentinel.
+        /// Every Zone belonging to this Unit.
         Task<IList<DeviceFarmUnitZone>> DeviceFarmUnitZonesGetAsync(int idDeviceFarmUnit);
 
         /// The Zone with this id (no tenant filter) - for ownership checks - or null if none.

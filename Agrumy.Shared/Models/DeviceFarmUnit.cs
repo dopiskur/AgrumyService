@@ -20,7 +20,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
-    /// A physical/logical space (e.g. a greenhouse) containing DeviceFarmUnitZones; TenantID null only means the shared IDDeviceFarmUnit=0 "Default" sentinel every unzoned device points at.
+    /// A physical/logical space (e.g. a greenhouse) containing DeviceFarmUnitZones.
     public class DeviceFarmUnit : IFarmMidLevelNode
     {
         [HiddenInput(DisplayValue = true)]

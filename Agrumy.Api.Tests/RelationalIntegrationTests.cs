@@ -52,13 +52,6 @@ public sealed class RelationalIntegrationFixture
         int deviceRole = db.DeviceRoles.Where(t => t.DeviceRoleName == "greenhouse")
                            .Select(t => (int?)t.IDDeviceRole).FirstOrDefault() ?? SeedDeviceRole(db);
 
-        // deviceFarmUnitZone.DeviceFarmUnitID has a real FK to deviceFarmUnit - the sentinel Zone row below (DeviceFarmUnitID=0) needs the sentinel Unit row to already exist.
-        if (!db.DeviceFarmUnits.Any())
-            db.DeviceFarmUnits.Add(new DeviceFarmUnitRow { IDDeviceFarmUnit = 0, TenantID = null, DeviceFarmUnitName = "Default" });
-        db.SaveChanges();
-        if (!db.DeviceFarmUnitZones.Any())
-            db.DeviceFarmUnitZones.Add(new DeviceFarmUnitZoneRow { IDDeviceFarmUnitZone = 0, TenantID = null, DeviceFarmUnitID = 0, DeviceFarmUnitZoneName = "Disabled" });
-
         if (!db.EventTypes.Any())
             db.EventTypes.AddRange(Enum.GetValues<DeviceEventType>().Select(t => new EventTypeRow { IDEventType = (int)t, EventTypeName = t.ToString() }));
         if (!db.DeviceTypeServices.Any())
@@ -2489,7 +2482,6 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.All(zones, z => Assert.Equal(unit.IDDeviceFarmUnit, z.DeviceFarmUnitID));
     }
 
-    // Only the shared IDDeviceFarmUnit=0 sentinel is global; everything else must stay tenant-scoped.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitsGet_IsTenantScoped(DbProviderKind provider)
     {
@@ -2502,7 +2494,6 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var seenByTenant1 = await _repo.DeviceFarmUnitsGetAsync(tenant1);
         Assert.Contains(seenByTenant1, u => u.IDDeviceFarmUnit == unit1.IDDeviceFarmUnit);
         Assert.DoesNotContain(seenByTenant1, u => u.IDDeviceFarmUnit == unit2.IDDeviceFarmUnit);
-        Assert.DoesNotContain(seenByTenant1, u => u.IDDeviceFarmUnit == 0); // sentinel never listed as a real unit
     }
 
     // Unassigning resets both FKs to NULL without bumping ConfigVersion - pure bookkeeping, no device config change.

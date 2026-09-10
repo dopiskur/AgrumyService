@@ -509,8 +509,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitRow", b =>
                 {
                     b.Property<int>("IDDeviceFarmUnit")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("IDFarmGreenhouseUnit");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnit"));
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
@@ -549,8 +552,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitZoneRow", b =>
                 {
                     b.Property<int>("IDDeviceFarmUnitZone")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("IDFarmGreenhouseUnitZone");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnitZone"));
 
                     b.Property<string>("DashboardWidgetsJson")
                         .HasColumnType("longtext");

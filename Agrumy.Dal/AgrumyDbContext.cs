@@ -222,7 +222,6 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.Pattern).IsUnique().HasDatabaseName("ux_webhookSsrfAllowlistEntry_pattern");
             });
 
-            // Unlike DeviceFarmUnit/DeviceFarmUnitZone, Farm has no reserved "0" sentinel row (its optionality on DeviceFarmUnit is expressed via a nullable FK, not a sentinel) - plain AUTO_INCREMENT, no app-side Max+1 dance needed.
             modelBuilder.Entity<DeviceFarmRow>(e =>
             {
                 e.ToTable("farm");
@@ -241,7 +240,7 @@ namespace Agrumy.Dal
             {
                 e.ToTable("farmGreenhouseUnit");
                 e.HasKey(x => x.IDDeviceFarmUnit);
-                e.Property(x => x.IDDeviceFarmUnit).HasColumnName("IDFarmGreenhouseUnit").ValueGeneratedNever();
+                e.Property(x => x.IDDeviceFarmUnit).HasColumnName("IDFarmGreenhouseUnit").ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmID).HasColumnName("FarmID");
                 e.Property(x => x.DeviceFarmUnitName).HasMaxLength(100);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
@@ -255,7 +254,7 @@ namespace Agrumy.Dal
             {
                 e.ToTable("farmGreenhouseUnitZone");
                 e.HasKey(x => x.IDDeviceFarmUnitZone);
-                e.Property(x => x.IDDeviceFarmUnitZone).HasColumnName("IDFarmGreenhouseUnitZone").ValueGeneratedNever();
+                e.Property(x => x.IDDeviceFarmUnitZone).HasColumnName("IDFarmGreenhouseUnitZone").ValueGeneratedOnAdd();
                 e.Property(x => x.DeviceFarmUnitID).HasColumnName("FarmGreenhouseUnitID");
                 e.Property(x => x.DeviceFarmUnitZoneName).HasMaxLength(120);
                 e.Property(x => x.Deleted).HasDefaultValue(false);

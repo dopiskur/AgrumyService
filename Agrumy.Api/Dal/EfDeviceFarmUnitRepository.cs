@@ -83,7 +83,7 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
 
             await db.DeviceFarmUnits
-                .Where(u => u.TenantID == tenantId && u.DeviceFarmID == null && u.IDDeviceFarmUnit != 0)
+                .Where(u => u.TenantID == tenantId && u.DeviceFarmID == null)
                 .ExecuteUpdateAsync(s => s.SetProperty(u => u.DeviceFarmID, farm.IDDeviceFarm));
         }
 
@@ -316,7 +316,7 @@ namespace Agrumy.Api.Dal
 
         public async Task<IList<DeviceFarmUnit>> DeviceFarmUnitsGetAsync(int? tenantID)
         {
-            IQueryable<DeviceFarmUnitRow> q = db.DeviceFarmUnits.AsNoTracking().Where(u => u.IDDeviceFarmUnit != 0);
+            IQueryable<DeviceFarmUnitRow> q = db.DeviceFarmUnits.AsNoTracking();
             if (tenantID != null)
             {
                 q = q.Where(u => u.TenantID == tenantID);
@@ -335,29 +335,13 @@ namespace Agrumy.Api.Dal
         public Task<DeviceFarmUnit> DeviceFarmUnitAddAsync(DeviceFarmUnit unit, Func<Task<string?>>? quotaCheckAsync = null) =>
             QuotaGuard.RunAsync(db, quotaCheckAsync, () => InsertUnitAsync(unit));
 
-        // IDDeviceFarmUnit is ValueGeneratedNever - MySQL's default sql_mode treats an explicit 0 on an AUTO_INCREMENT column as "generate a new value", which would collide with the reserved IDDeviceFarmUnit=0 sentinel (Math.Max(...,1) below keeps 0 free).
         private async Task<DeviceFarmUnit> InsertUnitAsync(DeviceFarmUnit unit)
         {
-            // Retrying the MAX+1 collision below only makes sense with no ambient transaction already open - QuotaGuard's Serializable transaction (present whenever a caller passed quotaCheckAsync) already makes the underlying race far less likely, and Postgres aborts a WHOLE transaction on any error, so retrying inside one would just fail again instead of succeeding; let it surface as a plain ConstraintViolation (409) there instead.
-            bool retryOnCollision = db.Database.CurrentTransaction == null;
-            for (int attempt = 0; ; attempt++)
-            {
-                // IgnoreQueryFilters (roadmap #409) - a soft-deleted row's id is still physically present in the table (unique constraint doesn't care that it's hidden), so computing next-id from the FILTERED max would immediately collide with it.
-                int nextId = Math.Max((await db.DeviceFarmUnits.IgnoreQueryFilters().AsNoTracking().Select(u => (int?)u.IDDeviceFarmUnit).MaxAsync() ?? 0) + 1, 1);
-                int nextOrder = await db.DeviceFarmUnits.Where(u => u.TenantID == unit.TenantID).Select(u => (int?)u.DisplayOrder).MaxAsync() ?? -1;
-                var row = new DeviceFarmUnitRow { IDDeviceFarmUnit = nextId, TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID, DisplayOrder = nextOrder + 1 };
-                db.DeviceFarmUnits.Add(row);
-                try
-                {
-                    await db.SaveChangesAsync();
-                    return ToDtoUnit(row);
-                }
-                catch (DbUpdateException) when (retryOnCollision && attempt < 4)
-                {
-                    // Two concurrent adds computed the same MAX+1 - detach the failed row and retry against a freshly read max, rather than surfacing the PK collision to the caller.
-                    db.Entry(row).State = EntityState.Detached;
-                }
-            }
+            int nextOrder = await db.DeviceFarmUnits.Where(u => u.TenantID == unit.TenantID).Select(u => (int?)u.DisplayOrder).MaxAsync() ?? -1;
+            var row = new DeviceFarmUnitRow { TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID, DisplayOrder = nextOrder + 1 };
+            db.DeviceFarmUnits.Add(row);
+            await db.SaveChangesAsync();
+            return ToDtoUnit(row);
         }
 
         public async Task DeviceFarmUnitUpdateAsync(DeviceFarmUnit unit)
@@ -414,7 +398,7 @@ namespace Agrumy.Api.Dal
         public async Task<IList<DeviceFarmUnitZone>> DeviceFarmUnitZonesGetAsync(int idDeviceFarmUnit)
         {
             var rows = await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit && z.IDDeviceFarmUnitZone != 0)
+                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit)
                 .OrderBy(z => z.DeviceFarmUnitZoneName)
                 .ToListAsync();
             return rows.Select(ToDtoZone).ToList();
@@ -430,43 +414,28 @@ namespace Agrumy.Api.Dal
         public Task<DeviceFarmUnitZone> DeviceFarmUnitZoneAddAsync(DeviceFarmUnitZone zone, Func<Task<string?>>? quotaCheckAsync = null) =>
             QuotaGuard.RunAsync(db, quotaCheckAsync, () => InsertZoneAsync(zone));
 
-        // Same manual max+1 reasoning, same collision-retry, and same IgnoreQueryFilters reasoning as InsertUnitAsync.
         private async Task<DeviceFarmUnitZone> InsertZoneAsync(DeviceFarmUnitZone zone)
         {
-            // Same "skip the inner retry once QuotaGuard already has a Serializable transaction open" reasoning as InsertUnitAsync.
-            bool retryOnCollision = db.Database.CurrentTransaction == null;
-            for (int attempt = 0; ; attempt++)
+            var row = new DeviceFarmUnitZoneRow
             {
-                int nextId = Math.Max((await db.DeviceFarmUnitZones.IgnoreQueryFilters().AsNoTracking().Select(z => (int?)z.IDDeviceFarmUnitZone).MaxAsync() ?? 0) + 1, 1);
-                var row = new DeviceFarmUnitZoneRow
-                {
-                    IDDeviceFarmUnitZone = nextId,
-                    TenantID = zone.TenantID,
-                    DeviceFarmUnitID = zone.DeviceFarmUnitID,
-                    DeviceFarmUnitZoneName = zone.DeviceFarmUnitZoneName,
-                    WaterPumpMaxRunSeconds = settings.WaterPumpMaxRunSeconds,
-                    WaterPumpCooldownSeconds = settings.WaterPumpCooldownSeconds,
-                    // No server-wide default makes sense for a specific tank's own calibration - unlike WaterPumpMaxRunSeconds above, always taken from the caller (null/unset is the correct "no tank tracking yet" state).
-                    TankCapacityLiters = zone.TankCapacityLiters,
-                    WaterLevelRawEmpty = zone.WaterLevelRawEmpty,
-                    WaterLevelRawFull = zone.WaterLevelRawFull,
-                    WaterPumpMinLevel = zone.WaterPumpMinLevel,
-                    // Same reasoning as Tank* above - no server-wide default, always taken from the caller.
-                    HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds,
-                    VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds,
-                    HeatingFailSafePolicy = (int?)zone.HeatingFailSafePolicy,
-                };
-                db.DeviceFarmUnitZones.Add(row);
-                try
-                {
-                    await db.SaveChangesAsync();
-                    return ToDtoZone(row);
-                }
-                catch (DbUpdateException) when (retryOnCollision && attempt < 4)
-                {
-                    db.Entry(row).State = EntityState.Detached;
-                }
-            }
+                TenantID = zone.TenantID,
+                DeviceFarmUnitID = zone.DeviceFarmUnitID,
+                DeviceFarmUnitZoneName = zone.DeviceFarmUnitZoneName,
+                WaterPumpMaxRunSeconds = settings.WaterPumpMaxRunSeconds,
+                WaterPumpCooldownSeconds = settings.WaterPumpCooldownSeconds,
+                // No server-wide default makes sense for a specific tank's own calibration - unlike WaterPumpMaxRunSeconds above, always taken from the caller (null/unset is the correct "no tank tracking yet" state).
+                TankCapacityLiters = zone.TankCapacityLiters,
+                WaterLevelRawEmpty = zone.WaterLevelRawEmpty,
+                WaterLevelRawFull = zone.WaterLevelRawFull,
+                WaterPumpMinLevel = zone.WaterPumpMinLevel,
+                // Same reasoning as Tank* above - no server-wide default, always taken from the caller.
+                HeatingMaxRunSeconds = zone.HeatingMaxRunSeconds,
+                VentilationMaxRunSeconds = zone.VentilationMaxRunSeconds,
+                HeatingFailSafePolicy = (int?)zone.HeatingFailSafePolicy,
+            };
+            db.DeviceFarmUnitZones.Add(row);
+            await db.SaveChangesAsync();
+            return ToDtoZone(row);
         }
 
         public async Task DeviceFarmUnitZoneUpdateAsync(DeviceFarmUnitZone zone)
@@ -911,7 +880,7 @@ namespace Agrumy.Api.Dal
 
         public async Task<IList<DeviceFarmUnitDashboard>> DeviceFarmUnitDashboardGetAsync(int? tenantID)
         {
-            IQueryable<DeviceFarmUnitRow> units = db.DeviceFarmUnits.AsNoTracking().Where(u => u.IDDeviceFarmUnit != 0);
+            IQueryable<DeviceFarmUnitRow> units = db.DeviceFarmUnits.AsNoTracking();
             if (tenantID != null)
             {
                 units = units.Where(u => u.TenantID == tenantID);
@@ -929,7 +898,6 @@ namespace Agrumy.Api.Dal
             var alerts = await GetProblemAlertsAsync(scopedDevices, expiryHours, alertsEnabled);
 
             var zonesByUnit = (await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => z.IDDeviceFarmUnitZone != 0)
                 .Select(z => new { z.DeviceFarmUnitID, z.IDDeviceFarmUnitZone })
                 .ToListAsync())
                 .GroupBy(z => z.DeviceFarmUnitID)
@@ -964,7 +932,7 @@ namespace Agrumy.Api.Dal
         public async Task<IList<DeviceFarmUnitZoneDashboard>> DeviceFarmUnitZoneDashboardListGetAsync(int idDeviceFarmUnit)
         {
             var zoneRows = await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit && z.IDDeviceFarmUnitZone != 0)
+                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit)
                 .ToListAsync();
 
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit);
@@ -1063,7 +1031,7 @@ namespace Agrumy.Api.Dal
             (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit && z.IDDeviceFarmUnitZone != 0)
+                .Where(z => z.DeviceFarmUnitID == idDeviceFarmUnit)
                 .Select(z => z.IDDeviceFarmUnitZone)
                 .ToListAsync();
             return (Average(snapshots), await BuildTrendAsync(zoneIds));
@@ -1082,7 +1050,7 @@ namespace Agrumy.Api.Dal
             (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => unitIds.Contains(z.DeviceFarmUnitID) && z.IDDeviceFarmUnitZone != 0)
+                .Where(z => unitIds.Contains(z.DeviceFarmUnitID))
                 .Select(z => z.IDDeviceFarmUnitZone)
                 .ToListAsync();
             return (Average(snapshots), await BuildTrendAsync(zoneIds));
@@ -1361,7 +1329,7 @@ namespace Agrumy.Api.Dal
         public async Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync()
         {
             var zones = await db.DeviceFarmUnitZones.AsNoTracking()
-                .Where(z => z.IDDeviceFarmUnitZone != 0 && z.TenantID != null
+                .Where(z => z.TenantID != null
                     && z.TankCapacityLiters != null && z.WaterLevelRawEmpty != null && z.WaterLevelRawFull != null)
                 .ToListAsync();
 
