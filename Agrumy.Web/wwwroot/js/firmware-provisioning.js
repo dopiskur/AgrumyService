@@ -273,6 +273,15 @@
         if (!port) {
             return;
         }
+        // esp-web-tools' install button can be clicked again to flash a second board without a page
+        // reload - reset every trace of a PREVIOUS device's provisioning (assign step still open,
+        // stale provisionedDeviceId) so the two flows can't bleed into each other.
+        provisionedDeviceId = null;
+        assignStep.hidden = true;
+        assignButton.disabled = false;
+        skipButton.disabled = false;
+        continueButton.disabled = false;
+
         pendingPort = port;
         flashStep.hidden = true;
         wifiStep.hidden = false;
