@@ -195,6 +195,18 @@ namespace Agrumy.Dal.Entities
         public int IDDeviceConfigController { get; set; }
         public int Slot { get; set; }
         public int RelayFunction { get; set; }
+        public int OutputKind { get; set; } = 1; // Agrumy.Shared.Models.OutputKind.Relay - migration default, every existing row behaves exactly as it always did
+        public int? PairSlot { get; set; }
+        public int? TravelSeconds { get; set; }
+        public int? PwmFrequencyHz { get; set; }
+        public int? ServoMinPulseUs { get; set; }
+        public int? ServoMaxPulseUs { get; set; }
+        public int? ServoSafePositionPercent { get; set; }
+        public int? LatchingPulseMs { get; set; }
+        public int? RateLimitPercentPerSecond { get; set; }
+        public int? MinOnSeconds { get; set; }
+        public int? MinOffSeconds { get; set; }
+        public int? TimeProportioningPeriodSeconds { get; set; }
     }
 
 

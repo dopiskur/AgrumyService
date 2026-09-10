@@ -617,7 +617,22 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Roadmap #309. camelCase serialization of api.Models.DeviceRelaySlot - one physically-wired relay position and the function assigned to it.",
-      "required": ["slot", "relayFunction"],
+      "required": [
+        "slot",
+        "relayFunction",
+        "outputKind",
+        "pairSlot",
+        "travelSeconds",
+        "pwmFrequencyHz",
+        "servoMinPulseUs",
+        "servoMaxPulseUs",
+        "servoSafePositionPercent",
+        "latchingPulseMs",
+        "rateLimitPercentPerSecond",
+        "minOnSeconds",
+        "minOffSeconds",
+        "timeProportioningPeriodSeconds"
+      ],
       "properties": {
         "slot": {
           "type": "integer",
@@ -626,6 +641,42 @@
         "relayFunction": {
           "type": "integer",
           "description": "1=Ventilation, 2=Light, 3=Heating, 4=WaterPump (api.Models.RelayFunction) - never 0/Disabled, a disabled slot is simply omitted from the relays array rather than sent with this value."
+        },
+        "outputKind": {
+          "type": "integer"
+        },
+        "pairSlot": {
+          "type": ["integer", "null"]
+        },
+        "travelSeconds": {
+          "type": ["integer", "null"]
+        },
+        "pwmFrequencyHz": {
+          "type": ["integer", "null"]
+        },
+        "servoMinPulseUs": {
+          "type": ["integer", "null"]
+        },
+        "servoMaxPulseUs": {
+          "type": ["integer", "null"]
+        },
+        "servoSafePositionPercent": {
+          "type": ["integer", "null"]
+        },
+        "latchingPulseMs": {
+          "type": ["integer", "null"]
+        },
+        "rateLimitPercentPerSecond": {
+          "type": ["integer", "null"]
+        },
+        "minOnSeconds": {
+          "type": ["integer", "null"]
+        },
+        "minOffSeconds": {
+          "type": ["integer", "null"]
+        },
+        "timeProportioningPeriodSeconds": {
+          "type": ["integer", "null"]
         }
       }
     },

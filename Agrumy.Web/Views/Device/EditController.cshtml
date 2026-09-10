@@ -7,13 +7,13 @@
 
     var relayEnabledToggle = new EnabledToggleFieldViewModel { Name = ControllerField(nameof(cfg.RelayEnabled)), Label = "Relay", Value = cfg.RelayEnabled };
 
-    // Always renders exactly RelaySlotLimits.MaxSlots dropdowns - cfg.Relays only carries assigned slots, so an unassigned slot just shows "Disabled" here.
-    var relaySlots = new (int Slot, int Selected)[RelaySlotLimits.MaxSlots];
+    // Always renders exactly RelaySlotLimits.MaxSlots rows - cfg.Relays only carries assigned slots, so an unassigned slot just shows "Disabled" here.
+    var relaySlots = new (int Slot, int Selected, Agrumy.Shared.Models.DeviceRelaySlot? Existing)[RelaySlotLimits.MaxSlots];
     for (int i = 0; i < relaySlots.Length; i++)
     {
         int slotNumber = i + 1;
         var assigned = cfg.Relays.FirstOrDefault(r => r.Slot == slotNumber);
-        relaySlots[i] = (slotNumber, assigned?.RelayFunction ?? 0);
+        relaySlots[i] = (slotNumber, assigned?.RelayFunction ?? 0, assigned);
     }
 }
 
@@ -36,14 +36,91 @@
             @for (int i = 0; i < relaySlots.Length; i++)
             {
                 var slot = relaySlots[i];
-                @Html.Hidden(ControllerField($"Relays[{i}].Slot"), slot.Slot)
-                var selectModel = new SelectFieldViewModel
-                {
-                    Name = ControllerField($"Relays[{i}].RelayFunction"),
-                    Label = "Relay" + slot.Slot,
-                    Items = new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected),
-                };
-                <partial name="_SelectField" model="selectModel" />
+                var existing = slot.Existing;
+                <div class="border rounded p-2 mb-2">
+                    @Html.Hidden(ControllerField($"Relays[{i}].Slot"), slot.Slot)
+                    <div class="row g-2 align-items-end">
+                        <div class="col-auto" style="min-width:12rem">
+                            @{
+                                var selectModel = new SelectFieldViewModel
+                                {
+                                    Name = ControllerField($"Relays[{i}].RelayFunction"),
+                                    Label = "Relay" + slot.Slot,
+                                    Items = new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected),
+                                };
+                            }
+                            <partial name="_SelectField" model="selectModel" />
+                        </div>
+                        <div class="col-auto" style="min-width:12rem">
+                            @{
+                                var outputKindItems = new SelectList(Enum.GetValues<Agrumy.Shared.Models.OutputKind>()
+                                    .Select(k => new { Value = (int)k, Text = k.ToString() }), "Value", "Text", (int)(existing?.OutputKind ?? Agrumy.Shared.Models.OutputKind.Relay));
+                            }
+                            <label class="form-label small mb-0">Output type</label>
+                            @Html.DropDownList(ControllerField($"Relays[{i}].OutputKind"), outputKindItems, new { @class = "form-select" })
+                        </div>
+                    </div>
+                    <details class="mt-2">
+                        <summary class="text-secondary small" style="cursor:pointer;">Advanced output settings (only used by some output types)</summary>
+                        <div class="row g-2 mt-1">
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Pair slot <span class="text-secondary">(RelayPair/LatchingPulse)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="@RelaySlotLimits.MaxSlots"
+                                       name="@ControllerField($"Relays[{i}].PairSlot")" value="@existing?.PairSlot" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Travel seconds <span class="text-secondary">(RelayPair)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].TravelSeconds")" value="@existing?.TravelSeconds" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">PWM frequency (Hz) <span class="text-secondary">(Pwm)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].PwmFrequencyHz")" value="@existing?.PwmFrequencyHz" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Servo min pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
+                                       name="@ControllerField($"Relays[{i}].ServoMinPulseUs")" value="@existing?.ServoMinPulseUs" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Servo max pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
+                                       name="@ControllerField($"Relays[{i}].ServoMaxPulseUs")" value="@existing?.ServoMaxPulseUs" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Servo safe position % <span class="text-secondary">(Servo, on E-Stop)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="0" max="100"
+                                       name="@ControllerField($"Relays[{i}].ServoSafePositionPercent")" value="@existing?.ServoSafePositionPercent" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Latch pulse (ms) <span class="text-secondary">(LatchingPulse)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].LatchingPulseMs")" value="@existing?.LatchingPulseMs" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Rate limit %/s <span class="text-secondary">(Pwm/Analog/Servo)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="100"
+                                       name="@ControllerField($"Relays[{i}].RateLimitPercentPerSecond")" value="@existing?.RateLimitPercentPerSecond" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Min on seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].MinOnSeconds")" value="@existing?.MinOnSeconds" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Min off seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].MinOffSeconds")" value="@existing?.MinOffSeconds" />
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label small mb-0">Time-proportioning period (s) <span class="text-secondary">(Relay)</span></label>
+                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                       name="@ControllerField($"Relays[{i}].TimeProportioningPeriodSeconds")" value="@existing?.TimeProportioningPeriodSeconds" />
+                            </div>
+                        </div>
+                    </details>
+                </div>
             }
 
             <div class="mb-0">

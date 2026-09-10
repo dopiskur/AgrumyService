@@ -149,7 +149,43 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("LatchingPulseMs")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MinOffSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MinOnSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OutputKind")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PairSlot")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PwmFrequencyHz")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RateLimitPercentPerSecond")
+                        .HasColumnType("integer");
+
                     b.Property<int>("RelayFunction")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ServoMaxPulseUs")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ServoMinPulseUs")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ServoSafePositionPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TimeProportioningPeriodSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TravelSeconds")
                         .HasColumnType("integer");
 
                     b.HasKey("IDDeviceConfigController", "Slot");

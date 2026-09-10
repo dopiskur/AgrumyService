@@ -600,11 +600,46 @@ namespace Agrumy.Shared.Models
         public static readonly (double Min, double Max) Weight = (0, 5000);
     }
 
-    /// One physically-wired relay slot and the RelayFunction assigned to it - Slot is 1-based, matching AgrumyFirmware's ConfigPin.RELAY_PINS[Slot-1]. A slot with no row is unassigned/disabled; there is no fixed count baked into this shape, unlike the old fixed Relay1..Relay8 columns.
+    /// Unified demand model - which physical output type a DeviceRelaySlot drives; AgrumyFirmware's OutputKindType mirrors this exactly. Relay is the migration default - every slot written before this field existed behaves exactly as it always did.
+    public enum OutputKind
+    {
+        Relay = 1,
+        RelayPair = 2,
+        Pwm = 3,
+        Analog0to10V = 4,
+        Servo = 5,
+        LatchingPulse = 6,
+    }
+
+    /// One physically-wired output slot and the RelayFunction assigned to it - Slot is 1-based, indexing whichever
+    /// AgrumyFirmware ConfigPin array OutputKind selects (RELAY_PINS for Relay/RelayPair/LatchingPulse, PWM_PINS
+    /// for Pwm, ANALOG_PINS for Analog0to10V, SERVO_PINS for Servo). A slot with no row is unassigned/disabled;
+    /// there is no fixed count baked into this shape, unlike the old fixed Relay1..Relay8 columns. Every field
+    /// below OutputKind is only meaningful for the kind(s) noted on it - see AgrumyFirmware's RelaySlot for the
+    /// device-side mirror of this exact shape.
     public class DeviceRelaySlot
     {
         public int Slot { get; set; }
         public int RelayFunction { get; set; }
+        public OutputKind OutputKind { get; set; } = OutputKind.Relay;
+        /// RelayPair/LatchingPulse only - the second physical slot (also indexes RELAY_PINS) forming the pair.
+        public int? PairSlot { get; set; }
+        /// RelayPair only - full 0-100% traversal time in seconds.
+        public int? TravelSeconds { get; set; }
+        /// Pwm only - LEDC frequency in Hz (e.g. 25000 for a quiet fan, 1000 for an LED strip).
+        public int? PwmFrequencyHz { get; set; }
+        public int? ServoMinPulseUs { get; set; }
+        public int? ServoMaxPulseUs { get; set; }
+        /// Servo only - the position this slot drives to on EmergencyStop/relayEnabled=false.
+        public int? ServoSafePositionPercent { get; set; }
+        public int? LatchingPulseMs { get; set; }
+        /// Every kind - max %/s change (ramp/soft-start). Null/0 disables the ramp.
+        public int? RateLimitPercentPerSecond { get; set; }
+        /// Relay/RelayPair only - protects a compressor/pump from short-cycling. Null/0 disables.
+        public int? MinOnSeconds { get; set; }
+        public int? MinOffSeconds { get; set; }
+        /// Relay only - turns a plain on/off relay into a proportional "average power" output over this many seconds. Null/0 means not using this decorator.
+        public int? TimeProportioningPeriodSeconds { get; set; }
     }
 
     /// Bumping this alone (plus a matching AgrumyFirmware MAX_RELAY_SLOTS bump for boards that need more) is now the entire "support more relay slots" story - no schema/wire-format change needed.

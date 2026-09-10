@@ -340,6 +340,7 @@ public class SimulationApiControllerTests
         ActionType = ActionType.Relay,
         RelayFunction = RelayFunction.Heating,
         Name = "Test rule",
+        TargetPercent = 100,
         Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 30 },
     };
 

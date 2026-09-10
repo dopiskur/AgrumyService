@@ -550,7 +550,23 @@ namespace Agrumy.Api.Dal
             }
             IList<DeviceRelaySlot> relays = await db.DeviceConfigControllerRelays.AsNoTracking()
                 .Where(r => r.IDDeviceConfigController == deviceConfigControllerID)
-                .Select(r => new DeviceRelaySlot { Slot = r.Slot, RelayFunction = r.RelayFunction })
+                .Select(r => new DeviceRelaySlot
+                {
+                    Slot = r.Slot,
+                    RelayFunction = r.RelayFunction,
+                    OutputKind = (OutputKind)r.OutputKind,
+                    PairSlot = r.PairSlot,
+                    TravelSeconds = r.TravelSeconds,
+                    PwmFrequencyHz = r.PwmFrequencyHz,
+                    ServoMinPulseUs = r.ServoMinPulseUs,
+                    ServoMaxPulseUs = r.ServoMaxPulseUs,
+                    ServoSafePositionPercent = r.ServoSafePositionPercent,
+                    LatchingPulseMs = r.LatchingPulseMs,
+                    RateLimitPercentPerSecond = r.RateLimitPercentPerSecond,
+                    MinOnSeconds = r.MinOnSeconds,
+                    MinOffSeconds = r.MinOffSeconds,
+                    TimeProportioningPeriodSeconds = r.TimeProportioningPeriodSeconds,
+                })
                 .ToListAsync();
             return ToDto(row, relays);
         }
@@ -586,6 +602,14 @@ namespace Agrumy.Api.Dal
             {
                 return "Duplicate relay slot in request.";
             }
+            // RelayPair/LatchingPulse drive TWO physical slots (open+close) - PairSlot must point at a real, different, currently-unassigned-to-anything-else slot number.
+            foreach (DeviceRelaySlot slot in assignedSlots.Where(s => s.OutputKind is OutputKind.RelayPair or OutputKind.LatchingPulse))
+            {
+                if (slot.PairSlot is not int pairSlot || pairSlot < 1 || pairSlot > RelaySlotLimits.MaxSlots || pairSlot == slot.Slot)
+                {
+                    return $"Relay slot {slot.Slot} ({slot.OutputKind}): pairSlot must be a different valid slot number.";
+                }
+            }
 
             // Resolve from idDevice's OWN DeviceConfigControllerID, not cfg.IDDeviceConfigController - a client-supplied id could otherwise overwrite another device's controller config.
             int? ownConfigControllerId = await db.Devices.AsNoTracking()
@@ -614,6 +638,18 @@ namespace Agrumy.Api.Dal
                         IDDeviceConfigController = ownConfigControllerId!.Value,
                         Slot = slot.Slot,
                         RelayFunction = slot.RelayFunction,
+                        OutputKind = (int)slot.OutputKind,
+                        PairSlot = slot.PairSlot,
+                        TravelSeconds = slot.TravelSeconds,
+                        PwmFrequencyHz = slot.PwmFrequencyHz,
+                        ServoMinPulseUs = slot.ServoMinPulseUs,
+                        ServoMaxPulseUs = slot.ServoMaxPulseUs,
+                        ServoSafePositionPercent = slot.ServoSafePositionPercent,
+                        LatchingPulseMs = slot.LatchingPulseMs,
+                        RateLimitPercentPerSecond = slot.RateLimitPercentPerSecond,
+                        MinOnSeconds = slot.MinOnSeconds,
+                        MinOffSeconds = slot.MinOffSeconds,
+                        TimeProportioningPeriodSeconds = slot.TimeProportioningPeriodSeconds,
                     });
                 }
             }
