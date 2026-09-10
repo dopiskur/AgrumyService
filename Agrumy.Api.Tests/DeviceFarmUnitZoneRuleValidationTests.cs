@@ -23,7 +23,7 @@ public class DeviceFarmUnitZoneRuleValidationTests
     [Fact]
     public void WellFormedRelayRule_IsValid_WithNoRepository()
     {
-        var rule = new DeviceFarmUnitZoneRule { TenantID = 1, ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, Name = "test", Root = Leaf() };
+        var rule = new DeviceFarmUnitZoneRule { TenantID = 1, ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, TargetPercent = 100, Name = "test", Root = Leaf() };
 
         Assert.True(IsValid(rule, out var results));
         Assert.Empty(results);
@@ -87,13 +87,14 @@ public class DeviceFarmUnitZoneRuleValidationTests
     {
         // Agrumy.Rules can't be referenced from here without a project reference this test project
         // doesn't have, so this mirrors HorticultureRuleTemplateBuilder.BuildRules' exact shape for one
-        // entry (a single ComparisonNode leaf, Relay action, no TargetPercent) rather than importing it -
+        // entry (a single ComparisonNode leaf, Relay action, TargetPercent 100) rather than importing it -
         // the point is that shape, wherever it's built, passes the same Validate() a hand-typed rule does.
         var generated = new DeviceFarmUnitZoneRule
         {
             DeviceFarmUnitZoneID = 1,
             ActionType = ActionType.Relay,
             RelayFunction = RelayFunction.Heating,
+            TargetPercent = 100,
             Name = "Tomato: heat below 15.0°C",
             Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.LessThan, Value1 = 15.0, Hysteresis = 1.0 },
         };

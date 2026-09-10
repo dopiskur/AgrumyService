@@ -440,7 +440,7 @@
         },
         "targetPercent": {
           "type": ["integer", "null"],
-          "description": "Only meaningful when relayFunction is positional (Screen=5/Vent=6) - the 0-100 position this rule commands while root evaluates true; several simultaneously-true rules for the same function fold to the HIGHEST targetPercent among them, not on/off OR. Null for every other function."
+          "description": "Required for every Relay rule regardless of function (roadmap #470) - the 0-100 demand this rule asserts while root evaluates true; several simultaneously-true rules for the same function fold to the HIGHEST targetPercent among them."
         },
         "isSafetyRule": {
           "type": "boolean",

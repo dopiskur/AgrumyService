@@ -19,6 +19,7 @@ namespace Agrumy.Rules
                 ActionType = ActionType.Relay,
                 RelayFunction = function,
                 Name = $"{namePrefix}: {suffix}",
+                TargetPercent = 100,
                 Root = new ConditionNode
                 {
                     Type = NodeType.Group,

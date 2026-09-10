@@ -5,7 +5,7 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// TargetPercent shape validation - required+bounded for a positional function (Screen/Vent), forbidden for every other Relay function and for any Notification rule.
+/// TargetPercent shape validation - required+bounded (0-100) for every Relay function, forbidden for a Notification rule.
 public class RuleValidationServiceTests
 {
     private readonly RuleValidationService _sut = new(new Mock<IDeviceFarmUnitRepository>().Object);
@@ -49,17 +49,17 @@ public class RuleValidationServiceTests
     }
 
     [Fact]
-    public async Task BinaryFunction_TargetPercentSet_Rejected()
+    public async Task BinaryFunction_TargetPercentSet_Accepted()
     {
         string? error = await _sut.ShapeErrorAsync(RelayRule(RelayFunction.Heating, 50));
-        Assert.NotNull(error);
+        Assert.Null(error);
     }
 
     [Fact]
-    public async Task BinaryFunction_NoTargetPercent_Accepted()
+    public async Task BinaryFunction_NoTargetPercent_Rejected()
     {
         string? error = await _sut.ShapeErrorAsync(RelayRule(RelayFunction.Heating, null));
-        Assert.Null(error);
+        Assert.NotNull(error);
     }
 
     [Fact]

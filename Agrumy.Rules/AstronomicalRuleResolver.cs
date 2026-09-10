@@ -36,6 +36,7 @@ namespace Agrumy.Rules
                         Name = rule.Name,
                         Description = rule.Description,
                         Root = resolvedRoot,
+                        TargetPercent = rule.TargetPercent,
                         IsSafetyRule = rule.IsSafetyRule,
                         NotificationSubject = rule.NotificationSubject,
                         NotificationBody = rule.NotificationBody,

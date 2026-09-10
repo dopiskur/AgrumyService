@@ -5,26 +5,10 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.Devices
 {
-    /// Decides a simulated device's relay on/off state from the SAME rules a real device would receive over /api/Device/Config, via RuleConditionEvaluator.EvaluateNode - the tree-walk itself is shared (roadmap #396(4) made it substantial enough that reimplementing a third time no longer made sense), only readMetric (this file) differs from RuleNotificationEvaluator's (SensorAverages-backed).
+    /// Decides a simulated device's relay state from the SAME rules a real device would receive over /api/Device/Config, via RuleConditionEvaluator.EvaluateNode - the tree-walk itself is shared (substantial enough that reimplementing a third time no longer made sense), only readMetric (this file) differs from RuleNotificationEvaluator's (SensorAverages-backed).
     public static class SimulatedRelayEvaluator
     {
-        /// wasOn is the relay's own last-known state (for a GT/LT ComparisonNode's dead-zone latch, same rule as RuleConditionEvaluator's wasRuleTrue) - several rules for the same function OR together, unchanged from AgrumyFirmware's OR-across-rules semantics.
-        public static bool Evaluate(RelayFunction function, IList<DeviceFarmUnitZoneRule> rules, bool wasOn, SimulatedReading reading, DateTime utcNow, int utcOffsetSeconds)
-        {
-            Func<SensorMetric, double?> readMetric = metric => ReadMetric(reading, metric);
-            bool any = false;
-            foreach (DeviceFarmUnitZoneRule rule in rules)
-            {
-                if (rule.ActionType != ActionType.Relay || rule.RelayFunction != function || rule.Root == null)
-                {
-                    continue;
-                }
-                any |= RuleConditionEvaluator.EvaluateRule(rule, wasOn, readMetric, utcNow, utcOffsetSeconds, referencedRuleFiredThisTick: static _ => false);
-            }
-            return any;
-        }
-
-        /// Positional counterpart to Evaluate (Screen/Vent) - folds every currently-true rule's own TargetPercent to their MAX (0 if none true), same "OR across rules" spirit as Evaluate just MAX instead of boolean-OR, mirroring AgrumyFirmware's foldTargetPercent.
+        /// wasOn is the relay's own last-known state (for a GT/LT ComparisonNode's dead-zone latch, same rule as RuleConditionEvaluator's wasRuleTrue) - folds every currently-true rule's own TargetPercent to their MAX (0 if none true), for every RelayFunction, mirroring AgrumyFirmware's foldTargetPercent. IsOn is just the caller checking result &gt; 0.
         public static int EvaluatePercent(RelayFunction function, IList<DeviceFarmUnitZoneRule> rules, bool wasOn, SimulatedReading reading, DateTime utcNow, int utcOffsetSeconds)
         {
             Func<SensorMetric, double?> readMetric = metric => ReadMetric(reading, metric);

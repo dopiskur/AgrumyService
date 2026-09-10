@@ -161,6 +161,7 @@ namespace Agrumy.Api.Migration
                     Name = r.Name,
                     Description = r.Description,
                     Root = r.Root,
+                    TargetPercent = r.TargetPercent,
                     IsSafetyRule = r.IsSafetyRule,
                     NotificationSubject = r.NotificationSubject,
                     NotificationBody = r.NotificationBody,

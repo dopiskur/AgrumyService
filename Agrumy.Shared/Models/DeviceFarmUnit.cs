@@ -104,7 +104,7 @@ namespace Agrumy.Shared.Models
         public SensorTrend Trend { get; set; } = new();
     }
 
-    /// Relay function a DeviceFarmUnitZoneRule targets, same numeric convention as deviceTypeRelay seed rows; kept as a plain int on the wire (not this enum) so firmware can parse it as a number without JsonStringEnumConverter. Screen/Vent are POSITIONAL (a 0-100 target percent, not a plain on/off decision) - see DeviceFarmUnitZoneRule.TargetPercent and RelayFunctionKind.IsPositional.
+    /// Relay function a DeviceFarmUnitZoneRule targets, same numeric convention as deviceTypeRelay seed rows; kept as a plain int on the wire (not this enum) so firmware can parse it as a number without JsonStringEnumConverter. Every function folds through the same DeviceFarmUnitZoneRule.TargetPercent/MAX engine - RelayFunctionKind.IsPositional now only distinguishes Screen/Vent for feature-level rules that are inherently positional (e.g. ApplyDayNightPreset), not the fold itself.
     public enum RelayFunction
     {
         Ventilation = 1,
@@ -117,7 +117,7 @@ namespace Agrumy.Shared.Models
 
     public static class RelayFunctionKind
     {
-        /// True for a positional actuator (Screen/Vent) whose rules carry their own TargetPercent instead of folding to a plain on/off decision.
+        /// True for Screen/Vent - still meaningful for features that are inherently positional (e.g. ApplyDayNightPreset rejects them), even though every function now folds through the same TargetPercent/MAX engine.
         public static bool IsPositional(this RelayFunction function) => function is RelayFunction.Screen or RelayFunction.Vent;
     }
 
@@ -126,7 +126,7 @@ namespace Agrumy.Shared.Models
     {
         public RelayFunction RelayFunction { get; set; }
         public bool IsOn { get; set; }
-        /// Set only for a positional function (Screen/Vent) - the actual position (0-100) the device drove to this tick, null for a binary function.
+        /// The rule fold's target percent (0-100) this tick, for every relay function now - IsOn is just Percent &gt; 0.
         public int? Percent { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
     }
@@ -297,7 +297,7 @@ namespace Agrumy.Shared.Models
         public IList<string> RulesSkipped { get; set; } = [];
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmOpenfieldCropParcelID/DeviceFarmOpenfieldCropID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still OR together; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmOpenfieldCropParcelID/DeviceFarmOpenfieldCropID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]
@@ -318,9 +318,9 @@ namespace Agrumy.Shared.Models
         public string Name { get; set; } = "";
         public string? Description { get; set; }
         public ConditionNode? Root { get; set; }
-        /// Only meaningful when RelayFunction is positional (Screen/Vent) - the 0-100 position this rule commands while Root evaluates true. Several simultaneously-true rules for the same function resolve to the HIGHEST TargetPercent among them, not an OR/AND - see AgrumyFirmware's foldTargetPercent and Agrumy.Api.Devices.SimulatedRelayEvaluator.EvaluatePercent.
+        /// Required for every Relay rule regardless of function - the 0-100 demand this rule asserts while Root evaluates true, 0 while false. Several simultaneously-true rules for the same function resolve to the HIGHEST TargetPercent among them, not an OR/AND - see AgrumyFirmware's foldTargetPercent and Agrumy.Api.Devices.SimulatedRelayEvaluator.EvaluatePercent.
         public int? TargetPercent { get; set; }
-        /// Roadmap #396(5) - survives RuleHierarchyResolver's normal scope-override even when a more specific scope has its own rule(s) for the same function/name; ORs in alongside whichever rule "won" (a zone rule can no longer silently erase a global frost-guard).
+        /// Survives RuleHierarchyResolver's normal scope-override even when a more specific scope has its own rule(s) for the same function/name; ORs in alongside whichever rule "won" (a zone rule can no longer silently erase a global frost-guard) - EXCEPT when Simulation itself wins the function, a deliberate exception so a simulated scenario can actually test whether the safety rule fires.
         public bool IsSafetyRule { get; set; }
         /// Notification-action only; supports {zone}/{value}/{metric} placeholders, substituted by RuleNotificationEvaluator ({value}/{metric} resolve from the first ComparisonNode found in the tree, best-effort for a multi-metric rule).
         public string? NotificationSubject { get; set; }
@@ -344,16 +344,9 @@ namespace Agrumy.Shared.Models
                 {
                     yield return new ValidationResult("Relay rule: relayFunction is required.", [nameof(RelayFunction)]);
                 }
-                else if (RelayFunction.Value.IsPositional())
+                else if (TargetPercent is not int percent || percent < 0 || percent > 100)
                 {
-                    if (TargetPercent is not int percent || percent < 0 || percent > 100)
-                    {
-                        yield return new ValidationResult("Screen/Vent rule: targetPercent is required, 0-100.", [nameof(TargetPercent)]);
-                    }
-                }
-                else if (TargetPercent != null)
-                {
-                    yield return new ValidationResult("targetPercent only applies to a Screen/Vent (positional) rule.", [nameof(TargetPercent)]);
+                    yield return new ValidationResult("Relay rule: targetPercent is required, 0-100.", [nameof(TargetPercent)]);
                 }
             }
             else

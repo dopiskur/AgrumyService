@@ -8,7 +8,7 @@
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["relayFunction", "isOn", "dateCreated"],
+    "required": ["relayFunction", "isOn", "percent", "dateCreated"],
     "properties": {
       "relayFunction": {
         "type": ["integer", "string"],
@@ -16,11 +16,11 @@
       },
       "isOn": {
         "type": "boolean",
-        "description": "The relay's new state after this transition - for a positional function (Screen/Vent) this is percent>0, not an independent decision."
+        "description": "The relay's new state after this transition - always percent>0 (roadmap #470), for every function."
       },
       "percent": {
         "type": ["integer", "string", "null"],
-        "description": "Only meaningful for a positional function (Screen/Vent) - the actual 0-100 position driven to. Absent/null for a binary function."
+        "description": "The rule fold's target percent (0-100) driven to this tick, for every function now (roadmap #470), not just Screen/Vent."
       },
       "dateCreated": {
         "type": ["string", "null"],

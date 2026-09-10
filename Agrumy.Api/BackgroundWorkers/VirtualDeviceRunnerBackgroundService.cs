@@ -62,16 +62,8 @@ namespace Agrumy.Api.BackgroundWorkers
                 foreach (RelayFunction function in Enum.GetValues<RelayFunction>())
                 {
                     bool wasOn = current.FirstOrDefault(c => c.RelayFunction == function)?.IsOn ?? false;
-                    if (function.IsPositional())
-                    {
-                        int percent = SimulatedRelayEvaluator.EvaluatePercent(function, controller.Rules, wasOn, reading, utcNow, config.UtcOffsetSeconds ?? 0);
-                        entries.Add(new ControllerDataPush { RelayFunction = function, IsOn = percent > 0, Percent = percent, DateCreated = utcNow });
-                    }
-                    else
-                    {
-                        bool isOn = SimulatedRelayEvaluator.Evaluate(function, controller.Rules, wasOn, reading, utcNow, config.UtcOffsetSeconds ?? 0);
-                        entries.Add(new ControllerDataPush { RelayFunction = function, IsOn = isOn, DateCreated = utcNow });
-                    }
+                    int percent = SimulatedRelayEvaluator.EvaluatePercent(function, controller.Rules, wasOn, reading, utcNow, config.UtcOffsetSeconds ?? 0);
+                    entries.Add(new ControllerDataPush { RelayFunction = function, IsOn = percent > 0, Percent = percent, DateCreated = utcNow });
                 }
                 await client.PushControllerDataAsync(device.ApiId!, apiAuth, entries);
             }

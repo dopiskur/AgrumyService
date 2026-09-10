@@ -1086,7 +1086,7 @@ namespace Agrumy.Web.Controllers.View
                 RelayFunction = input.ActionType == ActionType.Relay ? input.RelayFunction : null,
                 Name = input.Name.Trim(),
                 Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim(),
-                TargetPercent = input.ActionType == ActionType.Relay && input.RelayFunction?.IsPositional() == true ? input.TargetPercent : null,
+                TargetPercent = input.ActionType == ActionType.Relay ? input.TargetPercent : null,
                 IsSafetyRule = input.IsSafetyRule,
                 NotificationSubject = input.ActionType == ActionType.Notification ? input.NotificationSubject : null,
                 NotificationBody = input.ActionType == ActionType.Notification ? input.NotificationBody : null,
