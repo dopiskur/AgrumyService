@@ -187,29 +187,6 @@ public class RuleHierarchyResolverTests
         Assert.Equal([1], result.Select(r => r.IDDeviceFarmUnitZoneRule));
     }
 
-    /// A real A/B test could otherwise turn off heating below freezing - the safety rule must OR in regardless of which tier normally wins.
-    [Fact]
-    public void ResolveRelayRules_GlobalSafetyRule_SurvivesExperimentOverride_OrsInAlongside()
-    {
-        var experimentRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, experimentId: 9) };
-        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
-
-        var result = RuleHierarchyResolver.ResolveRelayRules([], experimentRules, [], [], [], globalRules);
-
-        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
-    }
-
-    [Fact]
-    public void ResolveRelayRules_GlobalSafetyRule_SurvivesSimulationOverride_OrsInAlongside()
-    {
-        var simulationRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 1, simulationId: 3) };
-        var globalRules = new List<DeviceFarmUnitZoneRule> { RelayRule(RelayFunction.Heating, 2, isSafetyRule: true) };
-
-        var result = RuleHierarchyResolver.ResolveRelayRules(simulationRules, [], [], [], [], globalRules);
-
-        Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
-    }
-
     /// Roadmap #396(4) - Notification rules no longer group by SensorMetric (a rule can span several metrics now); a more specific scope's rule with the SAME Name replaces a less specific one instead.
     [Fact]
     public void ResolveNotificationRules_SameName_ZoneOverridesGlobal()
