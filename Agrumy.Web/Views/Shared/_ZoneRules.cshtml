@@ -76,6 +76,94 @@
     </div>
 }
 
+@{
+    (RelayFunction Value, string Label)[] presetFunctions =
+    [
+        (RelayFunction.Heating, "Heating"), (RelayFunction.Ventilation, "Ventilation"),
+        (RelayFunction.Light, "Light"), (RelayFunction.WaterPump, "Water pump"),
+    ];
+    (SensorMetric Value, string Label)[] presetMetrics =
+    [
+        (SensorMetric.Temperature, "Temperature"), (SensorMetric.Humidity, "Humidity"),
+        (SensorMetric.Moisture, "Moisture"), (SensorMetric.Light, "Light"), (SensorMetric.Co2, "Co2"),
+    ];
+    (ComparisonOperator Value, string Label)[] presetOperators =
+    [
+        (ComparisonOperator.LessThan, "<"), (ComparisonOperator.LessThanOrEqual, "<="),
+        (ComparisonOperator.GreaterThan, ">"), (ComparisonOperator.GreaterThanOrEqual, ">="),
+        (ComparisonOperator.Equal, "="),
+    ];
+}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="fw-semibold">Day/Night targets</h6>
+        <p class="text-secondary small">
+            Generates two rules from one form - the same metric/comparison at a day threshold and a
+            night threshold, each gated by a Schedule window (day window as given; night is its
+            complement, wrapping past midnight). Fine-tune (or delete) the generated rules above
+            afterward like any other rule. Astronomical (sunrise/sunset) day/night boundaries aren't
+            wired into this preset yet - use a fixed time window.
+        </p>
+        <form asp-action="DayNightPresetAdd" method="post" class="row g-2 align-items-end">
+            <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.Zone!.IDDeviceFarmUnitZone" />
+            <div class="col-auto">
+                <label class="form-label small mb-0">Function</label>
+                <select name="Function" class="form-select form-select-sm">
+                    @foreach (var (value, label) in presetFunctions)
+                    {
+                        <option value="@((int)value)">@label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Metric</label>
+                <select name="Metric" class="form-select form-select-sm">
+                    @foreach (var (value, label) in presetMetrics)
+                    {
+                        <option value="@((int)value)">@label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Operator</label>
+                <select name="Operator" class="form-select form-select-sm">
+                    @foreach (var (value, label) in presetOperators)
+                    {
+                        <option value="@((int)value)">@label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Day value</label>
+                <input type="number" step="any" name="DayValue" class="form-control form-control-sm" style="width:7rem" required />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Night value</label>
+                <input type="number" step="any" name="NightValue" class="form-control form-control-sm" style="width:7rem" required />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Hysteresis</label>
+                <input type="number" step="any" min="0" name="Hysteresis" class="form-control form-control-sm" style="width:6rem" value="0" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Day starts</label>
+                <input type="time" name="DayStart" class="form-control form-control-sm" value="06:00" required />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Day ends</label>
+                <input type="time" name="DayEnd" class="form-control form-control-sm" value="20:00" required />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Name prefix</label>
+                <input type="text" name="NamePrefix" class="form-control form-control-sm" style="width:12rem" placeholder="e.g. Vegetative" required />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Add day/night rules</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card mb-3" id="manualActuateCard">
     <div class="card-body">
         <h6 class="fw-semibold">Manual actuate</h6>
