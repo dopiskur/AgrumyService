@@ -77,6 +77,12 @@
       "library": "leaflet@1.9.4",
       "destination": "wwwroot/lib/leaflet/",
       "files": [ "leaflet.css", "leaflet.js", "images/marker-icon.png", "images/marker-icon-2x.png", "images/marker-shadow.png" ]
+    },
+    {
+      "provider": "jsdelivr",
+      "library": "@geoman-io/leaflet-geoman-free@2.20.1",
+      "destination": "wwwroot/lib/leaflet-geoman/",
+      "files": [ "dist/leaflet-geoman.css", "dist/leaflet-geoman.min.js" ]
     }
   ]
 }

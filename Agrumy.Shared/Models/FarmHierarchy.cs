@@ -114,6 +114,14 @@ namespace Agrumy.Shared.Models
         public int? TenantID { get; set; }
         public int FarmOpenfieldID { get; set; }
         public string? FarmParcelName { get; set; }
+        /// Outer boundary polygon (S-A, D4) - WGS84 GeoJSON Polygon text, validated/normalized by ParcelGeometryValidator before storage.
+        public string? GeometryGeoJson { get; set; }
+        public double? AreaHectares { get; set; }
+        public double? BboxMinLat { get; set; }
+        public double? BboxMinLon { get; set; }
+        public double? BboxMaxLat { get; set; }
+        public double? BboxMaxLon { get; set; }
+        public string? ArkodParcelId { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
@@ -140,6 +148,15 @@ namespace Agrumy.Shared.Models
         public int? VentilationMaxRunSeconds { get; set; }
         public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
+
+        /// Subdivision polygon within the parcel's outer boundary (S-A, D4) - same validation/storage shape as FarmParcel.GeometryGeoJson.
+        public string? GeometryGeoJson { get; set; }
+        public double? AreaHectares { get; set; }
+        public double? BboxMinLat { get; set; }
+        public double? BboxMinLon { get; set; }
+        public double? BboxMaxLat { get; set; }
+        public double? BboxMaxLon { get; set; }
+
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
         int? IFarmLeafLevelNode.Id => IDFarmParcelZone;
@@ -274,6 +291,13 @@ namespace Agrumy.Shared.Models
         public string? QualityGrade { get; set; }
         public string? Note { get; set; }
         public bool Confirm { get; set; }
+    }
+
+    /// Body of the parcel/zone geometry PUT (S-A) - ArkodParcelId only meaningful on the FarmParcel (container) endpoint, ignored on the zone one.
+    public class ParcelGeometrySetRequest
+    {
+        public string GeometryGeoJson { get; set; } = "";
+        public string? ArkodParcelId { get; set; }
     }
 
     /// Body of the greenhouse "Start planting" action (D8) - crop name is resolved against the same catalog Sowing uses (D12).

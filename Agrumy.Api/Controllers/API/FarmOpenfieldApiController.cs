@@ -1,6 +1,7 @@
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Quota;
+using Agrumy.Shared.Geo;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Utils;
@@ -523,6 +524,62 @@ namespace Agrumy.Api.Controllers.API
             await farmParcelRepo.FarmParcelZoneDeleteAsync(parcel!.IDFarmParcelZone!.Value);
             await WriteAuditAsync("FarmParcelZone.Deleted", parcel.TenantID, "FarmParcelZone", idFarmParcelZone.ToString()!, parcel.FarmParcelZoneName);
             return true;
+        }
+
+        /// S-A - the parcel's outer boundary (Leaflet-Geoman draw/edit on the Web side); validated/normalized by ParcelGeometryValidator before storage.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("FarmParcel/{idFarmParcel}/Geometry")]
+        public async Task<ActionResult<ParcelGeometryResult>> FarmParcelGeometrySet(int idFarmParcel, [FromBody] ParcelGeometrySetRequest request)
+        {
+            var (parcel, error) = await EnsureOwnedFarmParcelAsync(idFarmParcel, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            ParcelGeometryResult result;
+            try
+            {
+                result = ParcelGeometryValidator.Validate(request.GeometryGeoJson);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            await farmParcelRepo.FarmParcelGeometrySetAsync(idFarmParcel, result.GeometryGeoJson, result.AreaHectares, result.BboxMinLat, result.BboxMinLon, result.BboxMaxLat, result.BboxMaxLon, request.ArkodParcelId);
+            await WriteAuditAsync("FarmParcel.GeometrySet", parcel!.TenantID, "FarmParcel", idFarmParcel.ToString(), $"{result.AreaHectares:0.###} ha");
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet("FarmParcel/{idFarmParcel}/Geometry")]
+        public async Task<ActionResult<FarmParcel>> FarmParcelGeometryGet(int idFarmParcel)
+        {
+            var (parcel, error) = await EnsureOwnedFarmParcelAsync(idFarmParcel, forWrite: false);
+            return error ?? Ok(parcel);
+        }
+
+        /// S-A - one zone's subdivision polygon within its parcel's outer boundary; same validator, separate storage so zone separations render independently on the map.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Parcel/{idFarmParcelZone}/Geometry")]
+        public async Task<ActionResult<ParcelGeometryResult>> ParcelZoneGeometrySet(int idFarmParcelZone, [FromBody] ParcelGeometrySetRequest request)
+        {
+            var (zone, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            ParcelGeometryResult result;
+            try
+            {
+                result = ParcelGeometryValidator.Validate(request.GeometryGeoJson);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            await farmParcelRepo.FarmParcelZoneGeometrySetAsync(idFarmParcelZone, result.GeometryGeoJson, result.AreaHectares, result.BboxMinLat, result.BboxMinLon, result.BboxMaxLat, result.BboxMaxLon);
+            await WriteAuditAsync("FarmParcelZone.GeometrySet", zone!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), $"{result.AreaHectares:0.###} ha");
+            return Ok(result);
         }
 
         /// D3/D4 - replaces one zone with N named zones; blocked (409, names the sowing) while the source zone has an active sowing.

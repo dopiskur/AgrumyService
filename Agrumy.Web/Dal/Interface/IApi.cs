@@ -1,3 +1,4 @@
+using Agrumy.Shared.Geo;
 using Agrumy.Shared.Models;
 using Refit;
 
@@ -369,6 +370,15 @@ namespace Agrumy.Web.Dal.Interface
 
         [Get("/api/FarmOpenfield/FarmParcel/{idFarmParcel}/Zones")]
         Task<IList<FarmParcelZone>> FarmParcelZonesGet(int idFarmParcel);
+
+        [Get("/api/FarmOpenfield/FarmParcel/{idFarmParcel}/Geometry")]
+        Task<FarmParcel> FarmParcelGeometryGet(int idFarmParcel);
+
+        [Put("/api/FarmOpenfield/FarmParcel/{idFarmParcel}/Geometry")]
+        Task<ParcelGeometryResult> FarmParcelGeometrySet(int idFarmParcel, [Body] ParcelGeometrySetRequest request);
+
+        [Put("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry")]
+        Task<ParcelGeometryResult> ParcelZoneGeometrySet(int idFarmParcelZone, [Body] ParcelGeometrySetRequest request);
 
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();

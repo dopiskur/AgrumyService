@@ -14,6 +14,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task FarmParcelUpdateAsync(FarmParcel parcel);
 
+        /// S-A - sets the parcel's outer boundary; caller passes an already-validated ParcelGeometryValidator result.
+        Task FarmParcelGeometrySetAsync(int idFarmParcel, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon, string? arkodParcelId);
+
         Task FarmParcelDeleteAsync(int idFarmParcel);
 
         Task<IList<FarmParcelZone>> FarmParcelZonesGetAsync(int idFarmParcel);
@@ -21,6 +24,9 @@ namespace Agrumy.Api.Dal.Interface
         Task<FarmParcelZone?> FarmParcelZoneGetByIdAsync(int idFarmParcelZone);
 
         Task FarmParcelZoneUpdateAsync(FarmParcelZone zone);
+
+        /// S-A - sets one zone's subdivision polygon within its parcel's outer boundary.
+        Task FarmParcelZoneGeometrySetAsync(int idFarmParcelZone, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon);
 
         /// Bumps ConfigVersion for every device in the zone - mirrors DeviceFarmUnitZoneConfigVersionBumpAsync.
         Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone);

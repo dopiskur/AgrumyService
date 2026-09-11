@@ -27,6 +27,13 @@ namespace Agrumy.Dal.Entities
         public int? TenantID { get; set; }
         public int FarmOpenfieldID { get; set; }
         public string? FarmParcelName { get; set; }
+        public string? GeometryGeoJson { get; set; }
+        public double? AreaHectares { get; set; }
+        public double? BboxMinLat { get; set; }
+        public double? BboxMinLon { get; set; }
+        public double? BboxMaxLat { get; set; }
+        public double? BboxMaxLon { get; set; }
+        public string? ArkodParcelId { get; set; }
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }
@@ -53,6 +60,13 @@ namespace Agrumy.Dal.Entities
         public int? VentilationMaxRunSeconds { get; set; }
         public int? HeatingFailSafePolicy { get; set; }
         public string? DashboardWidgetsJson { get; set; }
+
+        public string? GeometryGeoJson { get; set; }
+        public double? AreaHectares { get; set; }
+        public double? BboxMinLat { get; set; }
+        public double? BboxMinLon { get; set; }
+        public double? BboxMaxLat { get; set; }
+        public double? BboxMaxLon { get; set; }
 
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }

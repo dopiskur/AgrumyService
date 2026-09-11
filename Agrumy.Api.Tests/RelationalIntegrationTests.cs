@@ -3847,4 +3847,49 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.Equal(DateOnly.FromDateTime(today.AddDays(1 + 14).UtcDateTime), earliest);
     }
+
+    // ---- Parcel/zone geometry (S-A) ----------------------------------
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelGeometrySetAsync_StoresGeometryAreaAndBbox_ScopedToOneTenant(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantA, _, _) = await MakeUser(t);
+        var (tenantB, _, _) = await MakeUser(t);
+        var (_, openfieldA) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantA);
+        var (_, openfieldB) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantB);
+        var (parcelA, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmOpenfieldID = openfieldA.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var (parcelB, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmOpenfieldID = openfieldB.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+
+        await _repo.FarmParcelGeometrySetAsync(parcelA.IDFarmParcel!.Value, "{\"type\":\"Polygon\"}", 1.23, 45.8, 15.9, 45.81, 15.91, "ARKOD-A");
+
+        FarmParcel? refetchedA = await _repo.FarmParcelGetByIdAsync(parcelA.IDFarmParcel!.Value);
+        FarmParcel? refetchedB = await _repo.FarmParcelGetByIdAsync(parcelB.IDFarmParcel!.Value);
+        Assert.Equal(1.23, refetchedA!.AreaHectares);
+        Assert.Equal("ARKOD-A", refetchedA.ArkodParcelId);
+        Assert.Equal(tenantA, refetchedA.TenantID);
+        // Tenant B's parcel (same call pattern, different id) must be completely untouched - proves the update is scoped to the one row, not e.g. every parcel of that name.
+        Assert.Null(refetchedB!.GeometryGeoJson);
+        Assert.Null(refetchedB.AreaHectares);
+        Assert.Equal(tenantB, refetchedB.TenantID);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelZoneGeometrySetAsync_StoresGeometryIndependentlyOfTheParcelsOwnBoundary(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+
+        await _repo.FarmParcelGeometrySetAsync(parcel.IDFarmParcel!.Value, "{\"type\":\"Polygon\",\"outer\":true}", 5.0, 45.0, 15.0, 45.1, 15.1, null);
+        await _repo.FarmParcelZoneGeometrySetAsync(zone.IDFarmParcelZone!.Value, "{\"type\":\"Polygon\",\"outer\":false}", 2.5, 45.02, 15.02, 45.05, 15.05);
+
+        FarmParcel? refetchedParcel = await _repo.FarmParcelGetByIdAsync(parcel.IDFarmParcel!.Value);
+        FarmParcelZone? refetchedZone = await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value);
+        Assert.Equal(5.0, refetchedParcel!.AreaHectares);
+        Assert.Equal(2.5, refetchedZone!.AreaHectares);
+        Assert.Contains("outer\":true", refetchedParcel.GeometryGeoJson);
+        Assert.Contains("outer\":false", refetchedZone.GeometryGeoJson);
+    }
 }

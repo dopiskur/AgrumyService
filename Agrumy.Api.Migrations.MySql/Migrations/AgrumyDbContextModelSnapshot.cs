@@ -1539,6 +1539,25 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcel"));
 
+                    b.Property<double?>("AreaHectares")
+                        .HasColumnType("double");
+
+                    b.Property<string>("ArkodParcelId")
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<double?>("BboxMaxLat")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMaxLon")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMinLat")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMinLon")
+                        .HasColumnType("double");
+
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -1553,6 +1572,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("FarmParcelName")
                         .HasMaxLength(120)
                         .HasColumnType("varchar(120)");
+
+                    b.Property<string>("GeometryGeoJson")
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("TenantID")
                         .HasColumnType("int");
@@ -1571,6 +1593,21 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcelZone"));
+
+                    b.Property<double?>("AreaHectares")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMaxLat")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMaxLon")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMinLat")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("BboxMinLon")
+                        .HasColumnType("double");
 
                     b.Property<int?>("CurrentSowingID")
                         .HasColumnType("int");
@@ -1592,6 +1629,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<string>("FarmParcelZoneName")
                         .HasMaxLength(120)
                         .HasColumnType("varchar(120)");
+
+                    b.Property<string>("GeometryGeoJson")
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("HeatingFailSafePolicy")
                         .HasColumnType("int");

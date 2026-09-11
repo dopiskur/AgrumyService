@@ -45,6 +45,9 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task FarmParcelUpdateAsync(FarmParcel parcel) => farmParcelRepository.FarmParcelUpdateAsync(parcel);
 
+        public Task FarmParcelGeometrySetAsync(int idFarmParcel, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon, string? arkodParcelId) =>
+            farmParcelRepository.FarmParcelGeometrySetAsync(idFarmParcel, geometryGeoJson, areaHectares, bboxMinLat, bboxMinLon, bboxMaxLat, bboxMaxLon, arkodParcelId);
+
         public Task FarmParcelDeleteAsync(int idFarmParcel) => farmParcelRepository.FarmParcelDeleteAsync(idFarmParcel);
 
         public Task<IList<FarmParcelZone>> FarmParcelZonesGetAsync(int idFarmParcel) => farmParcelRepository.FarmParcelZonesGetAsync(idFarmParcel);
@@ -52,6 +55,9 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<FarmParcelZone?> FarmParcelZoneGetByIdAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneGetByIdAsync(idFarmParcelZone);
 
         public Task FarmParcelZoneUpdateAsync(FarmParcelZone zone) => farmParcelRepository.FarmParcelZoneUpdateAsync(zone);
+
+        public Task FarmParcelZoneGeometrySetAsync(int idFarmParcelZone, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon) =>
+            farmParcelRepository.FarmParcelZoneGeometrySetAsync(idFarmParcelZone, geometryGeoJson, areaHectares, bboxMinLat, bboxMinLon, bboxMaxLat, bboxMaxLon);
 
         public Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneConfigVersionBumpAsync(idFarmParcelZone);
 

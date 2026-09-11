@@ -45,6 +45,16 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        public async Task FarmParcelGeometrySetAsync(int idFarmParcel, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon, string? arkodParcelId) =>
+            await db.FarmParcels.Where(p => p.IDFarmParcel == idFarmParcel).ExecuteUpdateAsync(set => set
+                .SetProperty(p => p.GeometryGeoJson, geometryGeoJson)
+                .SetProperty(p => p.AreaHectares, areaHectares)
+                .SetProperty(p => p.BboxMinLat, bboxMinLat)
+                .SetProperty(p => p.BboxMinLon, bboxMinLon)
+                .SetProperty(p => p.BboxMaxLat, bboxMaxLat)
+                .SetProperty(p => p.BboxMaxLon, bboxMaxLon)
+                .SetProperty(p => p.ArkodParcelId, arkodParcelId));
+
         public async Task FarmParcelDeleteAsync(int idFarmParcel)
         {
             var zoneIds = await db.FarmParcelZones.AsNoTracking().Where(z => z.FarmParcelID == idFarmParcel).Select(z => z.IDFarmParcelZone).ToListAsync();
@@ -88,6 +98,15 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
             await FarmParcelZoneConfigVersionBumpAsync(row.IDFarmParcelZone);
         }
+
+        public async Task FarmParcelZoneGeometrySetAsync(int idFarmParcelZone, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon) =>
+            await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone).ExecuteUpdateAsync(set => set
+                .SetProperty(z => z.GeometryGeoJson, geometryGeoJson)
+                .SetProperty(z => z.AreaHectares, areaHectares)
+                .SetProperty(z => z.BboxMinLat, bboxMinLat)
+                .SetProperty(z => z.BboxMinLon, bboxMinLon)
+                .SetProperty(z => z.BboxMaxLat, bboxMaxLat)
+                .SetProperty(z => z.BboxMaxLon, bboxMaxLon));
 
         public async Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames)
         {
@@ -253,6 +272,13 @@ namespace Agrumy.Api.Dal
             TenantID = p.TenantID,
             FarmOpenfieldID = p.FarmOpenfieldID,
             FarmParcelName = p.FarmParcelName,
+            GeometryGeoJson = p.GeometryGeoJson,
+            AreaHectares = p.AreaHectares,
+            BboxMinLat = p.BboxMinLat,
+            BboxMinLon = p.BboxMinLon,
+            BboxMaxLat = p.BboxMaxLat,
+            BboxMaxLon = p.BboxMaxLon,
+            ArkodParcelId = p.ArkodParcelId,
             DeletedAtUtc = p.DeletedAtUtc,
         };
 
@@ -275,6 +301,12 @@ namespace Agrumy.Api.Dal
             VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
             HeatingFailSafePolicy = (HeatingFailSafePolicyType?)z.HeatingFailSafePolicy,
             DashboardWidgets = string.IsNullOrEmpty(z.DashboardWidgetsJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<DashboardWidget>>(z.DashboardWidgetsJson) ?? [],
+            GeometryGeoJson = z.GeometryGeoJson,
+            AreaHectares = z.AreaHectares,
+            BboxMinLat = z.BboxMinLat,
+            BboxMinLon = z.BboxMinLon,
+            BboxMaxLat = z.BboxMaxLat,
+            BboxMaxLon = z.BboxMaxLon,
             DeletedAtUtc = z.DeletedAtUtc,
         };
     }

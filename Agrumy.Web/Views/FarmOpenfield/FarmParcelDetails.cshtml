@@ -1,0 +1,92 @@
+@model FarmParcelWithZonesViewModel
+@{
+    ViewData["Title"] = Model.Parcel.FarmParcelName;
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool areaWarning = Model.Parcel.AreaHectares is double ha && ha < 0.5;
+    var mapData = new
+    {
+        parcel = new { id = Model.Parcel.IDFarmParcel, name = Model.Parcel.FarmParcelName, geometry = Model.Parcel.GeometryGeoJson },
+        zones = Model.Zones.Select(z => new { id = z.IDFarmParcelZone, name = z.FarmParcelZoneName, geometry = z.GeometryGeoJson }),
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Open-Field farming</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Parcel.FarmParcelName</li>
+    </ol>
+</nav>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0">
+            @Model.Parcel.FarmParcelName
+            @if (Model.Parcel.AreaHectares is double areaHa)
+            {
+                <span class="badge @(areaWarning ? "text-bg-warning" : "text-bg-light text-dark")">@areaHa.ToString("0.##") ha</span>
+            }
+        </h3>
+        @if (areaWarning)
+        {
+            <span class="text-warning small">&lt; 0.5 ha - satelitska statistika nepouzdana na 10 m</span>
+        }
+    </div>
+    <div class="card-body">
+        @if (canManage)
+        {
+            <div class="row g-2 mb-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Editing</label>
+                    <select id="geometryTargetSelect" class="form-select form-select-sm">
+                        <option value="parcel">Parcel outer boundary</option>
+                        @foreach (var z in Model.Zones)
+                        {
+                            <option value="zone-@z.IDFarmParcelZone">Zone: @z.FarmParcelZoneName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="button" id="geometrySaveBtn" class="btn btn-sm btn-primary"><i class="bi bi-save"></i> Save boundary</button>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-0">ARKOD ID</label>
+                    <input type="text" id="arkodParcelIdInput" class="form-control form-control-sm" value="@Model.Parcel.ArkodParcelId" maxlength="40" placeholder="manual entry - no public lookup available" />
+                </div>
+            </div>
+            <p class="text-secondary small">Draw or edit the selected boundary with the polygon tool in the map's top-left corner, then Save. Zone boundaries subdivide the parcel's own outer boundary and render with their own separations.</p>
+        }
+        <div id="parcelGeometryMap" data-map="@System.Text.Json.JsonSerializer.Serialize(mapData)" style="height:520px;"></div>
+    </div>
+</div>
+
+<form asp-action="FarmParcelGeometrySet" method="post" id="parcelGeometryForm" class="d-none">
+    <input type="hidden" name="idFarmParcel" value="@Model.Parcel.IDFarmParcel" />
+    <input type="hidden" name="geometryGeoJson" id="parcelGeometryFormValue" />
+    <input type="hidden" name="arkodParcelId" id="parcelGeometryFormArkod" />
+</form>
+<form asp-action="ParcelZoneGeometrySet" method="post" id="zoneGeometryForm" class="d-none">
+    <input type="hidden" name="idFarmParcel" value="@Model.Parcel.IDFarmParcel" />
+    <input type="hidden" name="idFarmParcelZone" id="zoneGeometryFormZoneId" />
+    <input type="hidden" name="geometryGeoJson" id="zoneGeometryFormValue" />
+</form>
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="~/lib/leaflet-geoman/dist/leaflet-geoman.css" />
+}
+
+@section Scripts {
+    <script src="~/lib/leaflet/leaflet.js"></script>
+    <script src="~/lib/leaflet-geoman/dist/leaflet-geoman.min.js"></script>
+    <script src="~/js/parcel-geometry-map.js"></script>
+}

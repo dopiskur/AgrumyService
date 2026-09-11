@@ -44,6 +44,49 @@ namespace Agrumy.Web.Controllers.View
             return View(new FarmOpenfieldIndexViewModel { Farms = farmModels });
         }
 
+        // ---- Parcel boundary + zone separations on a Leaflet+Geoman map (S-A) --------------------
+
+        public async Task<ActionResult> FarmParcelDetails(int idFarmParcel)
+        {
+            FarmParcel parcel = await api.FarmParcelGeometryGet(idFarmParcel);
+            IList<FarmParcelZone> zones = await api.FarmParcelZonesGet(idFarmParcel);
+            return View(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = zones });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FarmParcelGeometrySet(int idFarmParcel, string geometryGeoJson, string? arkodParcelId)
+        {
+            try
+            {
+                await api.FarmParcelGeometrySet(idFarmParcel, new ParcelGeometrySetRequest { GeometryGeoJson = geometryGeoJson, ArkodParcelId = arkodParcelId });
+                TempData["Message"] = "Parcel boundary saved.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(FarmParcelDetails), new { idFarmParcel });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelZoneGeometrySet(int idFarmParcelZone, int idFarmParcel, string geometryGeoJson)
+        {
+            try
+            {
+                await api.ParcelZoneGeometrySet(idFarmParcelZone, new ParcelGeometrySetRequest { GeometryGeoJson = geometryGeoJson });
+                TempData["Message"] = "Zone boundary saved.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(FarmParcelDetails), new { idFarmParcel });
+        }
+
         // ---- Sowing CRUD --------------------------------------------------
 
         /// Sjetva wizard step 1 (D3/D9): crop (looked up/created in the catalog server-side by name) + variety + start date + expected duration. Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show.

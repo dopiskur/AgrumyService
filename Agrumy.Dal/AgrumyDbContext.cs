@@ -296,6 +296,7 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDFarmParcel);
                 e.Property(x => x.IDFarmParcel).ValueGeneratedOnAdd();
                 e.Property(x => x.FarmParcelName).HasMaxLength(120);
+                e.Property(x => x.ArkodParcelId).HasMaxLength(40);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.HasOne<FarmOpenfieldRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldID).OnDelete(DeleteBehavior.NoAction);
                 e.HasQueryFilter(x => !x.Deleted);

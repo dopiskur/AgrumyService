@@ -57,6 +57,17 @@
                         {
                             <div class="border rounded p-2 mb-2">
                                 <strong>@p.Parcel.FarmParcelName</strong>
+                                <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@p.Parcel.IDFarmParcel" class="small ms-1" title="Boundary and zone map">
+                                    <i class="bi bi-map"></i>
+                                    @if (p.Parcel.AreaHectares is double ha)
+                                    {
+                                        <text>@ha.ToString("0.##") ha</text>
+                                    }
+                                    else
+                                    {
+                                        <text>draw boundary</text>
+                                    }
+                                </a>
                                 <ul class="list-unstyled mb-2 ms-2">
                                     @foreach (var z in p.Zones)
                                     {
