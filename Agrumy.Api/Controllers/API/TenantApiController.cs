@@ -1,6 +1,7 @@
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Migration;
+using Agrumy.Api.Satellite;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Shared.Utils;
@@ -11,7 +12,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet("All")]
@@ -235,5 +236,84 @@ namespace Agrumy.Api.Controllers.API
             var (result, error) = await importService.ImportAsSentinelAsync(value);
             return error != null ? StatusCode(409, error) : Ok(result);
         }
+
+        #region Satellite module config (Detaljni dizajn S, D1/D8/D11/D12)
+
+        /// idTenant defaults to the caller's own tenant - same optional-query-param shape as EmergencyStopActivate above, so a Tenant admin's plain GET/PUT "just works" for their own tenant while a Global admin can still target any tenant explicitly.
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
+        [HttpGet("Satellite")]
+        public async Task<ActionResult<TenantSatelliteConfig>> SatelliteConfigGet(int? idTenant = null)
+        {
+            int targetTenantId = idTenant ?? CallerTenantId ?? -1;
+            if (!CallerReadsTenantConfig(targetTenantId))
+            {
+                return StatusCode(403, "Not authorized to view this tenant's satellite config.");
+            }
+            TenantSatelliteConfig config = await satelliteConfigRepo.SatelliteConfigGetAsync(targetTenantId) ?? new TenantSatelliteConfig { IDTenant = targetTenantId };
+            config.ClientSecret = null; // write-only - HasSecret already tells the caller whether one is configured
+            return Ok(config);
+        }
+
+        [Authorize(Roles = RoleNames.Admins)]
+        [HttpPut("Satellite")]
+        public async Task<ActionResult<TenantSatelliteConfig>> SatelliteConfigPut([FromBody] TenantSatelliteConfig config, int? idTenant = null)
+        {
+            int targetTenantId = idTenant ?? CallerTenantId ?? -1;
+            if (!CallerManagesTenantConfig(targetTenantId))
+            {
+                return StatusCode(403, "Not authorized to change this tenant's satellite config.");
+            }
+            if (config.MaxCloudPercent is < 0 or > 100)
+            {
+                return BadRequest("MaxCloudPercent must be 0-100.");
+            }
+            if (config.MinValidPixelPercent is < 0 or > 100)
+            {
+                return BadRequest("MinValidPixelPercent must be 0-100.");
+            }
+            config.IDTenant = targetTenantId;
+            TenantSatelliteConfig saved = await satelliteConfigRepo.SatelliteConfigUpsertAsync(config);
+            saved.ClientSecret = null;
+            await WriteAuditAsync("Tenant.SatelliteConfigSet", targetTenantId, "Tenant", targetTenantId.ToString(), $"Provider={config.Provider}, Enabled={config.Enabled}");
+            return Ok(saved);
+        }
+
+        /// D1 - one token request + one lightweight Catalog query, same "test before/after save" shape as ServerConfigApiController.TestArchiveDatabase; blank ClientSecret in the request falls back to whatever's already saved for this tenant.
+        [Authorize(Roles = RoleNames.Admins)]
+        [HttpPost("Satellite/Test")]
+        public async Task<ActionResult<SatelliteConfigTestResult>> SatelliteConfigTest([FromBody] SatelliteConfigTestRequest request, int? idTenant = null)
+        {
+            int targetTenantId = idTenant ?? CallerTenantId ?? -1;
+            if (!CallerManagesTenantConfig(targetTenantId))
+            {
+                return StatusCode(403, "Not authorized to test this tenant's satellite config.");
+            }
+            string? clientId = request.ClientId;
+            string? clientSecret = request.ClientSecret;
+            if (string.IsNullOrEmpty(clientSecret))
+            {
+                (string? savedClientId, string? savedClientSecret) = await satelliteConfigRepo.SatelliteConfigCredentialsGetAsync(targetTenantId);
+                clientId ??= savedClientId;
+                clientSecret = savedClientSecret;
+            }
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            {
+                return Ok(new SatelliteConfigTestResult { Ok = false, Error = "No client ID/secret to test - fill in both fields or save a config first." });
+            }
+
+            (bool ok, string? error) = await cdseTokenProvider.TryGetAccessTokenForCredentialsAsync(clientId, clientSecret, HttpContext.RequestAborted);
+            await WriteAuditAsync("Tenant.SatelliteTest", targetTenantId, "Tenant", targetTenantId.ToString(), ok ? "ok" : error);
+            return Ok(new SatelliteConfigTestResult { Ok = ok, Error = error });
+        }
+
+        #endregion
+
+        /// GET: Global admin/reader can view any tenant; a Tenant admin can view only their own. Same shape as CallerManagesDevices, but for tenant-settings ownership rather than device-management roles.
+        private bool CallerReadsTenantConfig(int targetTenantId) =>
+            CallerManagesTenantConfig(targetTenantId) || CallerHasRole(RoleNames.GlobalReader);
+
+        /// PUT/Test: Global admin can manage any tenant; a Tenant admin only their own.
+        private bool CallerManagesTenantConfig(int targetTenantId) =>
+            CallerIsGlobalAdmin || (CallerHasRole(RoleNames.TenantAdmin) && targetTenantId == CallerTenantId);
     }
 }

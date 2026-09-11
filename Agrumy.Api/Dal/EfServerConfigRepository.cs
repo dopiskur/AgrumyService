@@ -52,6 +52,7 @@ namespace Agrumy.Api.Dal
                 FirmwareRefreshIntervalHours = settings.FirmwareRefreshIntervalHours,
                 SensorDataRetentionDays = settings.SensorDataRetentionDays,
                 RecycleBinRetentionDays = 30,
+                SatelliteRasterRetentionDays = 30,
                 WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes,
                 WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold,
                 FrostLookaheadHours = settings.FrostLookaheadHours,
@@ -105,6 +106,7 @@ namespace Agrumy.Api.Dal
             // FirmwareLastRefreshedAtUtc deliberately NOT written here - see ServerConfigFirmwareRefreshStateSetAsync below.
             row.SensorDataRetentionDays = config.SensorDataRetentionDays;
             row.RecycleBinRetentionDays = config.RecycleBinRetentionDays;
+            row.SatelliteRasterRetentionDays = config.SatelliteRasterRetentionDays;
             row.PurgeOrphanedSensorDataScheduleEnabled = config.PurgeOrphanedSensorDataScheduleEnabled;
             // WeatherRainPredicted/WeatherCheckedAtUtc deliberately NOT written here - WeatherEvaluator owns them via ServerConfigWeatherStateSetAsync, so a form post can't clobber a fresher reading.
             row.WeatherLocationLat = config.WeatherLocationLat;
@@ -322,6 +324,7 @@ namespace Agrumy.Api.Dal
             FirmwareLastRefreshedAtUtc = r.FirmwareLastRefreshedAtUtc,
             SensorDataRetentionDays = r.SensorDataRetentionDays,
             RecycleBinRetentionDays = r.RecycleBinRetentionDays ?? 30,
+            SatelliteRasterRetentionDays = r.SatelliteRasterRetentionDays ?? 30,
             PurgeOrphanedSensorDataScheduleEnabled = r.PurgeOrphanedSensorDataScheduleEnabled,
             WeatherLocationLat = r.WeatherLocationLat,
             WeatherLocationLon = r.WeatherLocationLon,

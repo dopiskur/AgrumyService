@@ -252,6 +252,12 @@ namespace Agrumy.Api.Dal
             return result;
         }
 
+        public async Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId)
+        {
+            var rows = await db.FarmParcelZones.AsNoTracking().Where(z => z.TenantID == tenantId && z.GeometryGeoJson != null).ToListAsync();
+            return rows.Select(ToDtoZone).ToList();
+        }
+
         public async Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone)
         {
             List<int> deviceIds = await db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID == idFarmParcelZone).Select(d => d.IDDevice).ToListAsync();

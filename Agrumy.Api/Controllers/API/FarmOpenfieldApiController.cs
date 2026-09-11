@@ -1,6 +1,8 @@
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Quota;
+using Agrumy.Api.Satellite;
+using Agrumy.Api.Storage;
 using Agrumy.Shared.Geo;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
@@ -12,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -809,6 +811,92 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
+
+        #endregion
+
+        #region Satellite (Detaljni dizajn S, B4) - reader roles allowed, tenant-scoped via EnsureOwnedParcelAsync same as everything else on this zone
+
+        [Authorize]
+        [HttpGet("Parcel/{idFarmParcelZone}/Satellite/Scenes")]
+        public async Task<ActionResult<IList<FarmParcelZoneSatelliteScene>>> SatelliteScenesGet(int idFarmParcelZone)
+        {
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await satelliteSceneRepo.ScenesGetAsync(idFarmParcelZone));
+        }
+
+        /// D10 - serves the cached PNG if one is on disk; otherwise renders it now from the stored grid (scalar indices) or re-fetches+renders from the provider (composites, which never store a grid) and caches the result before returning. A backfilled-but-never-viewed scalar scene has no grid yet either - that one costs a real Process API call, same "first click pays once" behavior as a composite.
+        [Authorize]
+        [HttpGet("Parcel/{idFarmParcelZone}/Satellite/Scenes/{idScene}/Index/{index}")]
+        public async Task<ActionResult> SatelliteIndexPngGet(int idFarmParcelZone, int idScene, SatelliteIndex index)
+        {
+            var (zone, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            IList<FarmParcelZoneSatelliteScene> scenes = await satelliteSceneRepo.ScenesGetAsync(idFarmParcelZone);
+            FarmParcelZoneSatelliteScene? scene = scenes.FirstOrDefault(s => s.IDFarmParcelZoneSatelliteScene == idScene);
+            if (scene == null)
+            {
+                return NotFound();
+            }
+
+            string path = satelliteStorage.PathFor(zone!.TenantID ?? 0, idFarmParcelZone, scene.SceneDateUtc, index);
+            byte[]? cached = satelliteStorage.TryRead(path);
+            if (cached != null)
+            {
+                return File(cached, "image/png");
+            }
+
+            ParcelSatelliteIndex? indexRow = await satelliteSceneRepo.IndexGetAsync(idScene, index);
+            bool isScalar = Evalscripts.All[index].HasStatistics;
+            byte[] png;
+            if (isScalar && indexRow?.GridBase64 is string gridB64)
+            {
+                png = SatellitePaletteRenderer.RenderPng(Convert.FromBase64String(gridB64), index);
+            }
+            else
+            {
+                ISatelliteImagerySource? source = await satelliteSourceFactory.ForAsync(zone.TenantID ?? 0, HttpContext.RequestAborted);
+                if (source == null || zone.GeometryGeoJson == null)
+                {
+                    return StatusCode(503, "Satellite provider not configured, or this zone has no boundary.");
+                }
+                IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: isScalar, HttpContext.RequestAborted);
+                if (isScalar && rendered.GridRaw != null)
+                {
+                    await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = rendered.StatsJson });
+                    png = SatellitePaletteRenderer.RenderPng(rendered.GridRaw, index);
+                }
+                else if (rendered.PngBytes != null)
+                {
+                    png = rendered.PngBytes;
+                }
+                else
+                {
+                    return StatusCode(502, "Provider did not return a usable image.");
+                }
+            }
+
+            await satelliteStorage.SaveAsync(path, png, HttpContext.RequestAborted);
+            return File(png, "image/png");
+        }
+
+        [Authorize]
+        [HttpGet("Parcel/{idFarmParcelZone}/Satellite/Series")]
+        public async Task<ActionResult<IList<SatelliteSeriesPoint>>> SatelliteSeriesGet(int idFarmParcelZone, SatelliteIndex index, DateOnly? from, DateOnly? to, bool onlyReliable = true)
+        {
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await satelliteSceneRepo.SeriesGetAsync(idFarmParcelZone, index, from, to, onlyReliable));
+        }
 
         #endregion
 

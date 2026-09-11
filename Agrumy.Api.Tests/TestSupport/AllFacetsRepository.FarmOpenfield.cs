@@ -83,6 +83,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel) => farmParcelRepository.FarmParcelZoneDashboardListGetAsync(idFarmParcel);
 
+        public Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId) => farmParcelRepository.FarmParcelZonesWithGeometryGetAsync(tenantId);
+
         // ---- ICropCatalogRepository ----
 
         public Task<IList<Crop>> CropsGetAsync(int? tenantID) => cropCatalogRepository.CropsGetAsync(tenantID);

@@ -43,6 +43,9 @@ namespace Agrumy.Dal
         public DbSet<DeviceFarmUnitZoneRuleRow> DeviceFarmUnitZoneRules => Set<DeviceFarmUnitZoneRuleRow>();
         public DbSet<RuleNotificationStateRow> RuleNotificationStates => Set<RuleNotificationStateRow>();
         public DbSet<DeviceRoleRow> DeviceRoles => Set<DeviceRoleRow>();
+        public DbSet<TenantSatelliteConfigRow> TenantSatelliteConfigs => Set<TenantSatelliteConfigRow>();
+        public DbSet<FarmParcelZoneSatelliteSceneRow> FarmParcelZoneSatelliteScenes => Set<FarmParcelZoneSatelliteSceneRow>();
+        public DbSet<ParcelSatelliteIndexRow> ParcelSatelliteIndices => Set<ParcelSatelliteIndexRow>();
         public DbSet<DeviceTypeServiceRow> DeviceTypeServices => Set<DeviceTypeServiceRow>();
         public DbSet<DeviceTypeRelayRow> DeviceTypeRelays => Set<DeviceTypeRelayRow>();
         public DbSet<DeviceTypeSensorRow> DeviceTypeSensors => Set<DeviceTypeSensorRow>();
@@ -314,6 +317,37 @@ namespace Agrumy.Dal
                 // NoAction, not a real per-row constraint enforcing D4's "at most one open sowing" - that invariant is the SowingFarmParcelZoneRow.ActiveKey unique index below; this FK is nullable and just points at whichever sowing currently holds the zone.
                 e.HasOne<SowingRow>().WithMany().HasForeignKey(x => x.CurrentSowingID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasQueryFilter(x => !x.Deleted);
+            });
+
+            modelBuilder.Entity<TenantSatelliteConfigRow>(e =>
+            {
+                e.ToTable("tenantSatelliteConfig");
+                e.HasKey(x => x.TenantID);
+                // PK doubles as the FK to tenant.IDTenant, an auto-increment column - a normal HasOne()/HasForeignKey() relationship here confuses EF's SaveChanges key-fixup (it treats the CLR-default value 0, which is also the real id of the bootstrap tenant, as "pending, will flow from a principal insert" and either throws or silently sends the wrong value). The DB-level FK constraint (already created by the migration) still enforces referential integrity; this just keeps EF's own change tracker out of that resolution entirely.
+                e.Property(x => x.TenantID).ValueGeneratedNever();
+                e.Property(x => x.ClientId).HasMaxLength(120);
+                // Same 512 ciphertext-column reasoning as TenantWifiConfigRow.Password above.
+                e.Property(x => x.ClientSecretEncrypted).HasMaxLength(512);
+            });
+
+            modelBuilder.Entity<FarmParcelZoneSatelliteSceneRow>(e =>
+            {
+                e.ToTable("farmParcelZoneSatelliteScene");
+                e.HasKey(x => x.IDFarmParcelZoneSatelliteScene);
+                e.Property(x => x.IDFarmParcelZoneSatelliteScene).ValueGeneratedOnAdd();
+                e.Property(x => x.SourceSceneId).HasMaxLength(120).IsRequired();
+                e.HasOne<FarmParcelZoneRow>().WithMany().HasForeignKey(x => x.FarmParcelZoneID).OnDelete(DeleteBehavior.NoAction);
+                // D9 - makes the daily job idempotent against reprocessing the same STAC scene for a zone.
+                e.HasIndex(x => new { x.FarmParcelZoneID, x.SourceSceneId }).IsUnique().HasDatabaseName("ux_farmParcelZoneSatelliteScene_zone_scene");
+            });
+
+            modelBuilder.Entity<ParcelSatelliteIndexRow>(e =>
+            {
+                e.ToTable("parcelSatelliteIndex");
+                e.HasKey(x => x.IDParcelSatelliteIndex);
+                e.Property(x => x.IDParcelSatelliteIndex).ValueGeneratedOnAdd();
+                e.HasOne<FarmParcelZoneSatelliteSceneRow>().WithMany().HasForeignKey(x => x.SceneID).OnDelete(DeleteBehavior.NoAction);
+                e.HasIndex(x => new { x.SceneID, x.Index }).IsUnique().HasDatabaseName("ux_parcelSatelliteIndex_scene_index");
             });
 
             modelBuilder.Entity<SowingRow>(e =>

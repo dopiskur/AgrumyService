@@ -147,7 +147,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             farmParcelRepository,
             new EfCropCatalogRepository(db),
             new EfFieldLogRepository(db),
-            new EfZonePlantingRepository(db));
+            new EfZonePlantingRepository(db),
+            new EfSatelliteConfigRepository(db, secretProtector),
+            new EfSatelliteSceneRepository(db));
     }
 
     private sealed class NullCache : ICache
@@ -3891,5 +3893,115 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(2.5, refetchedZone!.AreaHectares);
         Assert.Contains("outer\":true", refetchedParcel.GeometryGeoJson);
         Assert.Contains("outer\":false", refetchedZone.GeometryGeoJson);
+    }
+
+    // ---- Satellite module (S-B) ----------------------------------
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SatelliteConfigUpsertAsync_EncryptsTheSecretAndNeverLeaksItAcrossTenants(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantA, _, _) = await MakeUser(t);
+        var (tenantB, _, _) = await MakeUser(t);
+
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = tenantA, ClientId = "client-a", ClientSecret = "secret-a", Enabled = true, MaxCloudPercent = 40, MinValidPixelPercent = 70 });
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = tenantB, ClientId = "client-b", ClientSecret = "secret-b", Enabled = true, MaxCloudPercent = 40, MinValidPixelPercent = 70 });
+
+        TenantSatelliteConfig? readBackA = await _repo.SatelliteConfigGetAsync(tenantA);
+        Assert.True(readBackA!.HasSecret);
+        Assert.Null(readBackA.ClientSecret); // the DTO field itself carries the real value only through SatelliteConfigCredentialsGetAsync, never through the general get
+
+        (string? idA, string? secretA) = await _repo.SatelliteConfigCredentialsGetAsync(tenantA);
+        (string? idB, string? secretB) = await _repo.SatelliteConfigCredentialsGetAsync(tenantB);
+        Assert.Equal("client-a", idA);
+        Assert.Equal("secret-a", secretA);
+        Assert.Equal("client-b", idB);
+        Assert.Equal("secret-b", secretB);
+        Assert.NotEqual(secretA, secretB);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SatelliteConfigUpsertAsync_BlankSecretOnUpdate_KeepsThePreviouslyStoredOne(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = tenantId, ClientId = "client-1", ClientSecret = "original-secret", Enabled = true, MaxCloudPercent = 40, MinValidPixelPercent = 70 });
+
+        // Same "blank means unchanged" convention as TenantWifiConfigUpdateAsync/ServerConfigUpdateAsync.
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = tenantId, ClientId = "client-1-renamed", ClientSecret = null, Enabled = true, MaxCloudPercent = 50, MinValidPixelPercent = 60 });
+
+        (string? clientId, string? clientSecret) = await _repo.SatelliteConfigCredentialsGetAsync(tenantId);
+        Assert.Equal("client-1-renamed", clientId);
+        Assert.Equal("original-secret", clientSecret);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SatelliteConfigsGetEnabledAsync_ExcludesDisabledAndAbsentTenants(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (enabledTenant, _, _) = await MakeUser(t);
+        var (disabledTenant, _, _) = await MakeUser(t);
+        var (untouchedTenant, _, _) = await MakeUser(t);
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = enabledTenant, ClientId = "c", ClientSecret = "s", Enabled = true, MaxCloudPercent = 40, MinValidPixelPercent = 70 });
+        await _repo.SatelliteConfigUpsertAsync(new TenantSatelliteConfig { IDTenant = disabledTenant, ClientId = "c", ClientSecret = "s", Enabled = false, MaxCloudPercent = 40, MinValidPixelPercent = 70 });
+
+        IList<TenantSatelliteConfig> enabled = await _repo.SatelliteConfigsGetEnabledAsync();
+
+        Assert.Contains(enabled, c => c.IDTenant == enabledTenant);
+        Assert.DoesNotContain(enabled, c => c.IDTenant == disabledTenant);
+        Assert.DoesNotContain(enabled, c => c.IDTenant == untouchedTenant);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SceneAddAsync_DuplicateSourceSceneIdForTheSameZone_ViolatesTheUniqueConstraint(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
+        int zoneId = zone.IDFarmParcelZone!.Value;
+
+        await _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2024, 6, 1), SourceSceneId = "S2A_DUP", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true });
+
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2024, 6, 1), SourceSceneId = "S2A_DUP", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true }));
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task IndexUpsertAsync_ThenSeriesGetAsync_ReturnsThePersistedStatsInDateOrder(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
+        int zoneId = zone.IDFarmParcelZone!.Value;
+
+        var sceneOld = await _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2024, 1, 1), SourceSceneId = "OLD", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true });
+        var sceneNew = await _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2024, 6, 1), SourceSceneId = "NEW", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true });
+        await _repo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = sceneOld.IDFarmParcelZoneSatelliteScene, Index = SatelliteIndex.Ndvi, StatsJson = System.Text.Json.JsonSerializer.Serialize(new { Mean = 0.3, Min = 0.1, Max = 0.5, StdDev = 0.05, SampleCount = 100 }) });
+        await _repo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = sceneNew.IDFarmParcelZoneSatelliteScene, Index = SatelliteIndex.Ndvi, StatsJson = System.Text.Json.JsonSerializer.Serialize(new { Mean = 0.7, Min = 0.4, Max = 0.9, StdDev = 0.05, SampleCount = 100 }) });
+
+        IList<SatelliteSeriesPoint> series = await _repo.SeriesGetAsync(zoneId, SatelliteIndex.Ndvi, null, null, onlyReliable: true);
+
+        Assert.Equal(2, series.Count);
+        Assert.Equal(new DateOnly(2024, 1, 1), series[0].SceneDateUtc);
+        Assert.Equal(0.3, series[0].Mean);
+        Assert.Equal(new DateOnly(2024, 6, 1), series[1].SceneDateUtc);
+        Assert.Equal(0.7, series[1].Mean);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelZonesWithGeometryGetAsync_OnlyReturnsZonesWithASavedBoundary(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (parcelWithGeom, zoneWithGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var (_, zoneWithoutGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        await _repo.FarmParcelZoneGeometrySetAsync(zoneWithGeom.IDFarmParcelZone!.Value, "{\"type\":\"Polygon\"}", 1.0, 45.0, 15.0, 45.1, 15.1);
+        _ = parcelWithGeom;
+
+        IList<FarmParcelZone> withGeometry = await _repo.FarmParcelZonesWithGeometryGetAsync(tenantId);
+
+        Assert.Contains(withGeometry, z => z.IDFarmParcelZone == zoneWithGeom.IDFarmParcelZone);
+        Assert.DoesNotContain(withGeometry, z => z.IDFarmParcelZone == zoneWithoutGeom.IDFarmParcelZone);
     }
 }

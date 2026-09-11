@@ -63,6 +63,7 @@ GET,api/Tenant/AlertConfig,Global admin;Tenant admin;Global reader
 GET,api/Tenant/All,Global admin;Global reader
 GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
 GET,api/Tenant/Export,Global admin;Tenant admin
+GET,api/Tenant/Satellite,Global admin;Tenant admin;Global reader
 GET,api/TenantQuota,Global admin;Global reader
 GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
 GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
@@ -144,6 +145,7 @@ POST,api/Tenant,Global admin
 POST,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Tenant/EmergencyStop/Clear,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Tenant/Import,Global admin
+POST,api/Tenant/Satellite/Test,Global admin;Tenant admin
 POST,api/User,Global admin;Global User;Tenant admin;Tenant User
 PUT,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/Device/Controller,Global admin;Global Device;Tenant admin;Tenant Device
@@ -166,6 +168,7 @@ PUT,api/ServerConfig,Global admin
 PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
 PUT,api/Tenant,Global admin
 PUT,api/Tenant/AlertConfig,Global admin;Tenant admin
+PUT,api/Tenant/Satellite,Global admin;Tenant admin
 PUT,api/TenantQuota,Global admin
 PUT,api/User,Global admin;Global User;Tenant admin;Tenant User
 PUT,api/User/UserRoles,Global admin;Tenant admin

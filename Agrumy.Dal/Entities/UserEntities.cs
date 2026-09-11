@@ -160,6 +160,7 @@ namespace Agrumy.Dal.Entities
 
         // Roadmap #409 - how long a soft-deleted Farm/Device stays restorable from the Recycle Bin, 0-90; default 30 applied where the column reads NULL (fresh row, or a pre-#409 install).
         public int? RecycleBinRetentionDays { get; set; }
+        public int? SatelliteRasterRetentionDays { get; set; }
         // Roadmap #409 - PurgeOrphanedSensorDataBackgroundService only runs when this is true (manual "Purge orphaned sensor data" trigger is always available regardless).
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 

@@ -1644,6 +1644,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<DateTimeOffset?>("SatelliteBackfillCompletedUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("SkipWaterPumpWhenRainPredicted")
                         .HasColumnType("boolean");
 
@@ -1681,6 +1684,46 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasIndex("FarmParcelID");
 
                     b.ToTable("farmParcelZone", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelZoneSatelliteSceneRow", b =>
+                {
+                    b.Property<int>("IDFarmParcelZoneSatelliteScene")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmParcelZoneSatelliteScene"));
+
+                    b.Property<double>("CloudPercent")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("FarmParcelZoneID")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("IngestedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Reliable")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("SceneDateUtc")
+                        .HasColumnType("date");
+
+                    b.Property<string>("SourceSceneId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<double>("ValidPixelPercent")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("IDFarmParcelZoneSatelliteScene");
+
+                    b.HasIndex("FarmParcelZoneID", "SourceSceneId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_farmParcelZoneSatelliteScene_zone_scene");
+
+                    b.ToTable("farmParcelZoneSatelliteScene", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.FieldLogAttachmentRow", b =>
@@ -2174,6 +2217,41 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("horticultureCatalogPerma", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.ParcelSatelliteIndexRow", b =>
+                {
+                    b.Property<int>("IDParcelSatelliteIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDParcelSatelliteIndex"));
+
+                    b.Property<string>("BoundsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GridBase64")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImagePath")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SceneID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text");
+
+                    b.HasKey("IDParcelSatelliteIndex");
+
+                    b.HasIndex("SceneID", "Index")
+                        .IsUnique()
+                        .HasDatabaseName("ux_parcelSatelliteIndex_scene_index");
+
+                    b.ToTable("parcelSatelliteIndex", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.RefreshTokenRow", b =>
                 {
                     b.Property<int>("IDRefreshToken")
@@ -2608,6 +2686,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("RecycleBinRetentionDays")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SatelliteRasterRetentionDays")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SensorDataRetentionDays")
                         .HasColumnType("integer");
 
@@ -2998,6 +3079,57 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasDatabaseName("Name_UNIQUE");
 
                     b.ToTable("tenant", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantSatelliteConfigRow", b =>
+                {
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("ClientSecretEncrypted")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("DefaultIndicesJson")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastQuotaSnapshotJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LastTokenIssuedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxCloudPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinValidPixelPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlanTier")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("QuotaPausedNotifiedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("QuotaPausedUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RasterRetentionDaysOverride")
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantID");
+
+                    b.ToTable("tenantSatelliteConfig", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantUsageSnapshotRow", b =>
@@ -3661,6 +3793,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelZoneSatelliteSceneRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmParcelZoneRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmParcelZoneID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.FieldLogAttachmentRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.FieldLogEntryRow", null)
@@ -3724,6 +3865,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .WithMany()
                         .HasForeignKey("ZonePlantingID")
                         .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.ParcelSatelliteIndexRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmParcelZoneSatelliteSceneRow", null)
+                        .WithMany()
+                        .HasForeignKey("SceneID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.RefreshTokenRow", b =>

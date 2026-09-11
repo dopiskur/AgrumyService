@@ -58,6 +58,9 @@ namespace Agrumy.Shared
 
         // Relative to content root, null = FieldLogAttachmentStorage.DefaultRelativePath - same convention as FirmwareLocalPath.
         public string? FieldLogAttachmentLocalPath { get; set; }
+
+        // Relative to content root, null = SatelliteStorage.DefaultRelativePath - same convention as FirmwareLocalPath. This is a regenerable PNG cache, not backed up like the others (D10 - the grid in the DB is the source of truth).
+        public string? SatelliteLocalPath { get; set; }
         public string FirmwareGitHubRepository { get; set; } = "dopiskur/AgrumyFirmware";
         public string? FirmwareGitHubToken { get; set; }
 
@@ -108,6 +111,7 @@ namespace Agrumy.Shared
             TenantManagementEnabled = ParseBoolOr(configuration, "ServerConfig:TenantManagementEnabled", false),
             FirmwareLocalPath = configuration.GetSection("Firmware:LocalPath").Value,
             FieldLogAttachmentLocalPath = configuration.GetSection("FieldLog:AttachmentLocalPath").Value,
+            SatelliteLocalPath = configuration.GetSection("Satellite:LocalPath").Value,
             FirmwareGitHubRepository = configuration.GetSection("Firmware:GitHubRepository").Value is { Length: > 0 } repo ? repo : "dopiskur/AgrumyFirmware",
             FirmwareGitHubToken = configuration.GetSection("Firmware:GitHubToken").Value,
             FirmwareRefreshIntervalHours = ParseIntOrNull(configuration, "ServerConfig:FirmwareRefreshIntervalHours") ?? 24,

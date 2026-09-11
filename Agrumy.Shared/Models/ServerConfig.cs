@@ -75,6 +75,11 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Sensor data retention (days)")]
         public int? SensorDataRetentionDays { get; set; }
 
+        // How long a rendered satellite index PNG stays on disk before the retention job deletes it (S-B, D11) - the grid/stats it was rendered from stay in the DB forever, so a deleted PNG just regenerates on next view. Default 30, per-tenant override on TenantSatelliteConfig.
+        [Display(Name = "Satellite raster cache retention (days)")]
+        [Range(0, 365)]
+        public int? SatelliteRasterRetentionDays { get; set; } = 30;
+
         // Roadmap #409 - how long a soft-deleted Farm/Device stays listed (and restorable) in the Recycle Bin; 0-90, default 30. Past this, a device/farm just drops off the recycle bin listing - its row (and SensorData) is NOT auto-purged, that's the separate manual/schedulable "Purge orphaned sensor data" action below.
         [Display(Name = "Recycle bin retention (days)")]
         [Range(0, 90)]

@@ -67,6 +67,7 @@ namespace Agrumy.Dal.Entities
         public double? BboxMinLon { get; set; }
         public double? BboxMaxLat { get; set; }
         public double? BboxMaxLon { get; set; }
+        public DateTimeOffset? SatelliteBackfillCompletedUtc { get; set; }
 
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }

@@ -29,6 +29,7 @@ public class ApiControllerTests
     private readonly Mock<ICache> _cache = new();
 
     private readonly Mock<INotificationDispatcher> _notifications = new();
+    private readonly Mock<Agrumy.Api.Satellite.ICdseTokenProvider> _cdseTokenProvider = new();
     private readonly BackgroundJobQueue _jobQueue = new();
 
     // Same appsettings.json binding TestConfig exposes elsewhere, so a token signed here and JwtTokenProvider.ValidateToken use the same key/issuer/audience.
@@ -71,7 +72,7 @@ public class ApiControllerTests
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
-        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId)

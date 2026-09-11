@@ -157,6 +157,9 @@ namespace Agrumy.Shared.Models
         public double? BboxMaxLat { get; set; }
         public double? BboxMaxLon { get; set; }
 
+        /// S-B, D9 - set once the satellite job's one-time Statistical-API archive backfill (2017-present) has run for this zone; null means the next job tick still owes it a backfill.
+        public DateTimeOffset? SatelliteBackfillCompletedUtc { get; set; }
+
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
         int? IFarmLeafLevelNode.Id => IDFarmParcelZone;

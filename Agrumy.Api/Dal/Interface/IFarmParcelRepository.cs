@@ -54,5 +54,8 @@ namespace Agrumy.Api.Dal.Interface
         Task<(SensorAverages Averages, SensorTrend Trend)> FarmParcelZoneAggregateAsync(int idFarmParcelZone);
 
         Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel);
+
+        /// S-B - every zone across every tenant that has a saved boundary (GeometryGeoJson != null) - the daily satellite job's own per-tenant, per-zone loop target.
+        Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId);
     }
 }

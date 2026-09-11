@@ -112,6 +112,8 @@ builder.Services.AddScoped<IFarmParcelRepository, EfFarmParcelRepository>();
 builder.Services.AddScoped<ISowingRepository, EfSowingRepository>();
 builder.Services.AddScoped<IFieldLogRepository, EfFieldLogRepository>();
 builder.Services.AddScoped<IZonePlantingRepository, EfZonePlantingRepository>();
+builder.Services.AddScoped<ISatelliteConfigRepository, EfSatelliteConfigRepository>();
+builder.Services.AddScoped<ISatelliteSceneRepository, EfSatelliteSceneRepository>();
 builder.Services.AddScoped<IDeviceOutboxRepository, EfDeviceOutboxRepository>();
 builder.Services.AddScoped<IFirmwareRepository, EfFirmwareRepository>();
 builder.Services.AddScoped<ISensorDataRepository, EfSensorDataRepository>();
@@ -217,6 +219,16 @@ builder.Services.AddHostedService<WeatherBackgroundService>();
 
 builder.Services.AddScoped<FrostAlertEvaluator>();
 builder.Services.AddHostedService<FrostAlertBackgroundService>();
+
+builder.Services.AddSingleton<Agrumy.Api.Storage.SatelliteStorage>();
+// Shared/pooled HttpClient for both CDSE calls - CdseTokenProvider and CdseSentinelHubSource each attach Authorization per-request, never as a default header, so pooling never leaks one tenant's token onto another's request.
+builder.Services.AddHttpClient<Agrumy.Api.Satellite.ICdseTokenProvider, Agrumy.Api.Satellite.CdseTokenProvider>(client => client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient<Agrumy.Api.Satellite.CdseSentinelHubSource>(client => client.Timeout = TimeSpan.FromSeconds(60));
+builder.Services.AddScoped<Agrumy.Api.Satellite.ISatelliteImagerySourceFactory, Agrumy.Api.Satellite.SatelliteImagerySourceFactory>();
+builder.Services.AddScoped<SatelliteSyncEvaluator>();
+builder.Services.AddHostedService<SatelliteSyncBackgroundService>();
+builder.Services.AddScoped<SatelliteRasterRetentionEvaluator>();
+builder.Services.AddHostedService<SatelliteRasterRetentionBackgroundService>();
 
 // Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
