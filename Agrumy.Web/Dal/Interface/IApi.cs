@@ -831,10 +831,6 @@ namespace Agrumy.Web.Dal.Interface
 
         // ---- Data maintenance -----------------------------
 
-        /// Whether the current DB provider is MariaDB/MySQL - decides whether the Purge confirmation flow needs the extra "shrink files on disk?" dialog at all.
-        [Get("/api/DataMaintenance/Provider")]
-        Task<DataMaintenanceProviderInfo> DataMaintenanceProviderGet();
-
         [Post("/api/DataMaintenance/Optimize")]
         Task DataMaintenanceOptimize([Body] DataMaintenanceRequest request);
 

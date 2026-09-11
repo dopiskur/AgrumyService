@@ -307,7 +307,7 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        public async Task PurgeOldSensorDataAsync(DateTime cutoffUtc, bool shrinkAfterPurge, CancellationToken ct)
+        public async Task PurgeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct)
         {
             if (db.Database.IsNpgsql())
             {
@@ -320,7 +320,7 @@ namespace Agrumy.Api.Dal
                 }
                 catch (PostgresException)
                 {
-                    // TimescaleDB extension not installed - dataSensor is a plain table here (like MariaDB, minus the OPTIMIZE-TABLE shrink step below).
+                    // TimescaleDB extension not installed - dataSensor is a plain table here, same as MariaDB below.
                     isHypertable = false;
                 }
 
@@ -347,12 +347,6 @@ namespace Agrumy.Api.Dal
                     await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
                 }
             } while (deletedRows == PurgeBatchSize);
-
-            if (shrinkAfterPurge)
-            {
-                // InnoDB never shrinks its .ibd file on a plain DELETE - OPTIMIZE TABLE is the locking rebuild that actually returns space, only run when the admin opts in since it can take a long time.
-                await db.Database.ExecuteSqlRawAsync("OPTIMIZE TABLE `dataSensor`;", ct);
-            }
         }
 
         private const int PurgeBatchSize = 10_000;

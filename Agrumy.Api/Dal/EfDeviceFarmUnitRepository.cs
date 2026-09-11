@@ -596,6 +596,26 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoRule).ToList();
         }
 
+        /// One query in place of up to 6 sequential RulesGetForSimulationAsync/RulesGetForExperimentAsync/RulesGetForZoneAsync-or-RulesGetForFarmParcelZoneAsync/RulesGetForUnitAsync-or-RulesGetForSowingAsync/RulesGetForFarmAsync/RulesGetForTenantGlobalAsync calls - DeviceConfigBuilder resolves every id below FIRST (simulation/experiment membership, the zone's own farm), then calls this once and partitions the flat result back out by each row's own scope FK (already on the DTO) using the exact same filter each individual method applies. A null id means that scope contributes nothing, same as DeviceConfigBuilder just not calling that method today.
+        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForHierarchyAsync(int tenantId, int? idSimulationSession, int? idExperiment, int? idZone, int? idFarmParcelZone, int? idUnit, int? idSowing, int? idFarm, bool includeGlobal)
+        {
+            var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
+                .Where(r =>
+                    (idSimulationSession != null && r.SimulationSessionID == idSimulationSession) ||
+                    (idExperiment != null && r.ExperimentID == idExperiment) ||
+                    (idZone != null && r.DeviceFarmUnitZoneID == idZone) ||
+                    (idFarmParcelZone != null && r.DeviceFarmParcelZoneID == idFarmParcelZone) ||
+                    (idUnit != null && r.DeviceFarmUnitID == idUnit) ||
+                    (idSowing != null && r.DeviceSowingID == idSowing) ||
+                    (idFarm != null && r.DeviceFarmID == idFarm) ||
+                    // Same SimulationSessionID/ExperimentID exclusion as RulesGetForTenantGlobalAsync - those scopes share Global's null Farm/Unit/Zone/Crop/Parcel shape but must never be evaluated as it.
+                    (includeGlobal && r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
+                        && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null))
+                .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
+                .ToListAsync();
+            return rows.Select(ToDtoRule).ToList();
+        }
+
         /// Every Notification-action rule for the tenant across all three real scopes - RuleNotificationEvaluator resolves Zone>Unit>Global itself per zone, so this deliberately returns the flat, unresolved set. Simulation/experiment-scoped ones excluded, same reasoning as RulesGetForTenantGlobalAsync above - fetched separately per zone via RulesGetForSimulationAsync/RulesGetForExperimentAsync instead.
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId)
         {

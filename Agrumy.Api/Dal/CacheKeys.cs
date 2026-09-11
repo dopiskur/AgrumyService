@@ -13,5 +13,9 @@ namespace Agrumy.Api.Dal
 
         public static readonly TimeSpan RelayRateWindow = TimeSpan.FromMinutes(1);
         public static string RelayRate(int deviceId) => $"relay-rate:{deviceId}";
+
+        // Read on essentially every request (device poll, every controller's tenant/quota checks, every background evaluator); explicitly invalidated by every EfServerConfigRepository write path, so the TTL only bounds staleness if one of those is ever missed, not the normal case.
+        public static readonly TimeSpan ServerConfigTtl = TimeSpan.FromMinutes(5);
+        public static string ServerConfig(int idServerConfig) => $"serverConfig:{idServerConfig}";
     }
 }

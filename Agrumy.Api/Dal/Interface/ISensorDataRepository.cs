@@ -54,8 +54,8 @@ namespace Agrumy.Api.Dal.Interface
         /// Downsamples every row older than cutoffUtc, per device, into one 5-minute-bucket average-without-outliers row, replacing the raw rows in place.
         Task OptimizeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct);
 
-        /// Deletes rows older than cutoffUtc outright (drop_chunks() on TimescaleDB, plain DELETE otherwise) - shrinkAfterPurge also runs OPTIMIZE TABLE on MariaDB/MySQL, whose DELETE never shrinks the .ibd file.
-        Task PurgeOldSensorDataAsync(DateTime cutoffUtc, bool shrinkAfterPurge, CancellationToken ct);
+        /// Deletes rows older than cutoffUtc outright (drop_chunks() on TimescaleDB, plain DELETE in PurgeBatchSize-row chunks on MariaDB/MySQL - batching alone is enough, no separate locking OPTIMIZE TABLE rebuild).
+        Task PurgeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct);
 
         /// Tenant-scoped IQueryable for the OData/Power BI feed - filtered to tenantID here, server-side, before OData's [EnableQuery] layers $filter/$select/$orderby/$top on top; the client's OData query can never widen this to another tenant's rows.
         IQueryable<SensorDataODataEntry> SensorDataODataQueryable(int tenantID);

@@ -87,50 +87,59 @@ namespace Agrumy.Api.Devices
                 DeviceConfigController? controller = await deviceRepo.DeviceConfigControllerGetAsync(device.DeviceConfigControllerID);
                 if (controller != null && (device.DeviceFarmUnitZoneID is int || device.FarmParcelZoneID is int))
                 {
-                    // Most specific tier, checked ahead of the real hierarchy below - empty unless this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover. Shared by both branches - a simulation session isn't itself Greenhouse/Open-Field-specific.
-                    IList<DeviceFarmUnitZoneRule> simulationRules = await simulationRepo.DeviceActiveSimulationSessionIdGetAsync(device.IDDevice!.Value) is int idSession
-                        ? await deviceFarmUnitRepo.RulesGetForSimulationAsync(idSession) : [];
+                    // Most specific tier, checked ahead of the real hierarchy below - present only when this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover. Shared by both branches - a simulation session isn't itself Greenhouse/Open-Field-specific.
+                    int? idSimulationSession = await simulationRepo.DeviceActiveSimulationSessionIdGetAsync(device.IDDevice!.Value);
 
-                    IList<DeviceFarmUnitZoneRule> experimentRules, leafRules, midRules, farmRules;
+                    int? idExperiment, idZone = null, idFarmParcelZoneForRules = null, idUnit = null, idSowingForRules = null, idFarm = null;
                     IFarmLeafLevelNode? leafNode;
-                    if (device.DeviceFarmUnitZoneID is int idZone)
+                    if (device.DeviceFarmUnitZoneID is int zoneId)
                     {
-                        // One tier below Simulation; empty unless the zone is currently under an active Experiment (Zone>Unit>Farm cascade resolved by ActiveExperimentIdForZoneAsync itself).
-                        experimentRules = await experimentRepo.ActiveExperimentIdForZoneAsync(idZone) is int idExperiment
-                            ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
-                        leafRules = await deviceFarmUnitRepo.RulesGetForZoneAsync(idZone);
-                        midRules = device.DeviceFarmUnitID is int idUnit ? await deviceFarmUnitRepo.RulesGetForUnitAsync(idUnit) : [];
+                        idZone = zoneId;
+                        // One tier below Simulation; present only when the zone is currently under an active Experiment (Zone>Unit>Farm cascade resolved by ActiveExperimentIdForZoneAsync itself).
+                        idExperiment = await experimentRepo.ActiveExperimentIdForZoneAsync(zoneId);
+                        idUnit = device.DeviceFarmUnitID;
                         // Farm rules only apply when the device's own Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules at all, same "unassigned means no inheritance" rule as Global always applying regardless.
-                        farmRules = device.DeviceFarmUnitID is int farmUnitId
-                            && (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(farmUnitId))?.DeviceFarmID is int idFarm
-                            ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
-                        leafNode = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idZone);
+                        idFarm = idUnit is int farmUnitId ? (await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(farmUnitId))?.DeviceFarmID : null;
+                        leafNode = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(zoneId);
                     }
                     else
                     {
                         // Open-Field's FarmParcelZone>Sowing>Farm cascade (restructure R, D5) - a zone with no active sowing gets NO rules at all, not even Farm/Global (D10); the zone's own safety limits (WaterPump/Heating, set below from leafNode) still apply regardless, those aren't rule-scoped.
                         int idParcel = device.FarmParcelZoneID!.Value;
                         leafNode = await farmParcelRepo.FarmParcelZoneGetByIdAsync(idParcel);
-                        if (device.SowingID is int idSowing)
+                        if (device.SowingID is int sowingId)
                         {
-                            experimentRules = await experimentRepo.ActiveExperimentIdForFarmParcelZoneAsync(idParcel) is int idExperiment
-                                ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
-                            leafRules = await deviceFarmUnitRepo.RulesGetForFarmParcelZoneAsync(idParcel);
-                            midRules = await deviceFarmUnitRepo.RulesGetForSowingAsync(idSowing);
-                            farmRules = (await sowingRepo.SowingGetByIdAsync(idSowing))?.FarmID is int idFarm
-                                ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
+                            idFarmParcelZoneForRules = idParcel;
+                            idSowingForRules = sowingId;
+                            idExperiment = await experimentRepo.ActiveExperimentIdForFarmParcelZoneAsync(idParcel);
+                            idFarm = (await sowingRepo.SowingGetByIdAsync(sowingId))?.FarmID;
                         }
                         else
                         {
-                            experimentRules = [];
-                            leafRules = [];
-                            midRules = [];
-                            farmRules = [];
+                            idExperiment = null;
                         }
                     }
                     // D10 - suppressed alongside the rest of the Open-Field cascade when the zone has no active sowing; the Greenhouse branch always sees Global.
                     bool suppressGlobalRules = device.DeviceFarmUnitZoneID is null && device.SowingID is null;
-                    IList<DeviceFarmUnitZoneRule> globalRules = !suppressGlobalRules && device.TenantID is int globalTenantId ? await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(globalTenantId) : [];
+                    bool includeGlobal = !suppressGlobalRules && device.TenantID != null;
+
+                    // One query in place of up to 6 sequential ones - every id above is resolved first, then the flat result is partitioned back out by each row's own scope FK below.
+                    IList<DeviceFarmUnitZoneRule> hierarchyRows = await deviceFarmUnitRepo.RulesGetForHierarchyAsync(
+                        device.TenantID ?? 0, idSimulationSession, idExperiment, idZone, idFarmParcelZoneForRules, idUnit, idSowingForRules, idFarm, includeGlobal);
+
+                    IList<DeviceFarmUnitZoneRule> simulationRules = idSimulationSession is int simId
+                        ? hierarchyRows.Where(r => r.SimulationSessionID == simId).ToList() : [];
+                    IList<DeviceFarmUnitZoneRule> experimentRules = idExperiment is int expId
+                        ? hierarchyRows.Where(r => r.ExperimentID == expId).ToList() : [];
+                    IList<DeviceFarmUnitZoneRule> leafRules = idZone is int lz ? hierarchyRows.Where(r => r.DeviceFarmUnitZoneID == lz).ToList()
+                        : idFarmParcelZoneForRules is int lp ? hierarchyRows.Where(r => r.DeviceFarmParcelZoneID == lp).ToList() : [];
+                    IList<DeviceFarmUnitZoneRule> midRules = idUnit is int mu ? hierarchyRows.Where(r => r.DeviceFarmUnitID == mu).ToList()
+                        : idSowingForRules is int ms ? hierarchyRows.Where(r => r.DeviceSowingID == ms).ToList() : [];
+                    IList<DeviceFarmUnitZoneRule> farmRules = idFarm is int fId ? hierarchyRows.Where(r => r.DeviceFarmID == fId).ToList() : [];
+                    IList<DeviceFarmUnitZoneRule> globalRules = includeGlobal
+                        ? hierarchyRows.Where(r => r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
+                            && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null).ToList()
+                        : [];
                     IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, leafRules, midRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
                     // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.

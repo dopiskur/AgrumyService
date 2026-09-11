@@ -181,6 +181,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule scoped to exactly this experiment - same "evaluated ahead, falls back to the real hierarchy" precedence as RulesGetForSimulationAsync, one tier below it.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForExperimentAsync(int idExperiment);
 
+        /// One query in place of up to 6 sequential calls to the methods just above - DeviceConfigBuilder resolves every id first, then partitions the flat result back out by each row's own scope FK. A null id means that scope contributes nothing, same as not calling the individual method at all.
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForHierarchyAsync(int tenantId, int? idSimulationSession, int? idExperiment, int? idZone, int? idFarmParcelZone, int? idUnit, int? idSowing, int? idFarm, bool includeGlobal);
+
         /// Every Notification-action rule for the tenant across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation/experiment-scoped rules excluded, fetched separately per session/experiment.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId);
 

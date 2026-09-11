@@ -1,11 +1,9 @@
 using Agrumy.Api.BackgroundWorkers;
-using Agrumy.Dal;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Controllers.API
 {
@@ -13,21 +11,9 @@ namespace Agrumy.Api.Controllers.API
     [Route("api/DataMaintenance")]
     [Authorize]
     public class DataMaintenanceApiController(
-        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, AgrumyDbContext db, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger)
+        IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, BackgroundJobQueue jobQueue, ILogger<DataMaintenanceApiController> logger)
         : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        /// Lets Agrumy.Web decide whether to show the MariaDB-only "shrink files on disk?" dialog before confirming a Purge - Postgres/TimescaleDB reclaims disk space automatically.
-        [HttpGet("Provider")]
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
-        public ActionResult<DataMaintenanceProviderInfo> GetProvider()
-        {
-            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
-            {
-                return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
-            }
-            return Ok(new DataMaintenanceProviderInfo { IsMySql = !db.Database.IsNpgsql() });
-        }
-
         [HttpPost("Optimize")]
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         public ActionResult Optimize([FromBody] DataMaintenanceRequest request)
@@ -79,15 +65,13 @@ namespace Agrumy.Api.Controllers.API
 
             DateTime cutoffUtc = DateTime.UtcNow.AddDays(-request.OlderThanDays);
             int olderThanDays = request.OlderThanDays;
-            bool shrinkAfterPurge = request.ShrinkAfterPurge;
             jobQueue.Enqueue(async (services, ct) =>
             {
                 if (logger.IsEnabled(LogLevel.Information))
                 {
-                    logger.LogInformation("Purge Old Data started (older than {Days} days, cutoff {Cutoff:u}, shrink={Shrink}).",
-                        olderThanDays, cutoffUtc, shrinkAfterPurge);
+                    logger.LogInformation("Purge Old Data started (older than {Days} days, cutoff {Cutoff:u}).", olderThanDays, cutoffUtc);
                 }
-                await services.GetRequiredService<ISensorDataRepository>().PurgeOldSensorDataAsync(cutoffUtc, shrinkAfterPurge, ct);
+                await services.GetRequiredService<ISensorDataRepository>().PurgeOldSensorDataAsync(cutoffUtc, ct);
                 if (logger.IsEnabled(LogLevel.Information))
                 {
                     logger.LogInformation("Purge Old Data finished (cutoff {Cutoff:u}).", cutoffUtc);

@@ -219,20 +219,6 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
-        [HttpGet]
-        public async Task<ActionResult<DataMaintenanceProviderInfo>> DataMaintenanceProvider()
-        {
-            try
-            {
-                return Ok(await api.DataMaintenanceProviderGet());
-            }
-            catch (ApiException ex)
-            {
-                return StatusCode(ex.StatusCode, ex.Body);
-            }
-        }
-
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]

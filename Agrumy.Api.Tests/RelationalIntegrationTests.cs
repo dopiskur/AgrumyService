@@ -121,7 +121,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var settingsOptions = Options.Create(new AgrumySettings());
         var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider(), NullLogger<SecretProtector>.Instance);
-        var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector);
+        var serverConfigRepository = new EfServerConfigRepository(db, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector, new NullCache());
         var outboxRepository = new EfDeviceOutboxRepository(db);
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository, outboxRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
@@ -522,6 +522,38 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         var back = await _repo.ServerConfigGetAsync(id);
         Assert.Equal(90, back.SensorDataRetentionDays);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ServerConfig_CachedBetweenReads_ButInvalidatedOnUpdate(DbProviderKind provider)
+    {
+        // _repo (built with NullCache) never exercises caching - this test wires a REAL CacheRepository/MemoryDistributedCache instead, so a stale-row write bypassing ServerConfigUpdateAsync proves the cache is genuinely consulted, and a normal update proves invalidation actually clears it.
+        var t = Use(provider);
+        int id = new Random().Next(1000, 9_000_000);
+        var settingsOptions = Options.Create(new AgrumySettings());
+        var secretProtector = new SecretProtector(new EphemeralDataProtectionProvider(), NullLogger<SecretProtector>.Instance);
+        var realCache = new CacheRepository(
+            new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())), NullLogger<CacheRepository>.Instance);
+        var cachedRepo = new EfServerConfigRepository(_db!, settingsOptions, NullLogger<EfServerConfigRepository>.Instance, secretProtector, realCache);
+
+        var first = await cachedRepo.ServerConfigGetAsync(id);
+        Assert.Null(first.SensorDataRetentionDays);
+
+        // Bypasses the cache entirely (a second, unrelated DbContext writing the row directly) - if ServerConfigGetAsync is genuinely caching, the next read still sees the OLD value.
+        await using (var bypassDb = new AgrumyDbContext(DbOptionsFactory.Build(t.Provider, t.ConnectionString)))
+        {
+            var row = await bypassDb.ServerConfigs.FirstAsync(s => s.IDServerConfig == id);
+            row.SensorDataRetentionDays = 999;
+            await bypassDb.SaveChangesAsync();
+        }
+        var stillCached = await cachedRepo.ServerConfigGetAsync(id);
+        Assert.Null(stillCached.SensorDataRetentionDays);
+
+        // A real write through the repo invalidates - the next read reflects it immediately, not after the TTL.
+        first.SensorDataRetentionDays = 42;
+        await cachedRepo.ServerConfigUpdateAsync(first);
+        var afterUpdate = await cachedRepo.ServerConfigGetAsync(id);
+        Assert.Equal(42, afterUpdate.SensorDataRetentionDays);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -1295,6 +1327,90 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo), outboxService);
         DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
         Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);
+    }
+
+    private Agrumy.Api.Devices.DeviceConfigBuilder NewDeviceConfigBuilder() =>
+        new(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo),
+            new Agrumy.Api.Commands.DeviceOutboxService(_repo, _repo, _repo, _repo, new NoOpMqttCommandPublisher()));
+
+    /// Guards DeviceConfigBuilder's rule-hierarchy batching (RulesGetForHierarchyAsync replacing up to 6 sequential RulesGetForXxx calls) - one rule per scope, each a different RelayFunction so there's no override interaction to reason about, proves the single combined query still returns every scope's row and BuildAsync partitions each one back into the right bucket.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceConfigBuilder_Greenhouse_ZoneUnitFarmGlobalRules_AllReachTheWireConfig(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (unit, zone) = await MakeUnitAndZone(tenantId);
+        DeviceFarm farm = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Farm_" + U() });
+        unit.DeviceFarmID = farm.IDDeviceFarm;
+        await _repo.DeviceFarmUnitUpdateAsync(unit);
+
+        static ConditionNode Cond() => new() { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 };
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Ventilation, Name = "ZoneRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, RelayFunction = RelayFunction.Light, Name = "UnitRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Heating, Name = "FarmRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "GlobalRule", Root = Cond() });
+
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
+        Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
+
+        DeviceConfig config = await NewDeviceConfigBuilder().BuildAsync(assigned, pendingCommand: null, board: null);
+
+        var names = config.DeviceConfigController!.Rules!.Select(r => r.Name).ToList();
+        Assert.Equal(4, names.Count);
+        Assert.Contains("ZoneRule", names);
+        Assert.Contains("UnitRule", names);
+        Assert.Contains("FarmRule", names);
+        Assert.Contains("GlobalRule", names);
+    }
+
+    /// Open-Field counterpart - FarmParcelZone>Sowing>Farm>Global, same "one rule per scope, distinct RelayFunction" shape as the Greenhouse test above.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceConfigBuilder_OpenField_ParcelZoneSowingFarmGlobalRules_AllReachTheWireConfig(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (sowing, zone, farm) = await MakeSowingAndZone(tenantId);
+
+        static ConditionNode Cond() => new() { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 };
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmParcelZoneID = zone.IDFarmParcelZone!.Value, RelayFunction = RelayFunction.Ventilation, Name = "ParcelZoneRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceSowingID = sowing.IDSowing!.Value, RelayFunction = RelayFunction.Light, Name = "SowingRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Heating, Name = "FarmRule", Root = Cond() });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "GlobalRule", Root = Cond() });
+
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToFarmParcelZoneAsync(d.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
+        Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
+
+        DeviceConfig config = await NewDeviceConfigBuilder().BuildAsync(assigned, pendingCommand: null, board: null);
+
+        var names = config.DeviceConfigController!.Rules!.Select(r => r.Name).ToList();
+        Assert.Equal(4, names.Count);
+        Assert.Contains("ParcelZoneRule", names);
+        Assert.Contains("SowingRule", names);
+        Assert.Contains("FarmRule", names);
+        Assert.Contains("GlobalRule", names);
+    }
+
+    /// D10 regression guard: a FarmParcelZone with NO active sowing must get NO rules at all - not even Farm/Global - unlike the Greenhouse branch, which always sees Global. Confirms the batched RulesGetForHierarchyAsync call still passes null for every id when SowingID is absent, exactly as the old per-scope sequential calls being skipped did.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceConfigBuilder_OpenField_NoActiveSowing_GetsNoRulesAtAll(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Heating, Name = "FarmRule", Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 } });
+        await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "GlobalRule", Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 } });
+
+        var d = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToFarmParcelZoneAsync(d.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
+        Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
+
+        DeviceConfig config = await NewDeviceConfigBuilder().BuildAsync(assigned, pendingCommand: null, board: null);
+
+        Assert.Empty(config.DeviceConfigController!.Rules!);
     }
 
     // Roadmap #238 - the widget list round-trips through the real JSON column, and saves independently of the zone's other fields (no ConfigVersion bump, no interference with WaterPump limits set moments earlier).
@@ -3213,7 +3329,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             await db.SaveChangesAsync();
         }
 
-        await _repo.PurgeOldSensorDataAsync(now.AddDays(-5), shrinkAfterPurge: false, CancellationToken.None);
+        await _repo.PurgeOldSensorDataAsync(now.AddDays(-5), CancellationToken.None);
 
         await using var back = _fx.NewContext(t);
         var left = await back.SensorData.Where(r => r.DeviceID == d.IDDevice).ToListAsync();

@@ -22,7 +22,7 @@ namespace Agrumy.Api.BackgroundWorkers
             }
 
             DateTime cutoffUtc = DateTime.UtcNow.AddDays(-config.SensorDataRetentionDays.Value);
-            await sensorDataRepo.PurgeOldSensorDataAsync(cutoffUtc, shrinkAfterPurge: false, ct);
+            await sensorDataRepo.PurgeOldSensorDataAsync(cutoffUtc, ct);
         }
     }
 }

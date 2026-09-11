@@ -84,6 +84,9 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<DeviceFarmUnitZoneRule>> RulesGetForExperimentAsync(int idExperiment) => deviceFarmUnitRepository.RulesGetForExperimentAsync(idExperiment);
 
+        public Task<IList<DeviceFarmUnitZoneRule>> RulesGetForHierarchyAsync(int tenantId, int? idSimulationSession, int? idExperiment, int? idZone, int? idFarmParcelZone, int? idUnit, int? idSowing, int? idFarm, bool includeGlobal) =>
+            deviceFarmUnitRepository.RulesGetForHierarchyAsync(tenantId, idSimulationSession, idExperiment, idZone, idFarmParcelZone, idUnit, idSowing, idFarm, includeGlobal);
+
         public Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId) => deviceFarmUnitRepository.RulesGetNotificationRulesForTenantAsync(tenantId);
 
         public Task<DeviceFarmUnitZoneRule?> RuleGetByIdAsync(int? idRule) => deviceFarmUnitRepository.RuleGetByIdAsync(idRule);

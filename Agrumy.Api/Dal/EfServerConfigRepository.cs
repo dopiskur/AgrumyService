@@ -11,19 +11,29 @@ using Npgsql;
 
 namespace Agrumy.Api.Dal
 {
-    /// IServerConfigRepository - a leaf facet, no dependency on any other domain. Widely read-from by other domains, but that's calls INTO this class, not out of it.
-    internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger, ISecretProtector secretProtector) : IServerConfigRepository
+    /// IServerConfigRepository - a leaf facet, no dependency on any other domain (ICache is infra, same as AgrumyDbContext/IOptions/ILogger, not a domain dependency - EfDeviceRepository's own Fleet cache is the same shape). Widely read-from by other domains, but that's calls INTO this class, not out of it.
+    internal sealed class EfServerConfigRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, ILogger<EfServerConfigRepository> logger, ISecretProtector secretProtector, ICache cache) : IServerConfigRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
+        /// Read on essentially every request across the whole app - cached same shape as EfDeviceRepository.DeviceFleetGetAsync, with every write path below explicitly invalidating it rather than relying on the TTL alone.
         public async Task<ServerConfig> ServerConfigGetAsync(int idServerConfig = 1)
         {
+            string cacheKey = CacheKeys.ServerConfig(idServerConfig);
+            ServerConfig? cached = await cache.GetAsync<ServerConfig>(cacheKey);
+            if (cached != null)
+            {
+                return cached;
+            }
+
             var row = await db.ServerConfigs.AsNoTracking()
                 .FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
 
             if (row != null)
             {
-                return ToDto(row);
+                ServerConfig dto = ToDto(row);
+                await cache.SetAsync(cacheKey, dto, CacheKeys.ServerConfigTtl);
+                return dto;
             }
 
             // No row: generate one, seeding hysteresis fields from appsettings.json so a fresh install starts with sane defaults.
@@ -73,8 +83,13 @@ namespace Agrumy.Api.Dal
             };
             db.ServerConfigs.Add(generated);
             await db.SaveChangesAsync();
-            return ToDto(generated);
+            ServerConfig generatedDto = ToDto(generated);
+            await cache.SetAsync(cacheKey, generatedDto, CacheKeys.ServerConfigTtl);
+            return generatedDto;
         }
+
+        /// Invalidates the cache entry ServerConfigGetAsync writes - called from every write path below, not just here, so a stale settings row is never served after any of them.
+        private Task InvalidateCacheAsync(int idServerConfig) => cache.RemoveAsync(CacheKeys.ServerConfig(idServerConfig));
 
         public async Task ServerConfigUpdateAsync(ServerConfig config)
         {
@@ -170,6 +185,7 @@ namespace Agrumy.Api.Dal
                 row.ArchivePassword = secretProtector.Protect(config.ArchivePassword);
             }
             await db.SaveChangesAsync();
+            await InvalidateCacheAsync(config.IDServerConfig ?? 1);
 
             // Re-applied on every save so Postgres/TimescaleDB retention updates immediately - a no-op on MariaDB/MySQL, which reads this row fresh on its own daily tick.
             await ApplyRetentionPolicyAsync(config.SensorDataRetentionDays);
@@ -214,6 +230,7 @@ namespace Agrumy.Api.Dal
             row.FrostWindMaxMetersPerSecond = settings.FrostWindMaxMetersPerSecond;
             row.FirmwareRefreshIntervalHours = settings.FirmwareRefreshIntervalHours;
             await db.SaveChangesAsync();
+            await InvalidateCacheAsync(idServerConfig);
             await ApplyRetentionPolicyAsync(settings.SensorDataRetentionDays);
         }
 
@@ -227,6 +244,7 @@ namespace Agrumy.Api.Dal
             }
             row.FirmwareLastRefreshedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
+            await InvalidateCacheAsync(idServerConfig);
         }
 
         /// The only writer of ArchiveLastRunAtUtc, called exclusively by SensorDataArchiveEvaluator - same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
@@ -239,6 +257,7 @@ namespace Agrumy.Api.Dal
             }
             row.ArchiveLastRunAtUtc = ranAtUtc;
             await db.SaveChangesAsync();
+            await InvalidateCacheAsync(idServerConfig);
         }
 
         /// The only writer of ArkodGeoPackageSyncedAtUtc, called exclusively by ArkodGeoPackageSyncService - same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
@@ -251,6 +270,7 @@ namespace Agrumy.Api.Dal
             }
             row.ArkodGeoPackageSyncedAtUtc = syncedAtUtc;
             await db.SaveChangesAsync();
+            await InvalidateCacheAsync(idServerConfig);
         }
 
         /// add_retention_policy's interval can only change by remove-then-add, so this runs unconditionally on every save; also called once at startup by ISystemRepository.EnsureSchemaAsync via EnsureTimescaleHypertableAsync.

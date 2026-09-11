@@ -30,7 +30,6 @@ DELETE,api/Simulation/Session/{idSimulationSession}/Rule/{idRule},Global admin;S
 DELETE,api/Tenant,Global admin
 DELETE,api/User,Global admin;Global User;Tenant admin;Tenant User
 GET,api/AuditLog,Global admin;Tenant admin;Global reader
-GET,api/DataMaintenance/Provider,Global admin;Global reader
 GET,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/DeviceCommand/{idDeviceCommand},Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/DeviceFarmUnit/Unassigned,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
