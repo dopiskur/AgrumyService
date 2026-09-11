@@ -1,0 +1,14 @@
+@model int
+@{
+    ViewData["Title"] = "Satellite - " + ViewBag.FarmName;
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Open-Field farming</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewBag.FarmName - Satellite</li>
+    </ol>
+</nav>
+
+<partial name="_SatelliteMap" model="new SatelliteMapViewModel { Scope = Agrumy.Shared.Models.SatelliteMapScope.Farm, Id = Model, CanManage = hasAnyRole(RoleNames.DeviceManagers) }" />

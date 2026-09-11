@@ -1,0 +1,49 @@
+@model SatelliteMapViewModel
+@{
+    string mapId = $"satMap-{Model.Scope}-{Model.Id}";
+    bool canManage = Model.CanManage;
+}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0"><i class="bi bi-globe"></i> Satellite (@Model.Scope)</h3>
+        <select class="form-select form-select-sm" style="width:auto" data-sat-role="index">
+            @foreach (var index in Model.AvailableIndices)
+            {
+                <option value="@((int)index)">@index</option>
+            }
+        </select>
+        <div class="form-check form-check-inline ms-2">
+            <input type="checkbox" class="form-check-input" id="@(mapId)-reliable" data-sat-role="onlyReliable" checked="@Model.OnlyReliableDefault" />
+            <label class="form-check-label small" for="@(mapId)-reliable">Only reliable</label>
+        </div>
+        @if (canManage)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-sat-role="syncNow"><i class="bi bi-arrow-repeat"></i> Sync now</button>
+        }
+    </div>
+    <div class="card-body">
+        @if (canManage)
+        {
+            @Html.AntiForgeryToken()
+        }
+        <div data-sat-role="root" data-scope="@Model.Scope" data-id="@Model.Id" data-can-manage="@(canManage ? "1" : "0")">
+            <div id="@mapId" data-sat-role="map" style="height:420px;"></div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <span class="small text-secondary" data-sat-role="dateLabel">No dates yet</span>
+                <input type="range" class="form-range flex-grow-1" min="0" max="0" value="0" data-sat-role="dateSlider" disabled />
+            </div>
+            <div class="small text-secondary mt-1" data-sat-role="legend"></div>
+            <p class="small text-secondary fst-italic mt-2" data-sat-role="emptyNotice" hidden>No satellite data yet for this scope - configure the satellite module and wait for the next daily sync, or use Sync now.</p>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+<script src="~/lib/leaflet/leaflet.js"></script>
+<script src="~/js/satellite-map.js"></script>
+<script nonce="@Context.CspNonce()">
+    document.addEventListener('DOMContentLoaded', function () {
+        initSatelliteMap('@mapId');
+    });
+</script>

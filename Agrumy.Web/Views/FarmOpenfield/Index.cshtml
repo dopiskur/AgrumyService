@@ -32,8 +32,9 @@
 @foreach (var f in Model.Farms)
 {
     <div class="card mb-4">
-        <div class="card-header">
+        <div class="card-header d-flex align-items-center gap-2">
             <h3 class="card-title mb-0">@f.Farm.DeviceFarmName</h3>
+            <a asp-action="FarmSatellite" asp-route-idFarm="@f.Farm.IDDeviceFarm" class="btn btn-sm btn-outline-secondary ms-auto"><i class="bi bi-globe"></i> Satellite</a>
         </div>
         <div class="card-body">
             <div class="row">

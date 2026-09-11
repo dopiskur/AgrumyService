@@ -117,6 +117,7 @@ POST,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;T
 POST,api/FarmOpenfield/Sowing/FieldLog/{idFieldLogEntry}/Attachment,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/Start,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Firmware/Import,Global admin
 POST,api/Firmware/Sync,Global admin
 POST,api/Firmware/Upload,Global admin

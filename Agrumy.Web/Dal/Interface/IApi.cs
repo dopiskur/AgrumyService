@@ -380,6 +380,21 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry")]
         Task<ParcelGeometryResult> ParcelZoneGeometrySet(int idFarmParcelZone, [Body] ParcelGeometrySetRequest request);
 
+        [Get("/api/FarmOpenfield/{scope}/{id}/Satellite")]
+        Task<SatelliteMapResponse> SatelliteMapGet(string scope, int id, int index, DateOnly? date);
+
+        [Get("/api/FarmOpenfield/{scope}/{id}/Satellite/Dates")]
+        Task<IList<DateOnly>> SatelliteMapDatesGet(string scope, int id);
+
+        [Post("/api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow")]
+        Task<HttpResponseMessage> SatelliteMapSyncNow(string scope, int id);
+
+        [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Scenes/{idScene}/Index/{index}")]
+        Task<HttpResponseMessage> SatelliteIndexPngGet(int idFarmParcelZone, int idScene, int index);
+
+        [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Series")]
+        Task<IList<SatelliteSeriesPoint>> SatelliteSeriesGet(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable);
+
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();
 

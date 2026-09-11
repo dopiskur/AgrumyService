@@ -4004,4 +4004,48 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains(withGeometry, z => z.IDFarmParcelZone == zoneWithGeom.IDFarmParcelZone);
         Assert.DoesNotContain(withGeometry, z => z.IDFarmParcelZone == zoneWithoutGeom.IDFarmParcelZone);
     }
+
+    // ---- Satellite four-level map scope resolution (S-C) - the data operations FarmOpenfieldApiController.ResolveSatelliteScopeAsync composes ----
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SowingOccupiedZonesGetAsync_SpanningTwoParcels_ReturnsExactlyTheOccupiedZones_NeverASibling(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P1_" + U() });
+        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P2_" + U() });
+        // A third, untouched zone in the same farm - must never leak into the sowing-scoped result even though it shares the farm/tenant.
+        var (_, siblingZone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P3_" + U() });
+        var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
+        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone1.IDFarmParcelZone!.Value, zone2.IDFarmParcelZone!.Value]);
+
+        IList<FarmParcelZone> occupied = await _repo.SowingOccupiedZonesGetAsync(sowing.IDSowing!.Value);
+
+        var occupiedIds = occupied.Select(z => z.IDFarmParcelZone).ToHashSet();
+        Assert.Equal(2, occupied.Count);
+        Assert.Contains(zone1.IDFarmParcelZone, occupiedIds);
+        Assert.Contains(zone2.IDFarmParcelZone, occupiedIds);
+        Assert.DoesNotContain(siblingZone.IDFarmParcelZone, occupiedIds);
+        // Sanity - the two occupied zones really do belong to two different parcels (the "spans two parcels" premise).
+        Assert.NotEqual(zone1.FarmParcelID, zone2.FarmParcelID);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelsGetAsync_AndFarmParcelZonesGetAsync_NeverLeakAnotherTenantsFarm(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantA, _, _) = await MakeUser(t);
+        var (tenantB, _, _) = await MakeUser(t);
+        var (_, openfieldA) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantA);
+        var (_, openfieldB) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantB);
+        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmOpenfieldID = openfieldA.IDFarmOpenfield!.Value, FarmParcelName = "A_" + U() });
+        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmOpenfieldID = openfieldB.IDFarmOpenfield!.Value, FarmParcelName = "B_" + U() });
+
+        IList<FarmParcel> parcelsForA = await _repo.FarmParcelsGetAsync(openfieldA.IDFarmOpenfield!.Value);
+
+        Assert.Single(parcelsForA);
+        Assert.All(parcelsForA, p => Assert.Equal(tenantA, p.TenantID));
+    }
 }

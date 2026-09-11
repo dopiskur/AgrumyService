@@ -104,4 +104,40 @@ namespace Agrumy.Shared.Models
         public bool Reliable { get; set; }
         public List<SatelliteIndex> AvailableIndices { get; set; } = [];
     }
+
+    /// The four zoom levels S-C's one map partial renders - "which zones are drawn" is the only thing that changes between them (Detaljni dizajn S, sesija C).
+    public enum SatelliteMapScope
+    {
+        Farm = 1,
+        Sowing = 2,
+        Parcel = 3,
+        Zone = 4,
+    }
+
+    /// One zone's row in a SatelliteMapResponse - HasData false means the zone has no scene at/before the requested date yet (still drawn, with an empty raster, per D4's "never disappears").
+    public class SatelliteMapZoneEntry
+    {
+        public int ZoneId { get; set; }
+        public string? ZoneName { get; set; }
+        public int ParcelId { get; set; }
+        public string? GeometryGeoJson { get; set; }
+        public bool HasData { get; set; }
+        public DateOnly? SceneDateUtc { get; set; }
+        public bool Reliable { get; set; }
+        public string? PngUrl { get; set; }
+        public string? StatsJson { get; set; }
+    }
+
+    public class SatelliteMapParcelEntry
+    {
+        public int ParcelId { get; set; }
+        public string? ParcelName { get; set; }
+        public string? GeometryGeoJson { get; set; }
+    }
+
+    public class SatelliteMapResponse
+    {
+        public List<SatelliteMapZoneEntry> Zones { get; set; } = [];
+        public List<SatelliteMapParcelEntry> Parcels { get; set; } = [];
+    }
 }

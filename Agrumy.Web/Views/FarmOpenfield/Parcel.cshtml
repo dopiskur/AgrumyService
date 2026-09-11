@@ -237,6 +237,55 @@
     <partial name="_RuleEditor" model="ruleEditorModel" />
 }
 
+<div class="mt-3">
+    <partial name="_SatelliteMap" model="new SatelliteMapViewModel { Scope = Agrumy.Shared.Models.SatelliteMapScope.Zone, Id = parcel.IDFarmParcelZone!.Value, OnlyReliableDefault = false, CanManage = canManage }" />
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <h3 class="card-title mb-0">Satellite trend</h3>
+        <select class="form-select form-select-sm" style="width:auto" id="satSeriesIndex">
+            <option value="1">Ndvi</option>
+            <option value="2">Ndmi</option>
+            <option value="3">Ndwi</option>
+            <option value="4">Ndsi</option>
+        </select>
+    </div>
+    <div class="card-body">
+        <div id="satSeriesChart" style="height:280px;"></div>
+        <p class="text-secondary small fst-italic mt-2" id="satSeriesEmpty" hidden>No satellite history yet for this zone.</p>
+    </div>
+</div>
+
+<script src="~/lib/echarts/echarts.min.js"></script>
+<script nonce="@Context.CspNonce()">
+    document.addEventListener('DOMContentLoaded', function () {
+        const chart = echarts.init(document.getElementById('satSeriesChart'));
+        const select = document.getElementById('satSeriesIndex');
+        const empty = document.getElementById('satSeriesEmpty');
+        const idZone = @parcel.IDFarmParcelZone;
+
+        async function loadSeries() {
+            const response = await fetch(`/FarmOpenfield/SatelliteSeries?idFarmParcelZone=${idZone}&index=${select.value}&onlyReliable=true`);
+            const points = response.ok ? await response.json() : [];
+            if (points.length === 0) {
+                empty.hidden = false;
+                chart.clear();
+                return;
+            }
+            empty.hidden = true;
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: points.map(p => p.sceneDateUtc) },
+                yAxis: { type: 'value' },
+                series: [{ type: 'line', data: points.map(p => p.mean), name: select.options[select.selectedIndex].text }],
+            });
+        }
+        select.addEventListener('change', loadSeries);
+        loadSeries();
+    });
+</script>
+
 <div class="modal fade" id="registerDeviceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

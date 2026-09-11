@@ -87,6 +87,53 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(FarmParcelDetails), new { idFarmParcel });
         }
 
+        // ---- Satellite four-level map (S-C) ----------------------------
+
+        /// Farm-tab entry point - a dedicated page rather than embedding a map per farm card on Index (N farms would mean N eagerly-initialized Leaflet maps).
+        public async Task<ActionResult> FarmSatellite(int idFarm)
+        {
+            DeviceFarm farm = await api.DeviceFarmGet(idFarm);
+            ViewBag.FarmName = farm.DeviceFarmName;
+            return View(idFarm);
+        }
+
+        // ---- Satellite four-level map proxy - thin JSON/binary proxy, the browser can't reach Agrumy.Api directly (different auth: Bearer vs. this app's cookie) ----------------------------
+
+        public async Task<ActionResult<SatelliteMapResponse>> SatelliteMap(string scope, int id, int index, DateOnly? date) =>
+            Json(await api.SatelliteMapGet(scope, id, index, date));
+
+        public async Task<ActionResult<IList<DateOnly>>> SatelliteMapDates(string scope, int id) =>
+            Json(await api.SatelliteMapDatesGet(scope, id));
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SatelliteSyncNow(string scope, int id)
+        {
+            try
+            {
+                await api.SatelliteMapSyncNow(scope, id);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode == 0 ? 500 : ex.StatusCode, ex.Body);
+            }
+        }
+
+        public async Task<ActionResult> SatelliteImage(int idFarmParcelZone, int idScene, int index)
+        {
+            HttpResponseMessage response = await api.SatelliteIndexPngGet(idFarmParcelZone, idScene, index);
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode((int)response.StatusCode);
+            }
+            return File(await response.Content.ReadAsStreamAsync(), "image/png");
+        }
+
+        public async Task<ActionResult<IList<SatelliteSeriesPoint>>> SatelliteSeries(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable = true) =>
+            Json(await api.SatelliteSeriesGet(idFarmParcelZone, index, from, to, onlyReliable));
+
         // ---- Sowing CRUD --------------------------------------------------
 
         /// Sjetva wizard step 1 (D3/D9): crop (looked up/created in the catalog server-side by name) + variety + start date + expected duration. Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show.

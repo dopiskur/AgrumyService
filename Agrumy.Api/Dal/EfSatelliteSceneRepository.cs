@@ -53,6 +53,29 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoScene(row);
         }
 
+        public async Task<FarmParcelZoneSatelliteScene?> SceneAtOrBeforeDateAsync(int farmParcelZoneId, DateOnly date)
+        {
+            var row = await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
+                .Where(s => s.FarmParcelZoneID == farmParcelZoneId && s.SceneDateUtc <= date)
+                .OrderByDescending(s => s.SceneDateUtc)
+                .FirstOrDefaultAsync();
+            return row == null ? null : ToDtoScene(row);
+        }
+
+        public async Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds)
+        {
+            if (farmParcelZoneIds.Count == 0)
+            {
+                return [];
+            }
+            return await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
+                .Where(s => farmParcelZoneIds.Contains(s.FarmParcelZoneID))
+                .Select(s => s.SceneDateUtc)
+                .Distinct()
+                .OrderBy(d => d)
+                .ToListAsync();
+        }
+
         public async Task<ParcelSatelliteIndex> IndexUpsertAsync(ParcelSatelliteIndex index)
         {
             var row = await db.ParcelSatelliteIndices.FirstOrDefaultAsync(i => i.SceneID == index.SceneID && i.Index == (int)index.Index);

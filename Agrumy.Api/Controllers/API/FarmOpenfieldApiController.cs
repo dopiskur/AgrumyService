@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage, Agrumy.Api.BackgroundWorkers.BackgroundJobQueue jobQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -899,6 +899,156 @@ namespace Agrumy.Api.Controllers.API
         }
 
         #endregion
+
+        #region Satellite four-level map (Detaljni dizajn S, sesija C) - one partial, scope only changes which zones are drawn
+
+        [Authorize]
+        [HttpGet("{scope}/{id}/Satellite")]
+        public async Task<ActionResult<SatelliteMapResponse>> SatelliteMapGet(SatelliteMapScope scope, int id, SatelliteIndex index, DateOnly? date = null)
+        {
+            var (zones, parcels, error) = await ResolveSatelliteScopeAsync(scope, id, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+
+            DateOnly targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var zoneEntries = new List<SatelliteMapZoneEntry>();
+            foreach (FarmParcelZone zone in zones)
+            {
+                int idZone = zone.IDFarmParcelZone!.Value;
+                FarmParcelZoneSatelliteScene? scene = await satelliteSceneRepo.SceneAtOrBeforeDateAsync(idZone, targetDate);
+                if (scene == null)
+                {
+                    // D4 - the zone is still drawn (its outline, no raster) rather than disappearing from the map.
+                    zoneEntries.Add(new SatelliteMapZoneEntry { ZoneId = idZone, ZoneName = zone.FarmParcelZoneName, ParcelId = zone.FarmParcelID, GeometryGeoJson = zone.GeometryGeoJson, HasData = false });
+                    continue;
+                }
+                ParcelSatelliteIndex? indexRow = await satelliteSceneRepo.IndexGetAsync(scene.IDFarmParcelZoneSatelliteScene, index);
+                zoneEntries.Add(new SatelliteMapZoneEntry
+                {
+                    ZoneId = idZone,
+                    ZoneName = zone.FarmParcelZoneName,
+                    ParcelId = zone.FarmParcelID,
+                    GeometryGeoJson = zone.GeometryGeoJson,
+                    HasData = indexRow != null,
+                    SceneDateUtc = scene.SceneDateUtc,
+                    Reliable = scene.Reliable,
+                    PngUrl = indexRow == null ? null : Url.Action(nameof(SatelliteIndexPngGet), new { idFarmParcelZone = idZone, idScene = scene.IDFarmParcelZoneSatelliteScene, index }),
+                    StatsJson = indexRow?.StatsJson,
+                });
+            }
+
+            var parcelEntries = parcels.Select(p => new SatelliteMapParcelEntry { ParcelId = p.IDFarmParcel!.Value, ParcelName = p.FarmParcelName, GeometryGeoJson = p.GeometryGeoJson }).ToList();
+            return Ok(new SatelliteMapResponse { Zones = zoneEntries, Parcels = parcelEntries });
+        }
+
+        [Authorize]
+        [HttpGet("{scope}/{id}/Satellite/Dates")]
+        public async Task<ActionResult<IList<DateOnly>>> SatelliteMapDatesGet(SatelliteMapScope scope, int id)
+        {
+            var (zones, _, error) = await ResolveSatelliteScopeAsync(scope, id, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            List<int> zoneIds = zones.Select(z => z.IDFarmParcelZone!.Value).ToList();
+            return Ok(await satelliteSceneRepo.DistinctSceneDatesAsync(zoneIds));
+        }
+
+        /// D-manager only; rate-limited to one enqueue per tenant per 5 minutes (ICache-backed cooldown) so a repeatedly-clicked button can't flood the job queue. Re-syncs the whole tenant (the daily job's own per-tenant loop), not just the clicked scope - a fully zone-scoped sync would need SatelliteSyncEvaluator split into a per-zone entry point, deferred as a fast-follow rather than duplicating its backfill/incremental logic here.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("{scope}/{id}/Satellite/SyncNow")]
+        public async Task<ActionResult> SatelliteMapSyncNow(SatelliteMapScope scope, int id)
+        {
+            var (_, _, error) = await ResolveSatelliteScopeAsync(scope, id, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (CallerTenantId is not int tenantId)
+            {
+                return StatusCode(403, "Caller has no tenant.");
+            }
+            string cooldownKey = $"satellite-syncnow-cooldown:{tenantId}";
+            if (await Cache.GetAsync<string>(cooldownKey) != null)
+            {
+                return StatusCode(429, "A sync was already requested for this tenant in the last 5 minutes.");
+            }
+            await Cache.SetAsync(cooldownKey, "1", TimeSpan.FromMinutes(5));
+            jobQueue.Enqueue((services, ct) => services.GetRequiredService<Agrumy.Api.BackgroundWorkers.SatelliteSyncEvaluator>().RunOnceAsync(ct));
+            await WriteAuditAsync("Satellite.SyncNowRequested", tenantId, scope.ToString(), id.ToString(), null);
+            return Ok();
+        }
+
+        #endregion
+
+        private async Task<(IList<FarmParcelZone> Zones, IList<FarmParcel> Parcels, ActionResult? Error)> ResolveSatelliteScopeAsync(SatelliteMapScope scope, int id, bool forWrite)
+        {
+            switch (scope)
+            {
+                case SatelliteMapScope.Farm:
+                {
+                    var (_, error) = await EnsureOwnedFarmAsync(id, forWrite);
+                    if (error != null)
+                    {
+                        return ([], [], error);
+                    }
+                    FarmOpenfield? openfield = await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(id);
+                    if (openfield?.IDFarmOpenfield is not int idOpenfield)
+                    {
+                        return ([], [], NotFound());
+                    }
+                    IList<FarmParcel> parcels = await farmParcelRepo.FarmParcelsGetAsync(idOpenfield);
+                    var zones = new List<FarmParcelZone>();
+                    foreach (FarmParcel p in parcels)
+                    {
+                        zones.AddRange(await farmParcelRepo.FarmParcelZonesGetAsync(p.IDFarmParcel!.Value));
+                    }
+                    return (zones, parcels, null);
+                }
+                case SatelliteMapScope.Sowing:
+                {
+                    var (_, error) = await EnsureOwnedCropAsync(id, forWrite);
+                    if (error != null)
+                    {
+                        return ([], [], error);
+                    }
+                    IList<FarmParcelZone> zones = await sowingRepo.SowingOccupiedZonesGetAsync(id);
+                    var parcels = new List<FarmParcel>();
+                    foreach (int idParcel in zones.Select(z => z.FarmParcelID).Distinct())
+                    {
+                        if (await farmParcelRepo.FarmParcelGetByIdAsync(idParcel) is FarmParcel parcel)
+                        {
+                            parcels.Add(parcel);
+                        }
+                    }
+                    return (zones, parcels, null);
+                }
+                case SatelliteMapScope.Parcel:
+                {
+                    var (parcel, error) = await EnsureOwnedFarmParcelAsync(id, forWrite);
+                    if (error != null)
+                    {
+                        return ([], [], error);
+                    }
+                    IList<FarmParcelZone> zones = await farmParcelRepo.FarmParcelZonesGetAsync(id);
+                    return (zones, [parcel!], null);
+                }
+                case SatelliteMapScope.Zone:
+                {
+                    var (zone, error) = await EnsureOwnedParcelAsync(id, forWrite);
+                    if (error != null)
+                    {
+                        return ([], [], error);
+                    }
+                    FarmParcel? parcel = await farmParcelRepo.FarmParcelGetByIdAsync(zone!.FarmParcelID);
+                    return ([zone], parcel == null ? [] : [parcel], null);
+                }
+                default:
+                    return ([], [], BadRequest("Unknown scope."));
+            }
+        }
 
         private Task<OwnedResult<Sowing>> EnsureOwnedCropAsync(int? idSowing, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => sowingRepo.SowingGetByIdAsync(idSowing ?? 0), c => c.TenantID, "Crop", forWrite);

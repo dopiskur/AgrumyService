@@ -13,6 +13,12 @@ namespace Agrumy.Api.Dal.Interface
 
         Task<FarmParcelZoneSatelliteScene?> LatestSceneGetAsync(int farmParcelZoneId);
 
+        /// S-C, D4 - the scene the date slider should show for this zone when its own history has no exact match for the selected date: the latest one at or before it. Null means the zone has nothing that old yet.
+        Task<FarmParcelZoneSatelliteScene?> SceneAtOrBeforeDateAsync(int farmParcelZoneId, DateOnly date);
+
+        /// S-C map's date slider - the union of scene dates across every zone in the current scope, one cheap query instead of fetching each zone's full history.
+        Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds);
+
         Task<ParcelSatelliteIndex> IndexUpsertAsync(ParcelSatelliteIndex index);
 
         Task<ParcelSatelliteIndex?> IndexGetAsync(int sceneId, SatelliteIndex index);
