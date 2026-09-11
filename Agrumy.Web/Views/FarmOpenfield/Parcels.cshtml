@@ -9,6 +9,15 @@
         GrowingCycleStatus.Active => "text-bg-success",
         _ => "text-bg-dark",
     };
+    bool phiPending = Model.EarliestHarvestDate is DateOnly ehd && ehd > DateOnly.FromDateTime(DateTime.UtcNow);
+    const double nitrogenWarningThresholdKgPerHa = 170; // Detaljni dizajn R, "Bilanca N" default threshold
+    // "Add event" type options, filtered by the sowing's current phase (D6 katalog tipova unosa).
+    var eventTypes = Model.Crop.Status switch
+    {
+        GrowingCycleStatus.Planned => new[] { EntryType.Ploughing, EntryType.Discing, EntryType.Harrowing, EntryType.Subsoiling, EntryType.BaseFertilization, EntryType.SoilAnalysis, EntryType.Liming, EntryType.Other },
+        GrowingCycleStatus.Active => new[] { EntryType.Fertilization, EntryType.PlantProtection, EntryType.Irrigation, EntryType.Weeding, EntryType.Pruning, EntryType.Observation, EntryType.Scouting, EntryType.Sampling, EntryType.Other },
+        _ => new[] { EntryType.PostHarvestAnalysis, EntryType.Storage, EntryType.Sale, EntryType.Other },
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -32,6 +41,18 @@
         <h3 class="card-title mb-0">
             @Model.Crop.SowingName <span class="text-secondary small">(@Model.Farm.DeviceFarmName)</span>
             <span class="badge @statusBadge">@Model.Crop.Status</span>
+            @if (Model.EarliestHarvestDate is DateOnly earliestHarvestDate)
+            {
+                <span class="badge @(phiPending ? "text-bg-warning" : "text-bg-light text-dark")" title="Earliest date Harvest can be entered without an explicit confirmation (D13)">
+                    Karenca do @earliestHarvestDate.ToString("yyyy-MM-dd")
+                </span>
+            }
+            @if (Model.NitrogenBalanceKgPerHa is double nBalance)
+            {
+                <span class="badge @(nBalance > nitrogenWarningThresholdKgPerHa ? "text-bg-danger" : "text-bg-light text-dark")" title="Bilanca N - kg N/ha across every Fertilization entry">
+                    N: @nBalance.ToString("0.#") kg/ha
+                </span>
+            }
         </h3>
         @if (canManage)
         {
@@ -106,6 +127,15 @@
                         <label class="form-label small">Note</label>
                         <textarea name="note" class="form-control form-control-sm" rows="2"></textarea>
                     </div>
+                    @if (phiPending)
+                    {
+                        <div class="col-12 form-check">
+                            <input type="checkbox" class="form-check-input" name="confirmEarlyHarvest" value="true" id="confirmEarlyHarvest" required />
+                            <label class="form-check-label small" for="confirmEarlyHarvest">
+                                I confirm harvesting before the karenca (pre-harvest interval) of @Model.EarliestHarvestDate?.ToString("yyyy-MM-dd") has passed.
+                            </label>
+                        </div>
+                    }
                     <div class="col-12">
                         <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this sowing? Its zones become free again.');">
                             <i class="bi bi-flag-fill"></i> Close sowing
@@ -139,6 +169,138 @@
                     </div>
                 }
             </div>
+        }
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0">Dnevnik</h3>
+        <a asp-action="PlantProtectionReport" asp-route-idSowing="@Model.Crop.IDSowing" class="btn btn-sm btn-outline-secondary ms-auto">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Evidencija SZB (CSV)
+        </a>
+    </div>
+    <div class="card-body">
+        @if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+        {
+            <details class="mb-3">
+                <summary class="fw-semibold">+ Add event</summary>
+                <form asp-action="FieldLogEntryAdd" method="post" class="row g-2 mt-2" style="max-width:40rem" id="fieldLogForm">
+                    <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                    <div class="col-6">
+                        <label class="form-label small">Type</label>
+                        <select name="EntryType" id="entryTypeSelect" class="form-select form-select-sm">
+                            @foreach (var t in eventTypes)
+                            {
+                                <option value="@t">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Date</label>
+                        <input type="date" name="Date" class="form-control form-control-sm" value="@DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd")" required />
+                    </div>
+
+                    <div class="col-12 entrytype-fields" data-for="Fertilization,BaseFertilization">
+                        <div class="row g-2">
+                            <div class="col-4"><input type="text" name="Product" class="form-control form-control-sm" placeholder="Product" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="NPercent" class="form-control form-control-sm" placeholder="N%" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="PPercent" class="form-control form-control-sm" placeholder="P%" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="KPercent" class="form-control form-control-sm" placeholder="K%" /></div>
+                            <div class="col-4"><input type="number" step="0.1" name="DoseKgPerHa" class="form-control form-control-sm" placeholder="Dose kg/ha" /></div>
+                            <div class="col-4"><input type="number" step="0.01" name="AreaHa" class="form-control form-control-sm" placeholder="Area ha" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 entrytype-fields" data-for="SoilAnalysis">
+                        <div class="row g-2">
+                            <div class="col-3"><input type="number" step="0.1" name="PH" class="form-control form-control-sm" placeholder="pH" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="HumusPercent" class="form-control form-control-sm" placeholder="Humus %" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="P2O5" class="form-control form-control-sm" placeholder="P2O5" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="K2O" class="form-control form-control-sm" placeholder="K2O" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="NMin" class="form-control form-control-sm" placeholder="N-min" /></div>
+                            <div class="col-3"><input type="number" step="1" name="DepthCm" class="form-control form-control-sm" placeholder="Depth cm" /></div>
+                            <div class="col-6"><input type="text" name="Laboratory" class="form-control form-control-sm" placeholder="Laboratory" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 entrytype-fields" data-for="PlantProtection">
+                        <p class="text-secondary small mb-1">Legally required (evidencija SZB):</p>
+                        <div class="row g-2">
+                            <div class="col-6"><input type="text" name="ProductName" class="form-control form-control-sm" placeholder="Product name" /></div>
+                            <div class="col-6"><input type="text" name="ActiveSubstance" class="form-control form-control-sm" placeholder="Active substance" /></div>
+                            <div class="col-4"><input type="text" name="Dose" class="form-control form-control-sm" placeholder="Dose/concentration" /></div>
+                            <div class="col-4"><input type="number" step="0.01" name="TreatedAreaHa" class="form-control form-control-sm" placeholder="Treated area ha" /></div>
+                            <div class="col-4"><input type="number" step="1" name="PhiDays" class="form-control form-control-sm" placeholder="Karenca (days)" /></div>
+                            <div class="col-6"><input type="text" name="Reason" class="form-control form-control-sm" placeholder="Reason (pest/disease/weed)" /></div>
+                            <div class="col-6"><input type="text" name="Applicator" class="form-control form-control-sm" placeholder="Applicator" /></div>
+                            <div class="col-12"><input type="text" name="WeatherConditions" class="form-control form-control-sm" placeholder="Weather conditions (optional)" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 entrytype-fields" data-for="Irrigation">
+                        <div class="row g-2">
+                            <div class="col-3"><input type="number" step="0.1" name="AmountMm" class="form-control form-control-sm" placeholder="mm" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="AmountM3" class="form-control form-control-sm" placeholder="m3" /></div>
+                            <div class="col-3"><input type="number" step="1" name="DurationMinutes" class="form-control form-control-sm" placeholder="Duration (min)" /></div>
+                            <div class="col-3"><input type="text" name="Source" class="form-control form-control-sm" placeholder="Source" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small">Note</label>
+                        <textarea name="Note" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add event</button>
+                    </div>
+                </form>
+            </details>
+            <script>
+                (function () {
+                    var select = document.getElementById('entryTypeSelect');
+                    if (!select) return;
+                    function apply() {
+                        document.querySelectorAll('#fieldLogForm .entrytype-fields').forEach(function (el) {
+                            var types = el.getAttribute('data-for').split(',');
+                            el.hidden = types.indexOf(select.value) === -1;
+                        });
+                    }
+                    select.addEventListener('change', apply);
+                    apply();
+                })();
+            </script>
+        }
+
+        @if (Model.LogEntries.Count == 0)
+        {
+            <p class="text-secondary small fst-italic">No entries yet.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead><tr><th>Date</th><th>Type</th><th>Note</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var entry in Model.LogEntries.OrderByDescending(e => e.DateUtc))
+                    {
+                        <tr>
+                            <td>@entry.DateUtc.ToString("yyyy-MM-dd")</td>
+                            <td>@entry.EntryType @(entry.IsClosingEntry ? "(closing)" : "")</td>
+                            <td>@entry.Note</td>
+                            <td>
+                                @if (canManage)
+                                {
+                                    <form asp-action="FieldLogEntryDelete" method="post" class="d-inline" onsubmit="return confirm('Delete this entry?');">
+                                        <input type="hidden" name="idFieldLogEntry" value="@entry.IDFieldLogEntry" />
+                                        <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         }
     </div>
 </div>

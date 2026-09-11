@@ -263,7 +263,7 @@ namespace Agrumy.Shared.Models
         public List<int> FarmParcelZoneIds { get; set; } = [];
     }
 
-    /// Body of the "Close sowing" action (D9/D14) - a grouped harvest result plus the closing dnevnik entry.
+    /// Body of the "Close sowing" action (D9/D14) - a grouped harvest result plus the closing dnevnik entry. Confirm must be true when the sowing has an unexpired EarliestHarvestDate (D13) - the API returns 409 with that date otherwise, the same "explicit confirmation" pattern as other safety-gated writes.
     public class SowingCloseRequest
     {
         public int IDSowing { get; set; }
@@ -271,6 +271,52 @@ namespace Agrumy.Shared.Models
         public double? MoisturePercent { get; set; }
         public string? QualityGrade { get; set; }
         public string? Note { get; set; }
+        public bool Confirm { get; set; }
+    }
+
+    /// FieldLogEntry.PayloadJson shape for Fertilization/BaseFertilization - Detaljni dizajn R's katalog tipova unosa. N/P/K percentages are of the product, not of the dose.
+    public class FertilizationPayload
+    {
+        public string? Product { get; set; }
+        public double? NPercent { get; set; }
+        public double? PPercent { get; set; }
+        public double? KPercent { get; set; }
+        public double DoseKgPerHa { get; set; }
+        public double AreaHa { get; set; }
+    }
+
+    /// FieldLogEntry.PayloadJson shape for SoilAnalysis.
+    public class SoilAnalysisPayload
+    {
+        public double? PH { get; set; }
+        public double? HumusPercent { get; set; }
+        public double? P2O5 { get; set; }
+        public double? K2O { get; set; }
+        public double? NMin { get; set; }
+        public double? DepthCm { get; set; }
+        public string? Laboratory { get; set; }
+    }
+
+    /// FieldLogEntry.PayloadJson shape for PlantProtection - every field here is legally required (D7, Pravilnik o održivoj uporabi pesticida). PhiDays (karenca) drives Sowing.EarliestHarvestDate (D13).
+    public class PlantProtectionPayload
+    {
+        public string ProductName { get; set; } = "";
+        public string ActiveSubstance { get; set; } = "";
+        public string Dose { get; set; } = "";
+        public double TreatedAreaHa { get; set; }
+        public string Reason { get; set; } = "";
+        public int PhiDays { get; set; }
+        public string Applicator { get; set; } = "";
+        public string? WeatherConditions { get; set; }
+    }
+
+    /// FieldLogEntry.PayloadJson shape for Irrigation - exactly one of AmountMm/AmountM3 is meaningful, matching whichever unit the farm measures in.
+    public class IrrigationPayload
+    {
+        public double? AmountMm { get; set; }
+        public double? AmountM3 { get; set; }
+        public int? DurationMinutes { get; set; }
+        public string? Source { get; set; }
     }
 
     /// Rehomed onto Sowing by restructure R (Detaljni dizajn R, sesija 2) - same sensor-average/status/trend shape as DeviceFarmUnitDashboard so the Farms page renders both branches with identical styling.

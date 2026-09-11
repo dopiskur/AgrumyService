@@ -55,6 +55,9 @@ namespace Agrumy.Shared
 
         // FirmwareLocalPath: relative to content root, null = FirmwareStorage.DefaultRelativePath. FirmwareGitHubRepository only seeds serverConfig - the admin page owns the live value.
         public string? FirmwareLocalPath { get; set; }
+
+        // Relative to content root, null = FieldLogAttachmentStorage.DefaultRelativePath - same convention as FirmwareLocalPath.
+        public string? FieldLogAttachmentLocalPath { get; set; }
         public string FirmwareGitHubRepository { get; set; } = "dopiskur/AgrumyFirmware";
         public string? FirmwareGitHubToken { get; set; }
 
@@ -104,6 +107,7 @@ namespace Agrumy.Shared
             AllowSelfServiceTenantCreation = ParseBoolOr(configuration, "ServerConfig:AllowSelfServiceTenantCreation", false),
             TenantManagementEnabled = ParseBoolOr(configuration, "ServerConfig:TenantManagementEnabled", false),
             FirmwareLocalPath = configuration.GetSection("Firmware:LocalPath").Value,
+            FieldLogAttachmentLocalPath = configuration.GetSection("FieldLog:AttachmentLocalPath").Value,
             FirmwareGitHubRepository = configuration.GetSection("Firmware:GitHubRepository").Value is { Length: > 0 } repo ? repo : "dopiskur/AgrumyFirmware",
             FirmwareGitHubToken = configuration.GetSection("Firmware:GitHubToken").Value,
             FirmwareRefreshIntervalHours = ParseIntOrNull(configuration, "ServerConfig:FirmwareRefreshIntervalHours") ?? 24,

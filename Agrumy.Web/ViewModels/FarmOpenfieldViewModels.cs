@@ -32,6 +32,52 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmParcelZoneDashboard> Parcels { get; init; } = [];
         /// Every zone on the sowing's own farm, free or not - the Start-sowing zone picker (D3/D9) when the sowing is still Planned. Empty once Active/Closed.
         public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
+        public IList<FieldLogEntry> LogEntries { get; init; } = [];
+        /// D13 - null means no PlantProtection entry has been logged yet, so Harvest is never karenca-gated.
+        public DateOnly? EarliestHarvestDate { get; init; }
+        /// "Bilanca N" - kg N per ha across every fertilization entry so far; null until the first one.
+        public double? NitrogenBalanceKgPerHa { get; init; }
+    }
+
+    /// Drives the FieldLog "Add event" form on FarmOpenfield/Parcels.cshtml - one flattened input covering every EntryType's own fields; the controller picks which sub-set actually matters based on EntryType and assembles the right PayloadJson server-side.
+    public class FieldLogEntryFormInput
+    {
+        public EntryType EntryType { get; set; }
+        public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+        public string? Note { get; set; }
+
+        // Fertilization / BaseFertilization
+        public string? Product { get; set; }
+        public double? NPercent { get; set; }
+        public double? PPercent { get; set; }
+        public double? KPercent { get; set; }
+        public double? DoseKgPerHa { get; set; }
+        public double? AreaHa { get; set; }
+
+        // SoilAnalysis
+        public double? PH { get; set; }
+        public double? HumusPercent { get; set; }
+        public double? P2O5 { get; set; }
+        public double? K2O { get; set; }
+        public double? NMin { get; set; }
+        public double? DepthCm { get; set; }
+        public string? Laboratory { get; set; }
+
+        // PlantProtection (all legally required when EntryType is PlantProtection)
+        public string? ProductName { get; set; }
+        public string? ActiveSubstance { get; set; }
+        public string? Dose { get; set; }
+        public double? TreatedAreaHa { get; set; }
+        public string? Reason { get; set; }
+        public int? PhiDays { get; set; }
+        public string? Applicator { get; set; }
+        public string? WeatherConditions { get; set; }
+
+        // Irrigation
+        public double? AmountMm { get; set; }
+        public double? AmountM3 { get; set; }
+        public int? DurationMinutes { get; set; }
+        public string? Source { get; set; }
     }
 
     /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets or day/night presets - fast-follow).

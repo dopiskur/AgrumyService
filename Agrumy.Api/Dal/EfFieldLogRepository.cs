@@ -58,6 +58,12 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoAttachment).ToList();
         }
 
+        public async Task<FieldLogAttachment?> FieldLogAttachmentGetByIdAsync(int idFieldLogAttachment)
+        {
+            var row = await db.FieldLogAttachments.AsNoTracking().FirstOrDefaultAsync(a => a.IDFieldLogAttachment == idFieldLogAttachment);
+            return row == null ? null : ToDtoAttachment(row);
+        }
+
         public async Task<FieldLogAttachment> FieldLogAttachmentAddAsync(FieldLogAttachment attachment)
         {
             var row = new FieldLogAttachmentRow
@@ -103,6 +109,60 @@ namespace Agrumy.Api.Dal
             db.HarvestResults.Add(row);
             await db.SaveChangesAsync();
             return ToDtoHarvest(row);
+        }
+
+        public async Task<DateOnly?> EarliestHarvestDateAsync(int idSowing)
+        {
+            var rows = await db.FieldLogEntries.AsNoTracking()
+                .Where(e => e.SowingID == idSowing && e.EntryType == (int)EntryType.PlantProtection)
+                .Select(e => new { e.DateUtc, e.PayloadJson })
+                .ToListAsync();
+            DateOnly? latest = null;
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrEmpty(row.PayloadJson))
+                {
+                    continue;
+                }
+                PlantProtectionPayload? payload = System.Text.Json.JsonSerializer.Deserialize<PlantProtectionPayload>(row.PayloadJson);
+                if (payload == null)
+                {
+                    continue;
+                }
+                DateOnly candidate = DateOnly.FromDateTime(row.DateUtc.UtcDateTime).AddDays(payload.PhiDays);
+                if (latest is null || candidate > latest)
+                {
+                    latest = candidate;
+                }
+            }
+            return latest;
+        }
+
+        public async Task<double?> NitrogenBalanceKgPerHaAsync(int idSowing)
+        {
+            var rows = await db.FieldLogEntries.AsNoTracking()
+                .Where(e => e.SowingID == idSowing && (e.EntryType == (int)EntryType.Fertilization || e.EntryType == (int)EntryType.BaseFertilization))
+                .Select(e => e.PayloadJson)
+                .ToListAsync();
+            double totalN = 0;
+            double totalArea = 0;
+            bool any = false;
+            foreach (string? json in rows)
+            {
+                if (string.IsNullOrEmpty(json))
+                {
+                    continue;
+                }
+                FertilizationPayload? payload = System.Text.Json.JsonSerializer.Deserialize<FertilizationPayload>(json);
+                if (payload == null || payload.AreaHa <= 0)
+                {
+                    continue;
+                }
+                any = true;
+                totalN += (payload.NPercent ?? 0) / 100.0 * payload.DoseKgPerHa * payload.AreaHa;
+                totalArea += payload.AreaHa;
+            }
+            return any && totalArea > 0 ? totalN / totalArea : null;
         }
 
         private static FieldLogEntry ToDtoEntry(FieldLogEntryRow e) => new()

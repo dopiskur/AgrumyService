@@ -394,6 +394,27 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/FarmOpenfield/Sowing/Close")]
         Task SowingClose([Body] SowingCloseRequest request);
 
+        [Get("/api/FarmOpenfield/Sowing/FieldLog")]
+        Task<IList<FieldLogEntry>> FieldLogEntriesGet(int idSowing);
+
+        [Post("/api/FarmOpenfield/Sowing/FieldLog")]
+        Task<FieldLogEntry> FieldLogEntryAdd([Body] FieldLogEntry entry);
+
+        [Delete("/api/FarmOpenfield/Sowing/FieldLog")]
+        Task FieldLogEntryDelete(int idFieldLogEntry);
+
+        [Get("/api/FarmOpenfield/Sowing/FieldLog/{idFieldLogEntry}/Attachments")]
+        Task<IList<FieldLogAttachment>> FieldLogAttachmentsGet(int idFieldLogEntry);
+
+        [Get("/api/FarmOpenfield/Sowing/EarliestHarvestDate")]
+        Task<DateOnly?> EarliestHarvestDateGet(int idSowing);
+
+        [Get("/api/FarmOpenfield/Sowing/NitrogenBalance")]
+        Task<double?> NitrogenBalanceGet(int idSowing);
+
+        [Get("/api/FarmOpenfield/Sowing/{idSowing}/PlantProtectionReport")]
+        Task<HttpResponseMessage> PlantProtectionReportGet(int idSowing);
+
         [Get("/api/FarmOpenfield/Parcel")]
         Task<IList<FarmParcelZone>> ParcelsGet(int? idSowing);
 

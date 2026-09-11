@@ -104,6 +104,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<FieldLogAttachment>> FieldLogAttachmentsGetAsync(int idFieldLogEntry) => fieldLogRepository.FieldLogAttachmentsGetAsync(idFieldLogEntry);
 
+        public Task<FieldLogAttachment?> FieldLogAttachmentGetByIdAsync(int idFieldLogAttachment) => fieldLogRepository.FieldLogAttachmentGetByIdAsync(idFieldLogAttachment);
+
         public Task<FieldLogAttachment> FieldLogAttachmentAddAsync(FieldLogAttachment attachment) => fieldLogRepository.FieldLogAttachmentAddAsync(attachment);
 
         public Task FieldLogAttachmentDeleteAsync(int idFieldLogAttachment) => fieldLogRepository.FieldLogAttachmentDeleteAsync(idFieldLogAttachment);
@@ -111,6 +113,10 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<IList<HarvestResult>> HarvestResultsGetAsync(int? sowingID, int? zonePlantingID) => fieldLogRepository.HarvestResultsGetAsync(sowingID, zonePlantingID);
 
         public Task<HarvestResult> HarvestResultAddAsync(HarvestResult result) => fieldLogRepository.HarvestResultAddAsync(result);
+
+        public Task<DateOnly?> EarliestHarvestDateAsync(int idSowing) => fieldLogRepository.EarliestHarvestDateAsync(idSowing);
+
+        public Task<double?> NitrogenBalanceKgPerHaAsync(int idSowing) => fieldLogRepository.NitrogenBalanceKgPerHaAsync(idSowing);
 
         // ---- IZonePlantingRepository ----
 

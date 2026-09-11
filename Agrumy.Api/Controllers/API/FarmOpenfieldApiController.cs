@@ -178,7 +178,6 @@ namespace Agrumy.Api.Controllers.API
                 SowingID = request.IDSowing,
                 EntryType = EntryType.Sowing,
                 DateUtc = DateTimeOffset.UtcNow,
-                
                 Note = $"Started on {request.FarmParcelZoneIds.Count} zone(s).",
             });
             await WriteAuditAsync("Sowing.Started", sowing.TenantID, "Sowing", request.IDSowing.ToString(), string.Join(", ", request.FarmParcelZoneIds));
@@ -194,6 +193,18 @@ namespace Agrumy.Api.Controllers.API
             if (error != null)
             {
                 return error;
+            }
+            // D13 - karenca doesn't block Harvest hard, but an unexpired one needs an explicit, audited confirmation.
+            DateOnly? earliestHarvestDate = await fieldLogRepo.EarliestHarvestDateAsync(request.IDSowing);
+            bool beforePhi = earliestHarvestDate is DateOnly ehd && DateOnly.FromDateTime(DateTime.UtcNow) < ehd;
+            if (beforePhi && !request.Confirm)
+            {
+                return Conflict(new { earliestHarvestDate });
+            }
+            if (beforePhi)
+            {
+                int daysEarly = earliestHarvestDate!.Value.DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber;
+                await WriteAuditAsync("FieldLog.HarvestBeforePhi", sowing!.TenantID, "Sowing", request.IDSowing.ToString(), $"{daysEarly} day(s) before EarliestHarvestDate");
             }
             await sowingRepo.SowingCloseAsync(request.IDSowing, null);
             await fieldLogRepo.HarvestResultAddAsync(new HarvestResult
@@ -211,13 +222,185 @@ namespace Agrumy.Api.Controllers.API
                 SowingID = request.IDSowing,
                 EntryType = EntryType.Harvest,
                 DateUtc = DateTimeOffset.UtcNow,
-                
                 Note = request.Note,
                 IsClosingEntry = true,
             });
             await WriteAuditAsync("Sowing.Closed", sowing.TenantID, "Sowing", request.IDSowing.ToString(), $"{request.YieldKg} kg");
             return true;
         }
+
+        #endregion
+
+        #region Dnevnik (fieldLogEntry/fieldLogAttachment, D6/D7/D13)
+
+        [Authorize]
+        [HttpGet("Sowing/FieldLog")]
+        public async Task<ActionResult<IList<FieldLogEntry>>> FieldLogEntriesGet(int idSowing)
+        {
+            var (sowing, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await fieldLogRepo.FieldLogEntriesGetAsync(sowing!.IDSowing, null, null, null));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Sowing/FieldLog")]
+        public async Task<ActionResult<FieldLogEntry>> FieldLogEntryAdd([FromBody] FieldLogEntry entry)
+        {
+            if (entry.SowingID is not int idSowing)
+            {
+                return BadRequest("SowingID is required.");
+            }
+            var (sowing, error) = await EnsureOwnedCropAsync(idSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            entry.TenantID = sowing!.TenantID;
+            FieldLogEntry added = await fieldLogRepo.FieldLogEntryAddAsync(entry);
+            await WriteAuditAsync("FieldLog.EntryAdded", sowing.TenantID, "Sowing", idSowing.ToString(), entry.EntryType.ToString());
+            return Ok(added);
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpDelete("Sowing/FieldLog")]
+        public async Task<ActionResult<bool>> FieldLogEntryDelete(int idFieldLogEntry)
+        {
+            FieldLogEntry? entry = await fieldLogRepo.FieldLogEntryGetByIdAsync(idFieldLogEntry);
+            if (entry?.SowingID is not int idSowing)
+            {
+                return NotFound();
+            }
+            var (sowing, error) = await EnsureOwnedCropAsync(idSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await fieldLogRepo.FieldLogEntryDeleteAsync(idFieldLogEntry);
+            await WriteAuditAsync("FieldLog.EntryDeleted", sowing!.TenantID, "Sowing", idSowing.ToString(), entry.EntryType.ToString());
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Sowing/FieldLog/{idFieldLogEntry}/Attachment")]
+        [RequestSizeLimit(20_000_000)]
+        public async Task<ActionResult<FieldLogAttachment>> FieldLogAttachmentAdd(int idFieldLogEntry, IFormFile file, [FromServices] Agrumy.Api.Storage.FieldLogAttachmentStorage storage)
+        {
+            FieldLogEntry? entry = await fieldLogRepo.FieldLogEntryGetByIdAsync(idFieldLogEntry);
+            if (entry?.SowingID is not int idSowing)
+            {
+                return NotFound();
+            }
+            var (_, error) = await EnsureOwnedCropAsync(idSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            string extension = Path.GetExtension(file.FileName);
+            await using Stream stream = file.OpenReadStream();
+            (string storedName, long sizeBytes) = await storage.SaveAsync(stream, extension);
+            FieldLogAttachment added = await fieldLogRepo.FieldLogAttachmentAddAsync(new FieldLogAttachment
+            {
+                FieldLogEntryID = idFieldLogEntry,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                StoragePath = storedName,
+                SizeBytes = sizeBytes,
+            });
+            return Ok(added);
+        }
+
+        [Authorize]
+        [HttpGet("Sowing/FieldLog/{idFieldLogEntry}/Attachments")]
+        public async Task<ActionResult<IList<FieldLogAttachment>>> FieldLogAttachmentsGet(int idFieldLogEntry) =>
+            Ok(await fieldLogRepo.FieldLogAttachmentsGetAsync(idFieldLogEntry));
+
+        [Authorize]
+        [HttpGet("Sowing/FieldLog/Attachment/{idFieldLogAttachment}/Download")]
+        public async Task<ActionResult> FieldLogAttachmentDownload(int idFieldLogAttachment, [FromServices] Agrumy.Api.Storage.FieldLogAttachmentStorage storage)
+        {
+            FieldLogAttachment? attachment = await fieldLogRepo.FieldLogAttachmentGetByIdAsync(idFieldLogAttachment);
+            if (attachment?.FieldLogEntryID is not int idFieldLogEntry)
+            {
+                return NotFound();
+            }
+            FieldLogEntry? entry = await fieldLogRepo.FieldLogEntryGetByIdAsync(idFieldLogEntry);
+            if (entry?.SowingID is not int idSowing)
+            {
+                return NotFound();
+            }
+            var (_, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            string path = storage.PathFor(attachment.StoragePath!);
+            if (!System.IO.File.Exists(path))
+            {
+                return NotFound();
+            }
+            return PhysicalFile(path, attachment.ContentType ?? "application/octet-stream", attachment.FileName);
+        }
+
+        /// D13 - shown on Sowing Details so "Harvest" can warn before the caller even tries.
+        [Authorize]
+        [HttpGet("Sowing/EarliestHarvestDate")]
+        public async Task<ActionResult<DateOnly?>> EarliestHarvestDateGet(int idSowing)
+        {
+            var (_, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await fieldLogRepo.EarliestHarvestDateAsync(idSowing));
+        }
+
+        /// "Bilanca N" - kg N per ha across every fertilization entry, with the tenant's warning threshold (default 170) so the Web page can flag it without a second round trip.
+        [Authorize]
+        [HttpGet("Sowing/NitrogenBalance")]
+        public async Task<ActionResult<double?>> NitrogenBalanceGet(int idSowing)
+        {
+            var (_, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await fieldLogRepo.NitrogenBalanceKgPerHaAsync(idSowing));
+        }
+
+        /// Evidencija o uporabi sredstava za zaštitu bilja (SZB) - every PlantProtection entry for the sowing, one CSV row per entry with every legally required field (D7).
+        [Authorize]
+        [HttpGet("Sowing/{idSowing}/PlantProtectionReport")]
+        public async Task<ActionResult> PlantProtectionReportGet(int idSowing)
+        {
+            var (sowing, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            IList<FieldLogEntry> entries = await fieldLogRepo.FieldLogEntriesGetAsync(idSowing, null, null, null);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Date,Product,ActiveSubstance,Dose,TreatedAreaHa,Reason,PhiDays,Applicator,WeatherConditions");
+            foreach (FieldLogEntry entry in entries.Where(e => e.EntryType == EntryType.PlantProtection).OrderBy(e => e.DateUtc))
+            {
+                PlantProtectionPayload? p = string.IsNullOrEmpty(entry.PayloadJson)
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<PlantProtectionPayload>(entry.PayloadJson);
+                if (p == null)
+                {
+                    continue;
+                }
+                sb.AppendLine(string.Join(",", CsvField(entry.DateUtc.ToString("yyyy-MM-dd")), CsvField(p.ProductName), CsvField(p.ActiveSubstance),
+                    CsvField(p.Dose), CsvField(p.TreatedAreaHa.ToString(System.Globalization.CultureInfo.InvariantCulture)), CsvField(p.Reason),
+                    CsvField(p.PhiDays.ToString()), CsvField(p.Applicator), CsvField(p.WeatherConditions ?? "")));
+            }
+            return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"plant-protection-{sowing!.SowingName}-{idSowing}.csv");
+        }
+
+        private static string CsvField(string value) =>
+            value.Contains(',') || value.Contains('"') || value.Contains('\n') ? $"\"{value.Replace("\"", "\"\"")}\"" : value;
 
         #endregion
 

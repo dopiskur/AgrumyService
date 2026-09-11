@@ -101,16 +101,45 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Parcels), new { idSowing });
         }
 
-        /// D9/D14 - Active -> Closed: a grouped harvest result (per-zone breakdown is a fast-follow), releases every occupied zone.
+        /// D9/D13/D14 - Active -> Closed: a grouped harvest result (per-zone breakdown is a fast-follow), releases every occupied zone. confirmEarlyHarvest is D13's explicit "I know the karenca hasn't passed yet" checkbox, shown on the page whenever EarliestHarvestDate is still in the future.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SowingClose(int idSowing, double yieldKg, double? moisturePercent, string? qualityGrade, string? note)
+        public async Task<ActionResult> SowingClose(int idSowing, double yieldKg, double? moisturePercent, string? qualityGrade, string? note, bool confirmEarlyHarvest)
         {
             try
             {
-                await api.SowingClose(new SowingCloseRequest { IDSowing = idSowing, YieldKg = yieldKg, MoisturePercent = moisturePercent, QualityGrade = qualityGrade, Note = note });
+                await api.SowingClose(new SowingCloseRequest { IDSowing = idSowing, YieldKg = yieldKg, MoisturePercent = moisturePercent, QualityGrade = qualityGrade, Note = note, Confirm = confirmEarlyHarvest });
                 TempData["Message"] = "Sowing closed.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.StatusCode == 409
+                    ? "Harvest is before the pre-harvest interval (PHI) has passed - check the confirmation box to proceed anyway."
+                    : ex.Body;
+            }
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        // ---- Dnevnik (D6/D7) --------------------------------------------
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FieldLogEntryAdd(int idSowing, FieldLogEntryFormInput input)
+        {
+            var entry = new FieldLogEntry
+            {
+                SowingID = idSowing,
+                EntryType = input.EntryType,
+                DateUtc = new DateTimeOffset(input.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+                Note = input.Note,
+                PayloadJson = BuildPayloadJson(input),
+            };
+            try
+            {
+                await api.FieldLogEntryAdd(entry);
+                TempData["Message"] = $"{input.EntryType} logged.";
             }
             catch (ApiException ex)
             {
@@ -118,6 +147,71 @@ namespace Agrumy.Web.Controllers.View
             }
             return RedirectToAction(nameof(Parcels), new { idSowing });
         }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> FieldLogEntryDelete(int idFieldLogEntry, int idSowing)
+        {
+            await api.FieldLogEntryDelete(idFieldLogEntry);
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        public async Task<ActionResult> PlantProtectionReport(int idSowing)
+        {
+            HttpResponseMessage response = await api.PlantProtectionReportGet(idSowing);
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode((int)response.StatusCode);
+            }
+            string downloadName = response.Content.Headers.ContentDisposition?.FileNameStar
+                ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                ?? "plant-protection-report.csv";
+            return File(await response.Content.ReadAsStreamAsync(), "text/csv", downloadName);
+        }
+
+        /// Only the family of fields the given EntryType actually stores gets serialized (D7) - everything else (Ploughing, Discing, Weeding, Observation, Other, ...) has no structured payload, just the shared Note field.
+        private static string? BuildPayloadJson(FieldLogEntryFormInput input) => input.EntryType switch
+        {
+            EntryType.Fertilization or EntryType.BaseFertilization => System.Text.Json.JsonSerializer.Serialize(new FertilizationPayload
+            {
+                Product = input.Product,
+                NPercent = input.NPercent,
+                PPercent = input.PPercent,
+                KPercent = input.KPercent,
+                DoseKgPerHa = input.DoseKgPerHa ?? 0,
+                AreaHa = input.AreaHa ?? 0,
+            }),
+            EntryType.SoilAnalysis => System.Text.Json.JsonSerializer.Serialize(new SoilAnalysisPayload
+            {
+                PH = input.PH,
+                HumusPercent = input.HumusPercent,
+                P2O5 = input.P2O5,
+                K2O = input.K2O,
+                NMin = input.NMin,
+                DepthCm = input.DepthCm,
+                Laboratory = input.Laboratory,
+            }),
+            EntryType.PlantProtection => System.Text.Json.JsonSerializer.Serialize(new PlantProtectionPayload
+            {
+                ProductName = input.ProductName ?? "",
+                ActiveSubstance = input.ActiveSubstance ?? "",
+                Dose = input.Dose ?? "",
+                TreatedAreaHa = input.TreatedAreaHa ?? 0,
+                Reason = input.Reason ?? "",
+                PhiDays = input.PhiDays ?? 0,
+                Applicator = input.Applicator ?? "",
+                WeatherConditions = input.WeatherConditions,
+            }),
+            EntryType.Irrigation => System.Text.Json.JsonSerializer.Serialize(new IrrigationPayload
+            {
+                AmountMm = input.AmountMm,
+                AmountM3 = input.AmountM3,
+                DurationMinutes = input.DurationMinutes,
+                Source = input.Source,
+            }),
+            _ => null,
+        };
 
         // ---- Sowing Details (parcel/zone list + lifecycle) -----------------------------------
 
@@ -146,6 +240,9 @@ namespace Agrumy.Web.Controllers.View
                 Farm = farm ?? new DeviceFarm(),
                 Parcels = await api.ParcelDashboardListGet(idSowing),
                 AvailableParcels = availableParcels,
+                LogEntries = await api.FieldLogEntriesGet(idSowing),
+                EarliestHarvestDate = await api.EarliestHarvestDateGet(idSowing),
+                NitrogenBalanceKgPerHa = await api.NitrogenBalanceGet(idSowing),
             });
         }
 

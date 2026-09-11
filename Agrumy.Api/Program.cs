@@ -248,6 +248,7 @@ builder.Services.AddHttpClient(HttpFirmwareFetcher.ClientName, client =>
 });
 builder.Services.AddSingleton<IFirmwareFetcher, HttpFirmwareFetcher>();
 builder.Services.AddSingleton<FirmwareStorage>();
+builder.Services.AddSingleton<Agrumy.Api.Storage.FieldLogAttachmentStorage>();
 builder.Services.AddScoped<FirmwareCatalogService>();
 
 builder.Services.AddScoped<FirmwareCatalogRefreshEvaluator>();

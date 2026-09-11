@@ -3697,4 +3697,75 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         // Parcel cap is independent of the Crop cap above - the one Sowing we already have is well under MaxCrops' sibling MaxParcels check target (its own single zone from MakeSowingAndZone already consumed it).
         Assert.NotNull(await enforcer.CheckCanAddParcelAsync(tenantId));
     }
+
+    // ---- Dnevnik (D6/D7/D13) ----------------------------------
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task EarliestHarvestDateAsync_TakesTheLatestAcrossMultipleSprayings(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (sowing, _, _) = await MakeSowingAndZone(tenantId);
+        DateTimeOffset today = DateTimeOffset.UtcNow.Date;
+
+        // First spraying, 7-day karenca - earliest harvest today+7.
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, SowingID = sowing.IDSowing, EntryType = EntryType.PlantProtection, DateUtc = today,
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new PlantProtectionPayload { ProductName = "A", ActiveSubstance = "a", Dose = "1L/ha", TreatedAreaHa = 1, Reason = "aphids", PhiDays = 7, Applicator = "op" }),
+        });
+        // Second, later spraying with a longer karenca - today+2+21 should now win over the first.
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, SowingID = sowing.IDSowing, EntryType = EntryType.PlantProtection, DateUtc = today.AddDays(2),
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new PlantProtectionPayload { ProductName = "B", ActiveSubstance = "b", Dose = "0.5L/ha", TreatedAreaHa = 1, Reason = "fungus", PhiDays = 21, Applicator = "op" }),
+        });
+
+        DateOnly? earliest = await _repo.EarliestHarvestDateAsync(sowing.IDSowing!.Value);
+
+        Assert.Equal(DateOnly.FromDateTime(today.AddDays(2 + 21).UtcDateTime), earliest);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task NitrogenBalanceKgPerHaAsync_WeightsByAreaAcrossMultipleFertilizations(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (sowing, _, _) = await MakeSowingAndZone(tenantId);
+
+        // 100 kg/ha @ 27% N on 2 ha = 54 kg N total; 50 kg/ha @ 34% N on 1 ha = 17 kg N total. 71 kg / 3 ha = 23.67 kg N/ha.
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, SowingID = sowing.IDSowing, EntryType = EntryType.Fertilization, DateUtc = DateTimeOffset.UtcNow,
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new FertilizationPayload { Product = "UREA", NPercent = 27, DoseKgPerHa = 100, AreaHa = 2 }),
+        });
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, SowingID = sowing.IDSowing, EntryType = EntryType.Fertilization, DateUtc = DateTimeOffset.UtcNow,
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new FertilizationPayload { Product = "KAN", NPercent = 34, DoseKgPerHa = 50, AreaHa = 1 }),
+        });
+
+        double? balance = await _repo.NitrogenBalanceKgPerHaAsync(sowing.IDSowing!.Value);
+
+        Assert.NotNull(balance);
+        Assert.Equal(71.0 / 3.0, balance!.Value, precision: 3);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FieldLogEntriesGetAsync_ScopedToOneSowing_NeverLeaksAnotherTenants(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantA, _, _) = await MakeUser(t);
+        var (tenantB, _, _) = await MakeUser(t);
+        var (sowingA, _, _) = await MakeSowingAndZone(tenantA);
+        var (sowingB, _, _) = await MakeSowingAndZone(tenantB);
+
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = tenantA, SowingID = sowingA.IDSowing, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "tenant A note" });
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = tenantB, SowingID = sowingB.IDSowing, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "tenant B note" });
+
+        IList<FieldLogEntry> entriesForA = await _repo.FieldLogEntriesGetAsync(sowingA.IDSowing, null, null, null);
+
+        Assert.All(entriesForA, e => Assert.Equal(tenantA, e.TenantID));
+        Assert.DoesNotContain(entriesForA, e => e.Note == "tenant B note");
+    }
 }
