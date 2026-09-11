@@ -38,5 +38,10 @@ namespace Agrumy.Web.ViewModels
         public IList<ZoneOption> Zones { get; init; } = [];
         public IReadOnlyDictionary<(HierarchyNodeKind Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
             new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
+
+        public ZonePlanting? ActivePlanting { get; init; }
+        public IList<ZonePlanting> PlantingHistory { get; init; } = [];
+        public IList<FieldLogEntry> FieldLog { get; init; } = [];
+        public DateOnly? EarliestHarvestDate { get; init; }
     }
 }

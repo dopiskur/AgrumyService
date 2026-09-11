@@ -31,5 +31,8 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Sum(Fertilization/BaseFertilization NPercent% x DoseKgPerHa) / sum(AreaHa) across every fertilization entry on the sowing - "bilanca N po ha po sjetvi". Null if the sowing has no fertilization entries yet.
         Task<double?> NitrogenBalanceKgPerHaAsync(int idSowing);
+
+        /// Greenhouse's equivalent of EarliestHarvestDateAsync, scoped to one zonePlanting cycle instead of a Sowing (D8/D13 - "isto kao open-field").
+        Task<DateOnly?> EarliestHarvestDateForZonePlantingAsync(int idZonePlanting);
     }
 }

@@ -9,6 +9,7 @@ DELETE,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Te
 DELETE,api/DeviceFarmUnit/Parcel/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Zone/Planting/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Tenant admin;Tenant Device
@@ -91,6 +92,9 @@ POST,api/DeviceFarmUnit/Zone/ApplyDayNightPreset,Global admin;Global Device;Tena
 POST,api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/Planting/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Close,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Start,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Discovery/Register,Global admin;Global Device;Tenant admin;Tenant Device

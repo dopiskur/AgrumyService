@@ -138,6 +138,33 @@ namespace Agrumy.Api.Dal
             return latest;
         }
 
+        public async Task<DateOnly?> EarliestHarvestDateForZonePlantingAsync(int idZonePlanting)
+        {
+            var rows = await db.FieldLogEntries.AsNoTracking()
+                .Where(e => e.ZonePlantingID == idZonePlanting && e.EntryType == (int)EntryType.PlantProtection)
+                .Select(e => new { e.DateUtc, e.PayloadJson })
+                .ToListAsync();
+            DateOnly? latest = null;
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrEmpty(row.PayloadJson))
+                {
+                    continue;
+                }
+                PlantProtectionPayload? payload = System.Text.Json.JsonSerializer.Deserialize<PlantProtectionPayload>(row.PayloadJson);
+                if (payload == null)
+                {
+                    continue;
+                }
+                DateOnly candidate = DateOnly.FromDateTime(row.DateUtc.UtcDateTime).AddDays(payload.PhiDays);
+                if (latest is null || candidate > latest)
+                {
+                    latest = candidate;
+                }
+            }
+            return latest;
+        }
+
         public async Task<double?> NitrogenBalanceKgPerHaAsync(int idSowing)
         {
             var rows = await db.FieldLogEntries.AsNoTracking()

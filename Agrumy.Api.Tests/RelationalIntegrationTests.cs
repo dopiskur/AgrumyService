@@ -340,9 +340,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var tables = await db.Database.SqlQueryRaw<string>(sql).ToListAsync();
 
         foreach (var name in new[] { "tenant", "user", "userRole",
-            "device", "deviceFarmUnit", "deviceFarmUnitZone", "deviceType", "deviceTypeService",
+            "device", "farmGreenhouseUnit", "farmGreenhouseUnitZone", "deviceType", "deviceTypeService",
             "deviceTypeRelay", "deviceTypeSensor", "deviceConfigSensor", "deviceConfigController",
-            "deviceFirmware", "deviceDiagnostic", "dataSensor", "sensorDataReport", "eventDevice",
+            "deviceFirmware", "deviceDiagnostic", "dataSensor", "eventDevice",
             "serverConfig" })
         {
             Assert.Contains(name, tables);
@@ -3767,5 +3767,84 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.All(entriesForA, e => Assert.Equal(tenantA, e.TenantID));
         Assert.DoesNotContain(entriesForA, e => e.Note == "tenant B note");
+    }
+
+    // ---- Greenhouse zonePlanting ciklusi + dnevnik po zoni (D8/D13) ----------------------------------
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ZonePlantingStartAsync_ThrowsWhenTheZoneAlreadyHasAnActiveCycle(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        int idCrop = await _repo.CropFindOrCreateByNameAsync(tenantId, "Tomato_" + U());
+        await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 }));
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ZonePlantingStartAsync_AllowsANewCycleOnceThePreviousOneIsClosed(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        int idCrop = await _repo.CropFindOrCreateByNameAsync(tenantId, "Cucumber_" + U());
+        ZonePlanting first = await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.ZonePlantingCloseAsync(first.IDZonePlanting!.Value);
+
+        ZonePlanting second = await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+
+        Assert.NotEqual(first.IDZonePlanting, second.IDZonePlanting);
+        Assert.Equal(GrowingCycleStatus.Active, second.Status);
+        IList<ZonePlanting> history = await _repo.ZonePlantingsGetAsync(zone.IDDeviceFarmUnitZone!.Value);
+        Assert.Equal(2, history.Count);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FieldLogEntriesGetAsync_ScopedToOneZonePlanting_NeverLeaksAnotherZonesEntries(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zoneA) = await MakeUnitAndZone(tenantId);
+        var (_, zoneB) = await MakeUnitAndZone(tenantId);
+        int idCrop = await _repo.CropFindOrCreateByNameAsync(tenantId, "Pepper_" + U());
+        ZonePlanting plantingA = await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zoneA.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        ZonePlanting plantingB = await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zoneB.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = tenantId, ZonePlantingID = plantingA.IDZonePlanting, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "zone A note" });
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = tenantId, ZonePlantingID = plantingB.IDZonePlanting, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "zone B note" });
+
+        IList<FieldLogEntry> entriesForA = await _repo.FieldLogEntriesGetAsync(null, null, plantingA.IDZonePlanting, null);
+
+        Assert.All(entriesForA, e => Assert.Equal(plantingA.IDZonePlanting, e.ZonePlantingID));
+        Assert.DoesNotContain(entriesForA, e => e.Note == "zone B note");
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task EarliestHarvestDateForZonePlantingAsync_TakesTheLatestAcrossMultipleSprayings(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone) = await MakeUnitAndZone(tenantId);
+        int idCrop = await _repo.CropFindOrCreateByNameAsync(tenantId, "Eggplant_" + U());
+        ZonePlanting planting = await _repo.ZonePlantingStartAsync(new ZonePlanting { TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, CropID = idCrop, PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        DateTimeOffset today = DateTimeOffset.UtcNow.Date;
+
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, ZonePlantingID = planting.IDZonePlanting, EntryType = EntryType.PlantProtection, DateUtc = today,
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new PlantProtectionPayload { ProductName = "A", ActiveSubstance = "a", Dose = "1L/ha", TreatedAreaHa = 1, Reason = "aphids", PhiDays = 3, Applicator = "op" }),
+        });
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = tenantId, ZonePlantingID = planting.IDZonePlanting, EntryType = EntryType.PlantProtection, DateUtc = today.AddDays(1),
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new PlantProtectionPayload { ProductName = "B", ActiveSubstance = "b", Dose = "0.5L/ha", TreatedAreaHa = 1, Reason = "fungus", PhiDays = 14, Applicator = "op" }),
+        });
+
+        DateOnly? earliest = await _repo.EarliestHarvestDateForZonePlantingAsync(planting.IDZonePlanting!.Value);
+
+        Assert.Equal(DateOnly.FromDateTime(today.AddDays(1 + 14).UtcDateTime), earliest);
     }
 }

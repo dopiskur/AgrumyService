@@ -161,6 +161,238 @@
     </div>
 </div>
 
+@{
+    bool phiPending = Model.EarliestHarvestDate is DateOnly ehd && ehd > DateOnly.FromDateTime(DateTime.UtcNow);
+    var zoneEventTypes = new[] { EntryType.Fertilization, EntryType.PlantProtection, EntryType.Irrigation, EntryType.Pruning, EntryType.Pollination, EntryType.Observation, EntryType.Other };
+}
+<div class="card mt-3">
+    <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0">
+            Planting cycle
+            @if (Model.ActivePlanting is ZonePlanting active)
+            {
+                <span class="badge text-bg-success">@active.CropName</span>
+                @if (Model.EarliestHarvestDate is DateOnly earliestHarvestDate)
+                {
+                    <span class="badge @(phiPending ? "text-bg-warning" : "text-bg-light text-dark")" title="Earliest date Harvest can be entered without an explicit confirmation (D13)">
+                        Karenca do @earliestHarvestDate.ToString("yyyy-MM-dd")
+                    </span>
+                }
+            }
+            else
+            {
+                <span class="badge text-bg-secondary">No active cycle</span>
+            }
+        </h3>
+    </div>
+    <div class="card-body">
+        @if (hasAnyRole(RoleNames.DeviceManagers))
+        {
+            @if (Model.ActivePlanting == null)
+            {
+                <details class="mb-3">
+                    <summary class="fw-semibold">Start planting</summary>
+                    <form asp-action="ZonePlantingStart" method="post" class="row g-2 mt-2" style="max-width:40rem">
+                        <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                        <div class="col-6">
+                            <label class="form-label small">Crop</label>
+                            <input type="text" name="cropName" class="form-control form-control-sm" required maxlength="100" />
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small">Planted date</label>
+                            <input type="date" name="plantedDate" class="form-control form-control-sm" value="@DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd")" required />
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small">Duration (days)</label>
+                            <input type="number" name="expectedDurationDays" class="form-control form-control-sm" value="90" required />
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-play-fill"></i> Start planting</button>
+                        </div>
+                    </form>
+                </details>
+            }
+            else
+            {
+                <details class="mb-3">
+                    <summary class="fw-semibold">Close planting</summary>
+                    <form asp-action="ZonePlantingClose" method="post" class="row g-2 mt-2" style="max-width:40rem">
+                        <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                        <div class="col-6">
+                            <label class="form-label small">Yield (kg)</label>
+                            <input type="number" step="0.01" name="yieldKg" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Moisture %</label>
+                            <input type="number" step="0.1" name="moisturePercent" class="form-control form-control-sm" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Quality grade</label>
+                            <input type="text" name="qualityGrade" class="form-control form-control-sm" maxlength="40" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">Note</label>
+                            <textarea name="note" class="form-control form-control-sm" rows="2"></textarea>
+                        </div>
+                        @if (phiPending)
+                        {
+                            <div class="col-12 form-check">
+                                <input type="checkbox" class="form-check-input" name="confirmEarlyHarvest" value="true" id="confirmEarlyHarvestZone" required />
+                                <label class="form-check-label small" for="confirmEarlyHarvestZone">
+                                    I confirm harvesting before the karenca (pre-harvest interval) of @Model.EarliestHarvestDate?.ToString("yyyy-MM-dd") has passed.
+                                </label>
+                            </div>
+                        }
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this planting cycle? The zone becomes free for a new one.');">
+                                <i class="bi bi-flag-fill"></i> Close planting
+                            </button>
+                        </div>
+                    </form>
+                </details>
+            }
+        }
+
+        @if (Model.PlantingHistory.Count == 0)
+        {
+            <p class="text-secondary small fst-italic">No planting cycles yet.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead><tr><th>Crop</th><th>Planted</th><th>Status</th><th>Harvest</th></tr></thead>
+                <tbody>
+                    @foreach (var cycle in Model.PlantingHistory)
+                    {
+                        <tr>
+                            <td>@cycle.CropName</td>
+                            <td>@cycle.PlantedDate.ToString("yyyy-MM-dd")</td>
+                            <td>@cycle.Status</td>
+                            <td>@(cycle.HarvestDate is DateOnly hd ? hd.ToString("yyyy-MM-dd") : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header"><h3 class="card-title mb-0">Dnevnik</h3></div>
+    <div class="card-body">
+        @if (hasAnyRole(RoleNames.DeviceManagers) && Model.ActivePlanting is ZonePlanting activeForLog)
+        {
+            <details class="mb-3">
+                <summary class="fw-semibold">+ Add event</summary>
+                <form asp-action="ZonePlantingFieldLogAdd" method="post" class="row g-2 mt-2" style="max-width:40rem" id="zoneFieldLogForm">
+                    <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                    <input type="hidden" name="idZonePlanting" value="@activeForLog.IDZonePlanting" />
+                    <div class="col-6">
+                        <label class="form-label small">Type</label>
+                        <select name="EntryType" id="zoneEntryTypeSelect" class="form-select form-select-sm">
+                            @foreach (var t in zoneEventTypes)
+                            {
+                                <option value="@t">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Date</label>
+                        <input type="date" name="Date" class="form-control form-control-sm" value="@DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd")" required />
+                    </div>
+
+                    <div class="col-12 zone-entrytype-fields" data-for="Fertilization">
+                        <div class="row g-2">
+                            <div class="col-4"><input type="text" name="Product" class="form-control form-control-sm" placeholder="Product" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="NPercent" class="form-control form-control-sm" placeholder="N%" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="PPercent" class="form-control form-control-sm" placeholder="P%" /></div>
+                            <div class="col-2"><input type="number" step="0.1" name="KPercent" class="form-control form-control-sm" placeholder="K%" /></div>
+                            <div class="col-4"><input type="number" step="0.1" name="DoseKgPerHa" class="form-control form-control-sm" placeholder="Dose kg/ha" /></div>
+                            <div class="col-4"><input type="number" step="0.01" name="AreaHa" class="form-control form-control-sm" placeholder="Area ha" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 zone-entrytype-fields" data-for="PlantProtection">
+                        <p class="text-secondary small mb-1">Legally required (evidencija SZB):</p>
+                        <div class="row g-2">
+                            <div class="col-6"><input type="text" name="ProductName" class="form-control form-control-sm" placeholder="Product name" /></div>
+                            <div class="col-6"><input type="text" name="ActiveSubstance" class="form-control form-control-sm" placeholder="Active substance" /></div>
+                            <div class="col-4"><input type="text" name="Dose" class="form-control form-control-sm" placeholder="Dose/concentration" /></div>
+                            <div class="col-4"><input type="number" step="0.01" name="TreatedAreaHa" class="form-control form-control-sm" placeholder="Treated area ha" /></div>
+                            <div class="col-4"><input type="number" step="1" name="PhiDays" class="form-control form-control-sm" placeholder="Karenca (days)" /></div>
+                            <div class="col-6"><input type="text" name="Reason" class="form-control form-control-sm" placeholder="Reason (pest/disease/weed)" /></div>
+                            <div class="col-6"><input type="text" name="Applicator" class="form-control form-control-sm" placeholder="Applicator" /></div>
+                            <div class="col-12"><input type="text" name="WeatherConditions" class="form-control form-control-sm" placeholder="Weather conditions (optional)" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 zone-entrytype-fields" data-for="Irrigation">
+                        <div class="row g-2">
+                            <div class="col-3"><input type="number" step="0.1" name="AmountMm" class="form-control form-control-sm" placeholder="mm" /></div>
+                            <div class="col-3"><input type="number" step="0.1" name="AmountM3" class="form-control form-control-sm" placeholder="m3" /></div>
+                            <div class="col-3"><input type="number" step="1" name="DurationMinutes" class="form-control form-control-sm" placeholder="Duration (min)" /></div>
+                            <div class="col-3"><input type="text" name="Source" class="form-control form-control-sm" placeholder="Source" /></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small">Note</label>
+                        <textarea name="Note" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add event</button>
+                    </div>
+                </form>
+            </details>
+            <script nonce="@Context.CspNonce()">
+                (function () {
+                    var select = document.getElementById('zoneEntryTypeSelect');
+                    if (!select) return;
+                    function apply() {
+                        document.querySelectorAll('#zoneFieldLogForm .zone-entrytype-fields').forEach(function (el) {
+                            var types = el.getAttribute('data-for').split(',');
+                            el.hidden = types.indexOf(select.value) === -1;
+                        });
+                    }
+                    select.addEventListener('change', apply);
+                    apply();
+                })();
+            </script>
+        }
+
+        @if (Model.FieldLog.Count == 0)
+        {
+            <p class="text-secondary small fst-italic">No entries yet.</p>
+        }
+        else
+        {
+            <table class="table table-sm">
+                <thead><tr><th>Date</th><th>Type</th><th>Note</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var entry in Model.FieldLog.OrderByDescending(e => e.DateUtc))
+                    {
+                        <tr>
+                            <td>@entry.DateUtc.ToString("yyyy-MM-dd")</td>
+                            <td>@entry.EntryType @(entry.IsClosingEntry ? "(closing)" : "")</td>
+                            <td>@entry.Note</td>
+                            <td>
+                                @if (hasAnyRole(RoleNames.DeviceManagers))
+                                {
+                                    <form asp-action="ZonePlantingFieldLogDelete" method="post" class="d-inline" onsubmit="return confirm('Delete this entry?');">
+                                        <input type="hidden" name="idFieldLogEntry" value="@entry.IDFieldLogEntry" />
+                                        <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
 <div class="modal fade" id="registerDeviceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

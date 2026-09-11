@@ -533,6 +533,14 @@ namespace Agrumy.Web.Controllers.View
 
             var ctx = await BuildWidgetContextAsync(zone.DashboardWidgets);
 
+            ZonePlanting? activePlanting = await api.ZonePlantingActiveGet(idDeviceFarmUnitZone);
+            IList<FieldLogEntry> fieldLog = activePlanting?.IDZonePlanting is int idActivePlanting
+                ? await api.ZonePlantingFieldLogGet(idActivePlanting)
+                : [];
+            DateOnly? earliestHarvestDate = activePlanting?.IDZonePlanting is int idForPhi
+                ? await api.ZonePlantingEarliestHarvestDateGet(idForPhi)
+                : null;
+
             return new ZoneViewModel
             {
                 Dashboard = dashboard,
@@ -554,7 +562,85 @@ namespace Agrumy.Web.Controllers.View
                 Units = ctx.Units,
                 Zones = ctx.Zones,
                 WidgetData = ctx.WidgetData,
+                ActivePlanting = activePlanting,
+                PlantingHistory = await api.ZonePlantingHistoryGet(idDeviceFarmUnitZone),
+                FieldLog = fieldLog,
+                EarliestHarvestDate = earliestHarvestDate,
             };
+        }
+
+        // ---- Greenhouse zonePlanting ciklusi + dnevnik po zoni (D8/D13) -----------------------------------
+
+        /// "Start planting" (D8) - crop name is resolved/created against the same catalog Sowing uses (D12).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ZonePlantingStart(int idDeviceFarmUnitZone, string cropName, DateOnly plantedDate, int expectedDurationDays)
+        {
+            try
+            {
+                await api.ZonePlantingStart(idDeviceFarmUnitZone, new ZonePlantingStartRequest { CropName = cropName, PlantedDate = plantedDate, ExpectedDurationDays = expectedDurationDays });
+                TempData["Message"] = "Planting started.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        /// "Close planting" (D8/D13) - same karenca-confirm gate as FarmOpenfieldController.SowingClose.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ZonePlantingClose(int idDeviceFarmUnitZone, double yieldKg, double? moisturePercent, string? qualityGrade, string? note, bool confirmEarlyHarvest)
+        {
+            try
+            {
+                await api.ZonePlantingClose(idDeviceFarmUnitZone, new ZonePlantingCloseRequest { YieldKg = yieldKg, MoisturePercent = moisturePercent, QualityGrade = qualityGrade, Note = note, Confirm = confirmEarlyHarvest });
+                TempData["Message"] = "Planting closed.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.StatusCode == 409
+                    ? "Harvest is before the pre-harvest interval (PHI) has passed - check the confirmation box to proceed anyway."
+                    : ex.Body;
+            }
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ZonePlantingFieldLogAdd(int idDeviceFarmUnitZone, int idZonePlanting, FieldLogEntryFormInput input)
+        {
+            var entry = new FieldLogEntry
+            {
+                ZonePlantingID = idZonePlanting,
+                EntryType = input.EntryType,
+                DateUtc = new DateTimeOffset(input.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+                Note = input.Note,
+                PayloadJson = FarmOpenfieldController.BuildPayloadJson(input),
+            };
+            try
+            {
+                await api.ZonePlantingFieldLogAdd(entry);
+                TempData["Message"] = $"{input.EntryType} logged.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ZonePlantingFieldLogDelete(int idFieldLogEntry, int idDeviceFarmUnitZone)
+        {
+            await api.ZonePlantingFieldLogDelete(idFieldLogEntry);
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

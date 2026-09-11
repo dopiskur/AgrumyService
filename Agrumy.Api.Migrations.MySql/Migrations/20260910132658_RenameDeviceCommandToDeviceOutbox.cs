@@ -15,7 +15,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "fk_deviceCommand_device",
+                name: "FK_deviceCommand_device_DeviceID",
                 table: "deviceCommand");
 
             migrationBuilder.DropPrimaryKey(

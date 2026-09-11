@@ -191,6 +191,8 @@ namespace Agrumy.Shared.Models
         public DateOnly? HarvestDate { get; set; }
         public DateTimeOffset? ClosedUtc { get; set; }
         public string? Notes { get; set; }
+        /// Not a stored column, same convenience as Sowing.SowingName - the repository fills it in from Crop.Name on every read.
+        public string? CropName { get; set; }
     }
 
     /// One dnevnik entry, scoped to exactly one of the four FKs below (Detaljni dizajn R, D6/D7) - shared shape for both Open-Field (Sowing/FarmParcelZone) and Greenhouse (ZonePlanting/DeviceFarmUnitZone) so the same "Add event" UI and evidencija/N-bilanca reports work for both worlds.
@@ -267,6 +269,24 @@ namespace Agrumy.Shared.Models
     public class SowingCloseRequest
     {
         public int IDSowing { get; set; }
+        public double YieldKg { get; set; }
+        public double? MoisturePercent { get; set; }
+        public string? QualityGrade { get; set; }
+        public string? Note { get; set; }
+        public bool Confirm { get; set; }
+    }
+
+    /// Body of the greenhouse "Start planting" action (D8) - crop name is resolved against the same catalog Sowing uses (D12).
+    public class ZonePlantingStartRequest
+    {
+        public string CropName { get; set; } = "";
+        public DateOnly PlantedDate { get; set; }
+        public int ExpectedDurationDays { get; set; }
+    }
+
+    /// Body of the greenhouse "Close planting" action (D8/D13) - same karenca-confirm gate as SowingCloseRequest.
+    public class ZonePlantingCloseRequest
+    {
         public double YieldKg { get; set; }
         public double? MoisturePercent { get; set; }
         public string? QualityGrade { get; set; }

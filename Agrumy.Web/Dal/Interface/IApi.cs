@@ -415,6 +415,30 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Sowing/{idSowing}/PlantProtectionReport")]
         Task<HttpResponseMessage> PlantProtectionReportGet(int idSowing);
 
+        [Get("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Active")]
+        Task<ZonePlanting?> ZonePlantingActiveGet(int idDeviceFarmUnitZone);
+
+        [Get("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/History")]
+        Task<IList<ZonePlanting>> ZonePlantingHistoryGet(int idDeviceFarmUnitZone);
+
+        [Post("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Start")]
+        Task ZonePlantingStart(int idDeviceFarmUnitZone, [Body] ZonePlantingStartRequest request);
+
+        [Post("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Close")]
+        Task ZonePlantingClose(int idDeviceFarmUnitZone, [Body] ZonePlantingCloseRequest request);
+
+        [Get("/api/DeviceFarmUnit/Zone/Planting/{idZonePlanting}/FieldLog")]
+        Task<IList<FieldLogEntry>> ZonePlantingFieldLogGet(int idZonePlanting);
+
+        [Post("/api/DeviceFarmUnit/Zone/Planting/FieldLog")]
+        Task<FieldLogEntry> ZonePlantingFieldLogAdd([Body] FieldLogEntry entry);
+
+        [Delete("/api/DeviceFarmUnit/Zone/Planting/FieldLog")]
+        Task ZonePlantingFieldLogDelete(int idFieldLogEntry);
+
+        [Get("/api/DeviceFarmUnit/Zone/Planting/{idZonePlanting}/EarliestHarvestDate")]
+        Task<DateOnly?> ZonePlantingEarliestHarvestDateGet(int idZonePlanting);
+
         [Get("/api/FarmOpenfield/Parcel")]
         Task<IList<FarmParcelZone>> ParcelsGet(int? idSowing);
 

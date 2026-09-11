@@ -118,6 +118,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<double?> NitrogenBalanceKgPerHaAsync(int idSowing) => fieldLogRepository.NitrogenBalanceKgPerHaAsync(idSowing);
 
+        public Task<DateOnly?> EarliestHarvestDateForZonePlantingAsync(int idZonePlanting) => fieldLogRepository.EarliestHarvestDateForZonePlantingAsync(idZonePlanting);
+
         // ---- IZonePlantingRepository ----
 
         public Task<ZonePlanting?> ZonePlantingGetActiveAsync(int idDeviceFarmUnitZone) => zonePlantingRepository.ZonePlantingGetActiveAsync(idDeviceFarmUnitZone);

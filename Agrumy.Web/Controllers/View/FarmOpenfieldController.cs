@@ -170,8 +170,8 @@ namespace Agrumy.Web.Controllers.View
             return File(await response.Content.ReadAsStreamAsync(), "text/csv", downloadName);
         }
 
-        /// Only the family of fields the given EntryType actually stores gets serialized (D7) - everything else (Ploughing, Discing, Weeding, Observation, Other, ...) has no structured payload, just the shared Note field.
-        private static string? BuildPayloadJson(FieldLogEntryFormInput input) => input.EntryType switch
+        /// Only the family of fields the given EntryType actually stores gets serialized (D7) - everything else (Ploughing, Discing, Weeding, Observation, Other, ...) has no structured payload, just the shared Note field. Internal: also reused by DeviceFarmUnitController for the greenhouse zonePlanting dnevnik, same payload catalog.
+        internal static string? BuildPayloadJson(FieldLogEntryFormInput input) => input.EntryType switch
         {
             EntryType.Fertilization or EntryType.BaseFertilization => System.Text.Json.JsonSerializer.Serialize(new FertilizationPayload
             {

@@ -12,7 +12,7 @@ namespace Agrumy.Api.Dal
         {
             var row = await db.ZonePlantings.AsNoTracking()
                 .FirstOrDefaultAsync(z => z.DeviceFarmUnitZoneID == idDeviceFarmUnitZone && z.Status == (int)GrowingCycleStatus.Active);
-            return row == null ? null : ToDto(row);
+            return row == null ? null : await ToDtoAsync(row);
         }
 
         public async Task<IList<ZonePlanting>> ZonePlantingsGetAsync(int idDeviceFarmUnitZone)
@@ -21,11 +21,21 @@ namespace Agrumy.Api.Dal
                 .Where(z => z.DeviceFarmUnitZoneID == idDeviceFarmUnitZone)
                 .OrderByDescending(z => z.PlantedDate)
                 .ToListAsync();
-            return rows.Select(ToDto).ToList();
+            var result = new List<ZonePlanting>();
+            foreach (ZonePlantingRow row in rows)
+            {
+                result.Add(await ToDtoAsync(row));
+            }
+            return result;
         }
 
+        /// D8 - "jedan aktivan ciklus po zoni", checked here (a friendly, catchable failure) ahead of the DB's own computed-column unique index (ux_zonePlanting_activeZone) which is the real, race-safe guarantee.
         public async Task<ZonePlanting> ZonePlantingStartAsync(ZonePlanting planting)
         {
+            if (await ZonePlantingGetActiveAsync(planting.DeviceFarmUnitZoneID) != null)
+            {
+                throw new InvalidOperationException("This zone already has an active planting cycle.");
+            }
             var row = new ZonePlantingRow
             {
                 TenantID = planting.TenantID,
@@ -38,25 +48,30 @@ namespace Agrumy.Api.Dal
             };
             db.ZonePlantings.Add(row);
             await db.SaveChangesAsync();
-            return ToDto(row);
+            return await ToDtoAsync(row);
         }
 
         public async Task ZonePlantingCloseAsync(int idZonePlanting) =>
             await db.ZonePlantings.Where(z => z.IDZonePlanting == idZonePlanting)
                 .ExecuteUpdateAsync(set => set.SetProperty(z => z.Status, (int)GrowingCycleStatus.Closed).SetProperty(z => z.ClosedUtc, DateTimeOffset.UtcNow));
 
-        private static ZonePlanting ToDto(ZonePlantingRow z) => new()
+        private async Task<ZonePlanting> ToDtoAsync(ZonePlantingRow z)
         {
-            IDZonePlanting = z.IDZonePlanting,
-            TenantID = z.TenantID,
-            DeviceFarmUnitZoneID = z.DeviceFarmUnitZoneID,
-            CropID = z.CropID,
-            PlantedDate = z.PlantedDate,
-            ExpectedDurationDays = z.ExpectedDurationDays,
-            Status = (GrowingCycleStatus)z.Status,
-            HarvestDate = z.HarvestDate,
-            ClosedUtc = z.ClosedUtc,
-            Notes = z.Notes,
-        };
+            string? cropName = await db.Crops.AsNoTracking().Where(c => c.IDCrop == z.CropID).Select(c => c.Name).FirstOrDefaultAsync();
+            return new ZonePlanting
+            {
+                IDZonePlanting = z.IDZonePlanting,
+                TenantID = z.TenantID,
+                DeviceFarmUnitZoneID = z.DeviceFarmUnitZoneID,
+                CropID = z.CropID,
+                PlantedDate = z.PlantedDate,
+                ExpectedDurationDays = z.ExpectedDurationDays,
+                Status = (GrowingCycleStatus)z.Status,
+                HarvestDate = z.HarvestDate,
+                ClosedUtc = z.ClosedUtc,
+                Notes = z.Notes,
+                CropName = cropName,
+            };
+        }
     }
 }
