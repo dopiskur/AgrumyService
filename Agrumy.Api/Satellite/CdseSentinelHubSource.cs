@@ -7,7 +7,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Satellite
 {
-    /// The one provider built in Detaljni dizajn S sesija B - Copernicus Data Space Ecosystem's Sentinel Hub Catalog/Process/Statistical APIs (Sentinel-2 L2A only; commercial collections are S-B2). Request/response shapes are built from CDSE's published API documentation (documentation.dataspace.copernicus.eu/APIs/SentinelHub) - never exercised against a live tenant token in this session (D1 means there is no server-wide credential to test with), so treat a first real run as the actual acceptance test, not this code's unit tests alone.
+    /// The one provider built in Detaljni dizajn S sesija B - Copernicus Data Space Ecosystem's Sentinel Hub Catalog/Process/Statistical APIs (Sentinel-2 L2A only; commercial collections are S-B2). Catalog filtering, Process rendering (multipart/mixed, explicit pixel width/height, positional part matching), and Statistics have all been exercised against live CDSE responses, not just documentation/unit tests - see each method's own remarks for the specific wire-format quirks that required.
     public sealed class CdseSentinelHubSource(HttpClient httpClient, ICdseTokenProvider tokenProvider, ILogger<CdseSentinelHubSource> logger) : ISatelliteImagerySource
     {
         private const string CatalogUrl = "https://sh.dataspace.copernicus.eu/catalog/v1/search";
@@ -70,7 +70,9 @@ namespace Agrumy.Api.Satellite
                 ["datetime"] = $"{fromUtc:yyyy-MM-dd}T00:00:00Z/{toUtc:yyyy-MM-dd}T23:59:59Z",
                 ["bbox"] = new JsonArray(bbox.MinLon, bbox.MinLat, bbox.MaxLon, bbox.MaxLat),
                 ["limit"] = 100,
-                ["query"] = new JsonObject { ["eo:cloud_cover"] = new JsonObject { ["lte"] = maxCloudPercent } },
+                // Live-verified against CDSE (2026-09): the STAC "query" extension ({"eo:cloud_cover":{"lte":N}}) is rejected outright ("Invalid json format, problematic key 'query'") - CDSE's Catalog only accepts CQL2-JSON.
+                ["filter-lang"] = "cql2-json",
+                ["filter"] = new JsonObject { ["op"] = "<=", ["args"] = new JsonArray(new JsonObject { ["property"] = "eo:cloud_cover" }, maxCloudPercent) },
             };
 
             using var request = NewRequest(HttpMethod.Post, CatalogUrl, token, body);
@@ -105,6 +107,8 @@ namespace Agrumy.Api.Satellite
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
             Evalscripts.Definition def = EvalscriptsFor(collection)[index];
+            const int TargetResolutionMeters = 10;
+            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, TargetResolutionMeters, TargetResolutionMeters);
             var body = new JsonObject
             {
                 ["input"] = new JsonObject
@@ -123,10 +127,11 @@ namespace Agrumy.Api.Satellite
                         },
                     }),
                 },
+                // Live-verified against CDSE (2026-09): resx/resy alone silently renders a 1x1 image against a CRS84 (geographic, not metric) geometry bounds - explicit pixel width/height is the only thing that actually works, so TargetResolutionMeters is applied here instead, not sent on the wire.
                 ["output"] = new JsonObject
                 {
-                    ["resx"] = 10,
-                    ["resy"] = 10,
+                    ["width"] = pixelWidth,
+                    ["height"] = pixelHeight,
                     ["responses"] = new JsonArray(
                         new JsonObject { ["identifier"] = "default", ["format"] = new JsonObject { ["type"] = "image/png" } },
                         new JsonObject { ["identifier"] = "dataMask", ["format"] = new JsonObject { ["type"] = "image/png" } }),
@@ -135,7 +140,8 @@ namespace Agrumy.Api.Satellite
             };
 
             using var request = NewRequest(HttpMethod.Post, ProcessUrl, token, body);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("multipart/form-data"));
+            // Live-verified against CDSE (2026-09): "multipart/form-data" is rejected ("unsupported mime type"); "multipart/mixed" is the value CDSE's Process API actually honors for a multi-response request.
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("multipart/mixed"));
             using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
             if (!await EnsureSuccessAsync(response, "Process", tenantId, ct))
             {
@@ -298,6 +304,7 @@ namespace Agrumy.Api.Satellite
             string boundary = Microsoft.Net.Http.Headers.HeaderUtilities.RemoveQuotes(Microsoft.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType).Boundary.Value!).Value!;
             var reader = new MultipartReader(boundary, await response.Content.ReadAsStreamAsync(ct));
 
+            // Live-verified against CDSE (2026-09): parts carry no Content-Disposition header at all (only Content-Type: image/png), so matching by header name never fires - CDSE returns parts in the SAME ORDER as the request's output.responses array (default first, dataMask second), so position is the only reliable signal.
             byte[]? defaultPng = null, dataMaskPng = null;
             Microsoft.AspNetCore.WebUtilities.MultipartSection? section;
             while ((section = await reader.ReadNextSectionAsync(ct)) != null)
@@ -305,16 +312,48 @@ namespace Agrumy.Api.Satellite
                 using var buffer = new MemoryStream();
                 await section.Body.CopyToAsync(buffer, ct);
                 byte[] bytes = buffer.ToArray();
-                if (section.Headers != null && section.Headers.TryGetValue("Content-Disposition", out Microsoft.Extensions.Primitives.StringValues disposition) && disposition.ToString().Contains("dataMask"))
+                if (defaultPng == null)
+                {
+                    defaultPng = bytes;
+                }
+                else if (dataMaskPng == null)
                 {
                     dataMaskPng = bytes;
                 }
-                else
-                {
-                    defaultPng ??= bytes;
-                }
             }
             return (defaultPng, dataMaskPng);
+        }
+
+        // CDSE's Process API render needs explicit pixel width/height (see RenderIndexAsync's own remarks) - derived here from the polygon's geographic extent and a target meters-per-pixel, since CRS84 is degrees, not meters. Clamped to [1, MaxRenderPixels] both ways: a degenerate/near-zero polygon still gets a real request, and a huge polygon can't blow past CDSE's own per-request pixel cap.
+        private const int MaxRenderPixels = 2500;
+        internal static (int Width, int Height) ComputePixelDimensions(string geoJsonPolygon, int resxMeters, int resyMeters)
+        {
+            var coords = new List<(double Lon, double Lat)>();
+            void Collect(JsonNode? node)
+            {
+                if (node is not JsonArray arr || arr.Count == 0)
+                {
+                    return;
+                }
+                if (arr[0] is JsonValue)
+                {
+                    coords.Add((arr[0]!.GetValue<double>(), arr[1]!.GetValue<double>()));
+                    return;
+                }
+                foreach (JsonNode? child in arr)
+                {
+                    Collect(child);
+                }
+            }
+            Collect(JsonNode.Parse(geoJsonPolygon)?["coordinates"]);
+
+            double minLon = coords.Min(c => c.Lon), maxLon = coords.Max(c => c.Lon);
+            double minLat = coords.Min(c => c.Lat), maxLat = coords.Max(c => c.Lat);
+            const double MetersPerDegreeLat = 111320.0;
+            double metersPerDegreeLon = MetersPerDegreeLat * Math.Cos((minLat + maxLat) / 2 * Math.PI / 180);
+            int width = (int)Math.Round((maxLon - minLon) * metersPerDegreeLon / resxMeters);
+            int height = (int)Math.Round((maxLat - minLat) * MetersPerDegreeLat / resyMeters);
+            return (Math.Clamp(width, 1, MaxRenderPixels), Math.Clamp(height, 1, MaxRenderPixels));
         }
 
         private static double ComputeValidPercent(byte[] maskPixels)
