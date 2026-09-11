@@ -69,13 +69,41 @@
             });
         }
 
-        buildNodeEl(type) {
+        // isGroupChild: true for a node living inside a group's .rt-children - only those get a drag handle
+        // and swap-with-sibling arrows, since a lone top-level node (Simple mode's single condition, or a
+        // fresh root before it's wrapped in a group) has no siblings to rearrange against.
+        buildNodeEl(type, isGroupChild = false) {
             const el = document.createElement('div');
             el.className = 'rt-node border rounded p-2 mb-2';
             el.dataset.type = type;
 
             const header = document.createElement('div');
             header.className = 'd-flex gap-2 align-items-center mb-2';
+
+            if (isGroupChild) {
+                el.draggable = true;
+                const handle = document.createElement('span');
+                handle.className = 'rt-drag-handle bi bi-grip-vertical';
+                handle.title = 'Drag to reposition';
+                header.appendChild(handle);
+
+                const swapPrev = document.createElement('button');
+                swapPrev.type = 'button';
+                swapPrev.className = 'btn btn-sm btn-outline-secondary rt-swap-prev';
+                swapPrev.title = 'Swap with previous sibling';
+                swapPrev.textContent = '⬅'; // left arrow - direction is illustrative only, works the same in an AND (vertical) group as "swap with the one above"
+                swapPrev.addEventListener('click', () => this.swapWithSibling(el, -1));
+                header.appendChild(swapPrev);
+
+                const swapNext = document.createElement('button');
+                swapNext.type = 'button';
+                swapNext.className = 'btn btn-sm btn-outline-secondary rt-swap-next';
+                swapNext.title = 'Swap with next sibling';
+                swapNext.textContent = '➡'; // right arrow - "swap with the one below" in an AND group
+                swapNext.addEventListener('click', () => this.swapWithSibling(el, 1));
+                header.appendChild(swapNext);
+            }
+
             const typeSelect = document.createElement('select');
             typeSelect.className = 'form-select form-select-sm rt-type';
             typeSelect.style.width = 'auto';
@@ -87,7 +115,7 @@
                 typeSelect.appendChild(opt);
             });
             typeSelect.addEventListener('change', () => {
-                const replacement = this.buildNodeEl(typeSelect.value);
+                const replacement = this.buildNodeEl(typeSelect.value, isGroupChild);
                 el.replaceWith(replacement);
             });
             // Simple mode only ever allows one type - a single-option dropdown is just clutter, not a real choice.
@@ -115,6 +143,74 @@
             el.appendChild(body);
             this.renderBody(type, body, el);
             return el;
+        }
+
+        // Adjacent-position swap - direction -1/+1 within the node's own parent container, independent of
+        // whether that container is currently laid out as a row (OR) or column (AND). A no-op past either end.
+        swapWithSibling(nodeEl, direction) {
+            const parent = nodeEl.parentElement;
+            const siblings = Array.from(parent.querySelectorAll(':scope > .rt-node'));
+            const targetIndex = siblings.indexOf(nodeEl) + direction;
+            if (targetIndex < 0 || targetIndex >= siblings.length) {
+                return;
+            }
+            const target = siblings[targetIndex];
+            if (direction < 0) {
+                parent.insertBefore(nodeEl, target);
+            } else {
+                parent.insertBefore(target, nodeEl);
+            }
+        }
+
+        // Free-form drag-and-drop reordering within a group's children container, on top of the swap arrows
+        // above - classic "insert relative to nearest sibling" native HTML5 DnD, no library.
+        wireReorderable(container) {
+            let draggedEl = null;
+            container.addEventListener('dragstart', (e) => {
+                const node = e.target.closest('.rt-node');
+                if (!node || node.parentElement !== container) {
+                    return;
+                }
+                draggedEl = node;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', ''); // Firefox requires setData in dragstart or the drag never starts
+                node.classList.add('rt-dragging');
+            });
+            container.addEventListener('dragend', () => {
+                if (draggedEl) {
+                    draggedEl.classList.remove('rt-dragging');
+                }
+                draggedEl = null;
+            });
+            container.addEventListener('dragover', (e) => {
+                if (!draggedEl) {
+                    return;
+                }
+                e.preventDefault();
+                const isRow = container.classList.contains('rt-children-or');
+                const coord = isRow ? e.clientX : e.clientY;
+                const afterEl = this.dragAfterElement(container, isRow, coord);
+                if (afterEl == null) {
+                    container.appendChild(draggedEl);
+                } else {
+                    container.insertBefore(draggedEl, afterEl);
+                }
+            });
+            // The actual move already happened live during dragover - this only exists to stop the browser's
+            // default drop behavior (e.g. treating the dataTransfer text as a navigation).
+            container.addEventListener('drop', (e) => e.preventDefault());
+        }
+
+        // Which existing child the dragged node should land BEFORE, given the pointer's current position along
+        // the container's layout axis (X for a row/OR group, Y for a column/AND group) - null means "at the end".
+        dragAfterElement(container, isRow, coord) {
+            const candidates = Array.from(container.querySelectorAll(':scope > .rt-node:not(.rt-dragging)'));
+            return candidates.reduce((closest, candidate) => {
+                const box = candidate.getBoundingClientRect();
+                const center = isRow ? box.left + box.width / 2 : box.top + box.height / 2;
+                const offset = coord - center;
+                return (offset < 0 && offset > closest.offset) ? { offset, element: candidate } : closest;
+            }, { offset: -Infinity, element: null }).element;
         }
 
         renderBody(type, body, el) {
@@ -167,14 +263,36 @@
                     break;
                 }
                 case 'group': {
-                    const opSelect = this.select('rt-groupOperator', [['and', 'AND'], ['or', 'OR']]);
-                    body.append(this.row('Operator', opSelect));
+                    // Radios instead of a dropdown so the operator choice IS the spatial layout toggle below,
+                    // not a separate control describing it. Unique name per group node instance so several
+                    // group nodes on the same page don't share a radio group.
+                    const radioName = 'rt-groupOperator-' + Math.random().toString(36).slice(2);
+                    const opWrap = document.createElement('div');
+                    [['and', 'AND'], ['or', 'OR']].forEach(([value, label]) => {
+                        const id = radioName + '-' + value;
+                        const wrap = document.createElement('div');
+                        wrap.className = 'form-check form-check-inline';
+                        wrap.innerHTML = `<input class="form-check-input rt-groupOperator" type="radio" name="${radioName}" value="${value}" id="${id}"${value === 'and' ? ' checked' : ''}>` +
+                            `<label class="form-check-label" for="${id}">${label}</label>`;
+                        opWrap.appendChild(wrap);
+                    });
+                    body.append(this.row('Operator', opWrap));
+
+                    // AND stacks children vertically (below), OR lays them out side by side (right) - see the
+                    // .rt-children CSS in _RuleEditor.cshtml. Switching the radio re-flows every existing child
+                    // into the new layout immediately, which IS "moving the block" per the roadmap wording -
+                    // no separate animation/reposition step needed, CSS flex-direction does it.
                     const children = document.createElement('div');
-                    children.className = 'rt-children ms-4 mt-2';
+                    children.className = 'rt-children rt-children-and ms-4 mt-2';
                     body.appendChild(children);
+                    this.wireReorderable(children);
+                    opWrap.querySelectorAll('.rt-groupOperator').forEach((radio) => radio.addEventListener('change', () => {
+                        children.className = 'rt-children ms-4 mt-2 ' + (radio.value === 'or' ? 'rt-children-or' : 'rt-children-and');
+                    }));
+
                     const addRow = document.createElement('div');
                     addRow.innerHTML = '<button type="button" class="btn btn-sm btn-outline-secondary">+ Add child condition</button>';
-                    addRow.querySelector('button').addEventListener('click', () => children.appendChild(this.buildNodeEl('comparison')));
+                    addRow.querySelector('button').addEventListener('click', () => children.appendChild(this.buildNodeEl('comparison', true)));
                     body.appendChild(addRow);
                     break;
                 }
@@ -271,8 +389,9 @@
                 case 'difDisruption':
                     return { type: NODE_TYPE_CODES.difDisruption, nightWindowHours: num('.rt-nightWindowHours'), dayWindowHours: num('.rt-dayWindowHours'), minDifDegrees: num('.rt-minDifDegrees') };
                 case 'group': {
+                    // DOM order already reflects whatever dragging/swapping rearranged it to.
                     const children = Array.from(body.querySelectorAll(':scope > .rt-children > .rt-node')).map(c => this.serializeNode(c));
-                    const groupOpKey = body.querySelector('.rt-groupOperator')?.value;
+                    const groupOpKey = body.querySelector('.rt-groupOperator:checked')?.value;
                     return { type: NODE_TYPE_CODES.group, groupOperator: groupOpKey ? GROUP_OP_CODES[groupOpKey] : null, children };
                 }
                 default:
@@ -288,4 +407,39 @@
     }
 
     document.querySelectorAll('.rule-tree-builder').forEach(el => new RuleTreeBuilder(el));
+
+    // "+ Add rule" wizard: step 1 is Name/Description/Safety only, step 2 (Target%/Subject+Body, and the
+    // condition tree) only appears after Next - the tree builder above never needed changing for this, it's the
+    // same form either way, just progressively revealed instead of all shown behind one <details> disclosure.
+    document.querySelectorAll('.rule-add-wizard').forEach(wizard => {
+        const toggle = wizard.querySelector('.rule-add-toggle');
+        const form = wizard.querySelector('.rule-add-form');
+        const steps = Array.from(form.querySelectorAll(':scope > .rule-wizard-step'));
+
+        function showStep(index) {
+            steps.forEach((step, i) => { step.hidden = i !== index; });
+        }
+
+        toggle.addEventListener('click', () => {
+            const opening = form.hidden;
+            form.hidden = !form.hidden;
+            if (opening) {
+                showStep(0);
+            }
+        });
+
+        form.querySelectorAll('.rule-wizard-next').forEach(btn => btn.addEventListener('click', () => {
+            const step = btn.closest('.rule-wizard-step');
+            // Only validate what's actually visible on this step - required fields on a still-hidden later step must not block Next.
+            const invalid = Array.from(step.querySelectorAll('input[required]')).find(input => !input.checkValidity());
+            if (invalid) {
+                invalid.reportValidity();
+                return;
+            }
+            showStep(steps.indexOf(step) + 1);
+        }));
+        form.querySelectorAll('.rule-wizard-back').forEach(btn => btn.addEventListener('click', () => {
+            showStep(steps.indexOf(btn.closest('.rule-wizard-step')) - 1);
+        }));
+    });
 })();

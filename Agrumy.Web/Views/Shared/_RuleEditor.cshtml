@@ -83,7 +83,7 @@
 {
 <div class="card mb-3" id="ruleEditorCard">
     <div class="card-header">
-        <h3 class="card-title">Relay automation</h3>
+        <h3 class="card-title">Automation rules</h3>
     </div>
     <div class="card-body">
         <p class="text-secondary small">
@@ -143,39 +143,47 @@
                 }
                 @if (!isReadOnly)
                 {
-                <details>
-                    <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;">+ Add rule</summary>
-                    <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded">
+                <div class="rule-add-wizard">
+                    <button type="button" class="btn btn-sm btn-outline-primary rule-add-toggle">+ Add rule</button>
+                    <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded rule-add-form" hidden>
                         @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
                         {
                             <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
                         }
                         <input type="hidden" name="ActionType" value="@((int)Agrumy.Shared.Models.ActionType.Relay)" />
                         <input type="hidden" name="RelayFunction" value="@((int)function)" />
-                        <div class="row g-2 mb-2">
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Name</label>
-                                <input type="text" name="Name" class="form-control form-control-sm" style="width:14rem" required />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Description (optional)</label>
-                                <input type="text" name="Description" class="form-control form-control-sm" style="width:18rem" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Target % (0-100)</label>
-                                <input type="number" name="TargetPercent" class="form-control form-control-sm" style="width:7rem" min="0" max="100" value="100" required />
-                            </div>
-                            <div class="col-auto align-self-end">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" name="IsSafetyRule" value="true" id="safety-@function" />
-                                    <label class="form-check-label small" for="safety-@function">Safety rule (survives being overridden)</label>
+                        <div class="rule-wizard-step">
+                            <div class="row g-2 mb-2">
+                                <div class="col-auto">
+                                    <label class="form-label small mb-0">Name</label>
+                                    <input type="text" name="Name" class="form-control form-control-sm" style="width:14rem" required />
+                                </div>
+                                <div class="col-auto">
+                                    <label class="form-label small mb-0">Description (optional)</label>
+                                    <input type="text" name="Description" class="form-control form-control-sm" style="width:18rem" />
+                                </div>
+                                <div class="col-auto align-self-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="IsSafetyRule" value="true" id="safety-@function" />
+                                        <label class="form-check-label small" for="safety-@function">Safety rule (survives being overridden)</label>
+                                    </div>
                                 </div>
                             </div>
+                            <button type="button" class="btn btn-sm btn-primary rule-wizard-next">Next</button>
                         </div>
-                        @TreeBuilder($"relay-{function}", isNotification: false, notificationRules)
-                        <button type="submit" class="btn btn-sm btn-primary mt-2" data-action="add">Add rule</button>
+                        <div class="rule-wizard-step" hidden>
+                            <div class="row g-2 mb-2">
+                                <div class="col-auto">
+                                    <label class="form-label small mb-0">Target % (0-100)</label>
+                                    <input type="number" name="TargetPercent" class="form-control form-control-sm" style="width:7rem" min="0" max="100" value="100" required />
+                                </div>
+                            </div>
+                            @TreeBuilder($"relay-{function}", isNotification: false, notificationRules)
+                            <button type="button" class="btn btn-sm btn-outline-secondary rule-wizard-back">Back</button>
+                            <button type="submit" class="btn btn-sm btn-primary" data-action="add">Add rule</button>
+                        </div>
                     </form>
-                </details>
+                </div>
                 }
             </div>
         }
@@ -237,44 +245,63 @@
 
         @if (!isReadOnly)
         {
-        <details>
-            <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;">+ Add notification rule</summary>
-            <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded">
+        <div class="rule-add-wizard">
+            <button type="button" class="btn btn-sm btn-outline-primary rule-add-toggle">+ Add notification rule</button>
+            <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded rule-add-form" hidden>
                 @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
                 {
                     <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
                 }
                 <input type="hidden" name="ActionType" value="@((int)Agrumy.Shared.Models.ActionType.Notification)" />
-                <div class="row g-2 mb-2">
-                    <div class="col-auto">
-                        <label class="form-label small mb-0">Name</label>
-                        <input type="text" name="Name" class="form-control form-control-sm" style="width:14rem" required />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label small mb-0">Description (optional)</label>
-                        <input type="text" name="Description" class="form-control form-control-sm" style="width:16rem" />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label small mb-0">Subject</label>
-                        <input type="text" name="NotificationSubject" class="form-control form-control-sm" style="width:16rem" required />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label small mb-0">Body ({value}/{metric} placeholders)</label>
-                        <input type="text" name="NotificationBody" class="form-control form-control-sm" style="width:20rem" />
-                    </div>
-                    <div class="col-auto align-self-end">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" name="IsSafetyRule" value="true" id="safety-notif" />
-                            <label class="form-check-label small" for="safety-notif">Safety rule</label>
+                <div class="rule-wizard-step">
+                    <div class="row g-2 mb-2">
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Name</label>
+                            <input type="text" name="Name" class="form-control form-control-sm" style="width:14rem" required />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Description (optional)</label>
+                            <input type="text" name="Description" class="form-control form-control-sm" style="width:16rem" />
+                        </div>
+                        <div class="col-auto align-self-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="IsSafetyRule" value="true" id="safety-notif" />
+                                <label class="form-check-label small" for="safety-notif">Safety rule</label>
+                            </div>
                         </div>
                     </div>
+                    <button type="button" class="btn btn-sm btn-primary rule-wizard-next">Next</button>
                 </div>
-                @TreeBuilder("notification", isNotification: true, notificationRules)
-                <button type="submit" class="btn btn-sm btn-primary mt-2" data-action="add">Add notification rule</button>
+                <div class="rule-wizard-step" hidden>
+                    <div class="row g-2 mb-2">
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Subject</label>
+                            <input type="text" name="NotificationSubject" class="form-control form-control-sm" style="width:16rem" required />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Body ({value}/{metric} placeholders)</label>
+                            <input type="text" name="NotificationBody" class="form-control form-control-sm" style="width:20rem" />
+                        </div>
+                    </div>
+                    @TreeBuilder("notification", isNotification: true, notificationRules)
+                    <button type="button" class="btn btn-sm btn-outline-secondary rule-wizard-back">Back</button>
+                    <button type="submit" class="btn btn-sm btn-primary" data-action="add">Add notification rule</button>
+                </div>
             </form>
-        </details>
+        </div>
         }
     </div>
 </div>
 
+<style>
+    /* AND stacks group children vertically, OR lays them out side by side - the operator radio toggles this class in rule-builder.js. */
+    .rt-children { display: flex; gap: .5rem; }
+    .rt-children.rt-children-and { flex-direction: column; }
+    .rt-children.rt-children-or { flex-direction: row; flex-wrap: wrap; }
+    .rt-children > .rt-node { flex: 1 1 16rem; min-width: 14rem; }
+    .rt-node[draggable="true"] { cursor: grab; }
+    .rt-node[draggable="true"]:active { cursor: grabbing; }
+    .rt-node.rt-dragging { opacity: .4; }
+    .rt-drag-handle { cursor: grab; color: var(--bs-secondary-color, #6c757d); }
+</style>
 <script src="~/js/rule-builder.js"></script>
