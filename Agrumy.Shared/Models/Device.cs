@@ -431,6 +431,8 @@ namespace Agrumy.Shared.Models
         /// Same "filter one shared response" role as DeviceFarmUnitZoneID above, for the Open-Field branch.
         public int? FarmOpenfieldCropID { get; set; }
         public int? FarmOpenfieldCropParcelID { get; set; }
+        /// Roadmap #536 - the top-level DeviceFarm name, resolved through either branch (Unit->Farm or Crop->FarmOpenfield->Farm) so the Fleet table's single "Farm" column never has to branch on which hierarchy a device is in.
+        public string? FarmName { get; set; }
         /// Only the relay functions this device has ever reported a state for - empty for a sensor-only device or one whose firmware predates ControllerData.
         public IList<ControllerDataStatus>? RelayStates { get; set; }
 

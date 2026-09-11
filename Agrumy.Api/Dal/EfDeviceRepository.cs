@@ -970,6 +970,29 @@ namespace Agrumy.Api.Dal
             Dictionary<int, string?> zoneNames = await db.DeviceFarmUnitZones.AsNoTracking()
                 .ToDictionaryAsync(z => z.IDDeviceFarmUnitZone, z => z.DeviceFarmUnitZoneName);
 
+            // Roadmap #536 - Fleet's "Farm" column resolves the top-level DeviceFarm regardless of branch (Unit->Farm for Greenhouse, Crop->FarmOpenfield->Farm for Open-Field); same in-memory-lookup reasoning as unitNames/zoneNames above.
+            Dictionary<int, string?> farmNames = await db.DeviceFarms.AsNoTracking()
+                .ToDictionaryAsync(f => f.IDDeviceFarm, f => f.DeviceFarmName);
+            Dictionary<int, int?> unitFarmIds = await db.DeviceFarmUnits.AsNoTracking()
+                .ToDictionaryAsync(u => u.IDDeviceFarmUnit, u => u.DeviceFarmID);
+            Dictionary<int, int> cropOpenfieldIds = await db.FarmOpenfieldCrops.AsNoTracking()
+                .ToDictionaryAsync(c => c.IDFarmOpenfieldCrop, c => c.FarmOpenfieldID);
+            Dictionary<int, int> openfieldFarmIds = await db.FarmOpenfields.AsNoTracking()
+                .ToDictionaryAsync(o => o.IDFarmOpenfield, o => o.FarmID);
+
+            string? FarmNameFor(DeviceRow device)
+            {
+                if (device.DeviceFarmUnitID is int unitId && unitFarmIds.TryGetValue(unitId, out int? unitFarmId) && unitFarmId is int fid)
+                {
+                    return farmNames.GetValueOrDefault(fid);
+                }
+                if (device.FarmOpenfieldCropID is int cropId && cropOpenfieldIds.TryGetValue(cropId, out int openfieldId) && openfieldFarmIds.TryGetValue(openfieldId, out int openfieldFarmId))
+                {
+                    return farmNames.GetValueOrDefault(openfieldFarmId);
+                }
+                return null;
+            }
+
             // One bulk read of every relay state for devices in this result set, grouped in memory - same reasoning as kitCapability above (a handful of rows per device, not worth a per-device round trip).
             var deviceIds = rows.Select(r => r.Device.IDDevice).ToList();
             HashSet<int> virtualDeviceIds = (await db.DeviceVirtuals.AsNoTracking()
@@ -1032,6 +1055,7 @@ namespace Agrumy.Api.Dal
                     DeviceFarmUnitZoneName = r.Device.DeviceFarmUnitZoneID is int zid ? zoneNames.GetValueOrDefault(zid) : null,
                     FarmOpenfieldCropID = r.Device.FarmOpenfieldCropID,
                     FarmOpenfieldCropParcelID = r.Device.FarmOpenfieldCropParcelID,
+                    FarmName = FarmNameFor(r.Device),
                     RelayStates = relayStates.GetValueOrDefault(r.Device.IDDevice),
                 };
             }).ToList();

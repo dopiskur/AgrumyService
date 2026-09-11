@@ -29,20 +29,19 @@
         @if (!zoneScoped)
         {
             <td>
-                @if (item.DeviceFarmUnitID is null)
+                @if (item.DeviceFarmUnitID is null && item.FarmOpenfieldCropParcelID is null)
                 {
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
                 }
                 else if (item.DeviceFarmUnitName == "Default")
                 {
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Reassign</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Reassign</button>
                 }
                 else
                 {
-                    @item.DeviceFarmUnitName
+                    @(item.FarmName ?? "-")
                 }
             </td>
-            <td>@(item.DeviceFarmUnitZoneName ?? "-")</td>
         }
         <td>
             @if (item.Enabled != true)

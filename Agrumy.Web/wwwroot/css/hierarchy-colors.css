@@ -49,3 +49,8 @@
     background-color: #dc3545;
     color: #fff;
 }
+
+.fleet-assign-btn {
+    display: inline-block;
+    min-width: 6rem;
+}
