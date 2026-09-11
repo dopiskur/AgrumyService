@@ -407,7 +407,7 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/FarmOpenfield/Parcel")]
         Task ParcelDelete(int? idFarmOpenfieldCropParcel);
 
-        // Roadmap #238/#519 - saves independently of ParcelUpdate above, same reasoning as DeviceFarmUnitZoneWidgetsSet.
+        // Saves independently of ParcelUpdate above, same reasoning as DeviceFarmUnitZoneWidgetsSet.
         [Put("/api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Widgets")]
         Task ParcelWidgetsSet(int idFarmOpenfieldCropParcel, [Body] List<DashboardWidget> widgets);
 
@@ -601,6 +601,10 @@ namespace Agrumy.Web.Dal.Interface
         /// Generates a new AES-256 key for LoRa private-protocol uplink encryption, returned once as raw hex - see DeviceApiController.LoRaPrivateKeyGenerate.
         [Post("/api/Device/LoRaPrivateKey/Generate")]
         Task<string> LoRaPrivateKeyGenerate(int idDevice);
+
+        /// Operator-visible "LoRa v2 session" card on Details - see DeviceApiController.LoRaSessionGet; null if the device has never sent an accepted v2 uplink.
+        [Get("/api/Device/LoRaSession")]
+        Task<DeviceLoRaSessionInfo?> LoRaSessionGet(int idDevice);
 
         // ---- SensorData ---------------------------------------------------
 

@@ -2334,22 +2334,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await db.DeviceVirtuals.AnyAsync(v => v.DeviceID == d.IDDevice));
     }
 
-    // A separate read+compare+write let two concurrent RelayUplink calls both pass the check before either wrote - the WHERE clause below IS the check now, so only the first of any two same-or-lower-counter writes can ever succeed.
-    [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task DeviceLoRaUplinkCounterSet_GuardsAgainstReplayAtomically(DbProviderKind provider)
-    {
-        var t = Use(provider);
-        var (tenantId, _, _) = await MakeUser(t);
-        var d = await MakeDevice(t, tenantId);
-
-        Assert.True(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 5));
-        // Same counter again (the replayed frame) and a lower one both lose against the value just written.
-        Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 5));
-        Assert.False(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 3));
-        Assert.True(await _repo.DeviceLoRaUplinkCounterSetAsync(d.IDDevice!.Value, 6));
-    }
-
-    // v2 replay check - a never-seen bootNonce always starts a new session regardless of counter value, then behaves like the v1 monotonic check WITHIN that same bootNonce.
+    // A never-seen bootNonce always starts a new session regardless of counter value, then the WHERE clause on the guarded UPDATE is the replay check within that same bootNonce - a separate read+compare+write would let two concurrent RelayUplink calls both pass before either wrote.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceLoRaSessionAccept_NewBootNonce_StartsFreshSession_ThenGuardsReplayWithinIt(DbProviderKind provider)
     {
@@ -2364,7 +2349,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, bootNonce, 2));
     }
 
-    // A power-cycle gets a fresh bootNonce - the whole point is that counter=0 under a NEW bootNonce is not a replay of a HIGH counter under the old one, unlike the v1 monotonic-forever counter.
+    // A power-cycle gets a fresh bootNonce - the whole point is that counter=0 under a NEW bootNonce is not a replay of a HIGH counter under the old one, unlike a single persisted forever-monotonic counter would be.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceLoRaSessionAccept_DifferentBootNonce_RestartsCounterFromZero(DbProviderKind provider)
     {
@@ -2376,6 +2361,26 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, firstBoot, 500));
         Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, secondBoot, 0));
+    }
+
+    // Web Device Details' "LoRa v2 session" card - the MOST RECENT session (by LastSeenUtc) wins, not the one with the highest counter or the one started first.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceLoRaLatestSessionGet_ReturnsMostRecentlySeenSession(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        Assert.Null(await _repo.DeviceLoRaLatestSessionGetAsync(d.IDDevice!.Value));
+
+        byte[] olderBoot = RandomNumberGenerator.GetBytes(8);
+        byte[] newerBoot = RandomNumberGenerator.GetBytes(8);
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, olderBoot, 9));
+        Assert.True(await _repo.DeviceLoRaSessionAcceptAsync(d.IDDevice!.Value, newerBoot, 3));
+
+        DeviceLoRaSessionInfo? latest = await _repo.DeviceLoRaLatestSessionGetAsync(d.IDDevice!.Value);
+        Assert.Equal(Convert.ToHexString(newerBoot), latest!.BootNonceHex);
+        Assert.Equal(3U, latest.MaxCounter);
     }
 
     // A crash-looping node re-bootstrapping constantly must not grow deviceLoRaSession unbounded; only the 32 most-recently-STARTED sessions survive per device.

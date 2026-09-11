@@ -15,7 +15,7 @@ namespace Agrumy.Web.Controllers.View
     {
         // ---- Dashboard widget wizard ------------------------------------
 
-        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's (or, roadmap #519, a parcel's) custom dashboard. Picking a zone/parcel here only chooses WHICH page you're editing - each widget added on it independently picks its own Farm/Unit/Zone data source, it is no longer a dashboard-wide scope every widget shares.
+        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's (or a parcel's) custom dashboard. Picking a zone/parcel here only chooses WHICH page you're editing - each widget added on it independently picks its own Farm/Unit/Zone data source, it is no longer a dashboard-wide scope every widget shares.
         public async Task<ActionResult> Index(int? idDeviceFarmUnitZone, int? idFarmOpenfieldCropParcel)
         {
             IList<ZoneOption> zones = await BuildZoneOptionsAsync();
@@ -843,7 +843,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
-        // ---- Dashboard widgets, Open-Field's equivalent (roadmap #519) - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
+        // ---- Dashboard widgets, Open-Field's equivalent - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]

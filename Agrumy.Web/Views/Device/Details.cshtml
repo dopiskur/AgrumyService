@@ -179,6 +179,22 @@
 </div>
 
 <partial name="_DeviceFirmware" model="(DeviceFirmwareViewModel)ViewBag.Firmware" />
+@if (ViewBag.LoRaSession is Agrumy.Shared.Models.DeviceLoRaSessionInfo loRaSession)
+{
+    <div class="card mt-3">
+        <div class="card-header"><h3 class="card-title">LoRa v2 session</h3></div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Boot nonce</dt>
+                <dd class="col-sm-9"><code>@loRaSession.BootNonceHex[..Math.Min(8, loRaSession.BootNonceHex.Length)]&hellip;</code></dd>
+                <dt class="col-sm-3">Max counter</dt>
+                <dd class="col-sm-9">@loRaSession.MaxCounter</dd>
+                <dt class="col-sm-3">Last seen</dt>
+                <dd class="col-sm-9">@loRaSession.LastSeenUtc.ToString("u")</dd>
+            </dl>
+        </div>
+    </div>
+}
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {
     <partial name="_DeviceWifiUpdate" model="Model.IDDevice!.Value" />

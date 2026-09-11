@@ -6,12 +6,7 @@ using Agrumy.Shared.LoRa;
 
 namespace Agrumy.Api.Tests;
 
-/// Covers Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto.Decrypt for both wire versions - v1 against a
-/// fixture this test builds itself (AES-256-GCM, nonce = 4 zero bytes + 8-byte big-endian counter),
-/// v2 against the SAME contracts/lora-private-v2.vectors.json AgrumyFirmware's native tests read (real
-/// HKDF-SHA256 + AES-128-GCM output, not a fixture built with the production code's own logic - this
-/// is a genuine independent-implementation cross-check, not a tautology). The actual over-the-air
-/// round trip is untestable without hardware, same status as MqttCommandPublisherTests' own network call.
+/// Covers Agrumy.Shared.LoRa.LoRaPrivatePayloadCrypto.Decrypt against the SAME contracts/lora-private-v2.vectors.json AgrumyFirmware's native tests read (a genuine independent-implementation cross-check, not a tautology) plus Encrypt-then-Decrypt round trips for cases the shared vectors don't cover - the actual over-the-air round trip stays untestable without hardware, same status as MqttCommandPublisherTests' own network call.
 public class LoRaPrivatePayloadCryptoTests
 {
     private static byte[] NewKey()
@@ -21,56 +16,46 @@ public class LoRaPrivatePayloadCryptoTests
         return key;
     }
 
-    /// Mirrors the v1 wire format Decrypt expects - not production code (only the firmware ever encrypts v1), just this test's own fixture builder.
-    private static byte[] EncryptV1(byte[] key, ulong counter, string plaintext)
+    private static byte[] NewBootNonce()
     {
-        byte[] nonce = new byte[12];
-        BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), counter);
-        byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-        byte[] ciphertext = new byte[plaintextBytes.Length];
-        byte[] tag = new byte[16];
-        using var gcm = new AesGcm(key, 16);
-        gcm.Encrypt(nonce, plaintextBytes, ciphertext, tag);
-
-        byte[] wire = new byte[8 + ciphertext.Length + 16];
-        BinaryPrimitives.WriteUInt64BigEndian(wire.AsSpan(0, 8), counter);
-        ciphertext.CopyTo(wire, 8);
-        tag.CopyTo(wire, 8 + ciphertext.Length);
-        return wire;
+        byte[] bootNonce = new byte[8];
+        RandomNumberGenerator.Fill(bootNonce);
+        return bootNonce;
     }
 
     [Fact]
     public void Decrypt_ValidCiphertext_ReturnsPlaintextAndCounter()
     {
         byte[] key = NewKey();
-        byte[] wire = EncryptV1(key, 42, "{\"t\":\"sensor\",\"d\":[]}");
+        byte[] bootNonce = NewBootNonce();
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(key, bootNonce, 42, "{\"t\":\"sensor\",\"d\":[]}");
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
+        (string? plaintext, uint counter, byte[]? decodedBootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
 
         Assert.Equal("{\"t\":\"sensor\",\"d\":[]}", plaintext);
-        Assert.Equal(42UL, counter);
-        Assert.Null(bootNonce);
+        Assert.Equal(42U, counter);
+        Assert.Equal(bootNonce, decodedBootNonce);
     }
 
     [Fact]
     public void Decrypt_WrongKey_ReturnsNull()
     {
-        byte[] wire = EncryptV1(NewKey(), 1, "hello");
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(NewKey(), NewBootNonce(), 1, "hello");
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
 
         Assert.Null(plaintext);
-        Assert.Equal(0UL, counter);
+        Assert.Equal(0U, counter);
     }
 
     [Fact]
     public void Decrypt_TamperedCiphertext_ReturnsNull_TagCheckFails()
     {
         byte[] key = NewKey();
-        byte[] wire = EncryptV1(key, 1, "hello");
-        wire[10] ^= 0xFF; // flip a byte inside the ciphertext region
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(key, NewBootNonce(), 1, "hello");
+        wire[^1] ^= 0xFF; // flip a byte inside the tag
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
 
         Assert.Null(plaintext);
     }
@@ -80,10 +65,10 @@ public class LoRaPrivatePayloadCryptoTests
     {
         // The counter feeds the nonce, so changing it without re-encrypting makes the tag check fail exactly like tampering the ciphertext - can't silently roll a counter back.
         byte[] key = NewKey();
-        byte[] wire = EncryptV1(key, 5, "hello");
-        BinaryPrimitives.WriteUInt64BigEndian(wire.AsSpan(0, 8), 1);
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(key, NewBootNonce(), 5, "hello");
+        BinaryPrimitives.WriteUInt32BigEndian(wire.AsSpan(9, 4), 1);
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
 
         Assert.Null(plaintext);
     }
@@ -91,18 +76,18 @@ public class LoRaPrivatePayloadCryptoTests
     [Fact]
     public void Decrypt_TooShort_ReturnsNull()
     {
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), new byte[10]);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), new byte[10]);
 
         Assert.Null(plaintext);
-        Assert.Equal(0UL, counter);
+        Assert.Equal(0U, counter);
     }
 
     [Fact]
     public void Decrypt_WrongKeyLength_ReturnsNull()
     {
-        byte[] wire = EncryptV1(NewKey(), 1, "hello");
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(NewKey(), NewBootNonce(), 1, "hello");
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(new byte[16], wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(new byte[16], wire);
 
         Assert.Null(plaintext);
     }
@@ -111,21 +96,33 @@ public class LoRaPrivatePayloadCryptoTests
     public void Decrypt_EmptyPlaintext_StillRoundTrips()
     {
         byte[] key = NewKey();
-        byte[] wire = EncryptV1(key, 1, "");
+        byte[] wire = LoRaPrivatePayloadCrypto.Encrypt(key, NewBootNonce(), 1, "");
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wire);
 
         Assert.Equal("", plaintext);
-        Assert.Equal(1UL, counter);
+        Assert.Equal(1U, counter);
+    }
+
+    [Fact]
+    public void Decrypt_LegacyCounterShapedFrame_RejectedAsMalformed()
+    {
+        // The retired counter-based wire format's leading byte was always 0x00 (never a version tag) - no transition window, any node still sending this shape has not been reflashed.
+        byte[] wire = { 0x00, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 };
+
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
+
+        Assert.Null(plaintext);
+        Assert.Null(bootNonce);
     }
 
     [Fact]
     public void Decrypt_MalformedLeadingByte_ReturnsNull()
     {
-        // Neither 0x00 (v1) nor 0x02 (v2) - must be rejected outright, not misparsed as either version.
-        byte[] wire = { 0x01, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        // Not 0x02 - must be rejected outright, not misparsed.
+        byte[] wire = { 0x01, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 };
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
 
         Assert.Null(plaintext);
     }
@@ -162,48 +159,30 @@ public class LoRaPrivatePayloadCryptoTests
         byte[] expectedBootNonce = Convert.FromHexString(vector.BootNonceHex);
         byte[] frame = Convert.FromHexString(vector.FrameHex);
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(masterKey, frame);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(masterKey, frame);
 
         Assert.Equal(vector.PlaintextUtf8, plaintext);
-        Assert.Equal((ulong)vector.Counter, counter);
+        Assert.Equal(vector.Counter, counter);
         Assert.Equal(expectedBootNonce, bootNonce);
     }
 
     [Fact]
-    public void Decrypt_V2_WrongMasterKey_ReturnsNull()
+    public void Decrypt_WrongMasterKey_ReturnsNull()
     {
-        byte[] key = NewKey();
-        byte[] bootNonce = RandomNumberGenerator.GetBytes(8);
-        byte[] sessionKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, key, 16, salt: bootNonce, info: "agrumy-lora-v2"u8.ToArray());
-        byte[] plaintextBytes = Encoding.UTF8.GetBytes("{\"battery\":50}");
-        byte[] ciphertext = new byte[plaintextBytes.Length];
-        byte[] tag = new byte[16];
-        byte[] nonce = new byte[12];
-        bootNonce.CopyTo(nonce, 0);
-        BinaryPrimitives.WriteUInt32BigEndian(nonce.AsSpan(8), 1);
-        using (var gcm = new AesGcm(sessionKey, 16))
-        {
-            gcm.Encrypt(nonce, plaintextBytes, ciphertext, tag);
-        }
-        byte[] frame = new byte[1 + 8 + 4 + ciphertext.Length + 16];
-        frame[0] = 0x02;
-        bootNonce.CopyTo(frame, 1);
-        BinaryPrimitives.WriteUInt32BigEndian(frame.AsSpan(9, 4), 1);
-        ciphertext.CopyTo(frame, 13);
-        tag.CopyTo(frame, 13 + ciphertext.Length);
+        byte[] frame = LoRaPrivatePayloadCrypto.Encrypt(NewKey(), NewBootNonce(), 1, "{\"battery\":50}");
 
-        (string? plaintext, ulong counter, byte[]? bootNonceOut) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), frame);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), frame);
 
         Assert.Null(plaintext);
     }
 
     [Fact]
-    public void Decrypt_V2_TooShortForPrefixPlusTag_ReturnsNull()
+    public void Decrypt_TooShortForPrefixPlusTag_ReturnsNull()
     {
         byte[] wire = new byte[1 + 8 + 4 + 15]; // one byte short of the minimum (empty ciphertext + 16-byte tag)
         wire[0] = 0x02;
 
-        (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
+        (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(NewKey(), wire);
 
         Assert.Null(plaintext);
     }

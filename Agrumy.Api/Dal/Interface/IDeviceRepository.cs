@@ -101,7 +101,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Records the diagnostics from a device's config poll - LastSeenAt is set to the server clock, making the poll itself the heartbeat; null fields still bump LastSeenAt without erasing earlier values.
         Task DeviceDiagnosticUpsertAsync(int deviceID, int tenantID, DeviceConfigPoll poll);
 
-        /// Atomically checks-and-stamps LastSensorPushAt in one guarded UPDATE (the WHERE clause IS the too-frequent check, same shape as DeviceLoRaUplinkCounterSetAsync) - true (and stamped) only when enough time has passed since the last accepted push; a concurrent push for the same device can't both slip through the way a plain read-then-write would allow.
+        /// Atomically checks-and-stamps LastSensorPushAt in one guarded UPDATE (the WHERE clause IS the too-frequent check, same shape as DeviceLoRaSessionAcceptAsync) - true (and stamped) only when enough time has passed since the last accepted push; a concurrent push for the same device can't both slip through the way a plain read-then-write would allow.
         Task<bool> DeviceCheckAndRecordSensorPushAsync(int deviceID, TimeSpan minInterval);
 
         /// Stamps the device row with when a full DeviceConfig body was actually sent - drives DeviceConfigBuilder.NeedsRefreshAsync's periodic heartbeat resend (ServerConfig.ConfigHeartbeatHours).
@@ -116,14 +116,14 @@ namespace Agrumy.Api.Dal.Interface
         /// Persists the device's latest DetectSensors command result (JSON) plus when it was reported - null resultJson clears a stale/malformed result rather than leaving a previous scan's stale data displayed.
         Task DeviceSensorDetectionResultSetAsync(int deviceID, string? resultJson, DateTimeOffset detectedAt);
 
-        /// Generates a new random AES-256 key for LoRa private-protocol uplink encryption, stores it, resets LoRaLastUplinkCounter and every deviceLoRaSession row to null/gone (a fresh key restarts replay tracking on both the v1 and v2 paths), and returns the raw hex - the ONLY time it's ever returned, the admin must copy it into the node's own provisioning now.
+        /// Generates a new random AES-256 key for LoRa private-protocol uplink encryption, stores it, resets every deviceLoRaSession row to gone (a fresh key restarts replay tracking), and returns the raw hex - the ONLY time it's ever returned, the admin must copy it into the node's own provisioning now.
         Task<string> DeviceLoRaPrivateKeyGenerateAsync(int deviceID);
 
-        /// v1 replay check - atomically checks-and-advances the monotonic counter in one guarded UPDATE (the WHERE clause IS the replay check) - returns false if another concurrent call already advanced it past this counter, true if this call won and the caller may proceed.
-        Task<bool> DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter);
-
-        /// v2 replay check - true (accepted) for a never-seen (bootNonce, counter) pair or a counter higher than this bootNonce's own high-water mark, false (replay) otherwise; keeps only the 32 most-recently-started sessions per device so a crash-looping node can't grow this table unbounded.
+        /// Replay check - true (accepted) for a never-seen (bootNonce, counter) pair or a counter higher than this bootNonce's own high-water mark, false (replay) otherwise; keeps only the 32 most-recently-started sessions per device so a crash-looping node can't grow this table unbounded.
         Task<bool> DeviceLoRaSessionAcceptAsync(int deviceID, byte[] bootNonce, uint counter);
+
+        /// The device's current (highest LastSeenUtc) v2 session, for Web Device Details' operator-visible "LoRa v2 session" card - null if the device has never sent an accepted uplink.
+        Task<DeviceLoRaSessionInfo?> DeviceLoRaLatestSessionGetAsync(int deviceID);
 
         /// Fleet status for every device in the tenant, or everywhere when tenantID is null (caller must check CallerReadsDevicesGlobally first) - Online comes from DeviceFleetStatus.ComputeOnline.
         Task<IList<DeviceFleetStatus>> DeviceFleetGetAsync(int? tenantID);

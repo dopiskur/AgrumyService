@@ -49,7 +49,7 @@ namespace Agrumy.Api.Dal.Interface
 
         Task ParcelDeleteAsync(int idFarmOpenfieldCropParcel);
 
-        /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync (roadmap #519).
+        /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync.
         Task ParcelWidgetsSetAsync(int idFarmOpenfieldCropParcel, List<DashboardWidget> widgets);
 
         // ---- Device assignment -----------------------------------------

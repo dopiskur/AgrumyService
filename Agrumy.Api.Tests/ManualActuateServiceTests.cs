@@ -223,7 +223,7 @@ public class ManualActuateServiceTests
         _units.Verify(u => u.DeviceFarmUnitZoneConfigVersionBumpAsync(10), Times.Once);
     }
 
-    // ---- Parcel (Open-Field's equivalent of Zone, roadmap #519) ----
+    // ---- Parcel (Open-Field's equivalent of Zone) ----
 
     [Fact]
     public async Task Parcel_With_No_Controller_Returns_TargetNotFound()

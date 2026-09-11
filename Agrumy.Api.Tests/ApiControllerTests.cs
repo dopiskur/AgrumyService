@@ -1890,6 +1890,34 @@ public class ApiControllerTests
         // Strict mock: DeviceLoRaPrivateKeyGenerateAsync was never set up - a call to it here would throw.
     }
 
+    /// Web Device Details' "LoRa v2 session" card reads this.
+    [Fact]
+    public async Task LoRaSessionGet_ReturnsLatestSession()
+    {
+        _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 0 });
+        var session = new DeviceLoRaSessionInfo { BootNonceHex = "4761A8A78EC407A7", MaxCounter = 12, LastSeenUtc = DateTimeOffset.UtcNow };
+        _repo.Setup(r => r.DeviceLoRaLatestSessionGetAsync(8)).ReturnsAsync(session);
+
+        var controller = NewDeviceController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.LoRaSessionGet(8);
+
+        Assert.Same(session, Assert.IsType<OkObjectResult>(result.Result).Value);
+    }
+
+    [Fact]
+    public async Task LoRaSessionGet_ForeignTenant_Returns403_AndNeverReadsSession()
+    {
+        _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 99 });
+
+        var controller = NewDeviceController();
+        SetCallerRoles(controller, 1, "user", RoleNames.TenantReader, RoleNames.TenantDevice);
+        var result = await controller.LoRaSessionGet(8);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        // Strict mock: DeviceLoRaLatestSessionGetAsync was never set up - a call to it here would throw.
+    }
+
     /// Every HardResetPending test needs an explicit scheme - Request.IsHttps defaults to false on a bare DefaultHttpContext, same as a real plain-HTTP request would.
     private static void SetRequestScheme(ControllerBase controller, string scheme) =>
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Request = { Scheme = scheme } } };

@@ -311,15 +311,14 @@ namespace Agrumy.Api.Controllers.API
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 400, Error = "Malformed payload: " + ex.Message });
             }
 
-            (string? plaintext, ulong counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wirePayload);
-            if (plaintext is null)
+            (string? plaintext, uint counter, byte[]? bootNonce) = LoRaPrivatePayloadCrypto.Decrypt(key, wirePayload);
+            if (plaintext is null || bootNonce is null)
             {
+                // A node still on the retired counter-based wire format decrypts to this same "Malformed" result (its first byte is never 0x02) - the apiId here is what makes a not-yet-reflashed node findable.
+                logger.LogWarning("LoRa uplink from device {DeviceId} (apiId {ApiId}) rejected as malformed - wrong key, corrupted/tampered payload, or a pre-v2 node not yet reflashed.", idDevice, device.ApiId);
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 401, Error = "Decryption failed - wrong key, or the payload was corrupted or tampered with." });
             }
-            // v2 (bootNonce present) replays against deviceLoRaSession; v1 keeps the plain monotonic-counter check - see LoRaPrivatePayloadCrypto's remarks for why the two can't share one check.
-            bool accepted = bootNonce != null
-                ? await deviceRepo.DeviceLoRaSessionAcceptAsync(idDevice, bootNonce, (uint)counter)
-                : await deviceRepo.DeviceLoRaUplinkCounterSetAsync(idDevice, (long)counter);
+            bool accepted = await deviceRepo.DeviceLoRaSessionAcceptAsync(idDevice, bootNonce, counter);
             if (!accepted)
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 409, Error = "Replayed or out-of-order uplink." });

@@ -60,8 +60,6 @@ namespace Agrumy.Shared.Models
         // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - same "never serialized out" treatment as ApiKey; DeviceApiController.LoRaPrivateKeyGenerate is the only place the raw value is ever returned, once, at generation time.
         [JsonIgnore]
         public string? LoRaPrivateKeyHex { get; set; }
-        [JsonIgnore]
-        public long? LoRaLastUplinkCounter { get; set; }
         public string? ServicePoint { get; set; }
 
         public string? ServiceType {  get; set; }
@@ -131,6 +129,8 @@ namespace Agrumy.Shared.Models
         public string? ServicePoint { get; set; }
         public string? ServiceType { get; set; }
         public string? ServicePublicKey { get; set; }
+        /// Whether Device.LoRaPrivateKeyHex is set - never the key itself, just enough for Web Device Details to know whether to show the "LoRa v2 session" card at all.
+        public bool HasLoRaPrivateKey { get; set; }
         public int? SleepSeconds { get; set; } = 60;
         public bool? SleepDeepEnabled { get; set; } = false;
         public bool? LoRaGatewayEnabled { get; set; } = false;
@@ -188,6 +188,7 @@ namespace Agrumy.Shared.Models
             ServicePoint = d.ServicePoint,
             ServiceType = d.ServiceType,
             ServicePublicKey = d.ServicePublicKey,
+            HasLoRaPrivateKey = !string.IsNullOrEmpty(d.LoRaPrivateKeyHex),
             SleepSeconds = d.SleepSeconds,
             SleepDeepEnabled = d.SleepDeepEnabled,
             LoRaGatewayEnabled = d.LoRaGatewayEnabled,
@@ -431,7 +432,7 @@ namespace Agrumy.Shared.Models
         /// Same "filter one shared response" role as DeviceFarmUnitZoneID above, for the Open-Field branch.
         public int? FarmOpenfieldCropID { get; set; }
         public int? FarmOpenfieldCropParcelID { get; set; }
-        /// Roadmap #536 - the top-level DeviceFarm name, resolved through either branch (Unit->Farm or Crop->FarmOpenfield->Farm) so the Fleet table's single "Farm" column never has to branch on which hierarchy a device is in.
+        /// The top-level DeviceFarm name, resolved through either branch (Unit->Farm or Crop->FarmOpenfield->Farm) so the Fleet table's single "Farm" column never has to branch on which hierarchy a device is in.
         public string? FarmName { get; set; }
         /// Only the relay functions this device has ever reported a state for - empty for a sensor-only device or one whose firmware predates ControllerData.
         public IList<ControllerDataStatus>? RelayStates { get; set; }
@@ -719,6 +720,14 @@ namespace Agrumy.Shared.Models
         public SensorMetric? TargetMetric { get; set; }
         public double? TargetThreshold { get; set; }
         public double? TargetHysteresis { get; set; }
+    }
+
+    /// Operator-visible summary of a LoRa private-protocol device's most recent boot session - Web Device Details reads this via EfDeviceRepository.DeviceLoRaLatestSessionGetAsync, never the raw deviceLoRaSession row.
+    public class DeviceLoRaSessionInfo
+    {
+        public string BootNonceHex { get; set; } = "";
+        public uint MaxCounter { get; set; }
+        public DateTimeOffset LastSeenUtc { get; set; }
     }
 
     /// What's left of the per-device model after thresholds/schedule/safety-limits moved to the zone (DeviceFarmUnitZone/DeviceFarmUnitZoneRule) - just the relay-pin mapping; Rules/WaterPump* below are populated from the assigned zone by BuildDeviceConfigAsync, not from this row.

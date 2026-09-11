@@ -359,20 +359,10 @@ namespace Agrumy.Api.Dal
         {
             string hex = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             await db.Devices.Where(d => d.IDDevice == deviceID)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(d => d.LoRaPrivateKeyHex, hex)
-                    .SetProperty(d => d.LoRaLastUplinkCounter, (long?)null));
-            // Every existing v2 session was derived from the key just replaced - leaving them would let a session opened under the OLD key keep accepting uplinks encrypted under the new one only by coincidence of a repeated bootNonce (astronomically unlikely, but there is no reason to rely on that).
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LoRaPrivateKeyHex, hex));
+            // Every existing session was derived from the key just replaced - leaving them would let a session opened under the OLD key keep accepting uplinks encrypted under the new one only by coincidence of a repeated bootNonce (astronomically unlikely, but there is no reason to rely on that).
             await db.DeviceLoRaSessions.Where(s => s.DeviceID == deviceID).ExecuteDeleteAsync();
             return hex;
-        }
-
-        public async Task<bool> DeviceLoRaUplinkCounterSetAsync(int deviceID, long counter)
-        {
-            int rows = await db.Devices
-                .Where(d => d.IDDevice == deviceID && (d.LoRaLastUplinkCounter == null || d.LoRaLastUplinkCounter < counter))
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LoRaLastUplinkCounter, counter));
-            return rows > 0;
         }
 
         public async Task<bool> DeviceLoRaSessionAcceptAsync(int deviceID, byte[] bootNonce, uint counter)
@@ -423,6 +413,15 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
+        public async Task<DeviceLoRaSessionInfo?> DeviceLoRaLatestSessionGetAsync(int deviceID)
+        {
+            var row = await db.DeviceLoRaSessions.AsNoTracking()
+                .Where(s => s.DeviceID == deviceID)
+                .OrderByDescending(s => s.LastSeenUtc)
+                .FirstOrDefaultAsync();
+            return row is null ? null : new DeviceLoRaSessionInfo { BootNonceHex = row.BootNonceHex, MaxCounter = (uint)row.MaxCounter, LastSeenUtc = row.LastSeenUtc };
+        }
+
         /// internal, not private - EfGatewayRepository and EfDeviceFarmUnitRepository also map DeviceRow to Device.
         internal static Device ToDto(DeviceRow d) => new()
         {
@@ -442,7 +441,6 @@ namespace Agrumy.Api.Dal
             ApiId = d.ApiId,
             ApiKey = d.ApiKey,
             LoRaPrivateKeyHex = d.LoRaPrivateKeyHex,
-            LoRaLastUplinkCounter = d.LoRaLastUplinkCounter,
             ServicePoint = d.ServicePoint,
             ServicePublicKey = d.ServicePublicKey,
             SleepSeconds = d.SleepSeconds,
@@ -970,7 +968,7 @@ namespace Agrumy.Api.Dal
             Dictionary<int, string?> zoneNames = await db.DeviceFarmUnitZones.AsNoTracking()
                 .ToDictionaryAsync(z => z.IDDeviceFarmUnitZone, z => z.DeviceFarmUnitZoneName);
 
-            // Roadmap #536 - Fleet's "Farm" column resolves the top-level DeviceFarm regardless of branch (Unit->Farm for Greenhouse, Crop->FarmOpenfield->Farm for Open-Field); same in-memory-lookup reasoning as unitNames/zoneNames above.
+            // Fleet's "Farm" column resolves the top-level DeviceFarm regardless of branch (Unit->Farm for Greenhouse, Crop->FarmOpenfield->Farm for Open-Field); same in-memory-lookup reasoning as unitNames/zoneNames above.
             Dictionary<int, string?> farmNames = await db.DeviceFarms.AsNoTracking()
                 .ToDictionaryAsync(f => f.IDDeviceFarm, f => f.DeviceFarmName);
             Dictionary<int, int?> unitFarmIds = await db.DeviceFarmUnits.AsNoTracking()

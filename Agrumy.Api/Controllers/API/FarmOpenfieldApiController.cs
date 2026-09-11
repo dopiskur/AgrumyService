@@ -326,7 +326,7 @@ namespace Agrumy.Api.Controllers.API
 
         #endregion
 
-        #region Manual Actuate (roadmap #219/#519) - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/ManualActuate
+        #region Manual Actuate - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/ManualActuate
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Parcel/ManualActuate")]
@@ -384,7 +384,7 @@ namespace Agrumy.Api.Controllers.API
 
         #endregion
 
-        #region Dashboard widgets (roadmap #238/#519) - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/{id}/Widgets
+        #region Dashboard widgets - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/{id}/Widgets
 
         // Roadmap #238 - same cap as DeviceFarmUnitApiController.MaxWidgetsPerZone.
         private const int MaxWidgetsPerParcel = 20;

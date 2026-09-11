@@ -10,7 +10,7 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmOpenfieldCropParcelDashboard> Parcels { get; init; } = [];
     }
 
-    /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets or day/night presets - fast-follow; Manual Actuate/discovery added roadmap #519).
+    /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets or day/night presets - fast-follow).
     public class ParcelViewModel
     {
         public required FarmOpenfieldCropParcel Parcel { get; init; }

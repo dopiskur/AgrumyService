@@ -1117,9 +1117,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<bool?>("LoRaGatewayEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<long?>("LoRaLastUplinkCounter")
-                        .HasColumnType("bigint");
-
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

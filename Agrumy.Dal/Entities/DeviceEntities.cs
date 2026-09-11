@@ -383,8 +383,6 @@ namespace Agrumy.Dal.Entities
 
         // LoRa private-protocol uplink encryption key - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
-        // Highest LoRaPrivatePayloadCrypto counter accepted from this device so far - GatewayApiController.RelayUplink rejects anything no higher (replay protection), null means none accepted yet.
-        public long? LoRaLastUplinkCounter { get; set; }
 
         // Roadmap #409 - soft delete, see AgrumyDbContext's HasQueryFilter on this entity. Only RecycleBinApiController ever sees a Deleted row directly (IgnoreQueryFilters).
         public bool Deleted { get; set; }

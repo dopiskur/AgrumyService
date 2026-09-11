@@ -13,7 +13,7 @@ namespace Agrumy.Shared.Models
         public int? UnitID { get; set; }
         public int? ZoneID { get; set; }
         public int? FarmID { get; set; }
-        /// Open-Field's equivalent of ZoneID - a Parcel has no Unit/Farm-level fan-out yet, same "leaf only" scope as roadmap #519's Manual Actuate.
+        /// Open-Field's equivalent of ZoneID - a Parcel has no Unit/Farm-level fan-out yet, same "leaf only" scope as Manual Actuate.
         public int? ParcelID { get; set; }
     }
 

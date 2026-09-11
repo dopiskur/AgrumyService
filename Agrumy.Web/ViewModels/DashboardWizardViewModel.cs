@@ -1,6 +1,6 @@
 namespace Agrumy.Web.ViewModels
 {
-    /// Drives DeviceFarmUnit/Index.cshtml, the guided flow for building a zone's (or, roadmap #519, a parcel's) custom dashboard (roadmap #238).
+    /// Drives DeviceFarmUnit/Index.cshtml, the guided flow for building a zone's (or a parcel's) custom dashboard.
     public class DashboardWizardViewModel
     {
         public IList<ZoneOption> Zones { get; init; } = [];

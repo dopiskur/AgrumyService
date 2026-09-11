@@ -370,6 +370,20 @@ namespace Agrumy.Api.Controllers.API
             return Ok(key);
         }
 
+        /// Backs the "LoRa v2 session" card on Web Device Details, reading GatewayApiController.RelayUplink's own replay state instead of duplicating it; null means the device has never sent an accepted v2 uplink.
+        [Authorize]
+        [HttpGet("LoRaSession")]
+        public async Task<ActionResult<DeviceLoRaSessionInfo?>> LoRaSessionGet(int idDevice)
+        {
+            var (device, error) = await EnsureOwnedDeviceAsync(
+                () => deviceRepo.DeviceGetByIdAsync(idDevice), "Device", forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await deviceRepo.DeviceLoRaLatestSessionGetAsync(device!.IDDevice!.Value));
+        }
+
         /// GlobalAdmin-only (stricter than the DeviceManagers bar the other actions on this controller use) since this wipes the device and requires physical/captive-portal re-provisioning - the flag rides to the device via a normal config poll AND, since that path is exactly what a broken apiKey would block, via HardResetPending below.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost("HardReset")]

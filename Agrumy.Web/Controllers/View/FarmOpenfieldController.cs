@@ -134,7 +134,7 @@ namespace Agrumy.Web.Controllers.View
             };
         }
 
-        // ---- Manual Actuate (roadmap #219/#519) - Open-Field's equivalent of DeviceFarmUnitController's ZoneManualActuateStart/Stop ----
+        // ---- Manual Actuate - Open-Field's equivalent of DeviceFarmUnitController's ZoneManualActuateStart/Stop ----
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
@@ -171,7 +171,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Parcel), new { idFarmOpenfieldCropParcel });
         }
 
-        // ---- Device discovery (roadmap #519) - Open-Field's equivalent of DeviceFarmUnitController's ScanZone/RegisterDiscoveredDeviceZone ----
+        // ---- Device discovery - Open-Field's equivalent of DeviceFarmUnitController's ScanZone/RegisterDiscoveredDeviceZone ----
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]

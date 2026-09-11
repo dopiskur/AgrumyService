@@ -2,7 +2,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Web.ViewModels
 {
-    /// Drives DeviceFarmUnit/_DashboardWidgets.cshtml - Leaf is a Zone or (roadmap #519) a Parcel, both IFarmLeafLevelNode.
+    /// Drives DeviceFarmUnit/_DashboardWidgets.cshtml - Leaf is a Zone or a Parcel, both IFarmLeafLevelNode.
     public class DashboardWidgetsViewModel
     {
         public required IFarmLeafLevelNode Leaf { get; init; }

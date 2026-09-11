@@ -135,6 +135,11 @@ namespace Agrumy.Web.Controllers.View
         {
             DeviceDto device = await api.DeviceGet(idDevice);
 
+            if (device.HasLoRaPrivateKey)
+            {
+                ViewBag.LoRaSession = await api.LoRaSessionGet(idDevice!.Value);
+            }
+
             DeviceFleetStatus? status = await api.DeviceFleetStatusGet(idDevice!.Value);
             ViewBag.FreeHeapBytes = status?.FreeHeapBytes;
             ViewBag.MinFreeHeapBytes = status?.MinFreeHeapBytes;
