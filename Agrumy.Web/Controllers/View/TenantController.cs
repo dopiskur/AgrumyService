@@ -40,6 +40,7 @@ namespace Agrumy.Web.Controllers.View
         {
             Tenant tenant = await api.TenantGet(idTenant);
             ViewBag.TimeZones = TimeZoneOptions(tenant.ScheduleTimeZone);
+            ViewBag.WeatherState = await api.TenantWeatherStateGet(idTenant);
             return View(tenant);
         }
 
@@ -51,6 +52,7 @@ namespace Agrumy.Web.Controllers.View
             if (!ModelState.IsValid)
             {
                 ViewBag.TimeZones = TimeZoneOptions(tenant.ScheduleTimeZone);
+                ViewBag.WeatherState = await api.TenantWeatherStateGet(tenant.IDTenant);
                 return View(tenant);
             }
             try
@@ -61,6 +63,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 ModelState.AddModelError(nameof(Tenant.ScheduleTimeZone), ex.Body);
                 ViewBag.TimeZones = TimeZoneOptions(tenant.ScheduleTimeZone);
+                ViewBag.WeatherState = await api.TenantWeatherStateGet(tenant.IDTenant);
                 return View(tenant);
             }
             return RedirectToAction(nameof(Index));

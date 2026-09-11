@@ -264,6 +264,50 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        public async Task<TenantWeatherState> TenantWeatherStateGetAsync(int idTenant)
+        {
+            var row = await db.TenantWeatherStates.AsNoTracking().FirstOrDefaultAsync(x => x.TenantID == idTenant);
+            return row == null
+                ? new TenantWeatherState { TenantID = idTenant }
+                : new TenantWeatherState
+                {
+                    TenantID = row.TenantID,
+                    WeatherRainPredicted = row.WeatherRainPredicted,
+                    WeatherCheckedAtUtc = row.WeatherCheckedAtUtc,
+                    FrostPredicted = row.FrostPredicted,
+                    FrostPredictedHoursAhead = row.FrostPredictedHoursAhead,
+                    FrostCheckedAtUtc = row.FrostCheckedAtUtc,
+                };
+        }
+
+        private async Task<TenantWeatherStateRow> TenantWeatherStateRowGetOrCreateAsync(int idTenant)
+        {
+            var row = await db.TenantWeatherStates.FirstOrDefaultAsync(x => x.TenantID == idTenant);
+            if (row == null)
+            {
+                row = new TenantWeatherStateRow { TenantID = idTenant };
+                db.TenantWeatherStates.Add(row);
+            }
+            return row;
+        }
+
+        public async Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc)
+        {
+            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            row.WeatherRainPredicted = rainPredicted;
+            row.WeatherCheckedAtUtc = checkedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc)
+        {
+            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            row.FrostPredicted = frostPredicted;
+            row.FrostPredictedHoursAhead = hoursAhead;
+            row.FrostCheckedAtUtc = checkedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
         public async Task<IReadOnlyList<TenantUsageSnapshot>> TenantUsageSnapshotsGetAsync(int idTenant, int days)
         {
             return await db.TenantUsageSnapshots.AsNoTracking()

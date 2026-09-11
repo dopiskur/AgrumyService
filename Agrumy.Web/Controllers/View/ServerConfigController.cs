@@ -15,11 +15,15 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Index()
         {
             await PopulateHealthAsync();
+            await PopulateWeatherStateAsync();
             ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
             // Same config key Program.cs's own Refit HttpClient is built from - the actual base URL a Power BI OData connector would be pointed at.
             ViewBag.ApiServiceUrl = configuration["WebView:ApiService"];
             return View(await api.ServerConfigGet());
         }
+
+        /// Weather/frost state is per-tenant - tenant 0 stands in for "the default install location" on this server-wide page, same convention TenantAdminsGetAsync already uses for tenantId 0 = GlobalAdmin.
+        private async Task PopulateWeatherStateAsync() => ViewBag.WeatherState = await api.TenantWeatherStateGet(0);
 
         /// Relaxes SsrfGuard's private-IP/https-only checks for this one hostname or CIDR range, webhook-only (FirmwareController.SsrfAllowlistAdd is the separate firmware list). AJAX, not a redirect form post, since the Webhook tab lives inside this page's one big Server Settings <form> and can't nest a form of its own - see webhook-ssrf-allowlist.js.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
@@ -70,6 +74,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Index(ServerConfig serverConfig)
         {
             await PopulateHealthAsync();
+            await PopulateWeatherStateAsync();
             ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
             if (!ModelState.IsValid)
             {

@@ -163,8 +163,8 @@ namespace Agrumy.Api.Dal.Interface
 
         // Frost alert background worker
 
-        /// Latest Temperature+Humidity per enabled device across every tenant - not tenant-scoped, same reasoning as OfflineAlertCandidatesGetAsync/LowBatteryAlertCandidatesGetAsync.
-        Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync();
+        /// Latest Temperature+Humidity per enabled device in one tenant - frost forecasting is per-tenant, so local confirmation must be too.
+        Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync(int tenantId);
 
         // Simulation Mode (per-metric overrides on an existing physical device)
 

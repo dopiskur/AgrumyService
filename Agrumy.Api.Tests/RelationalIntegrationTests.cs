@@ -480,28 +480,32 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task ServerConfig_WeatherState_OnlySetByNarrowWriter_NotByAdminUpdate(DbProviderKind provider)
+    public async Task TenantWeatherState_SetWeatherAndFrost_RoundTrips_IndependentlyOfEachOther(DbProviderKind provider)
     {
-        // ServerConfigUpdateAsync (admin form path) must never touch WeatherRainPredicted/WeatherCheckedAtUtc - only WeatherEvaluator's dedicated writer does.
+        // Weather/frost state moved out of the single global ServerConfig row into a per-tenant table - each tenant's own row, and the two writers (WeatherEvaluator/FrostAlertEvaluator) must not clobber each other's half of it.
         Use(provider);
-        int id = new Random().Next(1000, 9_000_000);
-        var config = await _repo.ServerConfigGetAsync(id);
-        Assert.False(config.WeatherRainPredicted);
-        Assert.Null(config.WeatherCheckedAtUtc);
+        int tenantId = await _repo.TenantAddAsync($"weather-state-{Guid.NewGuid():N}");
 
-        DateTime checkedAt = DateTime.UtcNow;
-        await _repo.ServerConfigWeatherStateSetAsync(true, checkedAt, id);
+        var empty = await _repo.TenantWeatherStateGetAsync(tenantId);
+        Assert.False(empty.WeatherRainPredicted);
+        Assert.Null(empty.WeatherCheckedAtUtc);
+        Assert.False(empty.FrostPredicted);
+        Assert.Null(empty.FrostCheckedAtUtc);
 
-        var afterEvaluator = await _repo.ServerConfigGetAsync(id);
-        Assert.True(afterEvaluator.WeatherRainPredicted);
-        Assert.NotNull(afterEvaluator.WeatherCheckedAtUtc);
+        DateTimeOffset checkedAt = DateTimeOffset.UtcNow;
+        await _repo.TenantWeatherStateSetWeatherAsync(tenantId, true, checkedAt);
 
-        afterEvaluator.TenantManagementEnabled = true;
-        await _repo.ServerConfigUpdateAsync(afterEvaluator);
+        var afterWeather = await _repo.TenantWeatherStateGetAsync(tenantId);
+        Assert.True(afterWeather.WeatherRainPredicted);
+        Assert.NotNull(afterWeather.WeatherCheckedAtUtc);
+        Assert.False(afterWeather.FrostPredicted); // untouched by the weather writer
 
-        var afterAdminSave = await _repo.ServerConfigGetAsync(id);
-        Assert.True(afterAdminSave.WeatherRainPredicted);
-        Assert.NotNull(afterAdminSave.WeatherCheckedAtUtc);
+        await _repo.TenantWeatherStateSetFrostAsync(tenantId, true, 6, checkedAt);
+
+        var afterFrost = await _repo.TenantWeatherStateGetAsync(tenantId);
+        Assert.True(afterFrost.WeatherRainPredicted); // untouched by the frost writer
+        Assert.True(afterFrost.FrostPredicted);
+        Assert.Equal(6, afterFrost.FrostPredictedHoursAhead);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

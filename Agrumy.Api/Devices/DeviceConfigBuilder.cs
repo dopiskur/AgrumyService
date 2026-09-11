@@ -28,7 +28,7 @@ namespace Agrumy.Api.Devices
 
         public async Task<DeviceConfig> BuildAsync(Device device, PendingCommand? pendingCommand, string? board)
         {
-            // Computed fresh (not cached) every response so a DST shift or ScheduleTimeZone change reaches every device on its next poll; also reused below for WeatherRainPredicted.
+            // Computed fresh (not cached) every response so a DST shift or ScheduleTimeZone change reaches every device on its next poll; also reused below as the server-wide location fallback.
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
             // Per-tenant, not global - a device with no tenant (roadmap #406, genuinely unassigned) or an unset zone both fall back to UTC via GetUtcOffsetSeconds' own null handling.
             Tenant? tenant = device.TenantID is int tenantId ? await tenantRepo.TenantGetByIdAsync(tenantId) : null;
@@ -142,8 +142,10 @@ namespace Agrumy.Api.Devices
                     controller.WaterPumpMinLevel = leafNode?.WaterPumpMinLevel;
                     controller.WaterLevelRawEmpty = leafNode?.WaterLevelRawEmpty;
                     controller.WaterLevelRawFull = leafNode?.WaterLevelRawFull;
-                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks.
-                    controller.SkipWaterPumpForRain = leafNode?.SkipWaterPumpWhenRainPredicted == true && serverConfig.WeatherRainPredicted;
+                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks. Per-tenant, so the lookup is skipped entirely unless the zone actually opted in.
+                    controller.SkipWaterPumpForRain = leafNode?.SkipWaterPumpWhenRainPredicted == true
+                        && device.TenantID is int weatherTenantId
+                        && (await tenantRepo.TenantWeatherStateGetAsync(weatherTenantId)).WeatherRainPredicted;
                     controller.HeatingFailSafePolicy = leafNode?.HeatingFailSafePolicy;
 
                     // Roadmap #219 - only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.

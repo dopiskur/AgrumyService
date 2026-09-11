@@ -50,7 +50,7 @@ namespace Agrumy.Shared.Models
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }
 
-        // Per-zone opt-in, not a global switch; combined server-side with ServerConfig.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
+        // Per-zone opt-in, not a global switch; combined server-side with the device's tenant's own TenantWeatherState.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
         // Tank calibration (roadmap #234) - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (Agrumy.Shared.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.

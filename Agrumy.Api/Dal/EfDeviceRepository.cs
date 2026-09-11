@@ -1161,10 +1161,10 @@ namespace Agrumy.Api.Dal
 
         // ---- Frost alert background worker ---------------------------------
 
-        public async Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync()
+        public async Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync(int tenantId)
         {
             return await db.Devices.AsNoTracking()
-                .Where(d => d.Enabled == true)
+                .Where(d => d.Enabled == true && d.TenantID == tenantId)
                 .Select(d => new FrostSensorReading(
                     db.SensorData.AsNoTracking().Where(s => s.DeviceID == d.IDDevice).OrderByDescending(s => s.DateCreated).Select(s => s.Temperature).FirstOrDefault(),
                     db.SensorData.AsNoTracking().Where(s => s.DeviceID == d.IDDevice).OrderByDescending(s => s.DateCreated).Select(s => s.Humidity).FirstOrDefault()))

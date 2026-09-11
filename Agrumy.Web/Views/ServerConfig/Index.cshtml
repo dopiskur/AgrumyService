@@ -441,12 +441,13 @@
                         <div class="form-text">Forecast rain probability (%) at or above which watering is skipped.</div>
                     </div>
                     <hr />
+                    @{ var weatherState = (Agrumy.Shared.Models.TenantWeatherState)ViewBag.WeatherState; }
                     <p class="mb-0">
-                        <strong>Current forecast:</strong>
-                        @if (Model.WeatherCheckedAtUtc is DateTimeOffset checkedAt)
+                        <strong>Current forecast</strong> <span class="text-secondary small">(default tenant - each tenant has its own on its Tenant Edit page):</span>
+                        @if (weatherState.WeatherCheckedAtUtc is DateTimeOffset checkedAt)
                         {
-                            <span class="badge @(Model.WeatherRainPredicted ? "text-bg-info" : "text-bg-secondary")">
-                                @(Model.WeatherRainPredicted ? "Rain predicted" : "No rain predicted")
+                            <span class="badge @(weatherState.WeatherRainPredicted ? "text-bg-info" : "text-bg-secondary")">
+                                @(weatherState.WeatherRainPredicted ? "Rain predicted" : "No rain predicted")
                             </span>
                             <span class="text-secondary small">last checked @checkedAt.ToString("u")</span>
                         }
@@ -486,11 +487,11 @@
                         </div>
                     </div>
                     <p class="mb-0">
-                        <strong>Current forecast:</strong>
-                        @if (Model.FrostCheckedAtUtc is DateTimeOffset frostCheckedAt)
+                        <strong>Current forecast</strong> <span class="text-secondary small">(default tenant - each tenant has its own on its Tenant Edit page):</span>
+                        @if (weatherState.FrostCheckedAtUtc is DateTimeOffset frostCheckedAt)
                         {
-                            <span class="badge @(Model.FrostPredicted ? "text-bg-danger" : "text-bg-secondary")">
-                                @(Model.FrostPredicted ? $"Frost predicted (~{Model.FrostPredictedHoursAhead}h)" : "No frost predicted")
+                            <span class="badge @(weatherState.FrostPredicted ? "text-bg-danger" : "text-bg-secondary")">
+                                @(weatherState.FrostPredicted ? $"Frost predicted (~{weatherState.FrostPredictedHoursAhead}h)" : "No frost predicted")
                             </span>
                             <span class="text-secondary small">last checked @frostCheckedAt.ToString("u")</span>
                         }

@@ -27,8 +27,6 @@ public class ServerHealthTests
         public Task<ServerConfig> ServerConfigGetAsync(int idServerConfig) => Task.FromResult(config);
         public Task ServerConfigUpdateAsync(ServerConfig c) => Task.CompletedTask;
         public Task ServerConfigReloadFromAppSettingsAsync(int idServerConfig) => Task.CompletedTask;
-        public Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
-        public Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig) => Task.CompletedTask;
@@ -205,10 +203,17 @@ public class ServerHealthTests
 
     // ---- WeatherHealthCheck ------------------------------------------------
 
+    private static WeatherHealthCheck NewWeatherHealthCheck(ServerConfig config, TenantWeatherState? state = null)
+    {
+        var tenants = new Mock<ITenantRepository>();
+        tenants.Setup(t => t.TenantWeatherStateGetAsync(0)).ReturnsAsync(state ?? new TenantWeatherState());
+        return new WeatherHealthCheck(new FakeServerConfigRepository(config), tenants.Object);
+    }
+
     [Fact]
     public async Task WeatherHealthCheck_NeverChecked_ReturnsDegraded()
     {
-        var check = new WeatherHealthCheck(new FakeServerConfigRepository(new ServerConfig()));
+        var check = NewWeatherHealthCheck(new ServerConfig());
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);
 
@@ -218,8 +223,9 @@ public class ServerHealthTests
     [Fact]
     public async Task WeatherHealthCheck_RecentlyChecked_ReturnsHealthy()
     {
-        var config = new ServerConfig { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5), WeatherPollIntervalMinutes = 30 };
-        var check = new WeatherHealthCheck(new FakeServerConfigRepository(config));
+        var config = new ServerConfig { WeatherPollIntervalMinutes = 30 };
+        var state = new TenantWeatherState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5) };
+        var check = NewWeatherHealthCheck(config, state);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);
 
@@ -229,8 +235,9 @@ public class ServerHealthTests
     [Fact]
     public async Task WeatherHealthCheck_Stale_ReturnsDegraded()
     {
-        var config = new ServerConfig { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddHours(-5), WeatherPollIntervalMinutes = 30 };
-        var check = new WeatherHealthCheck(new FakeServerConfigRepository(config));
+        var config = new ServerConfig { WeatherPollIntervalMinutes = 30 };
+        var state = new TenantWeatherState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddHours(-5) };
+        var check = NewWeatherHealthCheck(config, state);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);
 
@@ -299,7 +306,7 @@ public class ServerHealthTests
             new MqttHealthCheck(repo, new FakeMqttConnectionManager(true)),
             new EmailHealthCheck(repo),
             new FirmwareSourceHealthCheck(repo, new FakeFirmwareFetcher("{}")),
-            new WeatherHealthCheck(repo),
+            NewWeatherHealthCheck(config),
             new GatewayHealthCheck(gatewayRepo.Object, deviceRepo.Object),
             new BackgroundWorkersHealthCheck(Enumerable.Empty<IHostedService>()));
     }

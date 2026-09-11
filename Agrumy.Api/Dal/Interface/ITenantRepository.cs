@@ -51,5 +51,14 @@ namespace Agrumy.Api.Dal.Interface
         Task<TenantAlertConfig> TenantAlertConfigGetAsync(int idTenant);
 
         Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config);
+
+        /// Never null - a tenant with no row yet gets an all-default/false instance (same convention as TenantAlertConfigGetAsync).
+        Task<TenantWeatherState> TenantWeatherStateGetAsync(int idTenant);
+
+        /// The only writer of WeatherRainPredicted/WeatherCheckedAtUtc, called exclusively by WeatherEvaluator.
+        Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc);
+
+        /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as TenantWeatherStateSetWeatherAsync.
+        Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc);
     }
 }

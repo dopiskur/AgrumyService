@@ -17,6 +17,7 @@ namespace Agrumy.Dal
 
         public DbSet<TenantRow> Tenants => Set<TenantRow>();
         public DbSet<TenantWifiConfigRow> TenantWifiConfigs => Set<TenantWifiConfigRow>();
+        public DbSet<TenantWeatherStateRow> TenantWeatherStates => Set<TenantWeatherStateRow>();
         public DbSet<UserRow> Users => Set<UserRow>();
         public DbSet<RefreshTokenRow> RefreshTokens => Set<RefreshTokenRow>();
         public DbSet<UserRoleRow> UserRoles => Set<UserRoleRow>();
@@ -103,6 +104,14 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDTenant);
                 e.Property(x => x.IDTenant).ValueGeneratedNever();
                 e.HasOne<TenantRow>().WithOne().HasForeignKey<TenantQuotaRow>(x => x.IDTenant).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TenantWeatherStateRow>(e =>
+            {
+                e.ToTable("tenantWeatherState");
+                e.HasKey(x => x.TenantID);
+                e.Property(x => x.TenantID).ValueGeneratedNever();
+                e.HasOne<TenantRow>().WithOne().HasForeignKey<TenantWeatherStateRow>(x => x.TenantID).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<TenantWifiConfigRow>(e =>

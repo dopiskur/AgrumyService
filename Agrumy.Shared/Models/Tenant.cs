@@ -38,4 +38,20 @@ namespace Agrumy.Shared.Models
         public double? TankRefillHysteresis { get; set; }
         public int? EventDedupeMinutes { get; set; }
     }
+
+    /// Per-tenant derived weather/frost state - WeatherEvaluator/FrostAlertEvaluator's own last result for this
+    /// tenant's resolved location (Tenant.Latitude/Longitude falling back to ServerConfig.WeatherLocationLat/Lon,
+    /// same cascade as ScheduleTimeZone) - replaces the old single global ServerConfig row, since a per-tenant
+    /// location can no longer share one forecast state. Never null for a real tenant - a tenant with no row yet
+    /// gets an all-default/false instance (same convention as TenantAlertConfigGetAsync). Self-scoped: GET
+    /// /api/Tenant/WeatherState always acts on the caller's own tenant.
+    public class TenantWeatherState
+    {
+        public int TenantID { get; set; }
+        public bool WeatherRainPredicted { get; set; }
+        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
+        public bool FrostPredicted { get; set; }
+        public int? FrostPredictedHoursAhead { get; set; }
+        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+    }
 }

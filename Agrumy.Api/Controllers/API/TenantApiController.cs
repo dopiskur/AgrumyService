@@ -168,6 +168,19 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
+        /// idTenant defaults to the caller's own tenant - same optional-query-param shape as EmergencyStopStatus above, so a Tenant admin's plain GET "just works" while a Global admin/reader can still target any tenant explicitly. Read-only (WeatherEvaluator/FrostAlertEvaluator are the only writers), so no PUT counterpart.
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
+        [HttpGet("WeatherState")]
+        public async Task<ActionResult<TenantWeatherState>> WeatherStateGet(int? idTenant = null)
+        {
+            int targetTenantId = idTenant ?? CallerTenantId ?? -1;
+            if (!CallerReadsTenantConfig(targetTenantId))
+            {
+                return StatusCode(403, "Not authorized to view this tenant's weather state.");
+            }
+            return Ok(await tenantRepo.TenantWeatherStateGetAsync(targetTenantId));
+        }
+
         // ---- Emergency stop (roadmap #230) -----------------------------------
 
         /// Fail-closed, tenant-wide: forces every actuator in idTenant (defaulting to the caller's own) off ahead of any rule, until explicitly cleared. Deliberately one click, no confirmation - unlike a destructive action, hesitation here is the wrong default.

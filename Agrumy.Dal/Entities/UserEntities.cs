@@ -57,6 +57,17 @@ namespace Agrumy.Dal.Entities
         public bool Enabled { get; set; }
     }
 
+    /// See Agrumy.Shared.Models.TenantWeatherState - one row per tenant, upserted by WeatherEvaluator/FrostAlertEvaluator.
+    public class TenantWeatherStateRow
+    {
+        public int TenantID { get; set; }
+        public bool WeatherRainPredicted { get; set; }
+        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
+        public bool FrostPredicted { get; set; }
+        public int? FrostPredictedHoursAhead { get; set; }
+        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+    }
+
     /// See Agrumy.Shared.Models.TenantWifiConfig.
     public class TenantWifiConfigRow
     {
@@ -171,17 +182,12 @@ namespace Agrumy.Dal.Entities
         public double? WeatherLocationLon { get; set; }
         public int? WeatherPollIntervalMinutes { get; set; }
         public double? WeatherRainSkipThreshold { get; set; }
-        public bool WeatherRainPredicted { get; set; }
-        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public int? FrostLookaheadHours { get; set; }
         public double? FrostTempThresholdC { get; set; }
         public double? FrostCloudinessMaxPercent { get; set; }
         public double? FrostWindMaxMetersPerSecond { get; set; }
-        public bool FrostPredicted { get; set; }
-        public int? FrostPredictedHoursAhead { get; set; }
-        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copy of this for the full explanation.
         public bool ODataEnabled { get; set; }

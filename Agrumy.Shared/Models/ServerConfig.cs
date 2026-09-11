@@ -89,27 +89,21 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Schedule daily orphaned sensor data purge")]
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
-        // Install-wide location OpenWeatherMap forecasts are pulled for; null leaves WeatherBackgroundService inert rather than failing loudly.
-        [Display(Name = "Latitude")]
+        // Server-wide default location OpenWeatherMap forecasts are pulled for - Tenant.Latitude/Longitude overrides this per tenant (same cascade as ScheduleTimeZone); null (and no tenant override) leaves WeatherBackgroundService inert rather than failing loudly.
+        [Display(Name = "Default latitude")]
         public double? WeatherLocationLat { get; set; }
-        [Display(Name = "Longitude")]
+        [Display(Name = "Default longitude")]
         public double? WeatherLocationLon { get; set; }
 
-        // Admin-editable poll cadence - WeatherBackgroundService ticks every minute but only calls the API once this many minutes have elapsed since WeatherCheckedAtUtc, making the interval live-editable without a restart.
+        // Admin-editable poll cadence - WeatherBackgroundService ticks every minute but only calls the API once this many minutes have elapsed since a tenant's own TenantWeatherState.WeatherCheckedAtUtc, making the interval live-editable without a restart.
         [Display(Name = "Forecast poll interval (minutes)")]
         public int? WeatherPollIntervalMinutes { get; set; }
 
-        // Rain-probability percentage (OpenWeatherMap's "pop" field) at or above which WeatherEvaluator sets WeatherRainPredicted.
+        // Rain-probability percentage (OpenWeatherMap's "pop" field) at or above which WeatherEvaluator sets a tenant's TenantWeatherState.WeatherRainPredicted.
         [Display(Name = "Rain-skip threshold (%)")]
         public double? WeatherRainSkipThreshold { get; set; }
 
-        // WeatherEvaluator's last result - read-only on Server Settings, written only through ServerConfigWeatherStateSetAsync so a stale admin form post can't clobber a fresher reading.
-        [Display(Name = "Rain predicted")]
-        public bool WeatherRainPredicted { get; set; }
-        [Display(Name = "Forecast last checked")]
-        public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
-
-        // Same install-wide lat/lon + WeatherApiKey as the rain-skip forecast above - FrostAlertEvaluator just asks a different question of the same OpenWeatherMap forecast.
+        // Same default lat/lon + WeatherApiKey as the rain-skip forecast above - FrostAlertEvaluator just asks a different question of the same OpenWeatherMap forecast.
         [Display(Name = "Frost lookahead (hours)")]
         public int? FrostLookaheadHours { get; set; }
         [Display(Name = "Frost temperature threshold (°C)")]
@@ -118,14 +112,6 @@ namespace Agrumy.Shared.Models
         public double? FrostCloudinessMaxPercent { get; set; }
         [Display(Name = "Frost max wind speed (m/s)")]
         public double? FrostWindMaxMetersPerSecond { get; set; }
-
-        // FrostAlertEvaluator's last result - read-only on Server Settings, written only through ServerConfigFrostStateSetAsync, same isolation reasoning as WeatherRainPredicted/WeatherCheckedAtUtc.
-        [Display(Name = "Frost predicted")]
-        public bool FrostPredicted { get; set; }
-        [Display(Name = "Hours until predicted frost")]
-        public int? FrostPredictedHoursAhead { get; set; }
-        [Display(Name = "Frost forecast last checked")]
-        public DateTimeOffset? FrostCheckedAtUtc { get; set; }
 
         // Gates SensorDataODataController - disabled (the default) returns 404 regardless of role, so the feed doesn't exist at all for an install that never opted in.
         [Display(Name = "Enable Power BI / OData feed")]

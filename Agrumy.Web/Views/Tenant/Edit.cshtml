@@ -47,9 +47,41 @@
                 </div>
                 <div class="form-text">
                     This tenant's own site location for astronomical (sunrise/sunset) schedule
-                    conditions. Leave both blank to use the server-wide default (Server Settings &rarr;
-                    Weather).
+                    conditions, and for its rain-skip/frost forecast below. Leave both blank to use
+                    the server-wide default (Server Settings &rarr; Weather).
                 </div>
+            </div>
+
+            @{ var weatherState = (Agrumy.Shared.Models.TenantWeatherState)ViewBag.WeatherState; }
+            <div class="mb-3">
+                <p class="mb-1">
+                    <strong>Rain forecast:</strong>
+                    @if (weatherState.WeatherCheckedAtUtc is DateTimeOffset weatherCheckedAt)
+                    {
+                        <span class="badge @(weatherState.WeatherRainPredicted ? "text-bg-info" : "text-bg-secondary")">
+                            @(weatherState.WeatherRainPredicted ? "Rain predicted" : "No rain predicted")
+                        </span>
+                        <span class="text-secondary small">last checked @weatherCheckedAt.ToString("u")</span>
+                    }
+                    else
+                    {
+                        <span class="text-secondary small">not checked yet</span>
+                    }
+                </p>
+                <p class="mb-0">
+                    <strong>Frost forecast:</strong>
+                    @if (weatherState.FrostCheckedAtUtc is DateTimeOffset frostCheckedAt)
+                    {
+                        <span class="badge @(weatherState.FrostPredicted ? "text-bg-danger" : "text-bg-secondary")">
+                            @(weatherState.FrostPredicted ? $"Frost predicted (~{weatherState.FrostPredictedHoursAhead}h)" : "No frost predicted")
+                        </span>
+                        <span class="text-secondary small">last checked @frostCheckedAt.ToString("u")</span>
+                    }
+                    else
+                    {
+                        <span class="text-secondary small">not checked yet</span>
+                    }
+                </p>
             </div>
 
             <div class="mb-3" style="max-width:12rem">

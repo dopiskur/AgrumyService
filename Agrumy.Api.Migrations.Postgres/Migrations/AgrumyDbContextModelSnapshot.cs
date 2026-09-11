@@ -2604,19 +2604,10 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("FirmwareSource")
                         .HasColumnType("integer");
 
-                    b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<double?>("FrostCloudinessMaxPercent")
                         .HasColumnType("double precision");
 
                     b.Property<int?>("FrostLookaheadHours")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("FrostPredicted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("FrostPredictedHoursAhead")
                         .HasColumnType("integer");
 
                     b.Property<double?>("FrostTempThresholdC")
@@ -2719,9 +2710,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("WaterPumpMaxRunSeconds")
                         .HasColumnType("integer");
 
-                    b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<double?>("WeatherLocationLat")
                         .HasColumnType("double precision");
 
@@ -2730,9 +2718,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<int?>("WeatherPollIntervalMinutes")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("WeatherRainPredicted")
-                        .HasColumnType("boolean");
 
                     b.Property<double?>("WeatherRainSkipThreshold")
                         .HasColumnType("double precision");
@@ -3172,6 +3157,31 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasDatabaseName("ix_tenantUsageSnapshot_tenant_date");
 
                     b.ToTable("tenantUsageSnapshot", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantWeatherStateRow", b =>
+                {
+                    b.Property<int>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("FrostPredicted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("FrostPredictedHoursAhead")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("WeatherRainPredicted")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("TenantID");
+
+                    b.ToTable("tenantWeatherState", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantWifiConfigRow", b =>
@@ -4035,6 +4045,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
                         .WithMany()
                         .HasForeignKey("TenantID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.TenantWeatherStateRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
+                        .WithOne()
+                        .HasForeignKey("Agrumy.Dal.Entities.TenantWeatherStateRow", "TenantID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

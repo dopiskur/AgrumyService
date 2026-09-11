@@ -11,19 +11,13 @@ namespace Agrumy.Api.Dal.Interface
         /// Overwrites the DB row's hysteresis fields from appsettings.json - only called at startup when AgrumySettings.ServerConfigReload is true.
         Task ServerConfigReloadFromAppSettingsAsync(int idServerConfig);
 
-        /// Narrow writer for WeatherEvaluator's computed result, kept separate from ServerConfigUpdateAsync so a concurrent settings save can't race it.
-        Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig);
-
-        /// Narrow writer for FrostAlertEvaluator's computed result, same isolation reasoning as ServerConfigWeatherStateSetAsync.
-        Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig);
-
-        /// Narrow writer for FirmwareCatalogRefreshEvaluator's last-run timestamp, same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// Narrow writer for FirmwareCatalogRefreshEvaluator's last-run timestamp, kept separate from ServerConfigUpdateAsync so a concurrent settings save can't race it.
         Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig);
 
-        /// Narrow writer for SensorDataArchiveEvaluator's last-run timestamp (roadmap #209), same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// Narrow writer for SensorDataArchiveEvaluator's last-run timestamp, same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
         Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig);
 
-        /// Narrow writer for ArkodGeoPackageSyncService's last-run timestamp, same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// Narrow writer for ArkodGeoPackageSyncService's last-run timestamp, same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
         Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig);
 
         /// PostgreSQL/TimescaleDB side of sensorData retention (MariaDB's equivalent is SensorDataRetentionBackgroundService's daily purge) - re-applied on every ServerConfig save plus once at startup by ISystemRepository.EnsureSchemaAsync.

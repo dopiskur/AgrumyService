@@ -108,19 +108,17 @@ namespace Agrumy.Api.Dal
             row.RecycleBinRetentionDays = config.RecycleBinRetentionDays;
             row.SatelliteRasterRetentionDays = config.SatelliteRasterRetentionDays;
             row.PurgeOrphanedSensorDataScheduleEnabled = config.PurgeOrphanedSensorDataScheduleEnabled;
-            // WeatherRainPredicted/WeatherCheckedAtUtc deliberately NOT written here - WeatherEvaluator owns them via ServerConfigWeatherStateSetAsync, so a form post can't clobber a fresher reading.
             row.WeatherLocationLat = config.WeatherLocationLat;
             row.WeatherLocationLon = config.WeatherLocationLon;
             row.WeatherPollIntervalMinutes = config.WeatherPollIntervalMinutes;
             row.WeatherRainSkipThreshold = config.WeatherRainSkipThreshold;
-            // FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc deliberately NOT written here - FrostAlertEvaluator owns them via ServerConfigFrostStateSetAsync, same reasoning as WeatherRainPredicted/WeatherCheckedAtUtc above.
             row.FrostLookaheadHours = config.FrostLookaheadHours;
             row.FrostTempThresholdC = config.FrostTempThresholdC;
             row.FrostCloudinessMaxPercent = config.FrostCloudinessMaxPercent;
             row.FrostWindMaxMetersPerSecond = config.FrostWindMaxMetersPerSecond;
             row.ODataEnabled = config.ODataEnabled;
             row.ArkodGeoPackageSyncEnabled = config.ArkodGeoPackageSyncEnabled;
-            // ArkodGeoPackageSyncedAtUtc deliberately NOT written here - ArkodGeoPackageSyncService owns it, same reasoning as WeatherCheckedAtUtc/FirmwareLastRefreshedAtUtc.
+            // ArkodGeoPackageSyncedAtUtc deliberately NOT written here - ArkodGeoPackageSyncService owns it, same reasoning as FirmwareLastRefreshedAtUtc.
             row.GatewayEnabled = config.GatewayEnabled;
             row.GatewayMode = (int)config.GatewayMode;
             row.GatewayWaitWindowSeconds = config.GatewayWaitWindowSeconds;
@@ -219,34 +217,7 @@ namespace Agrumy.Api.Dal
             await ApplyRetentionPolicyAsync(settings.SensorDataRetentionDays);
         }
 
-        /// The only writer of WeatherRainPredicted/WeatherCheckedAtUtc, called exclusively by WeatherEvaluator - narrower than ServerConfigUpdateAsync so the admin form can't race a fresher reading back to stale.
-        public async Task ServerConfigWeatherStateSetAsync(bool rainPredicted, DateTimeOffset checkedAtUtc, int idServerConfig = 1)
-        {
-            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
-            if (row == null)
-            {
-                return; // no row yet - nothing meaningful to attach this to, next GetAsync seeds one
-            }
-            row.WeatherRainPredicted = rainPredicted;
-            row.WeatherCheckedAtUtc = checkedAtUtc;
-            await db.SaveChangesAsync();
-        }
-
-        /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
-        public async Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig = 1)
-        {
-            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
-            if (row == null)
-            {
-                return;
-            }
-            row.FrostPredicted = frostPredicted;
-            row.FrostPredictedHoursAhead = hoursAhead;
-            row.FrostCheckedAtUtc = checkedAtUtc;
-            await db.SaveChangesAsync();
-        }
-
-        /// The only writer of FirmwareLastRefreshedAtUtc, called exclusively by FirmwareCatalogRefreshEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// The only writer of FirmwareLastRefreshedAtUtc, called exclusively by FirmwareCatalogRefreshEvaluator - narrower than ServerConfigUpdateAsync so the admin form can't race a fresher reading back to stale.
         public async Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig = 1)
         {
             var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
@@ -258,7 +229,7 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// The only writer of ArchiveLastRunAtUtc, called exclusively by SensorDataArchiveEvaluator - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// The only writer of ArchiveLastRunAtUtc, called exclusively by SensorDataArchiveEvaluator - same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
         public async Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig = 1)
         {
             var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
@@ -270,7 +241,7 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// The only writer of ArkodGeoPackageSyncedAtUtc, called exclusively by ArkodGeoPackageSyncService - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        /// The only writer of ArkodGeoPackageSyncedAtUtc, called exclusively by ArkodGeoPackageSyncService - same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
         public async Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig = 1)
         {
             var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
@@ -345,16 +316,11 @@ namespace Agrumy.Api.Dal
             // An older row has NULL here - same appsettings-seed fallback as FirmwareGitHubRepository, rather than surfacing an empty interval/threshold.
             WeatherPollIntervalMinutes = r.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes,
             WeatherRainSkipThreshold = r.WeatherRainSkipThreshold ?? settings.WeatherRainSkipThreshold,
-            WeatherRainPredicted = r.WeatherRainPredicted,
-            WeatherCheckedAtUtc = r.WeatherCheckedAtUtc,
             // Same appsettings-seed fallback as the WeatherPollIntervalMinutes/WeatherRainSkipThreshold pair above.
             FrostLookaheadHours = r.FrostLookaheadHours ?? settings.FrostLookaheadHours,
             FrostTempThresholdC = r.FrostTempThresholdC ?? settings.FrostTempThresholdC,
             FrostCloudinessMaxPercent = r.FrostCloudinessMaxPercent ?? settings.FrostCloudinessMaxPercent,
             FrostWindMaxMetersPerSecond = r.FrostWindMaxMetersPerSecond ?? settings.FrostWindMaxMetersPerSecond,
-            FrostPredicted = r.FrostPredicted,
-            FrostPredictedHoursAhead = r.FrostPredictedHoursAhead,
-            FrostCheckedAtUtc = r.FrostCheckedAtUtc,
             ODataEnabled = r.ODataEnabled,
             ArkodGeoPackageSyncEnabled = r.ArkodGeoPackageSyncEnabled,
             ArkodGeoPackageSyncedAtUtc = r.ArkodGeoPackageSyncedAtUtc,

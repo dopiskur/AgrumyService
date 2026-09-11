@@ -6,9 +6,9 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Computes the install-wide ServerConfig.WeatherRainPredicted flag; BuildDeviceConfigAsync combines it with each zone's own opt-in into the per-device veto.
+    /// Computes each tenant's own TenantWeatherState.WeatherRainPredicted flag; DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto. Runs once per tenant - a tenant can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
     public sealed class WeatherEvaluator(
-        IServerConfigRepository serverConfigRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions,
+        IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions,
         ILogger<WeatherEvaluator> logger)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
@@ -21,19 +21,33 @@ namespace Agrumy.Api.BackgroundWorkers
             }
 
             ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
-            if (config.WeatherLocationLat is not double lat || config.WeatherLocationLon is not double lon)
+            IList<Tenant> tenants = await tenantRepo.TenantsGetAllAsync();
+            foreach (Tenant tenant in tenants)
             {
-                return; // null = admin hasn't set a location yet
+                ct.ThrowIfCancellationRequested();
+                await RunForTenantAsync(tenant, config, ct);
+            }
+        }
+
+        private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, CancellationToken ct)
+        {
+            int tenantId = tenant.IDTenant!.Value;
+            double? lat = tenant.Latitude ?? config.WeatherLocationLat;
+            double? lon = tenant.Longitude ?? config.WeatherLocationLon;
+            if (lat is not double latitude || lon is not double longitude)
+            {
+                return; // null = neither this tenant nor the server-wide default has a location set yet
             }
 
+            TenantWeatherState state = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
             // WeatherBackgroundService ticks on a fixed 1-minute cadence and re-reads the current value here every tick, so an admin's edit takes effect without a restart.
             int pollMinutes = Math.Max(1, config.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes);
-            if (config.WeatherCheckedAtUtc is DateTimeOffset lastChecked && DateTimeOffset.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
+            if (state.WeatherCheckedAtUtc is DateTimeOffset lastChecked && DateTimeOffset.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
             {
                 return; // not due yet
             }
 
-            double? maxRainPercent = await weatherClient.GetMaxRainProbabilityPercentAsync(lat, lon, settings.WeatherApiKey, ct);
+            double? maxRainPercent = await weatherClient.GetMaxRainProbabilityPercentAsync(latitude, longitude, settings.WeatherApiKey!, ct);
             if (maxRainPercent is not double pop)
             {
                 return; // fetch failed (already logged in the client) - leave the last good reading in place
@@ -43,9 +57,9 @@ namespace Agrumy.Api.BackgroundWorkers
             bool rainPredicted = pop >= threshold;
             if (logger.IsEnabled(LogLevel.Information))
             {
-                logger.LogInformation("Weather check: max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", pop, threshold, rainPredicted);
+                logger.LogInformation("Weather check (tenant {TenantId}): max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", tenantId, pop, threshold, rainPredicted);
             }
-            await serverConfigRepo.ServerConfigWeatherStateSetAsync(rainPredicted, DateTimeOffset.UtcNow, 1);
+            await tenantRepo.TenantWeatherStateSetWeatherAsync(tenantId, rainPredicted, DateTimeOffset.UtcNow);
         }
     }
 }
