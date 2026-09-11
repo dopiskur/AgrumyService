@@ -359,8 +359,9 @@ namespace Agrumy.Web.Dal.Interface
 
         // ---- Open-Field: Crop/Parcel --------------------------
 
+        // [Body(BodySerializationMethod.Serialized)], not bare [Body] - a raw string body defaults to StringContent("text/plain"), which the API's [FromBody] JSON formatter rejects with 415; this forces the same application/json encoding every other [Body] parameter here gets for free by virtue of not being a plain string.
         [Post("/api/FarmOpenfield")]
-        Task<DeviceFarm> FarmOpenfieldCreate([Body] string? farmName);
+        Task<DeviceFarm> FarmOpenfieldCreate([Body(BodySerializationMethod.Serialized)] string? farmName);
 
         [Get("/api/FarmOpenfield/All")]
         Task<IList<FarmOpenfield>> FarmOpenfieldsGet();
