@@ -102,8 +102,12 @@ POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/FarmParcel,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/Merge,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Split,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Sowing/Close,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Sowing/Start,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Firmware/Import,Global admin
 POST,api/Firmware/Sync,Global admin

@@ -249,6 +249,30 @@ namespace Agrumy.Shared.Models
         public int IDFarmParcelZone { get; set; }
     }
 
+    /// Body of the FarmParcelZone merge action (D3/D4) - merges every listed zone (must all be free) back into one.
+    public class ParcelMergeRequest
+    {
+        public List<int> FarmParcelZoneIds { get; set; } = [];
+        public string MergedName { get; set; } = "";
+    }
+
+    /// Body of the sjetva wizard's "Finish" step (D3/D9/D11) - occupies every listed (must-be-free) zone and flips the sowing to Active.
+    public class SowingStartRequest
+    {
+        public int IDSowing { get; set; }
+        public List<int> FarmParcelZoneIds { get; set; } = [];
+    }
+
+    /// Body of the "Close sowing" action (D9/D14) - a grouped harvest result plus the closing dnevnik entry.
+    public class SowingCloseRequest
+    {
+        public int IDSowing { get; set; }
+        public double YieldKg { get; set; }
+        public double? MoisturePercent { get; set; }
+        public string? QualityGrade { get; set; }
+        public string? Note { get; set; }
+    }
+
     /// Rehomed onto Sowing by restructure R (Detaljni dizajn R, sesija 2) - same sensor-average/status/trend shape as DeviceFarmUnitDashboard so the Farms page renders both branches with identical styling.
     public class SowingDashboard
     {

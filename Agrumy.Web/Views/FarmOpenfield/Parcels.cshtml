@@ -3,11 +3,17 @@
     ViewData["Title"] = Model.Crop.SowingName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    string statusBadge = Model.Crop.Status switch
+    {
+        GrowingCycleStatus.Planned => "text-bg-secondary",
+        GrowingCycleStatus.Active => "text-bg-success",
+        _ => "text-bg-dark",
+    };
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Open-Field farming</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Crop.SowingName</li>
     </ol>
 </nav>
@@ -23,36 +29,96 @@
 
 <div class="card">
     <div class="card-header d-flex align-items-center flex-wrap gap-2">
-        <h3 class="card-title mb-0">@Model.Crop.SowingName <span class="text-secondary small">(@Model.Farm.DeviceFarmName)</span></h3>
+        <h3 class="card-title mb-0">
+            @Model.Crop.SowingName <span class="text-secondary small">(@Model.Farm.DeviceFarmName)</span>
+            <span class="badge @statusBadge">@Model.Crop.Status</span>
+        </h3>
         @if (canManage)
         {
             <a asp-action="SowingRules" asp-route-idSowing="@Model.Crop.IDSowing" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-diagram-3"></i> Automation rules
             </a>
-            <form asp-action="CropRename" method="post" class="d-flex gap-1">
-                <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
-            </form>
-            <form asp-action="CropDelete" method="post" onsubmit="return confirm('Delete this crop? Its parcels and their devices are affected too.');" class="ms-auto">
-                <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete crop"><i class="bi bi-trash"></i></button>
-            </form>
+            @if (Model.Crop.Status != GrowingCycleStatus.Closed)
+            {
+                <form asp-action="CropRename" method="post" class="d-flex gap-1">
+                    <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                    <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                </form>
+                <form asp-action="CropDelete" method="post" onsubmit="return confirm('Delete this sowing?');" class="ms-auto">
+                    <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete sowing"><i class="bi bi-trash"></i></button>
+                </form>
+            }
         }
     </div>
     <div class="card-body">
-        @if (canManage)
+        @if (Model.Crop.Status == GrowingCycleStatus.Planned)
         {
-            <form asp-action="ParcelAdd" method="post" class="d-flex gap-2 mb-3">
-                <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
-                <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>
-            </form>
+            <h5>Start sowing - pick free zones</h5>
+            @if (Model.AvailableParcels.SelectMany(p => p.Zones).All(z => z.CurrentSowingID != null))
+            {
+                <p class="text-secondary small fst-italic">No free zones on this farm yet - add a parcel or close another sowing first.</p>
+            }
+            else if (canManage)
+            {
+                <form asp-action="SowingStart" method="post" class="mb-3">
+                    <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                    @foreach (var pz in Model.AvailableParcels)
+                    {
+                        <div class="mb-2">
+                            <strong>@pz.Parcel.FarmParcelName</strong>
+                            @foreach (var z in pz.Zones)
+                            {
+                                bool locked = z.CurrentSowingID != null;
+                                <div class="form-check form-check-inline @(locked ? "text-secondary" : "")">
+                                    <input class="form-check-input" type="checkbox" name="farmParcelZoneIds" value="@z.IDFarmParcelZone" id="zone-@z.IDFarmParcelZone" disabled="@locked" />
+                                    <label class="form-check-label" for="zone-@z.IDFarmParcelZone">
+                                        @z.FarmParcelZoneName @(locked ? "(held by another sowing)" : "")
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-play-fill"></i> Start sowing</button>
+                </form>
+            }
+        }
+        else if (Model.Crop.Status == GrowingCycleStatus.Active && canManage)
+        {
+            <details class="mb-3">
+                <summary class="fw-semibold">Close sowing</summary>
+                <form asp-action="SowingClose" method="post" class="row g-2 mt-2" style="max-width:40rem">
+                    <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+                    <div class="col-6">
+                        <label class="form-label small">Yield (kg)</label>
+                        <input type="number" step="0.01" name="yieldKg" class="form-control form-control-sm" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Moisture %</label>
+                        <input type="number" step="0.1" name="moisturePercent" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Quality grade</label>
+                        <input type="text" name="qualityGrade" class="form-control form-control-sm" maxlength="40" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Note</label>
+                        <textarea name="note" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this sowing? Its zones become free again.');">
+                            <i class="bi bi-flag-fill"></i> Close sowing
+                        </button>
+                    </div>
+                </form>
+            </details>
         }
 
+        <h5>Zones</h5>
         @if (Model.Parcels.Count == 0)
         {
-            <p class="text-secondary">No parcels yet.</p>
+            <p class="text-secondary">No zones occupied yet.</p>
         }
         else
         {

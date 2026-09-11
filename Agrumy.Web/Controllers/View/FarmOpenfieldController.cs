@@ -9,20 +9,58 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Crop/Parcel CRUD, device assignment, and safety-limit editing - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new.
+    /// Sowing/FarmParcel/FarmParcelZone CRUD, the sjetva wizard's Start/Close lifecycle, device assignment, and safety-limit editing (D1/D2/D9) - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new.
     [Authorize]
     public class FarmOpenfieldController(IApi api) : Controller
     {
-        // ---- Crop CRUD --------------------------------------------------
+        // ---- Root page (D1) --------------------------------------------
 
-        // Interim, pre-wizard form (restructure R defers the real sjetva wizard to R2) - SowingName is looked up/created as a Crop catalog row server-side, StartDate/ExpectedDurationDays get placeholder defaults the R2 wizard will let the user actually set.
+        /// The dedicated Open-Field root page - every Open-Field farm with its parcels/zones (occupancy shown per zone) and sowings, replacing the old mixed Farms page's crop-cube section.
+        public async Task<ActionResult> Index()
+        {
+            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
+            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
+            IList<Sowing> sowings = await api.CropsGet();
+            var farmModels = new List<FarmOpenfieldFarmViewModel>();
+            foreach (DeviceFarm farm in farms)
+            {
+                FarmOpenfield? openfield = openfields.FirstOrDefault(o => o.FarmID == farm.IDDeviceFarm);
+                var parcelModels = new List<FarmParcelWithZonesViewModel>();
+                if (openfield?.IDFarmOpenfield is int idFarmOpenfield)
+                {
+                    foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
+                    {
+                        parcelModels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
+                    }
+                }
+                farmModels.Add(new FarmOpenfieldFarmViewModel
+                {
+                    Farm = farm,
+                    Openfield = openfield,
+                    Parcels = parcelModels,
+                    Sowings = sowings.Where(s => s.FarmID == farm.IDDeviceFarm).ToList(),
+                });
+            }
+            return View(new FarmOpenfieldIndexViewModel { Farms = farmModels });
+        }
+
+        // ---- Sowing CRUD --------------------------------------------------
+
+        /// Sjetva wizard step 1 (D3/D9): crop (looked up/created in the catalog server-side by name) + variety + start date + expected duration. Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName)
+        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, int expectedDurationDays)
         {
-            await api.CropAdd(new Sowing { FarmID = idFarm, SowingName = farmOpenfieldCropName });
-            return RedirectToAction("Farms", "DeviceFarmUnit");
+            Sowing added = await api.CropAdd(new Sowing
+            {
+                FarmID = idFarm,
+                SowingName = farmOpenfieldCropName,
+                Variety = variety,
+                StartDate = startDate,
+                ExpectedDurationDays = expectedDurationDays,
+            });
+            return RedirectToAction(nameof(Parcels), new { idSowing = added.IDSowing });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -42,10 +80,46 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> CropDelete(int idSowing)
         {
             await api.CropDelete(idSowing);
-            return RedirectToAction("Farms", "DeviceFarmUnit");
+            return RedirectToAction(nameof(Index));
         }
 
-        // ---- Parcel list (crop detail) -----------------------------------
+        /// D9 - Planned -> Active: occupies the picked zones, redirects back to Sowing Details.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SowingStart(int idSowing, List<int> farmParcelZoneIds)
+        {
+            try
+            {
+                await api.SowingStart(new SowingStartRequest { IDSowing = idSowing, FarmParcelZoneIds = farmParcelZoneIds });
+                TempData["Message"] = "Sowing started.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        /// D9/D14 - Active -> Closed: a grouped harvest result (per-zone breakdown is a fast-follow), releases every occupied zone.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SowingClose(int idSowing, double yieldKg, double? moisturePercent, string? qualityGrade, string? note)
+        {
+            try
+            {
+                await api.SowingClose(new SowingCloseRequest { IDSowing = idSowing, YieldKg = yieldKg, MoisturePercent = moisturePercent, QualityGrade = qualityGrade, Note = note });
+                TempData["Message"] = "Sowing closed.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        // ---- Sowing Details (parcel/zone list + lifecycle) -----------------------------------
 
         public async Task<ActionResult> Parcels(int idSowing)
         {
@@ -53,28 +127,73 @@ namespace Agrumy.Web.Controllers.View
             IList<DeviceFarm> farms = await api.DeviceFarmsGet();
             DeviceFarm? farm = farms.FirstOrDefault(f => f.IDDeviceFarm == crop.FarmID);
 
+            var availableParcels = new List<FarmParcelWithZonesViewModel>();
+            if (crop.Status == GrowingCycleStatus.Planned)
+            {
+                IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
+                if (openfields.FirstOrDefault(o => o.FarmID == crop.FarmID)?.IDFarmOpenfield is int idFarmOpenfield)
+                {
+                    foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
+                    {
+                        availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
+                    }
+                }
+            }
+
             return View(new CropParcelsViewModel
             {
                 Crop = crop,
                 Farm = farm ?? new DeviceFarm(),
                 Parcels = await api.ParcelDashboardListGet(idSowing),
+                AvailableParcels = availableParcels,
             });
         }
 
-        // Adding a parcel now creates a FarmParcel directly under the Farm (D2/D3), not under a Sowing - a Sowing's "parcels" are just whichever zones it currently occupies (dynamic, see Parcels() below). Real parcel-creation UI (with the farm picker, geometry, etc.) is a later restructure R session; this keeps the interim page compiling and working via the crop's own farm.
+        // ---- FarmParcel / FarmParcelZone CRUD (D2/D3/D4) -----------------------------------
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelAdd(int idSowing, string farmOpenfieldCropParcelName)
+        public async Task<ActionResult> FarmParcelAdd(int idFarmOpenfield, string farmParcelName)
         {
-            Sowing crop = await api.CropGet(idSowing);
-            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
-            FarmOpenfield? openfield = openfields.FirstOrDefault(o => o.FarmID == crop.FarmID);
-            if (openfield?.IDFarmOpenfield is int idFarmOpenfield)
+            await api.FarmParcelAdd(idFarmOpenfield, farmParcelName);
+            return RedirectToAction(nameof(Index));
+        }
+
+        /// D3/D4 - blocked server-side (409) while the zone has an active sowing; the form only offers this on free zones, so a conflict here means someone else started a sowing on it in the meantime.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelSplit(int idFarmParcelZone, string newZoneNames)
+        {
+            List<string> names = newZoneNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            try
             {
-                await api.FarmParcelAdd(idFarmOpenfield, farmOpenfieldCropParcelName);
+                await api.ParcelSplit(idFarmParcelZone, names);
+                TempData["Message"] = "Zone split.";
             }
-            return RedirectToAction(nameof(Parcels), new { idSowing });
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelMerge(List<int> farmParcelZoneIds, string mergedName)
+        {
+            try
+            {
+                await api.ParcelMerge(new ParcelMergeRequest { FarmParcelZoneIds = farmParcelZoneIds, MergedName = mergedName });
+                TempData["Message"] = "Zones merged.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

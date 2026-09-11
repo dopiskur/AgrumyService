@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new. Interim surface - the real sjetva wizard/Start/Close flow is a later restructure R session; today's Add just creates a Planned sowing with placeholder dates.
+    /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -36,6 +36,31 @@ namespace Agrumy.Api.Controllers.API
         [HttpGet("All")]
         public async Task<ActionResult<IList<FarmOpenfield>>> FarmOpenfieldsGet() =>
             Ok(await farmOpenfieldRepo.FarmOpenfieldsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
+
+        /// Every FarmParcel under a farm's Open-Field extension (D2) - the Open-Field page's own parcel list. Zone details come via FarmParcelZonesGet below, one call per parcel, same N+1-is-fine-for-a-small-admin-managed-set reasoning as BuildParcelOptionsAsync elsewhere.
+        [Authorize]
+        [HttpGet("FarmParcel/All")]
+        public async Task<ActionResult<IList<FarmParcel>>> FarmParcelsGet(int idFarmOpenfield)
+        {
+            var (openfield, farm, error) = await EnsureOwnedOpenfieldByIdAsync(idFarmOpenfield, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await farmParcelRepo.FarmParcelsGetAsync(idFarmOpenfield));
+        }
+
+        [Authorize]
+        [HttpGet("FarmParcel/{idFarmParcel}/Zones")]
+        public async Task<ActionResult<IList<FarmParcelZone>>> FarmParcelZonesGet(int idFarmParcel)
+        {
+            var (parcel, error) = await EnsureOwnedFarmParcelAsync(idFarmParcel, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await farmParcelRepo.FarmParcelZonesGetAsync(idFarmParcel));
+        }
 
         #endregion
 
@@ -110,6 +135,87 @@ namespace Agrumy.Api.Controllers.API
             }
             await sowingRepo.SowingDeleteAsync(crop!.IDSowing!.Value);
             await WriteAuditAsync("Sowing.Deleted", crop.TenantID, "Sowing", idSowing.ToString()!, crop.SowingName);
+            return true;
+        }
+
+        /// D9 - Planned -> Active: occupies every listed (must-be-free) zone, writes the sjetva wizard's closing "Finish" step's dnevnik Sowing entry (D6).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Sowing/Start")]
+        public async Task<ActionResult<bool>> SowingStart([FromBody] SowingStartRequest request)
+        {
+            var (sowing, error) = await EnsureOwnedCropAsync(request.IDSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (request.FarmParcelZoneIds is null or { Count: 0 })
+            {
+                return BadRequest("At least one zone is required to start a sowing.");
+            }
+            foreach (int idZone in request.FarmParcelZoneIds)
+            {
+                var (zone, zoneError) = await EnsureOwnedParcelAsync(idZone, forWrite: true);
+                if (zoneError != null)
+                {
+                    return zoneError;
+                }
+                if (zone!.CurrentSowingID != null)
+                {
+                    return Conflict($"Zone {idZone} already has an active sowing.");
+                }
+            }
+            try
+            {
+                await sowingRepo.SowingStartAsync(request.IDSowing, request.FarmParcelZoneIds);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ex.Message);
+            }
+            await fieldLogRepo.FieldLogEntryAddAsync(new FieldLogEntry
+            {
+                TenantID = sowing!.TenantID,
+                SowingID = request.IDSowing,
+                EntryType = EntryType.Sowing,
+                DateUtc = DateTimeOffset.UtcNow,
+                
+                Note = $"Started on {request.FarmParcelZoneIds.Count} zone(s).",
+            });
+            await WriteAuditAsync("Sowing.Started", sowing.TenantID, "Sowing", request.IDSowing.ToString(), string.Join(", ", request.FarmParcelZoneIds));
+            return true;
+        }
+
+        /// D9 - Active -> Closed: releases every occupied zone, writes the closing Harvest dnevnik entry (IsClosingEntry) plus a harvestResult row (D14 - grouped by default).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Sowing/Close")]
+        public async Task<ActionResult<bool>> SowingClose([FromBody] SowingCloseRequest request)
+        {
+            var (sowing, error) = await EnsureOwnedCropAsync(request.IDSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await sowingRepo.SowingCloseAsync(request.IDSowing, null);
+            await fieldLogRepo.HarvestResultAddAsync(new HarvestResult
+            {
+                SowingID = request.IDSowing,
+                DateUtc = DateTimeOffset.UtcNow,
+                YieldKg = request.YieldKg,
+                MoisturePercent = request.MoisturePercent,
+                QualityGrade = request.QualityGrade,
+                Note = request.Note,
+            });
+            await fieldLogRepo.FieldLogEntryAddAsync(new FieldLogEntry
+            {
+                TenantID = sowing!.TenantID,
+                SowingID = request.IDSowing,
+                EntryType = EntryType.Harvest,
+                DateUtc = DateTimeOffset.UtcNow,
+                
+                Note = request.Note,
+                IsClosingEntry = true,
+            });
+            await WriteAuditAsync("Sowing.Closed", sowing.TenantID, "Sowing", request.IDSowing.ToString(), $"{request.YieldKg} kg");
             return true;
         }
 
@@ -234,6 +340,58 @@ namespace Agrumy.Api.Controllers.API
             await farmParcelRepo.FarmParcelZoneDeleteAsync(parcel!.IDFarmParcelZone!.Value);
             await WriteAuditAsync("FarmParcelZone.Deleted", parcel.TenantID, "FarmParcelZone", idFarmParcelZone.ToString()!, parcel.FarmParcelZoneName);
             return true;
+        }
+
+        /// D3/D4 - replaces one zone with N named zones; blocked (409, names the sowing) while the source zone has an active sowing.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Parcel/{idFarmParcelZone}/Split")]
+        public async Task<ActionResult<IList<FarmParcelZone>>> ParcelSplit(int idFarmParcelZone, [FromBody] List<string> newZoneNames)
+        {
+            var (zone, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (newZoneNames is null or { Count: < 2 })
+            {
+                return BadRequest("Split needs at least two new zone names.");
+            }
+            if (zone!.CurrentSowingID is int idSowing)
+            {
+                Sowing? holder = await sowingRepo.SowingGetByIdAsync(idSowing);
+                return Conflict($"Zone is held by an active sowing ({holder?.SowingName ?? $"#{idSowing}"}) - close it before splitting.");
+            }
+            IList<FarmParcelZone> created = await farmParcelRepo.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames);
+            await WriteAuditAsync("FarmParcelZone.Split", zone.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), string.Join(", ", newZoneNames));
+            return Ok(created);
+        }
+
+        /// D3/D4 - merges N zones of the same parcel back into one; blocked while any source zone has an active sowing.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Parcel/Merge")]
+        public async Task<ActionResult<FarmParcelZone>> ParcelMerge([FromBody] ParcelMergeRequest request)
+        {
+            if (request.FarmParcelZoneIds is null or { Count: < 2 })
+            {
+                return BadRequest("Merge needs at least two zones.");
+            }
+            int? tenantId = null;
+            foreach (int id in request.FarmParcelZoneIds)
+            {
+                var (zone, zoneError) = await EnsureOwnedParcelAsync(id, forWrite: true);
+                if (zoneError != null)
+                {
+                    return zoneError;
+                }
+                if (zone!.CurrentSowingID != null)
+                {
+                    return Conflict($"Zone {id} is held by an active sowing - close it before merging.");
+                }
+                tenantId ??= zone.TenantID;
+            }
+            FarmParcelZone merged = await farmParcelRepo.FarmParcelZoneMergeAsync(request.FarmParcelZoneIds, request.MergedName);
+            await WriteAuditAsync("FarmParcelZone.Merged", tenantId, "FarmParcelZone", merged.IDFarmParcelZone.ToString()!, string.Join(", ", request.FarmParcelZoneIds));
+            return Ok(merged);
         }
 
         #endregion
@@ -419,6 +577,9 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<OwnedResult<FarmParcelZone>> EnsureOwnedParcelAsync(int? idFarmParcelZone, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelZoneGetByIdAsync(idFarmParcelZone ?? 0), p => p.TenantID, "Parcel", forWrite);
+
+        private Task<OwnedResult<FarmParcel>> EnsureOwnedFarmParcelAsync(int idFarmParcel, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelGetByIdAsync(idFarmParcel), p => p.TenantID, "FarmParcel", forWrite);
 
         private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);

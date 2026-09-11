@@ -160,10 +160,17 @@
             <div class="sidebar-wrapper">
                 <nav class="mt-2" aria-label="Main navigation">
                     <ul class="nav sidebar-menu flex-column" id="navigation">
+                        @* D1 (Detaljni dizajn R) - two separate root items instead of one mixed Farms page; Greenhouse keeps its own page, Open-Field farming gets its own. *@
                         <li class="nav-item">
                             <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                                 <i class="nav-icon bi bi-house-door"></i>
-                                <p>@Localizer[farmCount > 1 ? "Farms" : "Farm"]</p>
+                                <p>@Localizer["Greenhouse"]</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="Index" class="nav-link @navActive("FarmOpenfield")">
+                                <i class="nav-icon bi bi-flower1"></i>
+                                <p>@Localizer["Open-Field farming"]</p>
                             </a>
                         </li>
                         <li class="nav-item">

@@ -162,7 +162,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> FarmOpenfieldAdd(string deviceFarmName)
         {
             await api.FarmOpenfieldCreate(deviceFarmName);
-            return RedirectToAction(nameof(Farms));
+            return RedirectToAction("Index", "FarmOpenfield");
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

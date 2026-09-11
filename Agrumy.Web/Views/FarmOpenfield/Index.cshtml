@@ -1,0 +1,138 @@
+@model FarmOpenfieldIndexViewModel
+@{
+    ViewData["Title"] = "Open-Field farming";
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+}
+
+<h1 class="h3 mb-3">Open-Field farming</h1>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+@if (canManage)
+{
+    <form asp-controller="DeviceFarmUnit" asp-action="FarmOpenfieldAdd" method="post" class="d-flex gap-2 mb-3">
+        <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New Open-Field farm name" required maxlength="100" style="max-width:18rem" />
+        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm</button>
+    </form>
+}
+
+@if (Model.Farms.Count == 0)
+{
+    <p class="text-secondary">No Open-Field farms yet.</p>
+}
+
+@foreach (var f in Model.Farms)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title mb-0">@f.Farm.DeviceFarmName</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5>Parcels</h5>
+                    @if (canManage && f.Openfield?.IDFarmOpenfield is int idFarmOpenfield)
+                    {
+                        <form asp-action="FarmParcelAdd" method="post" class="d-flex gap-2 mb-3">
+                            <input type="hidden" name="idFarmOpenfield" value="@idFarmOpenfield" />
+                            <input type="text" name="farmParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>
+                        </form>
+                    }
+                    @if (f.Parcels.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic">No parcels yet.</p>
+                    }
+                    else
+                    {
+                        @foreach (var p in f.Parcels)
+                        {
+                            <div class="border rounded p-2 mb-2">
+                                <strong>@p.Parcel.FarmParcelName</strong>
+                                <ul class="list-unstyled mb-2 ms-2">
+                                    @foreach (var z in p.Zones)
+                                    {
+                                        <li>
+                                            @z.FarmParcelZoneName
+                                            @if (z.CurrentSowingID is int)
+                                            {
+                                                <span class="badge text-bg-success">occupied</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge text-bg-secondary">free</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                                @if (canManage && p.Zones.Count == 1 && p.Zones[0].CurrentSowingID == null)
+                                {
+                                    <form asp-action="ParcelSplit" method="post" class="d-flex gap-2">
+                                        <input type="hidden" name="idFarmParcelZone" value="@p.Zones[0].IDFarmParcelZone" />
+                                        <input type="text" name="newZoneNames" class="form-control form-control-sm" placeholder="Zone A, Zone B" required style="max-width:14rem" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">Split</button>
+                                    </form>
+                                }
+                                @if (canManage && p.Zones.Count > 1 && p.Zones.All(z => z.CurrentSowingID == null))
+                                {
+                                    <form asp-action="ParcelMerge" method="post" class="d-flex gap-2 mt-1">
+                                        @foreach (var z in p.Zones)
+                                        {
+                                            <input type="hidden" name="farmParcelZoneIds" value="@z.IDFarmParcelZone" />
+                                        }
+                                        <input type="text" name="mergedName" class="form-control form-control-sm" placeholder="Merged zone name" required style="max-width:14rem" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">Merge all</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="col-lg-6">
+                    <h5>Sowings</h5>
+                    @if (canManage && f.Farm.IDDeviceFarm is int fid)
+                    {
+                        <form asp-action="CropAdd" method="post" class="row g-2 mb-3" style="max-width:26rem">
+                            <input type="hidden" name="idFarm" value="@fid" />
+                            <div class="col-6"><input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" placeholder="Crop name" required maxlength="100" /></div>
+                            <div class="col-6"><input type="text" name="variety" class="form-control form-control-sm" placeholder="Variety (optional)" /></div>
+                            <div class="col-6"><input type="date" name="startDate" class="form-control form-control-sm" required /></div>
+                            <div class="col-6"><input type="number" name="expectedDurationDays" class="form-control form-control-sm" placeholder="Days to harvest" min="1" required /></div>
+                            <div class="col-12"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> New sowing</button></div>
+                        </form>
+                    }
+                    @if (f.Sowings.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic">No sowings yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var s in f.Sowings.OrderByDescending(s => s.StartDate))
+                            {
+                                string badge = s.Status switch
+                                {
+                                    GrowingCycleStatus.Planned => "text-bg-secondary",
+                                    GrowingCycleStatus.Active => "text-bg-success",
+                                    _ => "text-bg-dark",
+                                };
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <a asp-action="Parcels" asp-route-idSowing="@s.IDSowing">@s.SowingName</a>
+                                    <span class="badge @badge">@s.Status</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

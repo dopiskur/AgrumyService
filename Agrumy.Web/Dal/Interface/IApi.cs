@@ -364,6 +364,12 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/All")]
         Task<IList<FarmOpenfield>> FarmOpenfieldsGet();
 
+        [Get("/api/FarmOpenfield/FarmParcel/All")]
+        Task<IList<FarmParcel>> FarmParcelsGet(int idFarmOpenfield);
+
+        [Get("/api/FarmOpenfield/FarmParcel/{idFarmParcel}/Zones")]
+        Task<IList<FarmParcelZone>> FarmParcelZonesGet(int idFarmParcel);
+
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();
 
@@ -381,6 +387,12 @@ namespace Agrumy.Web.Dal.Interface
 
         [Delete("/api/FarmOpenfield/Crop")]
         Task CropDelete(int? idSowing);
+
+        [Post("/api/FarmOpenfield/Sowing/Start")]
+        Task SowingStart([Body] SowingStartRequest request);
+
+        [Post("/api/FarmOpenfield/Sowing/Close")]
+        Task SowingClose([Body] SowingCloseRequest request);
 
         [Get("/api/FarmOpenfield/Parcel")]
         Task<IList<FarmParcelZone>> ParcelsGet(int? idSowing);
@@ -400,6 +412,12 @@ namespace Agrumy.Web.Dal.Interface
 
         [Delete("/api/FarmOpenfield/Parcel")]
         Task ParcelDelete(int? idFarmParcelZone);
+
+        [Post("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Split")]
+        Task<IList<FarmParcelZone>> ParcelSplit(int idFarmParcelZone, [Body] List<string> newZoneNames);
+
+        [Post("/api/FarmOpenfield/Parcel/Merge")]
+        Task<FarmParcelZone> ParcelMerge([Body] ParcelMergeRequest request);
 
         // Saves independently of ParcelUpdate above, same reasoning as DeviceFarmUnitZoneWidgetsSet.
         [Put("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets")]
