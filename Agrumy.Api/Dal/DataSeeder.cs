@@ -148,13 +148,17 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// Mirrors DeviceEventType exactly (reflection, not a hand-copied list) so the catalog can never drift from the enum it backs.
+        /// Mirrors DeviceEventType exactly (reflection, not a hand-copied list) - diffs against existing rows (not just AnyAsync) so a value added to the enum after the table's first seed still gets backfilled on an existing install, not only a brand-new one.
         private static async Task SeedEventTypeLookupAsync(AgrumyDbContext db)
         {
-            if (!await db.EventTypes.AnyAsync())
+            var existingIds = await db.EventTypes.Select(e => e.IDEventType).ToListAsync();
+            var missing = Enum.GetValues<DeviceEventType>()
+                .Where(t => !existingIds.Contains((int)t))
+                .Select(t => new EventTypeRow { IDEventType = (int)t, EventTypeName = t.ToString() })
+                .ToList();
+            if (missing.Count > 0)
             {
-                db.EventTypes.AddRange(Enum.GetValues<DeviceEventType>()
-                    .Select(t => new EventTypeRow { IDEventType = (int)t, EventTypeName = t.ToString() }));
+                db.EventTypes.AddRange(missing);
                 await db.SaveChangesAsync();
             }
         }
