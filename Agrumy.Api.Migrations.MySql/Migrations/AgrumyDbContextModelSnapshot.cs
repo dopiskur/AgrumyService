@@ -185,6 +185,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int>("Slot")
                         .HasColumnType("int");
 
+                    b.Property<int?>("DeadTimeSeconds")
+                        .HasColumnType("int");
+
                     b.Property<int?>("LatchingPulseMs")
                         .HasColumnType("int");
 

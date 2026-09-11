@@ -630,6 +630,7 @@
         "outputKind",
         "pairSlot",
         "travelSeconds",
+        "deadTimeSeconds",
         "pwmFrequencyHz",
         "servoMinPulseUs",
         "servoMaxPulseUs",
@@ -656,6 +657,9 @@
           "type": ["integer", "null"]
         },
         "travelSeconds": {
+          "type": ["integer", "null"]
+        },
+        "deadTimeSeconds": {
           "type": ["integer", "null"]
         },
         "pwmFrequencyHz": {

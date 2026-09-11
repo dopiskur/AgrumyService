@@ -626,6 +626,8 @@ namespace Agrumy.Shared.Models
         public int? PairSlot { get; set; }
         /// RelayPair only - full 0-100% traversal time in seconds.
         public int? TravelSeconds { get; set; }
+        /// RelayPair only - mandatory pause between a direction reversal (open-&gt;close or close-&gt;open) instead of flipping the motor straight through. Null/0 disables it.
+        public int? DeadTimeSeconds { get; set; }
         /// Pwm only - LEDC frequency in Hz (e.g. 25000 for a quiet fan, 1000 for an LED strip).
         public int? PwmFrequencyHz { get; set; }
         public int? ServoMinPulseUs { get; set; }

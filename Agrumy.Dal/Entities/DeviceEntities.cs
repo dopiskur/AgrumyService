@@ -198,6 +198,7 @@ namespace Agrumy.Dal.Entities
         public int OutputKind { get; set; } = 1; // Agrumy.Shared.Models.OutputKind.Relay - migration default, every existing row behaves exactly as it always did
         public int? PairSlot { get; set; }
         public int? TravelSeconds { get; set; }
+        public int? DeadTimeSeconds { get; set; }
         public int? PwmFrequencyHz { get; set; }
         public int? ServoMinPulseUs { get; set; }
         public int? ServoMaxPulseUs { get; set; }

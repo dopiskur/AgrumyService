@@ -88,6 +88,11 @@
                                     <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
                                            name="@ControllerField($"Relays[{i}].TravelSeconds")" value="@existing?.TravelSeconds" />
                                 </div>
+                                <div class="col-auto output-kind-field" data-kinds="2">
+                                    <label class="form-label small mb-0">Dead time seconds <span class="text-secondary">(RelayPair, pause on direction reversal)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].DeadTimeSeconds")" value="@existing?.DeadTimeSeconds" />
+                                </div>
                                 <div class="col-auto output-kind-field" data-kinds="3">
                                     <label class="form-label small mb-0">PWM frequency (Hz) <span class="text-secondary">(Pwm)</span></label>
                                     <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
