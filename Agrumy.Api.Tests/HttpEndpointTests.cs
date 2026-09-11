@@ -1,17 +1,34 @@
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Agrumy.Api.Security;
+using Agrumy.Dal;
 using Agrumy.Shared.Security;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Agrumy.Api.Tests;
+
+/// Fails a connection attempt before any real socket touches the network, so a simulated DB-unreachable response is instant and machine-load-independent instead of riding real TCP-refused timing.
+file sealed class ImmediateConnectionFailureInterceptor : DbConnectionInterceptor
+{
+    public override InterceptionResult ConnectionOpening(DbConnection connection, ConnectionEventData eventData, InterceptionResult result) =>
+        throw new TimeoutException("Simulated DB-unreachable failure for HTTP endpoint tests.");
+
+    public override ValueTask<InterceptionResult> ConnectionOpeningAsync(DbConnection connection, ConnectionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default) =>
+        throw new TimeoutException("Simulated DB-unreachable failure for HTTP endpoint tests.");
+}
 
 /// Drives the real HTTP middleware pipeline (auth, rate limiting, exception handling) end-to-end instead of unit-testing the pieces in isolation - see roadmap #315.
 public sealed class ApiWebApplicationFactory : WebApplicationFactory<Agrumy.Api.ApiHostMarker>
@@ -37,6 +54,23 @@ public sealed class ApiWebApplicationFactory : WebApplicationFactory<Agrumy.Api.
 
     public string TokenFor(params string[] roles) =>
         JwtTokenProvider.CreateToken(SigningKey, expiration: 5, subject: "http-tests@example.com", roles, tenantID: "0", Issuer, Audience);
+
+    // Program.cs's own AgrumyDbContext registration points at a real (closed) socket, whose failure latency isn't bounded under machine load - swap in one that fails at the ADO.NET layer instead.
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<AgrumyDbContext>();
+            services.AddScoped(_ =>
+            {
+                var options = new DbContextOptionsBuilder<AgrumyDbContext>()
+                    .UseMySql("server=127.0.0.1;port=1;database=agrumy_http_tests;user id=test;password=test;", new MariaDbServerVersion(new Version(11, 4, 0)))
+                    .AddInterceptors(new ImmediateConnectionFailureInterceptor())
+                    .Options;
+                return new AgrumyDbContext(options);
+            });
+        });
+    }
 }
 
 public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
