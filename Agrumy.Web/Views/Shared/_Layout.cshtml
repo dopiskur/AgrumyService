@@ -56,11 +56,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <title>@ViewData["Title"] - Agrumy</title>
 
-    <!-- Same base URL server-side Refit calls already use (WebView:ApiService) - the tile proxy and any other client-side fetch straight to Agrumy.Api (not through a Web controller) needs it too, since Web/Api can be split across hostnames. -->
-    <script nonce="@Context.CspNonce()">
-        window.agrumyApiBase = '@(Configuration["WebView:ApiService"]?.TrimEnd('/'))';
-    </script>
-
     <!-- Applies the visitor's saved light/dark preference before first paint, avoiding a flash of the wrong theme. -->
     <script nonce="@Context.CspNonce()">
         (() => {

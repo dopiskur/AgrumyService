@@ -658,6 +658,10 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/Discovery/Register")]
         Task<DiscoveryRegisterResult> DiscoveryRegister([Body] DiscoveryRegisterRequest request);
 
+        /// OSM basemap tile, streamed through so the browser's own Leaflet &lt;img&gt; requests reach Agrumy.Api's [Authorize]'d TileProxy via this server's JWT instead of needing one themselves.
+        [Get("/api/Map/Tile/{z}/{x}/{y}.png")]
+        Task<HttpResponseMessage> MapTile(int z, int x, int y);
+
         // ---- Firmware catalog + per-device update ----
 
         [Get("/api/Firmware")]

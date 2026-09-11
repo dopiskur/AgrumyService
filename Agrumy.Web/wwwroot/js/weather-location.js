@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const hadStartingValue = latInput.value !== '' && lonInput.value !== '';
 
     const map = L.map(mapEl).setView([startLat, startLon], hadStartingValue ? 11 : 5);
-    // Server-side cache+proxy (Agrumy.Api/Map/TileProxy.cs), not a direct OSM hotlink - OSMF's Tile Usage Policy blocklisted the install once every browser hotlinking the same URL pushed it over the ~2 req/s-per-source cap.
-    L.tileLayer(`${window.agrumyApiBase}/api/Map/Tile/{z}/{x}/{y}.png`, {
+    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
+    L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
