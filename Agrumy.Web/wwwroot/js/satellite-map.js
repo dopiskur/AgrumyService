@@ -107,10 +107,12 @@ function initSatelliteMap(mapId) {
                 bounds.extend(zoneBounds);
             } catch (e) { return; }
 
-            const showRaster = z.hasData && z.pngUrl && (!onlyReliable || z.reliable);
+            const showRaster = z.hasData && z.sceneId && (!onlyReliable || z.reliable);
             if (showRaster && zoneBounds) {
                 const opacity = z.reliable ? 1 : 0.5; // unreliable (below MinValidPixelPercent) still shown, faded rather than hidden - D4's "never disappears"
-                L.imageOverlay(z.pngUrl, zoneBounds, { opacity }).addTo(overlayLayer);
+                // Same-origin passthrough (FarmOpenfieldController.SatelliteImage), not a direct Agrumy.Api link - a plain <img> can't carry the JWT Agrumy.Api requires.
+                const url = `/FarmOpenfield/SatelliteImage?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
+                L.imageOverlay(url, zoneBounds, { opacity }).addTo(overlayLayer);
             }
         });
 

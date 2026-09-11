@@ -989,7 +989,7 @@ namespace Agrumy.Api.Controllers.API
                     HasData = indexRow != null,
                     SceneDateUtc = scene.SceneDateUtc,
                     Reliable = scene.Reliable,
-                    PngUrl = indexRow == null ? null : Url.Action(nameof(SatelliteIndexPngGet), new { idFarmParcelZone = idZone, idScene = scene.IDFarmParcelZoneSatelliteScene, index }),
+                    SceneId = indexRow == null ? null : scene.IDFarmParcelZoneSatelliteScene,
                     StatsJson = indexRow?.StatsJson,
                 });
             }

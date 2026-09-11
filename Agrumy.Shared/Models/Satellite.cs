@@ -136,7 +136,8 @@ namespace Agrumy.Shared.Models
         public bool HasData { get; set; }
         public DateOnly? SceneDateUtc { get; set; }
         public bool Reliable { get; set; }
-        public string? PngUrl { get; set; }
+        /// Non-null only once a rendered index exists - the browser builds the raster URL itself (Agrumy.Web's own /FarmOpenfield/SatelliteImage passthrough), since a URL built here would point at Agrumy.Api's own address, unreachable directly from the browser (different auth: Bearer vs. the web app's cookie).
+        public int? SceneId { get; set; }
         public string? StatsJson { get; set; }
     }
 
