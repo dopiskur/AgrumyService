@@ -648,6 +648,33 @@ namespace Agrumy.Shared.Models
         public const int MaxSlots = 8;
     }
 
+    /// A RelayFunction's control mode - Threshold (default) evaluates the assigned zone's Rules and MAX-folds them as always; Pid bypasses the rule fold and computes targetPercent from PidSetpoint/reading via AgrumyFirmware's RelayLogic::pidCompute. Mirrors AgrumyFirmware's ControlModeType exactly.
+    public enum ControlMode
+    {
+        Threshold = 0,
+        Pid = 1,
+    }
+
+    /// One per RelayFunctionType - AgrumyFirmware's FunctionControlConfig is the device-side mirror of this exact shape (see ConfigParser.cpp's functionControl array parse). PidSetpointMetric/PidSetpoint/PidKp/PidKi/PidKd/PidSampleIntervalSeconds are only meaningful while ControlMode is Pid.
+    public class DeviceFunctionControl
+    {
+        public RelayFunction RelayFunction { get; set; }
+        public ControlMode ControlMode { get; set; } = ControlMode.Threshold;
+        /// Pid only - restricted to Temperature/Humidity/Moisture, the same subset AgrumyFirmware's readingForTargetMetric supports.
+        public SensorMetric? PidSetpointMetric { get; set; }
+        public double? PidSetpoint { get; set; }
+        public double? PidKp { get; set; }
+        public double? PidKi { get; set; }
+        public double? PidKd { get; set; }
+        public double? PidSampleIntervalSeconds { get; set; }
+    }
+
+    /// Restricts DeviceFunctionControl.PidSetpointMetric to what AgrumyFirmware's readingForTargetMetric actually reads from SensorData - same subset ManualOverrideTargetMetric already allows for Target mode.
+    public static class PidSetpointMetricLimits
+    {
+        public static readonly SensorMetric[] Allowed = [SensorMetric.Temperature, SensorMetric.Humidity, SensorMetric.Moisture];
+    }
+
     /// Roadmap #219.
     public enum ManualOverrideMode
     {
@@ -720,6 +747,8 @@ namespace Agrumy.Shared.Models
         public bool? RelayEnabled { get; set; }
         // One entry per assigned slot only - an unlisted slot is unassigned/disabled.
         public IList<DeviceRelaySlot> Relays { get; set; } = [];
+        // One entry per RelayFunctionType with a non-default control mode - a function with no entry here behaves as Threshold. Singular name (not FunctionControls) matches AgrumyFirmware ConfigParser.cpp's "functionControl" wire key exactly.
+        public IList<DeviceFunctionControl> FunctionControl { get; set; } = [];
     }
 
 

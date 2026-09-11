@@ -43,6 +43,7 @@ namespace Agrumy.Dal
         public DbSet<DeviceConfigSensorRow> DeviceConfigSensors => Set<DeviceConfigSensorRow>();
         public DbSet<DeviceConfigControllerRow> DeviceConfigControllers => Set<DeviceConfigControllerRow>();
         public DbSet<DeviceConfigControllerRelayRow> DeviceConfigControllerRelays => Set<DeviceConfigControllerRelayRow>();
+        public DbSet<DeviceConfigControllerFunctionControlRow> DeviceConfigControllerFunctionControls => Set<DeviceConfigControllerFunctionControlRow>();
         public DbSet<DeviceFirmwareRow> DeviceFirmwares => Set<DeviceFirmwareRow>();
         public DbSet<DeviceDiagnosticRow> DeviceDiagnostics => Set<DeviceDiagnosticRow>();
         public DbSet<DeviceSimulationRow> DeviceSimulations => Set<DeviceSimulationRow>();
@@ -386,6 +387,14 @@ namespace Agrumy.Dal
                 // Replaces the old Relay1-8 columns/FKs (legacy fk_deviceConfigController_relayN) with one row per assigned slot, no fixed ceiling baked into the schema.
                 e.ToTable("deviceConfigControllerRelay");
                 e.HasKey(x => new { x.IDDeviceConfigController, x.Slot });
+                e.HasOne<DeviceConfigControllerRow>().WithMany().HasForeignKey(x => x.IDDeviceConfigController).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<DeviceTypeRelayRow>().WithMany().HasForeignKey(x => x.RelayFunction).OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<DeviceConfigControllerFunctionControlRow>(e =>
+            {
+                e.ToTable("deviceConfigControllerFunctionControl");
+                e.HasKey(x => new { x.IDDeviceConfigController, x.RelayFunction });
                 e.HasOne<DeviceConfigControllerRow>().WithMany().HasForeignKey(x => x.IDDeviceConfigController).OnDelete(DeleteBehavior.Cascade);
                 e.HasOne<DeviceTypeRelayRow>().WithMany().HasForeignKey(x => x.RelayFunction).OnDelete(DeleteBehavior.NoAction);
             });

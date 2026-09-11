@@ -570,7 +570,21 @@ namespace Agrumy.Api.Dal
                     TimeProportioningPeriodSeconds = r.TimeProportioningPeriodSeconds,
                 })
                 .ToListAsync();
-            return ToDto(row, relays);
+            IList<DeviceFunctionControl> functionControls = await db.DeviceConfigControllerFunctionControls.AsNoTracking()
+                .Where(f => f.IDDeviceConfigController == deviceConfigControllerID)
+                .Select(f => new DeviceFunctionControl
+                {
+                    RelayFunction = (RelayFunction)f.RelayFunction,
+                    ControlMode = (ControlMode)f.ControlMode,
+                    PidSetpointMetric = f.PidSetpointMetric == null ? null : (SensorMetric)f.PidSetpointMetric,
+                    PidSetpoint = f.PidSetpoint,
+                    PidKp = f.PidKp,
+                    PidKi = f.PidKi,
+                    PidKd = f.PidKd,
+                    PidSampleIntervalSeconds = f.PidSampleIntervalSeconds,
+                })
+                .ToListAsync();
+            return ToDto(row, relays, functionControls);
         }
 
         public async Task<Device?> DeviceGetByDeviceConfigSensorIdAsync(int? deviceConfigSensorID)
@@ -613,6 +627,23 @@ namespace Agrumy.Api.Dal
                 }
             }
 
+            var pidFunctions = cfg.FunctionControl.Where(f => f.ControlMode == ControlMode.Pid).ToList();
+            if (cfg.FunctionControl.Select(f => f.RelayFunction).Distinct().Count() != cfg.FunctionControl.Count)
+            {
+                return "Duplicate relay function in functionControls request.";
+            }
+            foreach (DeviceFunctionControl fc in pidFunctions)
+            {
+                if (fc.PidSetpointMetric is not SensorMetric metric || !PidSetpointMetricLimits.Allowed.Contains(metric))
+                {
+                    return $"{fc.RelayFunction}: Pid mode requires pidSetpointMetric to be one of {string.Join(", ", PidSetpointMetricLimits.Allowed)}.";
+                }
+                if (fc.PidSampleIntervalSeconds is not double interval || interval <= 0)
+                {
+                    return $"{fc.RelayFunction}: Pid mode requires a positive pidSampleIntervalSeconds.";
+                }
+            }
+
             // Resolve from idDevice's OWN DeviceConfigControllerID, not cfg.IDDeviceConfigController - a client-supplied id could otherwise overwrite another device's controller config.
             int? ownConfigControllerId = await db.Devices.AsNoTracking()
                 .Where(d => d.IDDevice == idDevice)
@@ -652,6 +683,26 @@ namespace Agrumy.Api.Dal
                         MinOnSeconds = slot.MinOnSeconds,
                         MinOffSeconds = slot.MinOffSeconds,
                         TimeProportioningPeriodSeconds = slot.TimeProportioningPeriodSeconds,
+                    });
+                }
+
+                // Same wholesale-replace pattern as Relays above - only non-Threshold (Pid) functions are stored, a function absent from the posted set reverts to Threshold.
+                await db.DeviceConfigControllerFunctionControls
+                    .Where(f => f.IDDeviceConfigController == ownConfigControllerId)
+                    .ExecuteDeleteAsync();
+                foreach (DeviceFunctionControl fc in pidFunctions)
+                {
+                    db.DeviceConfigControllerFunctionControls.Add(new DeviceConfigControllerFunctionControlRow
+                    {
+                        IDDeviceConfigController = ownConfigControllerId!.Value,
+                        RelayFunction = (int)fc.RelayFunction,
+                        ControlMode = (int)fc.ControlMode,
+                        PidSetpointMetric = (int?)fc.PidSetpointMetric,
+                        PidSetpoint = fc.PidSetpoint,
+                        PidKp = fc.PidKp,
+                        PidKi = fc.PidKi,
+                        PidKd = fc.PidKd,
+                        PidSampleIntervalSeconds = fc.PidSampleIntervalSeconds,
                     });
                 }
             }
@@ -753,11 +804,12 @@ namespace Agrumy.Api.Dal
         };
 
         // Relay-pin mapping only - Rules/WaterPumpMaxRunSeconds/WaterPumpCooldownSeconds on the DTO come from the assigned zone via DeviceApiController.BuildDeviceConfigAsync, not this row.
-        private static DeviceConfigController ToDto(DeviceConfigControllerRow c, IList<DeviceRelaySlot> relays) => new()
+        private static DeviceConfigController ToDto(DeviceConfigControllerRow c, IList<DeviceRelaySlot> relays, IList<DeviceFunctionControl> functionControls) => new()
         {
             IDDeviceConfigController = c.IDDeviceConfigController,
             RelayEnabled = c.RelayEnabled,
             Relays = relays,
+            FunctionControl = functionControls,
         };
 
         // ---- Legacy board-less OTA lookup (board-keyed catalog is IFirmwareRepository) --

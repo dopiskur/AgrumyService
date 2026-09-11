@@ -15,6 +15,13 @@
         var assigned = cfg.Relays.FirstOrDefault(r => r.Slot == slotNumber);
         relaySlots[i] = (slotNumber, assigned?.RelayFunction ?? 0, assigned);
     }
+
+    // One row per RelayFunctionType - control mode is per-function, not per physical slot, so this is a separate fixed-6 list from relaySlots above.
+    var functionRows = Enum.GetValues<RelayFunction>()
+        .Select(f => (Function: f, Existing: cfg.FunctionControl.FirstOrDefault(fc => fc.RelayFunction == f)))
+        .ToArray();
+    string RelayFunctionLabel(RelayFunction f) => Model.DeviceTypeRelay?.FirstOrDefault(r => r.IDDeviceTypeRelay == (int)f)?.RelayName ?? f.ToString();
+    var pidMetricItems = new SelectList(PidSetpointMetricLimits.Allowed.Select(m => new { Value = (int)m, Text = m.ToString() }), "Value", "Text");
 }
 
 <div class="card">
@@ -37,89 +44,157 @@
             {
                 var slot = relaySlots[i];
                 var existing = slot.Existing;
-                <div class="border rounded p-2 mb-2">
+                bool assigned = slot.Selected != 0;
+                <div class="border rounded p-2 mb-2 relay-slot-row" data-assigned="@assigned.ToString().ToLowerInvariant()">
                     @Html.Hidden(ControllerField($"Relays[{i}].Slot"), slot.Slot)
-                    <div class="row g-2 align-items-end">
-                        <div class="col-auto" style="min-width:12rem">
-                            @{
-                                var selectModel = new SelectFieldViewModel
-                                {
-                                    Name = ControllerField($"Relays[{i}].RelayFunction"),
-                                    Label = "Relay" + slot.Slot,
-                                    Items = new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected),
-                                };
-                            }
-                            <partial name="_SelectField" model="selectModel" />
+                    <button type="button" class="btn btn-outline-primary btn-sm add-function-btn" hidden="@assigned">+ Add function to slot @slot.Slot</button>
+                    <div class="slot-body" hidden="@(!assigned)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-auto" style="min-width:12rem">
+                                @{
+                                    var selectModel = new SelectFieldViewModel
+                                    {
+                                        Name = ControllerField($"Relays[{i}].RelayFunction"),
+                                        Label = "Step 1: Function (slot " + slot.Slot + ")",
+                                        Items = new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected),
+                                    };
+                                }
+                                <partial name="_SelectField" model="selectModel" />
+                            </div>
+                            <div class="col-auto" style="min-width:12rem">
+                                @{
+                                    var outputKindItems = new SelectList(Enum.GetValues<Agrumy.Shared.Models.OutputKind>()
+                                        .Select(k => new { Value = (int)k, Text = k.ToString() }), "Value", "Text", (int)(existing?.OutputKind ?? Agrumy.Shared.Models.OutputKind.Relay));
+                                }
+                                <label class="form-label small mb-0">Step 2: Output type</label>
+                                <select class="form-select output-kind-select" name="@ControllerField($"Relays[{i}].OutputKind")">
+                                    @foreach (SelectListItem item in outputKindItems)
+                                    {
+                                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                    }
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-auto" style="min-width:12rem">
-                            @{
-                                var outputKindItems = new SelectList(Enum.GetValues<Agrumy.Shared.Models.OutputKind>()
-                                    .Select(k => new { Value = (int)k, Text = k.ToString() }), "Value", "Text", (int)(existing?.OutputKind ?? Agrumy.Shared.Models.OutputKind.Relay));
-                            }
-                            <label class="form-label small mb-0">Output type</label>
-                            @Html.DropDownList(ControllerField($"Relays[{i}].OutputKind"), outputKindItems, new { @class = "form-select" })
+                        <div class="mt-2">
+                            <div class="text-secondary small">Step 3: output settings (only the fields this output type actually uses)</div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-auto output-kind-field" data-kinds="2,6">
+                                    <label class="form-label small mb-0">Pair slot <span class="text-secondary">(RelayPair/LatchingPulse)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="@RelaySlotLimits.MaxSlots"
+                                           name="@ControllerField($"Relays[{i}].PairSlot")" value="@existing?.PairSlot" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="2">
+                                    <label class="form-label small mb-0">Travel seconds <span class="text-secondary">(RelayPair)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].TravelSeconds")" value="@existing?.TravelSeconds" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="3">
+                                    <label class="form-label small mb-0">PWM frequency (Hz) <span class="text-secondary">(Pwm)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].PwmFrequencyHz")" value="@existing?.PwmFrequencyHz" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="5">
+                                    <label class="form-label small mb-0">Servo min pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
+                                           name="@ControllerField($"Relays[{i}].ServoMinPulseUs")" value="@existing?.ServoMinPulseUs" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="5">
+                                    <label class="form-label small mb-0">Servo max pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
+                                           name="@ControllerField($"Relays[{i}].ServoMaxPulseUs")" value="@existing?.ServoMaxPulseUs" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="5">
+                                    <label class="form-label small mb-0">Servo safe position % <span class="text-secondary">(Servo, on E-Stop)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="0" max="100"
+                                           name="@ControllerField($"Relays[{i}].ServoSafePositionPercent")" value="@existing?.ServoSafePositionPercent" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="6">
+                                    <label class="form-label small mb-0">Latch pulse (ms) <span class="text-secondary">(LatchingPulse)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].LatchingPulseMs")" value="@existing?.LatchingPulseMs" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="3,4,5">
+                                    <label class="form-label small mb-0">Rate limit %/s <span class="text-secondary">(Pwm/Analog/Servo)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="100"
+                                           name="@ControllerField($"Relays[{i}].RateLimitPercentPerSecond")" value="@existing?.RateLimitPercentPerSecond" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="1,2">
+                                    <label class="form-label small mb-0">Min on seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].MinOnSeconds")" value="@existing?.MinOnSeconds" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="1,2">
+                                    <label class="form-label small mb-0">Min off seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].MinOffSeconds")" value="@existing?.MinOffSeconds" />
+                                </div>
+                                <div class="col-auto output-kind-field" data-kinds="1">
+                                    <label class="form-label small mb-0">Time-proportioning period (s) <span class="text-secondary">(Relay)</span></label>
+                                    <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
+                                           name="@ControllerField($"Relays[{i}].TimeProportioningPeriodSeconds")" value="@existing?.TimeProportioningPeriodSeconds" />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <details class="mt-2">
-                        <summary class="text-secondary small" style="cursor:pointer;">Advanced output settings (only used by some output types)</summary>
-                        <div class="row g-2 mt-1">
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Pair slot <span class="text-secondary">(RelayPair/LatchingPulse)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="@RelaySlotLimits.MaxSlots"
-                                       name="@ControllerField($"Relays[{i}].PairSlot")" value="@existing?.PairSlot" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Travel seconds <span class="text-secondary">(RelayPair)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].TravelSeconds")" value="@existing?.TravelSeconds" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">PWM frequency (Hz) <span class="text-secondary">(Pwm)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].PwmFrequencyHz")" value="@existing?.PwmFrequencyHz" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Servo min pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
-                                       name="@ControllerField($"Relays[{i}].ServoMinPulseUs")" value="@existing?.ServoMinPulseUs" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Servo max pulse (&micro;s) <span class="text-secondary">(Servo)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="500" max="2500"
-                                       name="@ControllerField($"Relays[{i}].ServoMaxPulseUs")" value="@existing?.ServoMaxPulseUs" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Servo safe position % <span class="text-secondary">(Servo, on E-Stop)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="0" max="100"
-                                       name="@ControllerField($"Relays[{i}].ServoSafePositionPercent")" value="@existing?.ServoSafePositionPercent" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Latch pulse (ms) <span class="text-secondary">(LatchingPulse)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].LatchingPulseMs")" value="@existing?.LatchingPulseMs" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Rate limit %/s <span class="text-secondary">(Pwm/Analog/Servo)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1" max="100"
-                                       name="@ControllerField($"Relays[{i}].RateLimitPercentPerSecond")" value="@existing?.RateLimitPercentPerSecond" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Min on seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].MinOnSeconds")" value="@existing?.MinOnSeconds" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Min off seconds <span class="text-secondary">(Relay/RelayPair)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].MinOffSeconds")" value="@existing?.MinOffSeconds" />
-                            </div>
-                            <div class="col-auto">
-                                <label class="form-label small mb-0">Time-proportioning period (s) <span class="text-secondary">(Relay)</span></label>
-                                <input type="number" class="form-control form-control-sm" style="width:6rem" min="1"
-                                       name="@ControllerField($"Relays[{i}].TimeProportioningPeriodSeconds")" value="@existing?.TimeProportioningPeriodSeconds" />
-                            </div>
+                </div>
+            }
+
+            <h5 class="mt-4">Control mode</h5>
+            <p class="text-secondary small">
+                Threshold (default) evaluates this function's zone Rules as normal. Pid instead drives the function's target percent
+                straight from a setpoint/reading via a PID loop, bypassing Rules entirely for that function - see AgrumyFirmware's
+                RelayLogic::pidCompute.
+            </p>
+            @for (int i = 0; i < functionRows.Length; i++)
+            {
+                var (function, existing) = functionRows[i];
+                bool isPid = existing?.ControlMode == ControlMode.Pid;
+                <div class="border rounded p-2 mb-2 function-control-row">
+                    @Html.Hidden(ControllerField($"FunctionControl[{i}].RelayFunction"), (int)function)
+                    <div class="row g-2 align-items-end">
+                        <div class="col-auto" style="min-width:8rem">
+                            <label class="form-label small mb-0 fw-bold">@RelayFunctionLabel(function)</label>
                         </div>
-                    </details>
+                        <div class="col-auto" style="min-width:10rem">
+                            <label class="form-label small mb-0">Control mode</label>
+                            <select class="form-select form-select-sm control-mode-select"
+                                    name="@ControllerField($"FunctionControl[{i}].ControlMode")">
+                                <option value="@((int)ControlMode.Threshold)" selected="@(!isPid)">Threshold</option>
+                                <option value="@((int)ControlMode.Pid)" selected="@isPid">Pid</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1 pid-fields" hidden="@(!isPid)">
+                        <div class="col-auto" style="min-width:10rem">
+                            <label class="form-label small mb-0">Setpoint metric</label>
+                            @Html.DropDownList(ControllerField($"FunctionControl[{i}].PidSetpointMetric"), pidMetricItems, "", new { @class = "form-select form-select-sm" })
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Setpoint</label>
+                            <input type="number" step="any" class="form-control form-control-sm" style="width:7rem"
+                                   name="@ControllerField($"FunctionControl[{i}].PidSetpoint")" value="@existing?.PidSetpoint" />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Kp</label>
+                            <input type="number" step="any" class="form-control form-control-sm" style="width:6rem"
+                                   name="@ControllerField($"FunctionControl[{i}].PidKp")" value="@existing?.PidKp" />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Ki</label>
+                            <input type="number" step="any" class="form-control form-control-sm" style="width:6rem"
+                                   name="@ControllerField($"FunctionControl[{i}].PidKi")" value="@existing?.PidKi" />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Kd</label>
+                            <input type="number" step="any" class="form-control form-control-sm" style="width:6rem"
+                                   name="@ControllerField($"FunctionControl[{i}].PidKd")" value="@existing?.PidKd" />
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Sample interval (s)</label>
+                            <input type="number" step="any" min="1" class="form-control form-control-sm" style="width:7rem"
+                                   name="@ControllerField($"FunctionControl[{i}].PidSampleIntervalSeconds")" value="@existing?.PidSampleIntervalSeconds" />
+                        </div>
+                    </div>
                 </div>
             }
 
@@ -130,3 +205,36 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Add Function wizard - an unassigned slot starts collapsed behind a button; clicking it
+        // reveals Step 1 (function)/Step 2 (output type)/Step 3 (output-kind-specific fields), Step 4 being the
+        // page's own shared Save button.
+        document.querySelectorAll('.add-function-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const row = btn.closest('.relay-slot-row');
+                btn.hidden = true;
+                row.querySelector('.slot-body').hidden = false;
+            });
+        });
+
+        // Step 3's fields are filtered to only the ones the currently-selected output type actually uses.
+        function applyOutputKindFilter(select) {
+            const kind = select.value;
+            select.closest('.slot-body').querySelectorAll('.output-kind-field').forEach(field => {
+                field.hidden = !field.dataset.kinds.split(',').includes(kind);
+            });
+        }
+        document.querySelectorAll('.output-kind-select').forEach(select => {
+            applyOutputKindFilter(select);
+            select.addEventListener('change', () => applyOutputKindFilter(select));
+        });
+
+        // Staged control mode - PID fields only shown once Pid is actually selected for that function.
+        document.querySelectorAll('.control-mode-select').forEach(select => {
+            const pidFields = select.closest('.function-control-row').querySelector('.pid-fields');
+            select.addEventListener('change', () => { pidFields.hidden = select.value !== '@((int)ControlMode.Pid)'; });
+        });
+    </script>
+}

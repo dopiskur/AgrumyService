@@ -141,6 +141,42 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("dataController", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerFunctionControlRow", b =>
+                {
+                    b.Property<int>("IDDeviceConfigController")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RelayFunction")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ControlMode")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("PidKd")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("PidKi")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("PidKp")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("PidSampleIntervalSeconds")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("PidSetpoint")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("PidSetpointMetric")
+                        .HasColumnType("int");
+
+                    b.HasKey("IDDeviceConfigController", "RelayFunction");
+
+                    b.HasIndex("RelayFunction");
+
+                    b.ToTable("deviceConfigControllerFunctionControl", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerRelayRow", b =>
                 {
                     b.Property<int>("IDDeviceConfigController")
@@ -2929,6 +2965,21 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasOne("Agrumy.Dal.Entities.DeviceRow", null)
                         .WithMany()
                         .HasForeignKey("DeviceID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerFunctionControlRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceConfigControllerRow", null)
+                        .WithMany()
+                        .HasForeignKey("IDDeviceConfigController")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.DeviceTypeRelayRow", null)
+                        .WithMany()
+                        .HasForeignKey("RelayFunction")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

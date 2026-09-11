@@ -1092,6 +1092,66 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(1, (await _repo.DeviceConfigSensorGetAsync(d.DeviceConfigSensorID))!.SensorTemp);
     }
 
+    // Pid-mode functions wholesale-replace the same way Relays does; a function with no entry stays Threshold.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceConfigController_FunctionControl_PidMode_Persists_And_WholesaleReplaces(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        string? error = await _repo.DeviceConfigControllerUpdateAsync(d.IDDevice, new DeviceConfigController
+        {
+            IDDeviceConfigController = d.DeviceConfigControllerID,
+            FunctionControl =
+            [
+                new DeviceFunctionControl
+                {
+                    RelayFunction = RelayFunction.Heating, ControlMode = ControlMode.Pid,
+                    PidSetpointMetric = SensorMetric.Temperature, PidSetpoint = 22.5, PidKp = 1.2, PidKi = 0.3, PidKd = 0.1,
+                    PidSampleIntervalSeconds = 60,
+                },
+            ],
+        });
+        Assert.Null(error);
+
+        var ctrl = await _repo.DeviceConfigControllerGetAsync(d.DeviceConfigControllerID);
+        var fc = Assert.Single(ctrl!.FunctionControl);
+        Assert.Equal(RelayFunction.Heating, fc.RelayFunction);
+        Assert.Equal(ControlMode.Pid, fc.ControlMode);
+        Assert.Equal(SensorMetric.Temperature, fc.PidSetpointMetric);
+        Assert.Equal(22.5, fc.PidSetpoint);
+        Assert.Equal(60, fc.PidSampleIntervalSeconds);
+
+        // Posting an empty set reverts every function to Threshold - same wholesale-replace contract as Relays.
+        await _repo.DeviceConfigControllerUpdateAsync(d.IDDevice, new DeviceConfigController { IDDeviceConfigController = d.DeviceConfigControllerID });
+        Assert.Empty((await _repo.DeviceConfigControllerGetAsync(d.DeviceConfigControllerID))!.FunctionControl);
+    }
+
+    // Firmware's readingForTargetMetric only reads Temperature/Humidity/Moisture (AgrumyFirmware ActuatorController.cpp) - a Pid function targeting any other metric would silently read NAN and fail closed on-device, so the server rejects it up front instead.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceConfigController_FunctionControl_PidMode_RejectsUnsupportedSetpointMetric(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var d = await MakeDevice(t, tenantId);
+
+        string? error = await _repo.DeviceConfigControllerUpdateAsync(d.IDDevice, new DeviceConfigController
+        {
+            IDDeviceConfigController = d.DeviceConfigControllerID,
+            FunctionControl =
+            [
+                new DeviceFunctionControl
+                {
+                    RelayFunction = RelayFunction.Heating, ControlMode = ControlMode.Pid,
+                    PidSetpointMetric = SensorMetric.Co2, PidSampleIntervalSeconds = 60,
+                },
+            ],
+        });
+        Assert.NotNull(error);
+        Assert.Empty((await _repo.DeviceConfigControllerGetAsync(d.DeviceConfigControllerID))!.FunctionControl);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFleetGet_ControllerCapable_TrueFromEitherDeviceTypeOrKnownKit(DbProviderKind provider)
     {

@@ -209,6 +209,20 @@ namespace Agrumy.Dal.Entities
         public int? TimeProportioningPeriodSeconds { get; set; }
     }
 
+    /// One per RelayFunctionType with a non-default control mode - only a Pid-mode function gets a row, a function with no row stays Threshold. See Agrumy.Shared.Models.DeviceFunctionControl.
+    public class DeviceConfigControllerFunctionControlRow
+    {
+        public int IDDeviceConfigController { get; set; }
+        public int RelayFunction { get; set; }
+        public int ControlMode { get; set; }
+        public int? PidSetpointMetric { get; set; }
+        public double? PidSetpoint { get; set; }
+        public double? PidKp { get; set; }
+        public double? PidKi { get; set; }
+        public double? PidKd { get; set; }
+        public double? PidSampleIntervalSeconds { get; set; }
+    }
+
 
     public class DeviceConfigSensorRow
     {

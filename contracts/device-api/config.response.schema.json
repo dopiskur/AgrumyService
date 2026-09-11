@@ -293,7 +293,8 @@
         "heatingFailSafePolicy",
         "manualOverrides",
         "relayEnabled",
-        "relays"
+        "relays",
+        "functionControl"
       ],
       "properties": {
         "idDeviceConfigController": {
@@ -350,6 +351,12 @@
             "$ref": "#/definitions/deviceRelaySlot"
           },
           "description": "Roadmap #309. One entry per physically-wired relay slot with a function assigned - a slot with no entry is unassigned/disabled. Replaces the old fixed relay1..relay8 keys, removing the hardcoded 8-slot ceiling from the wire format itself (AgrumyFirmware's own MAX_RELAY_SLOTS still caps how many a given firmware build can hold)."
+        },
+        "functionControl": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/deviceFunctionControl"
+          }
         }
       }
     },
@@ -677,6 +684,46 @@
         },
         "timeProportioningPeriodSeconds": {
           "type": ["integer", "null"]
+        }
+      }
+    },
+    "deviceFunctionControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relayFunction",
+        "controlMode",
+        "pidSetpointMetric",
+        "pidSetpoint",
+        "pidKp",
+        "pidKi",
+        "pidKd",
+        "pidSampleIntervalSeconds"
+      ],
+      "properties": {
+        "relayFunction": {
+          "type": "integer"
+        },
+        "controlMode": {
+          "type": "integer"
+        },
+        "pidSetpointMetric": {
+          "type": ["integer", "null"]
+        },
+        "pidSetpoint": {
+          "type": ["number", "null"]
+        },
+        "pidKp": {
+          "type": ["number", "null"]
+        },
+        "pidKi": {
+          "type": ["number", "null"]
+        },
+        "pidKd": {
+          "type": ["number", "null"]
+        },
+        "pidSampleIntervalSeconds": {
+          "type": ["number", "null"]
         }
       }
     },
