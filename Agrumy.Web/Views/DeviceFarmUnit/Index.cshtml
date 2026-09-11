@@ -1,3 +1,4 @@
+@using Agrumy.Web.Utils
 @model Agrumy.Web.ViewModels.DashboardWizardViewModel
 @{
     ViewData["Title"] = "Build Dashboard";
@@ -64,6 +65,112 @@
 {
     <div class="mt-3">
         <h6 class="fw-semibold mb-2">Widgets on @Model.Selected.Leaf.Name's dashboard page</h6>
+        @if (Model.Selected.CanManage)
+        {
+            <details class="mb-3">
+                <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">Dashboard wizard</summary>
+                <form id="dashWizardForm" asp-action="@(Model.Selected.IsParcelLeaf ? "ParcelWidgetWizardAdd" : "WidgetWizardAdd")" method="post" class="mt-2 p-2 border rounded">
+                    <input type="hidden" name="@(Model.Selected.IsParcelLeaf ? "idFarmParcelZone" : "idDeviceFarmUnitZone")" value="@Model.Selected.Leaf.Id" />
+
+                    <div class="dash-wizard-step" data-step="branch">
+                        <label class="form-label d-block">What do you want to add?</label>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" name="branch" value="statistics" id="branchStats" checked />
+                            <label class="form-check-label" for="branchStats">Statistics - sensor metric tiles/trends across a scope</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input type="radio" class="form-check-input" name="branch" value="alerting" id="branchAlert" />
+                            <label class="form-check-label" for="branchAlert">Alerting - current alert status boxes</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" id="dashWizardBranchNext">Next</button>
+                    </div>
+
+                    <div class="dash-wizard-step" data-step="stat-metrics" hidden>
+                        <label class="form-label d-block">1. Sensor metrics (pick one or more)</label>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
+                            {
+                                <input type="checkbox" class="btn-check" name="metrics" id="wizMetric_@((int)m)" value="@((int)m)" />
+                                <label class="btn btn-outline-primary btn-sm" for="wizMetric_@((int)m)">@SensorMetricAccessor.Label(m)</label>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
+                        <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="stat-metrics" data-scope-mode="stat">Next</button>
+                    </div>
+
+                    <div class="dash-wizard-step" data-step="alert-types" hidden>
+                        <label class="form-label d-block">1. Alert types (pick one or more)</label>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertOffline" value="@((int)NotificationEventType.Offline)" />
+                            <label class="btn btn-outline-primary btn-sm" for="wizAlertOffline">Offline</label>
+                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertLowBattery" value="@((int)NotificationEventType.LowBattery)" />
+                            <label class="btn btn-outline-primary btn-sm" for="wizAlertLowBattery">Low battery</label>
+                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertTankRefill" value="@((int)NotificationEventType.TankRefill)" />
+                            <label class="btn btn-outline-primary btn-sm" for="wizAlertTankRefill">Tank refill</label>
+                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertFrost" value="@((int)NotificationEventType.Frost)" />
+                            <label class="btn btn-outline-primary btn-sm" for="wizAlertFrost">Frost</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
+                        <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="alert-types" data-scope-mode="alert">Next</button>
+                    </div>
+
+                    <div class="dash-wizard-step" data-step="scope" hidden>
+                        <partial name="_DashboardWizardScopePicker" model="Model.Selected" />
+                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" id="dashWizardScopeBack">Back</button>
+                        <button type="button" class="btn btn-sm btn-primary" id="dashWizardScopeNext" data-next="stat-chart">Next</button>
+                        <button type="submit" class="btn btn-sm btn-primary" id="dashWizardScopeSubmit" hidden>Add alert boxes</button>
+                    </div>
+
+                    <div class="dash-wizard-step" data-step="stat-chart" hidden>
+                        <label class="form-label d-block">3. Chart type (applies to every tile generated)</label>
+                        <div class="btn-group mb-2" role="group">
+                            <input type="radio" class="btn-check" name="chartType" id="wizChartValue" value="@((int)DashboardWidgetType.SensorValue)" checked />
+                            <label class="btn btn-outline-secondary btn-sm" for="wizChartValue">Value</label>
+                            <input type="radio" class="btn-check" name="chartType" id="wizChartTrend" value="@((int)DashboardWidgetType.SensorTrend)" />
+                            <label class="btn btn-outline-secondary btn-sm" for="wizChartTrend">Trend (24h)</label>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="scope">Back</button>
+                            <button type="submit" class="btn btn-sm btn-primary">Add tiles</button>
+                        </div>
+                    </div>
+                </form>
+                <script nonce="@Context.CspNonce()">
+                    (function () {
+                        var form = document.getElementById('dashWizardForm');
+                        if (!form) { return; }
+                        var steps = Array.from(form.querySelectorAll('.dash-wizard-step'));
+                        var scopeBackTarget = 'stat-metrics';
+
+                        function showStep(name) {
+                            steps.forEach(function (s) { s.hidden = s.dataset.step !== name; });
+                        }
+
+                        document.getElementById('dashWizardBranchNext').addEventListener('click', function () {
+                            var branch = form.querySelector('input[name="branch"]:checked').value;
+                            showStep(branch === 'alerting' ? 'alert-types' : 'stat-metrics');
+                        });
+
+                        form.querySelectorAll('.dash-wizard-next[data-scope-mode]').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                scopeBackTarget = btn.dataset.scopeBack;
+                                var isAlert = btn.dataset.scopeMode === 'alert';
+                                document.getElementById('dashWizardScopeNext').hidden = isAlert;
+                                document.getElementById('dashWizardScopeSubmit').hidden = !isAlert;
+                                showStep('scope');
+                            });
+                        });
+
+                        document.getElementById('dashWizardScopeBack').addEventListener('click', function () { showStep(scopeBackTarget); });
+                        document.getElementById('dashWizardScopeNext').addEventListener('click', function () { showStep('stat-chart'); });
+
+                        form.querySelectorAll('.dash-wizard-back[data-prev]').forEach(function (btn) {
+                            btn.addEventListener('click', function () { showStep(btn.dataset.prev); });
+                        });
+                    })();
+                </script>
+            </details>
+        }
         <partial name="_DashboardWidgets" model="Model.Selected" />
     </div>
 }

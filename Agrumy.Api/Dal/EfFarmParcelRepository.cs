@@ -160,6 +160,17 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        public async Task FarmParcelZoneGridColumnsSetAsync(int idFarmParcelZone, int columns)
+        {
+            var row = await db.FarmParcelZones.FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
+            if (row == null)
+            {
+                return;
+            }
+            row.DashboardGridColumns = columns;
+            await db.SaveChangesAsync();
+        }
+
         public async Task FarmParcelZoneDeleteAsync(int idFarmParcelZone)
         {
             var deviceIds = await db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID == idFarmParcelZone).Select(d => d.IDDevice).ToListAsync();
@@ -327,6 +338,7 @@ namespace Agrumy.Api.Dal
             VentilationMaxRunSeconds = z.VentilationMaxRunSeconds,
             HeatingFailSafePolicy = (HeatingFailSafePolicyType?)z.HeatingFailSafePolicy,
             DashboardWidgets = string.IsNullOrEmpty(z.DashboardWidgetsJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<DashboardWidget>>(z.DashboardWidgetsJson) ?? [],
+            DashboardGridColumns = z.DashboardGridColumns,
             GeometryGeoJson = z.GeometryGeoJson,
             AreaHectares = z.AreaHectares,
             BboxMinLat = z.BboxMinLat,

@@ -38,6 +38,8 @@ namespace Agrumy.Web.ViewModels
         public IList<ZoneOption> Zones { get; init; } = [];
         public IReadOnlyDictionary<(HierarchyNodeKind Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
             new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
+        public IReadOnlyDictionary<(NotificationEventType EventType, HierarchyNodeKind Level, int LevelId), bool> AlertStatusData { get; init; } =
+            new Dictionary<(NotificationEventType, HierarchyNodeKind, int), bool>();
 
         public ZonePlanting? ActivePlanting { get; init; }
         public IList<ZonePlanting> PlantingHistory { get; init; } = [];

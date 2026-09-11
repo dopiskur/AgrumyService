@@ -19,5 +19,9 @@ namespace Agrumy.Web.ViewModels
         /// One precomputed DashboardAggregate per distinct (level, levelId) target used by this zone's widgets.
         public IReadOnlyDictionary<(HierarchyNodeKind Level, int LevelId), DashboardAggregate> WidgetData { get; init; } =
             new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
+
+        /// One precomputed "currently active" bool per distinct (eventType, level, levelId) target used by this zone's AlertStatus widgets.
+        public IReadOnlyDictionary<(NotificationEventType EventType, HierarchyNodeKind Level, int LevelId), bool> AlertStatusData { get; init; } =
+            new Dictionary<(NotificationEventType, HierarchyNodeKind, int), bool>();
     }
 }

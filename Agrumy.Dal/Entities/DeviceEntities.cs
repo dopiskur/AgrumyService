@@ -63,6 +63,7 @@ namespace Agrumy.Dal.Entities
         // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
+        public int DashboardGridColumns { get; set; } = 4;
 
         // See Agrumy.Shared.Models.DeviceFarmUnitZone.HeatingFailSafePolicy - stored as HeatingFailSafePolicyType's own int value, null means Hold (the device's own default).
         public int? HeatingFailSafePolicy { get; set; }

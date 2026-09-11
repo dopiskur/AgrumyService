@@ -100,6 +100,12 @@ namespace Agrumy.Api.Dal.Interface
         /// Roadmap #238 - replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
         Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets);
 
+        /// Saves independently of DeviceFarmUnitZoneUpdateAsync, same reasoning as DeviceFarmUnitZoneWidgetsSetAsync.
+        Task DeviceFarmUnitZoneGridColumnsSetAsync(int idDeviceFarmUnitZone, int columns);
+
+        /// True if the given alert type currently has an active/un-cleared occurrence somewhere within (level, levelId)'s scope; see EfDeviceFarmUnitRepository for which existing per-type state each case reads.
+        Task<bool> DashboardAlertStatusGetAsync(HierarchyNodeKind level, int levelId, NotificationEventType eventType);
+
         /// Unassigns every device currently in this Zone (via DeviceUnassignFromZoneAsync), then deletes the Zone row - a no-op if the id doesn't exist.
         Task DeviceFarmUnitZoneDeleteAsync(int idDeviceFarmUnitZone);
 

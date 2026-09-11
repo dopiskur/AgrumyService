@@ -296,6 +296,10 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets")]
         Task DeviceFarmUnitZoneWidgetsSet(int idDeviceFarmUnitZone, [Body] List<DashboardWidget> widgets);
 
+        // Saves independently of DeviceFarmUnitZoneUpdate above, same reasoning as DeviceFarmUnitZoneWidgetsSet.
+        [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/GridColumns")]
+        Task DeviceFarmUnitZoneGridColumnsSet(int idDeviceFarmUnitZone, [Body] int columns);
+
         // ---- Rules (Zone/Unit/Global scope, roadmap #212) ------
 
         [Get("/api/DeviceFarmUnit/Zone/Rule")]
@@ -506,6 +510,9 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets")]
         Task ParcelWidgetsSet(int idFarmParcelZone, [Body] List<DashboardWidget> widgets);
 
+        [Put("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/GridColumns")]
+        Task ParcelGridColumnsSet(int idFarmParcelZone, [Body] int columns);
+
         [Post("/api/FarmOpenfield/Assign")]
         Task ParcelDeviceAssign([Body] DeviceParcelAssignment body);
 
@@ -588,6 +595,10 @@ namespace Agrumy.Web.Dal.Interface
 
         [Get("/api/DeviceFarmUnit/Dashboard/Widget")]
         Task<DashboardAggregate> DeviceFarmUnitDashboardWidgetAggregateGet(HierarchyNodeKind level, int levelId);
+
+        // Shared by both the Zone and Parcel dashboard pages, same reasoning as DeviceFarmUnitDashboardWidgetAggregateGet above.
+        [Get("/api/DeviceFarmUnit/Dashboard/AlertStatus")]
+        Task<DashboardAlertStatus> DeviceFarmUnitDashboardAlertStatusGet(NotificationEventType eventType, HierarchyNodeKind level, int levelId);
 
         // ---- Manual actuate (roadmap #219) ---------------------
 

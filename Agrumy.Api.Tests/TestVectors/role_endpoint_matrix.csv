@@ -158,6 +158,7 @@ PUT,api/Device/Simulation/{idDevice},Global admin;Simulation administrator;Tenan
 PUT,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
@@ -165,6 +166,7 @@ PUT,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/FarmParcel/{idFarmParcel}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/HorticultureCatalog,Global admin
 PUT,api/ServerConfig,Global admin

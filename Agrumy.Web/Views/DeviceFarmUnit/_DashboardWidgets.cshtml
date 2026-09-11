@@ -7,6 +7,9 @@
     string widgetAddAction = Model.IsParcelLeaf ? "ParcelWidgetAdd" : "WidgetAdd";
     string widgetRemoveAction = Model.IsParcelLeaf ? "ParcelWidgetRemove" : "WidgetRemove";
     string widgetMoveAction = Model.IsParcelLeaf ? "ParcelWidgetMove" : "WidgetMove";
+    string widgetsReorderAction = Model.IsParcelLeaf ? "ParcelWidgetsReorder" : "WidgetsReorder";
+    string gridColumnsAction = Model.IsParcelLeaf ? "ParcelGridColumnsSet" : "WidgetGridColumnsSet";
+    int gridColumns = Math.Clamp(Model.Leaf.DashboardGridColumns, 1, 6);
 
     // Resolves a widget's own (level, levelId) into a short "Farm/Unit/Zone: name" tag, so a tile's scope is visible even when it differs from the page it's shown on.
     string LevelTag(DashboardWidget w)
@@ -27,10 +30,28 @@
 
     DashboardAggregate? DataFor(DashboardWidget w) =>
         w.AggregationLevel is HierarchyNodeKind level && w.LevelID is int id && Model.WidgetData.TryGetValue((level, id), out var data) ? data : null;
+
+    bool? AlertActiveFor(DashboardWidget w) =>
+        w.AlertEventType is NotificationEventType eventType && w.AggregationLevel is HierarchyNodeKind level && w.LevelID is int id && Model.AlertStatusData.TryGetValue((eventType, level, id), out var active) ? active : null;
 }
 
 <div class="card">
-    <div class="card-header"><h3 class="card-title">Dashboard widgets</h3></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title">Dashboard widgets</h3>
+        @if (Model.CanManage)
+        {
+            <form asp-action="@gridColumnsAction" method="post" class="d-flex align-items-center gap-1">
+                <input type="hidden" name="@leafFieldName" value="@idZone" />
+                <label class="form-label small mb-0" for="gridColumnsSelect">Columns</label>
+                <select id="gridColumnsSelect" name="columns" class="form-select form-select-sm" style="width:5rem" onchange="this.form.requestSubmit()">
+                    @for (int c = 1; c <= 6; c++)
+                    {
+                        <option value="@c" selected="@(c == gridColumns ? "selected" : null)">@c</option>
+                    }
+                </select>
+            </form>
+        }
+    </div>
     <div class="card-body">
         @if (!widgets.Any())
         {
@@ -38,18 +59,23 @@
         }
         else
         {
-            <div class="row g-3 mb-3">
+            <div id="dashboardWidgetsGrid" class="mb-3" style="display:grid;grid-template-columns:repeat(@gridColumns, 1fr);gap:1rem" data-reorder-action="@Url.Action(widgetsReorderAction)" data-leaf-field="@leafFieldName" data-leaf-id="@idZone">
                 @for (int i = 0; i < widgets.Count; i++)
                 {
                     var w = widgets[i];
                     string title = !string.IsNullOrWhiteSpace(w.Label) ? w.Label
                         : w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend ? SensorMetricAccessor.Label(w.Metric ?? default)
                         : w.Type == DashboardWidgetType.RelayStatus ? w.RelayFunction?.ToString() ?? ""
+                        : w.Type == DashboardWidgetType.AlertStatus ? w.AlertEventType?.ToString() ?? ""
                         : "";
                     string levelTag = LevelTag(w);
-                    <div class="col-6 col-md-3">
+                    <div data-index="@i">
                         <div class="card h-100">
                             <div class="card-body text-center">
+                                @if (Model.CanManage)
+                                {
+                                    <div class="widget-drag-handle text-secondary" style="cursor:grab" title="Drag to reorder"><i class="bi bi-grip-horizontal"></i></div>
+                                }
                                 <div class="text-secondary small text-truncate">@title</div>
                                 @if (!string.IsNullOrEmpty(levelTag))
                                 {
@@ -79,6 +105,12 @@
                                         {
                                             bool isOn = Model.Fleet.Any(f => f.DeviceFarmUnitZoneID == w.LevelID && f.RelayStates?.Any(r => r.RelayFunction == w.RelayFunction && r.IsOn) == true);
                                             <span class="badge @(isOn ? "bg-success" : "bg-secondary")">@(isOn ? "ON" : "OFF")</span>
+                                            break;
+                                        }
+                                    case DashboardWidgetType.AlertStatus:
+                                        {
+                                            bool? active = AlertActiveFor(w);
+                                            <span class="badge @(active == true ? "bg-danger" : active == false ? "bg-success" : "bg-secondary")">@(active == true ? "ACTIVE" : active == false ? "clear" : "-")</span>
                                             break;
                                         }
                                     case DashboardWidgetType.Text:
@@ -114,6 +146,11 @@
                     </div>
                 }
             </div>
+            @if (Model.CanManage)
+            {
+                <script src="~/lib/sortablejs/Sortable.min.js"></script>
+                <script src="~/js/dashboard-widgets-reorder.js" nonce="@Context.CspNonce()"></script>
+            }
         }
 
         @if (Model.CanManage)

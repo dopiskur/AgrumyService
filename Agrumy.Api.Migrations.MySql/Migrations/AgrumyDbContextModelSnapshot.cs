@@ -663,6 +663,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnitZone"));
 
+                    b.Property<int>("DashboardGridColumns")
+                        .HasColumnType("int");
+
                     b.Property<string>("DashboardWidgetsJson")
                         .HasColumnType("longtext");
 
@@ -1607,6 +1610,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("double");
 
                     b.Property<int?>("CurrentSowingID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DashboardGridColumns")
                         .HasColumnType("int");
 
                     b.Property<string>("DashboardWidgetsJson")

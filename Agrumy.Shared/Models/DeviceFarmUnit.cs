@@ -73,6 +73,9 @@ namespace Agrumy.Shared.Models
         // Roadmap #238 - admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
 
+        /// How many columns the widget grid wraps at on this leaf's dashboard page; display-only, same "no ConfigVersion bump" reasoning as DashboardWidgets.
+        public int DashboardGridColumns { get; set; } = 4;
+
         int? IFarmLeafLevelNode.Id => IDDeviceFarmUnitZone;
         int IFarmLeafLevelNode.MidLevelID => DeviceFarmUnitID;
         string? IFarmLeafLevelNode.Name => DeviceFarmUnitZoneName;
@@ -84,9 +87,10 @@ namespace Agrumy.Shared.Models
         SensorTrend = 2,
         RelayStatus = 3,
         Text = 4,
+        AlertStatus = 5,
     }
 
-    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific node id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone/parcel id.
+    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific node id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone/parcel id; AlertStatus's LevelID is optional (Frost is tenant-wide, ignores it).
     public class DashboardWidget
     {
         public DashboardWidgetType Type { get; set; }
@@ -95,6 +99,14 @@ namespace Agrumy.Shared.Models
         public HierarchyNodeKind? AggregationLevel { get; set; }
         public int? LevelID { get; set; }
         public string? Label { get; set; }
+        /// AlertStatus only - which of the four alert types with a live "currently active" signal (Offline/LowBattery/TankRefill/Frost) this box tracks. RuleTriggered/Satellite* NotificationEventType values have no continuous state to show and are rejected server-side.
+        public NotificationEventType? AlertEventType { get; set; }
+    }
+
+    /// GET result for one AlertStatus widget - see EfDeviceFarmUnitRepository.DashboardAlertStatusGetAsync for what "active" means per alert type.
+    public class DashboardAlertStatus
+    {
+        public bool IsActive { get; set; }
     }
 
     /// GET target for one widget's live data - Averages+Trend only, not the full DeviceFarmUnitDashboard/DeviceFarmUnitZoneDashboard shape, since a widget tile needs neither device counts nor problem alerts.

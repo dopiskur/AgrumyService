@@ -404,11 +404,67 @@ namespace Agrumy.Api.Controllers.API
                         return BadRequest("A relay status widget needs a zone you have access to.");
                     }
                 }
+                else if (w.Type == DashboardWidgetType.AlertStatus)
+                {
+                    if (w.AlertEventType is not NotificationEventType alertType || !AlertStatusEventTypes.Contains(alertType))
+                    {
+                        return BadRequest("An alert status widget needs an alert type with a live status.");
+                    }
+                    if (w.AggregationLevel is not (HierarchyNodeKind.Farm or HierarchyNodeKind.Unit or HierarchyNodeKind.Zone) || w.LevelID is not int alertLevelId
+                        || await EnsureOwnedAggregationTargetAsync(w.AggregationLevel.Value, alertLevelId, forWrite: false) != null)
+                    {
+                        return BadRequest("An alert status widget needs a Farm/Unit/Zone you have access to.");
+                    }
+                }
             }
 
             await deviceFarmUnitRepo.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
             await WriteAuditAsync("DeviceFarmUnitZone.WidgetsUpdated", existing!.TenantID, "DeviceFarmUnitZone", idDeviceFarmUnitZone.ToString(), $"{widgets.Count} widget(s)");
             return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Zone/{idDeviceFarmUnitZone}/GridColumns")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitZoneGridColumnsSet(int idDeviceFarmUnitZone, [FromBody] int columns)
+        {
+            var (_, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (columns is < 1 or > 6)
+            {
+                return BadRequest("Grid columns must be between 1 and 6.");
+            }
+            await deviceFarmUnitRepo.DeviceFarmUnitZoneGridColumnsSetAsync(idDeviceFarmUnitZone, columns);
+            return true;
+        }
+
+        /// NotificationEventType values with a live, continuously-queryable "currently active" signal - see EfDeviceFarmUnitRepository.DashboardAlertStatusGetAsync. RuleTriggered fires on transition only (no "still true" state) and the three Satellite* types are tenant-quota concerns, not farm/unit/zone-scoped, so none of them belong on this widget.
+        private static readonly NotificationEventType[] AlertStatusEventTypes =
+        [
+            NotificationEventType.Offline, NotificationEventType.LowBattery, NotificationEventType.TankRefill, NotificationEventType.Frost,
+        ];
+
+        /// One widget's own (level, levelId) scope, same ownership reasoning as DashboardWidgetAggregateGet above.
+        [Authorize]
+        [HttpGet("Dashboard/AlertStatus")]
+        public async Task<ActionResult<DashboardAlertStatus>> DashboardAlertStatusGet(NotificationEventType eventType, HierarchyNodeKind level, int levelId)
+        {
+            if (!AlertStatusEventTypes.Contains(eventType))
+            {
+                return BadRequest("This alert type has no live status to show.");
+            }
+            if (level is not (HierarchyNodeKind.Farm or HierarchyNodeKind.Unit or HierarchyNodeKind.Zone))
+            {
+                return BadRequest("Alert status is only scoped to Farm/Unit/Zone.");
+            }
+            ActionResult? error = await EnsureOwnedAggregationTargetAsync(level, levelId, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(new DashboardAlertStatus { IsActive = await deviceFarmUnitRepo.DashboardAlertStatusGetAsync(level, levelId, eventType) });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

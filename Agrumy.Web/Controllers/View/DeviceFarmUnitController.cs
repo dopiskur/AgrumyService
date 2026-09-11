@@ -48,6 +48,7 @@ namespace Agrumy.Web.Controllers.View
                 Units = ctx.Units,
                 Zones = ctx.Zones,
                 WidgetData = ctx.WidgetData,
+                AlertStatusData = ctx.AlertStatusData,
             };
         }
 
@@ -68,11 +69,14 @@ namespace Agrumy.Web.Controllers.View
                 Units = ctx.Units,
                 Zones = ctx.Zones,
                 WidgetData = ctx.WidgetData,
+                AlertStatusData = ctx.AlertStatusData,
             };
         }
 
-        /// Shared by BuildDashboardWidgetsViewModelAsync (Index wizard) and BuildZoneViewAsync (Zone page) - one DashboardAggregate fetch per distinct (level, levelId) a zone's widgets reference, not one per widget, since several widgets commonly share the same target (e.g. two metrics for the same Farm).
-        private async Task<(IList<DeviceFarm> Farms, IList<DeviceFarmUnit> Units, IList<ZoneOption> Zones, IList<DeviceFleetStatus> Fleet, IReadOnlyDictionary<(HierarchyNodeKind, int), DashboardAggregate> WidgetData)>
+        /// Shared by BuildDashboardWidgetsViewModelAsync (Index wizard) and BuildZoneViewAsync (Zone page) - one DashboardAggregate/AlertStatus fetch per distinct target a zone's widgets reference, not one per widget, since several widgets commonly share the same target (e.g. two metrics for the same Farm).
+        private async Task<(IList<DeviceFarm> Farms, IList<DeviceFarmUnit> Units, IList<ZoneOption> Zones, IList<DeviceFleetStatus> Fleet,
+            IReadOnlyDictionary<(HierarchyNodeKind, int), DashboardAggregate> WidgetData,
+            IReadOnlyDictionary<(NotificationEventType, HierarchyNodeKind, int), bool> AlertStatusData)>
             BuildWidgetContextAsync(IList<DashboardWidget> widgets, IList<ZoneOption>? zones = null)
         {
             zones ??= await BuildZoneOptionsAsync();
@@ -81,14 +85,23 @@ namespace Agrumy.Web.Controllers.View
             IList<DeviceFleetStatus> fleet = await api.DeviceFleetGet();
 
             var widgetData = new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
+            var alertStatusData = new Dictionary<(NotificationEventType, HierarchyNodeKind, int), bool>();
             foreach (DashboardWidget w in widgets)
             {
-                if (w.AggregationLevel is HierarchyNodeKind level && w.LevelID is int levelId && !widgetData.ContainsKey((level, levelId)))
+                if (w.AggregationLevel is not HierarchyNodeKind level || w.LevelID is not int levelId)
+                {
+                    continue;
+                }
+                if (w.Type is DashboardWidgetType.SensorValue or DashboardWidgetType.SensorTrend && !widgetData.ContainsKey((level, levelId)))
                 {
                     widgetData[(level, levelId)] = await api.DeviceFarmUnitDashboardWidgetAggregateGet(level, levelId);
                 }
+                else if (w.Type == DashboardWidgetType.AlertStatus && w.AlertEventType is NotificationEventType eventType && !alertStatusData.ContainsKey((eventType, level, levelId)))
+                {
+                    alertStatusData[(eventType, level, levelId)] = (await api.DeviceFarmUnitDashboardAlertStatusGet(eventType, level, levelId)).IsActive;
+                }
             }
-            return (farms, units, zones, fleet, widgetData);
+            return (farms, units, zones, fleet, widgetData, alertStatusData);
         }
 
         private bool hasAnyRole(string csv) => csv.Split(',').Any(User.IsInRole);
@@ -562,6 +575,7 @@ namespace Agrumy.Web.Controllers.View
                 Units = ctx.Units,
                 Zones = ctx.Zones,
                 WidgetData = ctx.WidgetData,
+                AlertStatusData = ctx.AlertStatusData,
                 ActivePlanting = activePlanting,
                 PlantingHistory = await api.ZonePlantingHistoryGet(idDeviceFarmUnitZone),
                 FieldLog = fieldLog,
@@ -929,6 +943,57 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
+        /// Drag-and-drop reorder, same "POST the whole new order" idiom as farms-reorder.js, but the order carries OLD LIST INDICES (widgets have no id of their own) rather than entity ids.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetsReorder(int idDeviceFarmUnitZone, [FromBody] List<int> order)
+        {
+            try
+            {
+                DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+                if (!IsValidReorder(order, zone.DashboardWidgets.Count))
+                {
+                    return BadRequest();
+                }
+                zone.DashboardWidgets = order.Select(i => zone.DashboardWidgets[i]).ToList();
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetGridColumnsSet(int idDeviceFarmUnitZone, int columns)
+        {
+            await api.DeviceFarmUnitZoneGridColumnsSet(idDeviceFarmUnitZone, columns);
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        /// Statistics branch: one tile per (metric x scope) combination. Alerting branch: one status box per (alert type x scope) combination. Same fetch-then-patch pattern as WidgetAdd, just adding several widgets in one round trip instead of one.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetWizardAdd(int idDeviceFarmUnitZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            zone.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
+            try
+            {
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
         // ---- Dashboard widgets, Open-Field's equivalent - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -984,6 +1049,96 @@ namespace Agrumy.Web.Controllers.View
                 await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
             }
             return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetsReorder(int idFarmParcelZone, [FromBody] List<int> order)
+        {
+            try
+            {
+                FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+                if (!IsValidReorder(order, parcel.DashboardWidgets.Count))
+                {
+                    return BadRequest();
+                }
+                parcel.DashboardWidgets = order.Select(i => parcel.DashboardWidgets[i]).ToList();
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGridColumnsSet(int idFarmParcelZone, int columns)
+        {
+            await api.ParcelGridColumnsSet(idFarmParcelZone, columns);
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetWizardAdd(int idFarmParcelZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+            parcel.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
+            try
+            {
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        /// True only for an order that is exactly a permutation of 0..count-1 - anything else (stale client state, tampered payload) is dropped rather than partially applied.
+        private static bool IsValidReorder(List<int>? order, int count) =>
+            order != null && order.Count == count && order.Distinct().Count() == count && order.All(i => i >= 0 && i < count);
+
+        /// Statistics branch: metric x scope cross product - one widget per combination, not one multi-series widget, so this reuses the existing single-metric DashboardWidget model unchanged. Alerting branch: alert type x scope cross product. "scopes" entries are "level:id" pairs from _DashboardWizardScopePicker.
+        private static List<DashboardWidget> BuildWizardWidgets(string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            var parsedScopes = new List<(HierarchyNodeKind Level, int Id)>();
+            foreach (string s in scopes ?? [])
+            {
+                string[] parts = s.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int levelInt) && int.TryParse(parts[1], out int id))
+                {
+                    parsedScopes.Add(((HierarchyNodeKind)levelInt, id));
+                }
+            }
+
+            var widgets = new List<DashboardWidget>();
+            if (string.Equals(branch, "alerting", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (int alertType in alertTypes ?? [])
+                {
+                    foreach (var scope in parsedScopes)
+                    {
+                        widgets.Add(new DashboardWidget { Type = DashboardWidgetType.AlertStatus, AlertEventType = (NotificationEventType)alertType, AggregationLevel = scope.Level, LevelID = scope.Id });
+                    }
+                }
+            }
+            else
+            {
+                foreach (int metric in metrics ?? [])
+                {
+                    foreach (var scope in parsedScopes)
+                    {
+                        widgets.Add(new DashboardWidget { Type = chartType, Metric = (SensorMetric)metric, AggregationLevel = scope.Level, LevelID = scope.Id });
+                    }
+                }
+            }
+            return widgets;
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

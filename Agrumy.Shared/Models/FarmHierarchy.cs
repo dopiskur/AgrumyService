@@ -82,6 +82,7 @@ namespace Agrumy.Shared.Models
         int? VentilationMaxRunSeconds { get; }
         HeatingFailSafePolicyType? HeatingFailSafePolicy { get; }
         List<DashboardWidget> DashboardWidgets { get; }
+        int DashboardGridColumns { get; }
     }
 
     /// The Open-Field type-extension row for a Farm whose FarmType is OpenField - 1:1 with its Farm, same "extension row" pattern the HorticultureCatalog subtypes use. Deleted/DeletedAtUtc cascade from the owning Farm's own Deleted, never set independently (same rule as DeviceFarmUnit's Deleted).
@@ -148,6 +149,7 @@ namespace Agrumy.Shared.Models
         public int? VentilationMaxRunSeconds { get; set; }
         public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
+        public int DashboardGridColumns { get; set; } = 4;
 
         /// Subdivision polygon within the parcel's outer boundary (S-A, D4) - same validation/storage shape as FarmParcel.GeometryGeoJson.
         public string? GeometryGeoJson { get; set; }

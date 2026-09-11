@@ -1481,6 +1481,7 @@ namespace Agrumy.Api.Dal
             DashboardWidgets = string.IsNullOrEmpty(z.DashboardWidgetsJson)
                 ? []
                 : JsonSerializer.Deserialize<List<DashboardWidget>>(z.DashboardWidgetsJson, ConditionConfigJson.Options) ?? [],
+            DashboardGridColumns = z.DashboardGridColumns,
         };
 
         /// Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdateAsync (no ConfigVersion bump - a display-only layout never reaches the device).
@@ -1493,6 +1494,66 @@ namespace Agrumy.Api.Dal
             }
             row.DashboardWidgetsJson = JsonSerializer.Serialize(widgets, ConditionConfigJson.Options);
             await db.SaveChangesAsync();
+        }
+
+        /// Same independent-save reasoning as DeviceFarmUnitZoneWidgetsSetAsync.
+        public async Task DeviceFarmUnitZoneGridColumnsSetAsync(int idDeviceFarmUnitZone, int columns)
+        {
+            var row = await db.DeviceFarmUnitZones.FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
+            if (row == null)
+            {
+                return;
+            }
+            row.DashboardGridColumns = columns;
+            await db.SaveChangesAsync();
+        }
+
+        /// "Currently active" per alert type, reusing each evaluator's own existing dedup state instead of a new persistence layer: Device.OfflineNotifiedAt/LowBatteryNotifiedAt, DeviceFarmUnitZoneRow.TankRefillNotifiedAt, TenantWeatherStateRow.FrostPredicted. RuleTriggered/Satellite* have no such continuous state and are rejected by the caller before this is reached.
+        public async Task<bool> DashboardAlertStatusGetAsync(HierarchyNodeKind level, int levelId, NotificationEventType eventType)
+        {
+            if (eventType == NotificationEventType.Frost)
+            {
+                int? tenantId = level switch
+                {
+                    HierarchyNodeKind.Farm => await db.DeviceFarms.AsNoTracking().Where(f => f.IDDeviceFarm == levelId).Select(f => f.TenantID).FirstOrDefaultAsync(),
+                    HierarchyNodeKind.Unit => await db.DeviceFarmUnits.AsNoTracking().Where(u => u.IDDeviceFarmUnit == levelId).Select(u => u.TenantID).FirstOrDefaultAsync(),
+                    HierarchyNodeKind.Zone => await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.IDDeviceFarmUnitZone == levelId).Select(z => z.TenantID).FirstOrDefaultAsync(),
+                    _ => null,
+                };
+                return tenantId is int tid && await db.TenantWeatherStates.AsNoTracking().Where(t => t.TenantID == tid).Select(t => t.FrostPredicted).FirstOrDefaultAsync();
+            }
+
+            List<int> unitIds = level switch
+            {
+                HierarchyNodeKind.Farm => await db.DeviceFarmUnits.AsNoTracking().Where(u => u.DeviceFarmID == levelId).Select(u => u.IDDeviceFarmUnit).ToListAsync(),
+                HierarchyNodeKind.Unit => [levelId],
+                _ => [],
+            };
+
+            if (eventType == NotificationEventType.TankRefill)
+            {
+                List<int> zoneIds = level switch
+                {
+                    HierarchyNodeKind.Zone => [levelId],
+                    HierarchyNodeKind.Unit or HierarchyNodeKind.Farm => await db.DeviceFarmUnitZones.AsNoTracking().Where(z => unitIds.Contains(z.DeviceFarmUnitID)).Select(z => z.IDDeviceFarmUnitZone).ToListAsync(),
+                    _ => [],
+                };
+                return await db.DeviceFarmUnitZones.AsNoTracking().AnyAsync(z => zoneIds.Contains(z.IDDeviceFarmUnitZone) && z.TankRefillNotifiedAt != null);
+            }
+
+            IQueryable<int> scopedDeviceIds = level switch
+            {
+                HierarchyNodeKind.Zone => db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == levelId).Select(d => d.IDDevice),
+                HierarchyNodeKind.Unit or HierarchyNodeKind.Farm => db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID != null && unitIds.Contains(d.DeviceFarmUnitID.Value)).Select(d => d.IDDevice),
+                _ => Enumerable.Empty<int>().AsQueryable(),
+            };
+            // OfflineNotifiedAt/LowBatteryNotifiedAt live on DeviceDiagnosticRow (1:1 with device via DeviceID), not DeviceRow itself.
+            return eventType switch
+            {
+                NotificationEventType.Offline => await db.DeviceDiagnostics.AsNoTracking().AnyAsync(x => scopedDeviceIds.Contains(x.DeviceID) && x.OfflineNotifiedAt != null),
+                NotificationEventType.LowBattery => await db.DeviceDiagnostics.AsNoTracking().AnyAsync(x => scopedDeviceIds.Contains(x.DeviceID) && x.LowBatteryNotifiedAt != null),
+                _ => false,
+            };
         }
     }
 }

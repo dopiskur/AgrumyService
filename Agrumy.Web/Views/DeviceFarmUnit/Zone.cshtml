@@ -132,7 +132,7 @@
 </div>
 
 @* Widget values are a snapshot as of this page load, not live-polled like #zoneDetails above. Read-only here; built/edited in the Dashboard wizard instead. *@
-<partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Leaf = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.AllFleet, CanManage = false, Farms = Model.Farms, Units = Model.Units, Zones = Model.Zones, WidgetData = Model.WidgetData }" />
+<partial name="_DashboardWidgets" model="new DashboardWidgetsViewModel { Leaf = Model.Zone!, Dashboard = Model.Dashboard, Fleet = Model.AllFleet, CanManage = false, Farms = Model.Farms, Units = Model.Units, Zones = Model.Zones, WidgetData = Model.WidgetData, AlertStatusData = Model.AlertStatusData }" />
 @if (hasAnyRole(RoleNames.DeviceManagers))
 {
     <p class="text-end">

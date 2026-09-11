@@ -785,10 +785,45 @@ namespace Agrumy.Api.Controllers.API
                         return BadRequest("A relay status widget needs a zone you have access to.");
                     }
                 }
+                else if (w.Type == DashboardWidgetType.AlertStatus)
+                {
+                    if (w.AlertEventType is not NotificationEventType alertType || !AlertStatusEventTypes.Contains(alertType))
+                    {
+                        return BadRequest("An alert status widget needs an alert type with a live status.");
+                    }
+                    if (w.AggregationLevel is not (HierarchyNodeKind.Farm or HierarchyNodeKind.Unit or HierarchyNodeKind.Zone) || w.LevelID is not int alertLevelId
+                        || await EnsureOwnedAggregationTargetAsync(w.AggregationLevel.Value, alertLevelId) != null)
+                    {
+                        return BadRequest("An alert status widget needs a Farm/Unit/Zone you have access to.");
+                    }
+                }
             }
 
             await farmParcelRepo.FarmParcelZoneWidgetsSetAsync(idFarmParcelZone, widgets);
             await WriteAuditAsync("FarmParcelZone.WidgetsUpdated", existing!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), $"{widgets.Count} widget(s)");
+            return true;
+        }
+
+        // Same alert types as DeviceFarmUnitApiController.AlertStatusEventTypes (RuleTriggered/Satellite* have no continuous "currently active" state).
+        private static readonly NotificationEventType[] AlertStatusEventTypes =
+        [
+            NotificationEventType.Offline, NotificationEventType.LowBattery, NotificationEventType.TankRefill, NotificationEventType.Frost,
+        ];
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Parcel/{idFarmParcelZone}/GridColumns")]
+        public async Task<ActionResult<bool>> ParcelGridColumnsSet(int idFarmParcelZone, [FromBody] int columns)
+        {
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (columns is < 1 or > 6)
+            {
+                return BadRequest("Grid columns must be between 1 and 6.");
+            }
+            await farmParcelRepo.FarmParcelZoneGridColumnsSetAsync(idFarmParcelZone, columns);
             return true;
         }
 

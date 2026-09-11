@@ -41,6 +41,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task FarmParcelZoneWidgetsSetAsync(int idFarmParcelZone, List<DashboardWidget> widgets);
 
+        /// Parcel's equivalent of EfDeviceFarmUnitRepository.DeviceFarmUnitZoneGridColumnsSetAsync.
+        Task FarmParcelZoneGridColumnsSetAsync(int idFarmParcelZone, int columns);
+
         Task DeviceAssignToFarmParcelZoneAsync(int idDevice, int idFarmParcelZone);
 
         Task DeviceUnassignFromFarmParcelZoneAsync(int idDevice);

@@ -69,6 +69,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task FarmParcelZoneWidgetsSetAsync(int idFarmParcelZone, List<DashboardWidget> widgets) => farmParcelRepository.FarmParcelZoneWidgetsSetAsync(idFarmParcelZone, widgets);
 
+        public Task FarmParcelZoneGridColumnsSetAsync(int idFarmParcelZone, int columns) => farmParcelRepository.FarmParcelZoneGridColumnsSetAsync(idFarmParcelZone, columns);
+
         public Task DeviceAssignToFarmParcelZoneAsync(int idDevice, int idFarmParcelZone) => farmParcelRepository.DeviceAssignToFarmParcelZoneAsync(idDevice, idFarmParcelZone);
 
         public Task DeviceUnassignFromFarmParcelZoneAsync(int idDevice) => farmParcelRepository.DeviceUnassignFromFarmParcelZoneAsync(idDevice);

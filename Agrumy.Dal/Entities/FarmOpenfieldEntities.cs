@@ -60,6 +60,7 @@ namespace Agrumy.Dal.Entities
         public int? VentilationMaxRunSeconds { get; set; }
         public int? HeatingFailSafePolicy { get; set; }
         public string? DashboardWidgetsJson { get; set; }
+        public int DashboardGridColumns { get; set; } = 4;
 
         public string? GeometryGeoJson { get; set; }
         public double? AreaHectares { get; set; }

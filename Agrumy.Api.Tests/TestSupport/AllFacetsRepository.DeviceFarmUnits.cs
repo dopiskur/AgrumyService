@@ -64,6 +64,10 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets) => deviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
 
+        public Task DeviceFarmUnitZoneGridColumnsSetAsync(int idDeviceFarmUnitZone, int columns) => deviceFarmUnitRepository.DeviceFarmUnitZoneGridColumnsSetAsync(idDeviceFarmUnitZone, columns);
+
+        public Task<bool> DashboardAlertStatusGetAsync(HierarchyNodeKind level, int levelId, NotificationEventType eventType) => deviceFarmUnitRepository.DashboardAlertStatusGetAsync(level, levelId, eventType);
+
         public Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneConfigVersionBumpAsync(idDeviceFarmUnitZone);
 
         public Task DeviceFarmUnitZoneDeleteAsync(int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneDeleteAsync(idDeviceFarmUnitZone);
