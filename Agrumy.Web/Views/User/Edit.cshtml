@@ -6,6 +6,7 @@
     string UserField(string name) => $"{nameof(Model.UserUpdate)}.{name}";
 
     var enabledToggle = new EnabledToggleFieldViewModel { Name = UserField(nameof(userUpdate.Enabled)), Label = "Account", Value = userUpdate.Enabled };
+    var phoneEnabledToggle = new EnabledToggleFieldViewModel { Name = UserField(nameof(userUpdate.PhoneEnabled)), Label = "Phone", Value = userUpdate.PhoneEnabled };
     bool viewerIsAdmin = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.TenantAdmin);
     List<string> assignedRoles = userUpdate.RoleNames ?? new();
     bool isReadOnly = ViewBag.IsReadOnly is true;
@@ -18,16 +19,18 @@
     <div class="card-body">
         <form asp-action="Edit">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="mb-3">
-                <label asp-for="UserUpdate.IDUser" class="form-label"></label>
-                <p class="form-control-plaintext">@Html.DisplayFor(m => m.UserUpdate!.IDUser)</p>
-                @Html.HiddenFor(m => m.UserUpdate!.IDUser)
-            </div>
-            @* Unlike Device.TenantID, this one is real and editable - UserApiController.UserUpdate applies it only for Global-admin callers, silently ignored otherwise. *@
-            <div class="mb-3">
-                <label asp-for="UserUpdate.TenantID" class="form-label"></label>
-                <input asp-for="UserUpdate.TenantID" class="form-control" disabled="@isReadOnly" />
-                <span asp-validation-for="UserUpdate.TenantID" class="text-danger"></span>
+            @Html.HiddenFor(m => m.UserUpdate!.IDUser)
+            @Html.HiddenFor(m => m.UserUpdate!.TenantID)
+            @* Unlike Device.TenantID, this one is real and editable - UserApiController.UserUpdate applies the Migrate flow's TenantID only for Global-tier callers (RoleNames.GlobalUserManagers), silently ignored otherwise. *@
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <label class="form-label mb-0">Tenant</label>
+                    <p class="form-control-plaintext mb-0">@(ViewBag.TenantName ?? "Unassigned")</p>
+                </div>
+                @if (ViewBag.CanMigrateTenant is true && !isReadOnly)
+                {
+                    <a asp-action="MigrateTenant" asp-route-idUser="@userUpdate.IDUser" class="btn btn-outline-secondary btn-sm" title="Move this user to a different tenant">Migrate</a>
+                }
             </div>
             <div class="mb-3">
                 <label asp-for="UserUpdate.Email" class="form-label"></label>
@@ -59,6 +62,7 @@
                 <input asp-for="UserUpdate.Phone" class="form-control" disabled="@isReadOnly" />
                 <span asp-validation-for="UserUpdate.Phone" class="text-danger"></span>
             </div>
+            <partial name="_EnabledToggleField" model="phoneEnabledToggle" />
 
             <div class="mb-3">
                 <label class="form-label">Roles</label>

@@ -83,7 +83,8 @@ namespace Agrumy.Dal.Entities
     public class UserRow
     {
         public int IDUser { get; set; }
-        public int TenantID { get; set; }
+        // Nullable so a deleted tenant can leave its surviving users "Unassigned" instead of forcing them onto tenant 0 - only EfTenantRepository.TenantDeleteAsync ever writes null here.
+        public int? TenantID { get; set; }
         public string Email { get; set; } = "";
         public string? Username { get; set; }
         public string? PwdHash { get; set; } // Null only on the bootstrap seed row; AuthenticationProvider.VerifyHash rejects a null hash so it can't authenticate until BootstrapAdminSetPasswordAsync runs.
@@ -95,6 +96,7 @@ namespace Agrumy.Dal.Entities
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Phone { get; set; }
+        public bool? PhoneEnabled { get; set; }
         public bool? Enabled { get; set; }
         public DateTimeOffset? DateCreated { get; set; }
         public DateTimeOffset? DateModified { get; set; }

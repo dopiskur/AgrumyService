@@ -704,8 +704,17 @@ namespace Agrumy.Api.Controllers.API
             if (value.FirstName != null) { user.FirstName = value.FirstName; }
             if (value.LastName != null) { user.LastName = value.LastName; }
             if (value.Phone != null) { user.Phone = value.Phone; }
+            if (value.PhoneEnabled != null) { user.PhoneEnabled = value.PhoneEnabled; }
             if (value.Enabled != null) { user.Enabled = value.Enabled; }
-            if (value.TenantID != null && CallerManagesUsersGlobally) { user.TenantID = value.TenantID; } // cross-tenant reassignment stays a Global-admin-only power
+            if (value.TenantID != null && value.TenantID != user.TenantID && CallerManagesUsersGlobally) // cross-tenant reassignment stays a Global-admin-only power
+            {
+                // A tenant can never be left with zero users via migration - deleting the whole tenant (TenantApiController.TenantDelete) is the only way to empty one out.
+                if (user.TenantID != null && (await userRepository.UsersGetAsync(user.TenantID)).Count <= 1)
+                {
+                    return StatusCode(403, "Cannot migrate the last user of a tenant - delete the tenant instead.");
+                }
+                user.TenantID = value.TenantID;
+            }
 
             await userRepository.UserUpdateAsync(user);
 
@@ -758,6 +767,11 @@ namespace Agrumy.Api.Controllers.API
             if (!CallerOutranksTarget(await userRepository.UserRoleNamesGetAsync(targetUser.IDUser!.Value)))
             {
                 return StatusCode(403, "Not allowed to manage a user with equal or higher privilege.");
+            }
+            // The last user of a tenant can't just be deleted, leaving the tenant a dangling shell - delete the tenant itself instead (optionally cascading, TenantApiController.TenantDelete).
+            if (targetUser.TenantID != null && (await userRepository.UsersGetAsync(targetUser.TenantID)).Count <= 1)
+            {
+                return StatusCode(403, "Cannot delete the last user of a tenant - delete the tenant instead.");
             }
 
             bool deleted = await userRepository.UserDeleteAsync(idUser);

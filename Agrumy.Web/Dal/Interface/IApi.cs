@@ -727,6 +727,9 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/Tenant")]
         Task TenantUpdate([Body] Tenant tenant);
 
+        [Delete("/api/Tenant")]
+        Task TenantDelete(int idTenant, bool deleteUsers = false);
+
         /// Always the caller's own tenant - see TenantApiController.TenantAlertConfigGet.
         [Get("/api/Tenant/AlertConfig")]
         Task<TenantAlertConfig> TenantAlertConfigGet();

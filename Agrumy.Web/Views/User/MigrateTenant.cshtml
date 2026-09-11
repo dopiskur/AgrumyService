@@ -1,0 +1,30 @@
+@model Agrumy.Web.ViewModels.UserMigrateTenantViewModel
+
+@{
+    ViewData["Title"] = "Migrate Tenant";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Migrate User to a Different Tenant</h3>
+    </div>
+    <div class="card-body">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <p>Move <strong>@Model.Email</strong> from <strong>@(Model.CurrentTenantName ?? "Unassigned")</strong> to a different tenant.</p>
+
+        <form asp-action="MigrateTenant">
+            <input type="hidden" asp-for="IDUser" />
+            <div class="mb-3">
+                <label asp-for="NewTenantID" class="form-label">New tenant</label>
+                <select asp-for="NewTenantID" class="form-select" asp-items="@(new SelectList(Model.Tenants, nameof(Agrumy.Shared.Models.Tenant.IDTenant), nameof(Agrumy.Shared.Models.Tenant.TenantName)))">
+                    <option value="">-- select a tenant --</option>
+                </select>
+                <span asp-validation-for="NewTenantID" class="text-danger"></span>
+            </div>
+            <div class="mb-0">
+                <input type="submit" value="Migrate" class="btn btn-primary" />
+                <a asp-action="Edit" asp-route-idUser="@Model.IDUser" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

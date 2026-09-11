@@ -12,7 +12,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet("All")]
@@ -25,11 +25,12 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await tenantRepo.TenantsGetAllAsync());
         }
 
-        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
+        /// Any authenticated caller may look up their OWN tenant (e.g. UserController.Edit/Details resolving a TenantName to display) - only a cross-tenant lookup needs the Global admin/reader role.
+        [Authorize]
         [HttpGet]
         public async Task<ActionResult<Tenant>> TenantGet(int idTenant)
         {
-            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
+            if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader) && idTenant != CallerTenantId)
             {
                 return StatusCode(403, "Tenant Management requires the Global admin or Global reader role");
             }
@@ -102,6 +103,38 @@ namespace Agrumy.Api.Controllers.API
 
             await tenantRepo.TenantUpdateAsync(tenant);
             return Ok();
+        }
+
+        /// GlobalAdmin only, same bar as TenantAdd - deletes the tenant row plus its Wifi configs/quota/usage snapshots; a tenant still holding any device is refused outright (device tenant reassignment has no UI yet, so a stray orphaned device would be unrecoverable). deleteUsers=false leaves the tenant's users behind with TenantID cleared to null ("Unassigned"); true deletes them too - never automatic, always the caller's explicit choice.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpDelete]
+        public async Task<ActionResult> TenantDelete(int idTenant, bool deleteUsers = false)
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return StatusCode(403, "Deleting a tenant requires the Global admin role");
+            }
+            if (idTenant == 0)
+            {
+                return BadRequest("The default tenant (0) cannot be deleted.");
+            }
+            Tenant? tenant = await tenantRepo.TenantGetByIdAsync(idTenant);
+            if (tenant is null)
+            {
+                return NotFound();
+            }
+            IList<DeviceFleetStatus> devices = await deviceRepo.DeviceFleetGetAsync(idTenant);
+            if (devices.Count > 0)
+            {
+                return StatusCode(409, $"Tenant still has {devices.Count} device(s) - reassign or delete them before deleting the tenant.");
+            }
+
+            bool deleted = await tenantRepo.TenantDeleteAsync(idTenant, deleteUsers);
+            if (deleted)
+            {
+                await WriteAuditAsync("Tenant.Deleted", idTenant, "Tenant", idTenant.ToString(), $"deleteUsers={deleteUsers}");
+            }
+            return deleted ? Ok() : NotFound();
         }
 
         // ---- Alert config -----------------------------------------------------

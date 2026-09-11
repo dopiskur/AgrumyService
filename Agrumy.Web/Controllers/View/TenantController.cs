@@ -75,6 +75,42 @@ namespace Agrumy.Web.Controllers.View
             return options;
         }
 
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> Delete(int idTenant)
+        {
+            if (idTenant == 0)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            Tenant tenant = await api.TenantGet(idTenant);
+            var users = await api.UsersGet();
+            var devices = await api.DeviceFleetGet();
+            return View(new TenantDeleteViewModel
+            {
+                IDTenant = idTenant,
+                TenantName = tenant.TenantName,
+                UserCount = users.Count(u => u.TenantID == idTenant),
+                DeviceCount = devices.Count(d => d.TenantID == idTenant),
+            });
+        }
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DeleteConfirm(int idTenant, bool deleteUsers)
+        {
+            try
+            {
+                await api.TenantDelete(idTenant, deleteUsers);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+                return RedirectToAction(nameof(Delete), new { idTenant });
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
         // ---- Quota --------------------------------------------------------
 
         /// The default tenant (IDTenant=0) has no configurable quota - GlobalAdmin never reaches this route for it (Index hides the button), but redirect defensively rather than surface a raw 404/400 if it's ever hit directly.

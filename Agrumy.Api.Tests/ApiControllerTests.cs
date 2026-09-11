@@ -69,7 +69,7 @@ public class ApiControllerTests
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
-    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
+    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);
@@ -1622,6 +1622,8 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99, Email = "x@test.local" });
         _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
+        // Not the tenant's last user - the migration guard only blocks when this comes back with Count <= 1.
+        _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 }, new() { IDUser = 51, TenantID = 99 } });
         User? capturedUser = null;
         _repo.Setup(r => r.UserUpdateAsync(It.IsAny<User>()))
              .Callback<User>(u => capturedUser = u)
@@ -1658,6 +1660,8 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99 });
         _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
+        // Not the tenant's last user - the delete guard only blocks when this comes back with Count <= 1.
+        _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 }, new() { IDUser = 51, TenantID = 99 } });
         _repo.Setup(r => r.UserDeleteAsync(50)).ReturnsAsync(true);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
@@ -1668,6 +1672,76 @@ public class ApiControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal("User deleted", ok.Value);
+    }
+
+    [Fact]
+    public async Task UserDelete_LastUserOfTenant_Refused()
+    {
+        _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99 });
+        _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
+        _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 } });
+
+        var controller = NewUserController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.Delete(50);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserUpdate_LastUserOfTenant_CannotMigrate()
+    {
+        _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99, Email = "x@test.local" });
+        _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
+        _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 } });
+
+        var controller = NewUserController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, TenantID = 7 });
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task TenantDelete_DefaultTenant_Refused()
+    {
+        var controller = NewTenantController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.TenantDelete(0, false);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TenantDelete_StillHasDevices_Refused()
+    {
+        _repo.Setup(r => r.TenantGetByIdAsync(5)).ReturnsAsync(new Tenant { IDTenant = 5, TenantName = "acme" });
+        _repo.Setup(r => r.DeviceFleetGetAsync(5)).ReturnsAsync(new List<DeviceFleetStatus> { new() { IDDevice = 1, TenantID = 5 } });
+
+        var controller = NewTenantController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.TenantDelete(5, false);
+
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(409, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task TenantDelete_NoDevices_DeletesAndAudits()
+    {
+        _repo.Setup(r => r.TenantGetByIdAsync(5)).ReturnsAsync(new Tenant { IDTenant = 5, TenantName = "acme" });
+        _repo.Setup(r => r.DeviceFleetGetAsync(5)).ReturnsAsync(new List<DeviceFleetStatus>());
+        _repo.Setup(r => r.TenantDeleteAsync(5, false)).ReturnsAsync(true);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+
+        var controller = NewTenantController();
+        SetCaller(controller, "admin", 0);
+        var result = await controller.TenantDelete(5, false);
+
+        Assert.IsType<OkResult>(result);
+        _repo.Verify(r => r.TenantDeleteAsync(5, false), Times.Once);
     }
 
 

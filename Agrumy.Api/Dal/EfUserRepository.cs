@@ -27,6 +27,7 @@ namespace Agrumy.Api.Dal
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     Phone = user.Phone,
+                    PhoneEnabled = user.PhoneEnabled ?? true,
                     Enabled = user.Enabled,
                     EmailVerified = user.EmailVerified ?? false,
                     MustChangePassword = user.MustChangePassword,
@@ -100,6 +101,7 @@ namespace Agrumy.Api.Dal
             row.FirstName = user.FirstName;
             row.LastName = user.LastName;
             row.Phone = user.Phone;
+            row.PhoneEnabled = user.PhoneEnabled;
             row.Enabled = user.Enabled;
             row.TimeZone = user.TimeZone;
             await db.SaveChangesAsync();
@@ -423,6 +425,7 @@ namespace Agrumy.Api.Dal
             FirstName = u.FirstName,
             LastName = u.LastName,
             Phone = u.Phone,
+            PhoneEnabled = u.PhoneEnabled,
             Enabled = u.Enabled,
             DateCreated = u.DateCreated,
             DateModified = u.DateModified,

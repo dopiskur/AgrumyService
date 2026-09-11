@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Users";
     bool isReadOnly = ViewBag.IsReadOnly is true;
+    var tenantNames = (Dictionary<int, string?>)ViewBag.TenantNames;
 }
 
 <div class="card">
@@ -26,6 +27,9 @@
                         @Html.DisplayNameFor(model => model.Username)
                     </th>
                     <th class="d-none d-md-table-cell">
+                        Tenant
+                    </th>
+                    <th class="d-none d-md-table-cell">
                         @Html.DisplayNameFor(model => model.Enabled)
                     </th>
                     <th></th>
@@ -39,6 +43,9 @@
                     </td>
                     <td class="d-none d-md-table-cell">
                         @Html.DisplayFor(modelItem => item.Username)
+                    </td>
+                    <td class="d-none d-md-table-cell">
+                        @(item.TenantID is int tid && tenantNames.TryGetValue(tid, out var tenantName) ? tenantName : "Unassigned")
                     </td>
                     <td class="d-none d-md-table-cell">
                         @if (isReadOnly)

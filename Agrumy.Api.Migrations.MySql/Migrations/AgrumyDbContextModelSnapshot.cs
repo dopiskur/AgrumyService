@@ -3323,6 +3323,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("varchar(15)");
 
+                    b.Property<bool?>("PhoneEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("PwdHash")
                         .HasColumnType("longtext");
 
@@ -3330,7 +3335,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
-                    b.Property<int>("TenantID")
+                    b.Property<int?>("TenantID")
                         .HasColumnType("int");
 
                     b.Property<string>("TimeZone")

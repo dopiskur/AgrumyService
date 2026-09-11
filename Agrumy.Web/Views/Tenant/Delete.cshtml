@@ -1,0 +1,47 @@
+@model Agrumy.Web.ViewModels.TenantDeleteViewModel
+
+@{
+    ViewData["Title"] = "Delete";
+}
+
+<div class="card card-danger card-outline">
+    <div class="card-header">
+        <h3 class="card-title">Delete Tenant</h3>
+    </div>
+    <div class="card-body">
+        @if (TempData["Error"] is string error)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Are you sure you want to delete "@Model.TenantName"?
+        </div>
+        <dl class="row">
+            <dt class="col-sm-3">Tenant name</dt>
+            <dd class="col-sm-9">@Model.TenantName</dd>
+            <dt class="col-sm-3">Users</dt>
+            <dd class="col-sm-9">@Model.UserCount</dd>
+            <dt class="col-sm-3">Devices</dt>
+            <dd class="col-sm-9">@Model.DeviceCount</dd>
+        </dl>
+
+        @if (Model.DeviceCount > 0)
+        {
+            <div class="alert alert-warning">This tenant still has @Model.DeviceCount device(s) - reassign or delete them first, deleting the tenant will be refused until then.</div>
+        }
+
+        <form asp-action="DeleteConfirm">
+            <input type="hidden" name="idTenant" value="@Model.IDTenant" />
+            @if (Model.UserCount > 0)
+            {
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="deleteUsers" name="deleteUsers" value="true" />
+                    <input type="hidden" name="deleteUsers" value="false" />
+                    <label class="form-check-label" for="deleteUsers">Also delete this tenant's @Model.UserCount user(s) - otherwise they stay, shown as "Unassigned"</label>
+                </div>
+            }
+            <input type="submit" value="Delete" class="btn btn-danger" />
+            <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+        </form>
+    </div>
+</div>

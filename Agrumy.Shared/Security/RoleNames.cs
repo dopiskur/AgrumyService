@@ -34,6 +34,9 @@ namespace Agrumy.Shared.Security
         /// May manage user accounts (create/edit/delete) - tenant scoping still applies inline.
         public const string UserManagers = GlobalAdmin + "," + GlobalUser + "," + TenantAdmin + "," + TenantUser;
 
+        /// Global-tier slice of UserManagers - matches ApiControllerBase.CallerManagesUsersGlobally, the only callers allowed to migrate a user across tenants (UserApiController.UserUpdate's TenantID branch).
+        public const string GlobalUserManagers = GlobalAdmin + "," + GlobalUser;
+
         /// May manage devices and their configs - tenant scoping still applies inline.
         public const string DeviceManagers = GlobalAdmin + "," + GlobalDevice + "," + TenantAdmin + "," + TenantDevice;
 

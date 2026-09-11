@@ -27,6 +27,7 @@ DELETE,api/Simulation/Session/{idSimulationSession},Global admin;Simulation admi
 DELETE,api/Simulation/Session/{idSimulationSession}/Device/{idDevice},Global admin;Simulation administrator;Tenant admin
 DELETE,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
 DELETE,api/Simulation/Session/{idSimulationSession}/Rule/{idRule},Global admin;Simulation administrator;Tenant admin
+DELETE,api/Tenant,Global admin
 DELETE,api/User,Global admin;Global User;Tenant admin;Tenant User
 GET,api/AuditLog,Global admin;Tenant admin;Global reader
 GET,api/DataMaintenance/Provider,Global admin;Global reader
@@ -58,7 +59,6 @@ GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin;Gl
 GET,api/Simulation/Session/{idSimulationSession},Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin;Global reader
-GET,api/Tenant,Global admin;Global reader
 GET,api/Tenant/AlertConfig,Global admin;Tenant admin;Global reader
 GET,api/Tenant/All,Global admin;Global reader
 GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device

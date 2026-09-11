@@ -48,6 +48,10 @@
                                         <a asp-action="Quota" asp-route-idTenant="@item.IDTenant" class="btn btn-outline-primary" title="Configure limits" aria-label="Configure limits"><i class="bi bi-speedometer2"></i></a>
                                     }
                                     <button type="submit" form="export-form-@item.IDTenant" class="btn btn-outline-secondary" title="Export" aria-label="Export"><i class="bi bi-download"></i></button>
+                                    @if (item.IDTenant != 0)
+                                    {
+                                        <a asp-action="Delete" asp-route-idTenant="@item.IDTenant" class="btn btn-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>
+                                    }
                                 </div>
                                 <form id="export-form-@item.IDTenant" asp-action="Export" method="get" class="d-flex align-items-center">
                                     <input type="hidden" name="idTenant" value="@item.IDTenant" />

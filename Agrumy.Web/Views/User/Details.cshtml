@@ -11,16 +11,10 @@
     <div class="card-body">
         <dl class="row">
             <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.IDUser)
+                Tenant
             </dt>
             <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.IDUser)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.TenantID)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.TenantID)
+                @(ViewBag.TenantName ?? "Unassigned")
             </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.Email)
@@ -50,13 +44,26 @@
                 @Html.DisplayNameFor(model => model.Phone)
             </dt>
             <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.Phone)
+                @Html.DisplayFor(model => model.Phone) (@((Model.PhoneEnabled ?? true) ? "enabled" : "disabled"))
             </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.Enabled)
             </dt>
             <dd class="col-sm-9">
                 @Html.DisplayFor(model => model.Enabled)
+            </dd>
+            <dt class="col-sm-3">
+                Roles
+            </dt>
+            <dd class="col-sm-9">
+                @if (ViewBag.AssignedRoles is IEnumerable<string> roles)
+                {
+                    @string.Join(", ", roles)
+                }
+                else
+                {
+                    <span class="text-muted">(contact an admin to view roles)</span>
+                }
             </dd>
             <dt class="col-sm-3">
                 @Html.DisplayNameFor(model => model.DateCreated)

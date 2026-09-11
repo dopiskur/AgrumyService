@@ -17,6 +17,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task TenantUpdateAsync(Tenant tenant) => tenantRepository.TenantUpdateAsync(tenant);
 
+        public Task<bool> TenantDeleteAsync(int idTenant, bool deleteUsers) => tenantRepository.TenantDeleteAsync(idTenant, deleteUsers);
+
         public Task<TenantQuota?> TenantQuotaGetAsync(int idTenant) => tenantRepository.TenantQuotaGetAsync(idTenant);
 
         public Task TenantQuotaSetAsync(TenantQuota quota) => tenantRepository.TenantQuotaSetAsync(quota);

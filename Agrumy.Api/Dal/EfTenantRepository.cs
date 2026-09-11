@@ -76,6 +76,29 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
         }
 
+        public async Task<bool> TenantDeleteAsync(int idTenant, bool deleteUsers)
+        {
+            if (deleteUsers)
+            {
+                // Same FK cleanup UserDeleteAsync needs (userRefreshToken's FK is NoAction, so it must be cleared explicitly); userUserRole's FK is Cascade.
+                var idsToDelete = await db.Users.AsNoTracking().Where(u => u.TenantID == idTenant).Select(u => u.IDUser).ToListAsync();
+                if (idsToDelete.Count > 0)
+                {
+                    await db.RefreshTokens.Where(t => idsToDelete.Contains(t.UserID)).ExecuteDeleteAsync();
+                    await db.Users.Where(u => u.TenantID == idTenant).ExecuteDeleteAsync();
+                }
+            }
+            else
+            {
+                await db.Users.Where(u => u.TenantID == idTenant).ExecuteUpdateAsync(s => s.SetProperty(u => u.TenantID, (int?)null));
+            }
+
+            await db.TenantWifiConfigs.Where(c => c.TenantID == idTenant).ExecuteDeleteAsync();
+
+            int rows = await db.Tenants.Where(t => t.IDTenant == idTenant).ExecuteDeleteAsync();
+            return rows > 0;
+        }
+
         public async Task<TenantQuota?> TenantQuotaGetAsync(int idTenant)
         {
             if (idTenant == 0)

@@ -25,6 +25,7 @@ namespace Agrumy.Shared.Models
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Phone { get; set; }
+        public bool? PhoneEnabled { get; set; }
 
         public bool? Enabled { get; set; } // MySQL TINYINT(1) is needed for boolean
         public DateTimeOffset? DateCreated { get; set; }
@@ -84,6 +85,9 @@ namespace Agrumy.Shared.Models
         public string? LastName { get; set; }
         [Phone(ErrorMessage = "Provide a correct phone number")]
         public string? Phone { get; set; }
+
+        // null = don't touch.
+        public bool? PhoneEnabled { get; set; }
 
         // null = don't touch (same convention as Enabled below); non-admin callers can't change roles.
         public List<string>? RoleNames { get; set; }

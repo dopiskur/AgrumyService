@@ -13,6 +13,9 @@ namespace Agrumy.Api.Dal.Interface
         Task<Tenant?> TenantGetByIdAsync(int idTenant);
         Task TenantUpdateAsync(Tenant tenant);
 
+        /// Deletes the tenant row itself plus its WifiConfigs/Quota/UsageSnapshots (the latter two cascade at the DB level already); its users either get deleted too (deleteUsers) or survive with TenantID set to null ("Unassigned" - see UserRow.TenantID). Caller (TenantApiController) is responsible for the "tenant still has devices" guard - this method assumes that check already passed. False if idTenant did not exist.
+        Task<bool> TenantDeleteAsync(int idTenant, bool deleteUsers);
+
         /// Null for IDTenant=0 (the default/bootstrap tenant is always exempt); otherwise the tenant's own configured row, or TenantQuota.Default when none exists yet - never "unlimited" for a real tenant just because nobody has configured it.
         Task<TenantQuota?> TenantQuotaGetAsync(int idTenant);
 
