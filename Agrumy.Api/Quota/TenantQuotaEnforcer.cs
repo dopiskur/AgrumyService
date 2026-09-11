@@ -4,7 +4,7 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Quota
 {
     /// Hard-block guard for TenantQuota - every check returns null when allowed, else the exact message the caller surfaces; ingest-volume limits only, never a feature gate (rule engine/notifications/dashboard/sensor catalog stay fully open regardless of quota). A count-based check here is only race-free if the caller runs it inside the SAME Serializable transaction as the resource's own insert - see QuotaGuard for that shared, reusable shape, used by every repository Add method a TenantQuota check gates.
-    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IUserRepository userRepo, ISimulationRepository simulationRepo, IDeviceRepository deviceRepo)
+    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IUserRepository userRepo, ISimulationRepository simulationRepo, IDeviceRepository deviceRepo)
     {
         public const string LimitMessage = "Limit for the current tier reached, please contact support.";
 
@@ -70,11 +70,11 @@ namespace Agrumy.Api.Quota
             {
                 return null;
             }
-            int current = (await farmOpenfieldRepo.CropsGetAsync(tenantId)).Count;
+            int current = (await sowingRepo.SowingsGetAsync(tenantId)).Count;
             return current >= quota.MaxCrops ? LimitMessage : null;
         }
 
-        /// Same "not queryable tenant-wide, summed across the tenant's crops instead" shape as CheckCanAddZoneAsync, bounded by MaxCrops.
+        /// Same "not queryable tenant-wide, summed across the tenant's parcels instead" shape as CheckCanAddZoneAsync, bounded by the tenant's small admin-managed FarmOpenfield/FarmParcel counts.
         public async Task<string?> CheckCanAddParcelAsync(int? tenantId)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
@@ -82,11 +82,13 @@ namespace Agrumy.Api.Quota
             {
                 return null;
             }
-            IList<FarmOpenfieldCrop> crops = await farmOpenfieldRepo.CropsGetAsync(tenantId);
             int current = 0;
-            foreach (FarmOpenfieldCrop crop in crops)
+            foreach (FarmOpenfield openfield in await farmOpenfieldRepo.FarmOpenfieldsGetAsync(tenantId))
             {
-                current += (await farmOpenfieldRepo.ParcelsGetAsync(crop.IDFarmOpenfieldCrop!.Value)).Count;
+                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(openfield.IDFarmOpenfield!.Value))
+                {
+                    current += (await farmParcelRepo.FarmParcelZonesGetAsync(parcel.IDFarmParcel!.Value)).Count;
+                }
             }
             return current >= quota.MaxParcels ? LimitMessage : null;
         }

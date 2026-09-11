@@ -31,7 +31,7 @@ namespace Agrumy.Api.Dal
             }
             else if (parcelId is int pid)
             {
-                scanners = scanners.Where(d => d.FarmOpenfieldCropParcelID == pid);
+                scanners = scanners.Where(d => d.FarmParcelZoneID == pid);
             }
             else if (unitId is int uid)
             {

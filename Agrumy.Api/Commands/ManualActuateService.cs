@@ -15,7 +15,7 @@ namespace Agrumy.Api.Commands
     public sealed record ManualActuateResult(ManualActuateOutcome Outcome, IReadOnlyList<int> AffectedDeviceIds, string? Message = null);
 
     /// Roadmap #219 - target resolution/fan-out (a Zone's one controller, or every controller across a Unit's zones), validation, and the ExpiresAtUtc safety-cap math; no background worker, DeviceConfigBuilder reads the resulting rows lazily on each device's next poll.
-    public sealed class ManualActuateService(IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository farmOpenfieldRepo)
+    public sealed class ManualActuateService(IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo)
     {
         /// Heating->Temperature only, Ventilation->Temperature or Humidity, WaterPump->Moisture (soil moisture - see AgrumyFirmware's sensor_analog_moist) only - roadmap #219's explicit per-function allowed subset.
         private static readonly Dictionary<RelayFunction, SensorMetric[]> AllowedTargetMetrics = new()
@@ -49,19 +49,19 @@ namespace Agrumy.Api.Commands
         }
 
         /// Open-Field's equivalent of StartForZoneAsync - a parcel has at most one controller, same cap as a zone.
-        public async Task<ManualActuateResult> StartForParcelAsync(int idFarmOpenfieldCropParcel, ManualActuateRequest request)
+        public async Task<ManualActuateResult> StartForParcelAsync(int idFarmParcelZone, ManualActuateRequest request)
         {
-            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            Device? controller = await farmParcelRepo.FarmParcelZoneGetControllerAsync(idFarmParcelZone);
             if (controller?.IDDevice is not int deviceId)
             {
-                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmOpenfieldCropParcel} has no controller assigned.");
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmParcelZone} has no controller assigned.");
             }
-            FarmOpenfieldCropParcel? parcel = await farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel);
+            FarmParcelZone? parcel = await farmParcelRepo.FarmParcelZoneGetByIdAsync(idFarmParcelZone);
             if (parcel == null)
             {
-                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmOpenfieldCropParcel} not found.");
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmParcelZone} not found.");
             }
-            return await StartForTargetsAsync([(deviceId, parcel)], request, farmOpenfieldRepo.ParcelConfigVersionBumpAsync);
+            return await StartForTargetsAsync([(deviceId, parcel)], request, farmParcelRepo.FarmParcelZoneConfigVersionBumpAsync);
         }
 
         /// Fans out to every zone under the unit that has a controller - a zone with no controller is simply skipped, not an error (same "absent zones are fine" reasoning as DeviceOutboxService's Unit fan-out for ScanForDevices).
@@ -130,13 +130,13 @@ namespace Agrumy.Api.Commands
             }
         }
 
-        public async Task StopForParcelAsync(int idFarmOpenfieldCropParcel, RelayFunction relayFunction)
+        public async Task StopForParcelAsync(int idFarmParcelZone, RelayFunction relayFunction)
         {
-            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            Device? controller = await farmParcelRepo.FarmParcelZoneGetControllerAsync(idFarmParcelZone);
             if (controller?.IDDevice is int deviceId)
             {
                 await unitRepo.ManualOverrideStopAsync(deviceId, relayFunction);
-                await farmOpenfieldRepo.ParcelConfigVersionBumpAsync(idFarmOpenfieldCropParcel);
+                await farmParcelRepo.FarmParcelZoneConfigVersionBumpAsync(idFarmParcelZone);
             }
         }
 

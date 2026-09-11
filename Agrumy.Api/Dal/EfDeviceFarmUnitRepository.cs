@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 namespace Agrumy.Api.Dal
 {
     /// IDeviceFarmUnitRepository - Unit/Zone CRUD, device assignment, and the hierarchical dashboard aggregation. Needs IServerConfigRepository (dashboard's ProblemEvent settings), IDeviceRepository (fleet-cache invalidation after assign/unassign, plus its ToDto mapper), and IFarmOpenfieldRepository (Crop/Parcel arms of DashboardAggregateGetAsync's switch - that facet deliberately does NOT depend back on this one, see its own doc comment, so this one-way dependency is safe).
-    internal sealed class EfDeviceFarmUnitRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository, IFarmOpenfieldRepository farmOpenfieldRepository, IDeviceOutboxRepository outboxRepository) : IDeviceFarmUnitRepository
+    internal sealed class EfDeviceFarmUnitRepository(AgrumyDbContext db, IOptions<AgrumySettings> settingsOptions, IServerConfigRepository serverConfigRepository, IDeviceRepository deviceRepository, ISowingRepository sowingRepository, IFarmParcelRepository farmParcelRepository, IDeviceOutboxRepository outboxRepository) : IDeviceFarmUnitRepository
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -554,25 +554,25 @@ namespace Agrumy.Api.Dal
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
                 // SimulationSessionID/ExperimentID excluded - those scopes have the same null Farm/Unit/Zone/Crop/Parcel shape as Global, but must never be evaluated as one.
                 .Where(r => r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
-                    && r.DeviceFarmOpenfieldCropID == null && r.DeviceFarmOpenfieldCropParcelID == null && r.SimulationSessionID == null && r.ExperimentID == null)
+                    && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null)
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
 
-        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForCropAsync(int idFarmOpenfieldCrop)
+        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSowingAsync(int idSowing)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                .Where(r => r.DeviceFarmOpenfieldCropID == idFarmOpenfieldCrop)
+                .Where(r => r.DeviceSowingID == idSowing)
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
         }
 
-        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForParcelAsync(int idFarmOpenfieldCropParcel)
+        public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForFarmParcelZoneAsync(int idFarmParcelZone)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                .Where(r => r.DeviceFarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel)
+                .Where(r => r.DeviceFarmParcelZoneID == idFarmParcelZone)
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
                 .ToListAsync();
             return rows.Select(ToDtoRule).ToList();
@@ -619,8 +619,8 @@ namespace Agrumy.Api.Dal
                 DeviceFarmID = rule.DeviceFarmID,
                 DeviceFarmUnitID = rule.DeviceFarmUnitID,
                 DeviceFarmUnitZoneID = rule.DeviceFarmUnitZoneID,
-                DeviceFarmOpenfieldCropID = rule.DeviceFarmOpenfieldCropID,
-                DeviceFarmOpenfieldCropParcelID = rule.DeviceFarmOpenfieldCropParcelID,
+                DeviceSowingID = rule.DeviceSowingID,
+                DeviceFarmParcelZoneID = rule.DeviceFarmParcelZoneID,
                 SimulationSessionID = rule.SimulationSessionID,
                 ExperimentID = rule.ExperimentID,
                 ActionType = (int)rule.ActionType,
@@ -745,8 +745,8 @@ namespace Agrumy.Api.Dal
             DeviceFarmID = r.DeviceFarmID,
             DeviceFarmUnitID = r.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = r.DeviceFarmUnitZoneID,
-            DeviceFarmOpenfieldCropID = r.DeviceFarmOpenfieldCropID,
-            DeviceFarmOpenfieldCropParcelID = r.DeviceFarmOpenfieldCropParcelID,
+            DeviceSowingID = r.DeviceSowingID,
+            DeviceFarmParcelZoneID = r.DeviceFarmParcelZoneID,
             SimulationSessionID = r.SimulationSessionID,
             ExperimentID = r.ExperimentID,
             ActionType = (ActionType)r.ActionType,
@@ -830,7 +830,7 @@ namespace Agrumy.Api.Dal
         {
             // Excludes a device already on the Open-Field branch too - a device is assigned to at most one of the two hierarchies at a time.
             IQueryable<DeviceRow> q = db.Devices.AsNoTracking()
-                .Where(d => d.DeviceFarmUnitZoneID == null && d.FarmOpenfieldCropParcelID == null);
+                .Where(d => d.DeviceFarmUnitZoneID == null && d.FarmParcelZoneID == null);
             if (tenantID != null)
             {
                 q = q.Where(d => d.TenantID == tenantID);
@@ -855,8 +855,8 @@ namespace Agrumy.Api.Dal
             device.DeviceFarmUnitID = zone.DeviceFarmUnitID;
             device.DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone;
             // Mutual exclusivity - a device moving onto the Greenhouse branch can't still be on the Open-Field one (see DeviceUnassignedGetAsync's own filter).
-            device.FarmOpenfieldCropID = null;
-            device.FarmOpenfieldCropParcelID = null;
+            device.SowingID = null;
+            device.FarmParcelZoneID = null;
             // Bumped (unlike Unassign below) - the device learns its new assignment on its next poll.
             device.ConfigVersion = (device.ConfigVersion ?? 0) + 1;
             await db.SaveChangesAsync();
@@ -1011,8 +1011,8 @@ namespace Agrumy.Api.Dal
                 HierarchyNodeKind.Farm => await BuildFarmAggregateAsync(levelId),
                 HierarchyNodeKind.Unit => await BuildUnitAggregateAsync(levelId),
                 HierarchyNodeKind.Zone => await BuildZoneAggregateAsync(levelId),
-                HierarchyNodeKind.Crop => await farmOpenfieldRepository.CropAggregateAsync(levelId),
-                HierarchyNodeKind.Parcel => await farmOpenfieldRepository.ParcelAggregateAsync(levelId),
+                HierarchyNodeKind.Sowing => await sowingRepository.SowingAggregateAsync(levelId),
+                HierarchyNodeKind.FarmParcelZone => await farmParcelRepository.FarmParcelZoneAggregateAsync(levelId),
                 _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown dashboard aggregation level"),
             };
             return new DashboardAggregate { Averages = averages, Trend = trend };

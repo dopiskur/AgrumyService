@@ -170,10 +170,10 @@ namespace Agrumy.Api.Dal.Interface
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId);
 
         /// Open-Field's mid-level equivalent of RulesGetForUnitAsync.
-        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForCropAsync(int idFarmOpenfieldCrop);
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSowingAsync(int idSowing);
 
         /// Open-Field's leaf-level equivalent of RulesGetForZoneAsync.
-        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForParcelAsync(int idFarmOpenfieldCropParcel);
+        Task<IList<DeviceFarmUnitZoneRule>> RulesGetForFarmParcelZoneAsync(int idFarmParcelZone);
 
         /// Every rule scoped to exactly this simulation session - evaluated ahead of a member device's real Zone>Unit>Farm>Global rules, falling back to that hierarchy for anything this session has no rule for.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForSimulationAsync(int idSimulationSession);

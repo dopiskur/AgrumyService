@@ -9,12 +9,12 @@ namespace Agrumy.Api.Tests;
 public class ManualActuateServiceTests
 {
     private readonly Mock<IDeviceFarmUnitRepository> _units = new(MockBehavior.Strict);
-    private readonly Mock<IFarmOpenfieldRepository> _openfield = new(MockBehavior.Strict);
+    private readonly Mock<IFarmParcelRepository> _farmParcel = new(MockBehavior.Strict);
 
-    private ManualActuateService NewService() => new(_units.Object, _openfield.Object);
+    private ManualActuateService NewService() => new(_units.Object, _farmParcel.Object);
 
     private static Device ControllerDevice(int id, int idZone) => new() { IDDevice = id, DeviceFarmUnitZoneID = idZone, DeviceControllerEnabled = true };
-    private static Device ParcelControllerDevice(int id, int idParcel) => new() { IDDevice = id, FarmOpenfieldCropParcelID = idParcel, DeviceControllerEnabled = true };
+    private static Device ParcelControllerDevice(int id, int idParcel) => new() { IDDevice = id, FarmParcelZoneID = idParcel, DeviceControllerEnabled = true };
 
     [Fact]
     public async Task Zone_With_No_Controller_Returns_TargetNotFound()
@@ -228,7 +228,7 @@ public class ManualActuateServiceTests
     [Fact]
     public async Task Parcel_With_No_Controller_Returns_TargetNotFound()
     {
-        _openfield.Setup(o => o.ParcelGetControllerAsync(20)).ReturnsAsync((Device?)null);
+        _farmParcel.Setup(o => o.FarmParcelZoneGetControllerAsync(20)).ReturnsAsync((Device?)null);
 
         var result = await NewService().StartForParcelAsync(20, new ManualActuateRequest(RelayFunction.Heating, ManualOverrideMode.Duration, 300, null, null, null));
 
@@ -238,15 +238,15 @@ public class ManualActuateServiceTests
     [Fact]
     public async Task Parcel_Duration_Mode_Above_MaxRunSeconds_Is_Capped_And_Bumps_Parcel_ConfigVersion()
     {
-        _openfield.Setup(o => o.ParcelGetControllerAsync(20)).ReturnsAsync(ParcelControllerDevice(1, 20));
-        _openfield.Setup(o => o.ParcelGetByIdAsync(20)).ReturnsAsync(new FarmOpenfieldCropParcel { IDFarmOpenfieldCropParcel = 20, TenantID = 7, WaterPumpMaxRunSeconds = 60 });
+        _farmParcel.Setup(o => o.FarmParcelZoneGetControllerAsync(20)).ReturnsAsync(ParcelControllerDevice(1, 20));
+        _farmParcel.Setup(o => o.FarmParcelZoneGetByIdAsync(20)).ReturnsAsync(new FarmParcelZone { IDFarmParcelZone = 20, TenantID = 7, WaterPumpMaxRunSeconds = 60 });
 
         DateTime before = DateTime.UtcNow;
         DeviceManualOverride? captured = null;
         _units.Setup(u => u.ManualOverrideStartAsync(It.IsAny<DeviceManualOverride>()))
               .Callback<DeviceManualOverride>(o => captured = o)
               .Returns(Task.CompletedTask);
-        _openfield.Setup(o => o.ParcelConfigVersionBumpAsync(20)).Returns(Task.CompletedTask);
+        _farmParcel.Setup(o => o.FarmParcelZoneConfigVersionBumpAsync(20)).Returns(Task.CompletedTask);
 
         var result = await NewService().StartForParcelAsync(20,
             new ManualActuateRequest(RelayFunction.WaterPump, ManualOverrideMode.Duration, 7200, null, null, null));
@@ -262,13 +262,13 @@ public class ManualActuateServiceTests
     [Fact]
     public async Task Parcel_Stop_With_Controller_Stops_And_Bumps_Parcel_ConfigVersion()
     {
-        _openfield.Setup(o => o.ParcelGetControllerAsync(20)).ReturnsAsync(ParcelControllerDevice(1, 20));
+        _farmParcel.Setup(o => o.FarmParcelZoneGetControllerAsync(20)).ReturnsAsync(ParcelControllerDevice(1, 20));
         _units.Setup(u => u.ManualOverrideStopAsync(1, RelayFunction.WaterPump)).Returns(Task.CompletedTask);
-        _openfield.Setup(o => o.ParcelConfigVersionBumpAsync(20)).Returns(Task.CompletedTask);
+        _farmParcel.Setup(o => o.FarmParcelZoneConfigVersionBumpAsync(20)).Returns(Task.CompletedTask);
 
         await NewService().StopForParcelAsync(20, RelayFunction.WaterPump);
 
         _units.Verify(u => u.ManualOverrideStopAsync(1, RelayFunction.WaterPump), Times.Once);
-        _openfield.Verify(o => o.ParcelConfigVersionBumpAsync(20), Times.Once);
+        _farmParcel.Verify(o => o.FarmParcelZoneConfigVersionBumpAsync(20), Times.Once);
     }
 }

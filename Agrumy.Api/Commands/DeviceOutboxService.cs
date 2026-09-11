@@ -18,7 +18,7 @@ namespace Agrumy.Api.Commands
     public sealed record PendingItems(PendingCommand? Actionable, bool ConfigChangePending, bool HardResetPending);
 
     /// Dedup, target resolution/fan-out, FIFO pending-item lookup, and ack/execute state transitions over the single deviceOutbox table; no background worker for the queue itself - expiry is lazy, applied the moment a stale Pending row is next looked at. DeviceOutboxDispatchBackgroundService separately sweeps for anything still owed an MQTT dispatch attempt.
-    public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IMqttCommandPublisher mqttPublisher)
+    public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo, IMqttCommandPublisher mqttPublisher)
     {
         private static readonly TimeSpan DefaultExpiry = TimeSpan.FromMinutes(30);
         // A hard-reset intent must survive until the device actually checks in (which may be days away for a long-sleep node), not expire like an ordinary 30-minute command.
@@ -81,7 +81,7 @@ namespace Agrumy.Api.Commands
             }
             else if (parcelId is int pid)
             {
-                targets = await farmOpenfieldRepo.ParcelGetSensorsAsync(pid);
+                targets = await farmParcelRepo.FarmParcelZoneGetSensorsAsync(pid);
                 notFoundMessage = $"Parcel {pid} has no sensor-only devices.";
             }
             else if (unitId is int uid)

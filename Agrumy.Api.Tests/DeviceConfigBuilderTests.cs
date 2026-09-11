@@ -19,27 +19,29 @@ public class DeviceConfigBuilderTests
     private IDeviceRepository DeviceRepo => _repo.As<IDeviceRepository>().Object;
     private ISimulationRepository SimulationRepo => _repo.As<ISimulationRepository>().Object;
     private IDeviceFarmUnitRepository FarmUnitRepo => _repo.As<IDeviceFarmUnitRepository>().Object;
-    private IFarmOpenfieldRepository FarmOpenfieldRepo => _repo.As<IFarmOpenfieldRepository>().Object;
+    private IFarmParcelRepository FarmParcelRepo => _repo.As<IFarmParcelRepository>().Object;
+    private ISowingRepository SowingRepo => _repo.As<ISowingRepository>().Object;
     private IExperimentRepository ExperimentRepo => _repo.As<IExperimentRepository>().Object;
     private IFirmwareRepository FirmwareRepo => _repo.As<IFirmwareRepository>().Object;
     private IDeviceOutboxRepository OutboxRepo => _repo.As<IDeviceOutboxRepository>().Object;
 
-    // All eight facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
+    // All facets must be registered via As&lt;T&gt;() before ANY .Object access on this mock - Moq locks the interface set on the first .Object read, and the properties above each read .Object as part of registering theirs.
     public DeviceConfigBuilderTests()
     {
         _repo.As<ITenantRepository>();
         _repo.As<IDeviceRepository>();
         _repo.As<ISimulationRepository>();
         _repo.As<IDeviceFarmUnitRepository>();
-        _repo.As<IFarmOpenfieldRepository>();
+        _repo.As<IFarmParcelRepository>();
+        _repo.As<ISowingRepository>();
         _repo.As<IExperimentRepository>();
         _repo.As<IFirmwareRepository>();
         _repo.As<IDeviceOutboxRepository>();
     }
 
-    private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, FarmOpenfieldRepo, ExperimentRepo,
+    private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, FarmParcelRepo, SowingRepo, ExperimentRepo,
         FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo),
-        new DeviceOutboxService(OutboxRepo, DeviceRepo, FarmUnitRepo, FarmOpenfieldRepo, new NoOpMqttCommandPublisher()));
+        new DeviceOutboxService(OutboxRepo, DeviceRepo, FarmUnitRepo, FarmParcelRepo, new NoOpMqttCommandPublisher()));
 
     /// Every BuildAsync call now unconditionally consumes any pending ConfigChanged/HardReset outbox rows for the device - an empty pending list means ConsumeHardResetIfPendingAsync's own GetPendingOutboxItemsAsync read is the only outbox call, no HardReset means config.Reset comes back false.
     private void SetUpNoPendingOutboxItems(int deviceId)

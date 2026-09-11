@@ -8,8 +8,8 @@ namespace Agrumy.Web.ViewModels
         public IList<DeviceFarmUnitDashboard> Units { get; init; } = [];
         public IList<DeviceFarm> Farms { get; init; } = [];
         /// Open-Field farms' mid-level nodes - shown instead of Units for a farm whose FarmType is OpenField.
-        public IList<FarmOpenfieldCropDashboard> Crops { get; init; } = [];
-        /// Maps each Open-Field farm to its extension row, since FarmOpenfieldCrop.FarmOpenfieldID points at this, not at the Farm directly.
+        public IList<SowingDashboard> Crops { get; init; } = [];
+        /// Maps each Open-Field farm to its extension row, since Sowing.FarmOpenfieldID points at this, not at the Farm directly.
         public IList<FarmOpenfield> Openfields { get; init; } = [];
     }
 }

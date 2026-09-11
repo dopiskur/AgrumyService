@@ -126,8 +126,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository, outboxRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
-        var farmOpenfieldRepository = new EfFarmOpenfieldRepository(db, settingsOptions, serverConfigRepository, deviceRepository, outboxRepository);
-        var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository, farmOpenfieldRepository, outboxRepository);
+        var farmOpenfieldRepository = new EfFarmOpenfieldRepository(db);
+        var farmParcelRepository = new EfFarmParcelRepository(db, deviceRepository, outboxRepository);
+        var sowingRepository = new EfSowingRepository(db, deviceRepository, outboxRepository);
+        var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository, sowingRepository, farmParcelRepository, outboxRepository);
         var experimentRepository = new EfExperimentRepository(db);
 
         return new AllFacetsRepository(db,
@@ -140,7 +142,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             farmOpenfieldRepository,
             new EfSensorDataRepository(db, experimentRepository),
             experimentRepository,
-            new EfHorticultureCatalogRepository(db));
+            new EfHorticultureCatalogRepository(db),
+            sowingRepository,
+            farmParcelRepository,
+            new EfCropCatalogRepository(db),
+            new EfFieldLogRepository(db),
+            new EfZonePlantingRepository(db));
     }
 
     private sealed class NullCache : ICache
@@ -1279,7 +1286,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
         Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
         var outboxService = new Agrumy.Api.Commands.DeviceOutboxService(_repo, _repo, _repo, _repo, new NoOpMqttCommandPublisher());
-        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo), outboxService);
+        var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo), outboxService);
         DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
         Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);
     }
@@ -3507,15 +3514,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(2, only.DeviceCount);
     }
 
-    // ---- Open-Field hierarchy ----------------------------------
+    // ---- Open-Field hierarchy (restructure R: farmParcel/farmParcelZone/sowing) ----------------------------------
 
-    private async Task<(FarmOpenfieldCrop Crop, FarmOpenfieldCropParcel Parcel)> MakeCropAndParcel(int? tenantId)
+    /// Farm + FarmParcel (with its auto-created whole-parcel zone) + a catalog Crop + a Sowing started on that zone - D2/D3/D5's full chain in one call.
+    private async Task<(Sowing Sowing, FarmParcelZone Zone, DeviceFarm Farm)> MakeSowingAndZone(int? tenantId)
     {
         var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
         Assert.Equal(FarmType.OpenField, farm.FarmType);
-        var crop = await _repo.CropAddAsync(new FarmOpenfieldCrop { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmOpenfieldCropName = "Crop_" + U() });
-        var parcel = await _repo.ParcelAddAsync(new FarmOpenfieldCropParcel { TenantID = tenantId, FarmOpenfieldCropID = crop.IDFarmOpenfieldCrop!.Value, FarmOpenfieldCropParcelName = "Parcel_" + U() });
-        return (crop, parcel);
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
+        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
+        return (sowing, zone, farm);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -3533,114 +3543,143 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task FarmOpenfieldCrop_Contains_MultipleParcels(DbProviderKind provider)
+    public async Task FarmParcelAddAsync_CreatesOneWholeParcelZoneAutomatically(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (crop, parcel1) = await MakeCropAndParcel(tenantId);
-        var parcel2 = await _repo.ParcelAddAsync(new FarmOpenfieldCropParcel { TenantID = tenantId, FarmOpenfieldCropID = crop.IDFarmOpenfieldCrop!.Value, FarmOpenfieldCropParcelName = "Parcel_" + U() });
+        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
 
-        var parcels = await _repo.ParcelsGetAsync(crop.IDFarmOpenfieldCrop!.Value);
-        Assert.Equal(2, parcels.Count);
-        Assert.Contains(parcels, p => p.IDFarmOpenfieldCropParcel == parcel1.IDFarmOpenfieldCropParcel);
-        Assert.Contains(parcels, p => p.IDFarmOpenfieldCropParcel == parcel2.IDFarmOpenfieldCropParcel);
-        Assert.All(parcels, p => Assert.Equal(crop.IDFarmOpenfieldCrop, p.FarmOpenfieldCropID));
+        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+
+        Assert.True(zone.IsWholeParcel);
+        Assert.Equal(parcel.IDFarmParcel, zone.FarmParcelID);
+        Assert.Null(zone.CurrentSowingID);
+        var zones = await _repo.FarmParcelZonesGetAsync(parcel.IDFarmParcel!.Value);
+        Assert.Single(zones);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task DeviceAssignToParcelAsync_SetsBothFKs_AndIsMutuallyExclusiveWithGreenhouse(DbProviderKind provider)
+    public async Task SowingStartAsync_OccupiesZoneAndSetsDeviceSowingID_CloseAsync_ReleasesBoth(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (crop, parcel) = await MakeCropAndParcel(tenantId);
-        var (unit, zone) = await MakeUnitAndZone(tenantId);
+        var (sowing, zone, _) = await MakeSowingAndZone(tenantId);
+        Device device = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToFarmParcelZoneAsync(device.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
+
+        var occupiedZone = await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value);
+        Assert.Equal(sowing.IDSowing, occupiedZone?.CurrentSowingID);
+        var deviceRow = await _repo.DeviceGetByIdAsync(device.IDDevice!.Value);
+        Assert.Equal(sowing.IDSowing, deviceRow?.SowingID);
+
+        await _repo.SowingCloseAsync(sowing.IDSowing!.Value, null);
+
+        var releasedZone = await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value);
+        Assert.Null(releasedZone?.CurrentSowingID);
+        var deviceAfterClose = await _repo.DeviceGetByIdAsync(device.IDDevice!.Value);
+        Assert.Null(deviceAfterClose?.SowingID);
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SowingStartAsync_ThrowsWhenTargetZoneAlreadyHasAnActiveSowing(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var crop1 = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Wheat_" + U() });
+        var sowing1 = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop1.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.SowingStartAsync(sowing1.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
+        var crop2 = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Corn_" + U() });
+        var sowing2 = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop2.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _repo.SowingStartAsync(sowing2.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]));
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelZoneSplitAsync_BlockedWhileSowingActive_AllowedOnceClosed(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (sowing, zone, _) = await MakeSowingAndZone(tenantId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _repo.FarmParcelZoneSplitAsync(zone.IDFarmParcelZone!.Value, ["A", "B"]));
+
+        await _repo.SowingCloseAsync(sowing.IDSowing!.Value, null);
+        var newZones = await _repo.FarmParcelZoneSplitAsync(zone.IDFarmParcelZone!.Value, ["A", "B"]);
+
+        Assert.Equal(2, newZones.Count);
+        Assert.Null(await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value));
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceAssignToFarmParcelZoneAsync_SetsBothFKs_AndIsMutuallyExclusiveWithGreenhouse(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
+        var (unit, greenhouseZone) = await MakeUnitAndZone(tenantId);
         Device device = await MakeDevice(t, tenantId);
 
         // Assign to the Greenhouse zone first...
-        await _repo.DeviceAssignToZoneAsync(device.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
-        // ...then to an Open-Field parcel - must clear the Greenhouse FKs, not just set the new ones.
-        await _repo.DeviceAssignToParcelAsync(device.IDDevice!.Value, parcel.IDFarmOpenfieldCropParcel!.Value);
+        await _repo.DeviceAssignToZoneAsync(device.IDDevice!.Value, greenhouseZone.IDDeviceFarmUnitZone!.Value);
+        // ...then to an Open-Field zone - must clear the Greenhouse FKs, not just set the new ones.
+        await _repo.DeviceAssignToFarmParcelZoneAsync(device.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
 
         var unassigned = await _repo.DeviceUnassignedGetAsync(tenantId, controllerCapable: true);
         Assert.DoesNotContain(unassigned, d => d.IDDevice == device.IDDevice);
 
-        // Re-fetch via the fleet-unassigned query's own filter proves DeviceFarmUnitZoneID/FarmOpenfieldCropParcelID are truly mutually exclusive.
-        await _repo.DeviceUnassignFromParcelAsync(device.IDDevice!.Value);
+        // Re-fetch via the fleet-unassigned query's own filter proves DeviceFarmUnitZoneID/FarmParcelZoneID are truly mutually exclusive.
+        await _repo.DeviceUnassignFromFarmParcelZoneAsync(device.IDDevice!.Value);
         var unassignedAfter = await _repo.DeviceUnassignedGetAsync(tenantId, controllerCapable: true);
         Assert.Contains(unassignedAfter, d => d.IDDevice == device.IDDevice);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task ParcelMigrateAsync_MovesParcelToTargetCrop_AndBumpsItsDevicesConfigVersion(DbProviderKind provider)
+    public async Task FarmParcelZoneDeleteAsync_UnassignsItsDevices(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var sourceCrop = await _repo.CropAddAsync(new FarmOpenfieldCrop { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmOpenfieldCropName = "Source_" + U() });
-        var targetCrop = await _repo.CropAddAsync(new FarmOpenfieldCrop { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmOpenfieldCropName = "Target_" + U() });
-        var parcel = await _repo.ParcelAddAsync(new FarmOpenfieldCropParcel { TenantID = tenantId, FarmOpenfieldCropID = sourceCrop.IDFarmOpenfieldCrop!.Value, FarmOpenfieldCropParcelName = "Parcel_" + U() });
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
         Device device = await MakeDevice(t, tenantId);
-        await _repo.DeviceAssignToParcelAsync(device.IDDevice!.Value, parcel.IDFarmOpenfieldCropParcel!.Value);
-        int? versionBeforeMigrate = (await _repo.DeviceUnassignedGetAsync(tenantId, true)).FirstOrDefault(d => d.IDDevice == device.IDDevice)?.ConfigVersion;
+        await _repo.DeviceAssignToFarmParcelZoneAsync(device.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
 
-        bool migrated = await _repo.ParcelMigrateAsync(parcel.IDFarmOpenfieldCropParcel!.Value, targetCrop.IDFarmOpenfieldCrop!.Value);
+        await _repo.FarmParcelZoneDeleteAsync(zone.IDFarmParcelZone!.Value);
 
-        Assert.True(migrated);
-        var movedParcel = await _repo.ParcelGetByIdAsync(parcel.IDFarmOpenfieldCropParcel);
-        Assert.Equal(targetCrop.IDFarmOpenfieldCrop, movedParcel?.FarmOpenfieldCropID);
-        var deviceRow = await _repo.DeviceGetByIdAsync(device.IDDevice!.Value);
-        Assert.Equal(targetCrop.IDFarmOpenfieldCrop, deviceRow?.FarmOpenfieldCropID);
-        Assert.True((deviceRow?.ConfigVersion ?? 0) > (versionBeforeMigrate ?? 0));
-    }
-
-    [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task CropDeleteAsync_CascadesToItsParcelsAndUnassignsTheirDevices(DbProviderKind provider)
-    {
-        var t = Use(provider);
-        var (tenantId, _, _) = await MakeUser(t);
-        var (crop, parcel) = await MakeCropAndParcel(tenantId);
-        Device device = await MakeDevice(t, tenantId);
-        await _repo.DeviceAssignToParcelAsync(device.IDDevice!.Value, parcel.IDFarmOpenfieldCropParcel!.Value);
-
-        await _repo.CropDeleteAsync(crop.IDFarmOpenfieldCrop!.Value);
-
-        Assert.Null(await _repo.ParcelGetByIdAsync(parcel.IDFarmOpenfieldCropParcel));
-        Assert.Null(await _repo.CropGetByIdAsync(crop.IDFarmOpenfieldCrop));
+        Assert.Null(await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value));
         var unassigned = await _repo.DeviceUnassignedGetAsync(tenantId, controllerCapable: true);
         Assert.Contains(unassigned, d => d.IDDevice == device.IDDevice);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task ParcelAggregateAsync_AveragesLatestReadingPerDevice(DbProviderKind provider)
+    public async Task FarmParcelZoneAggregateAsync_AveragesLatestReadingPerDevice(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, parcel) = await MakeCropAndParcel(tenantId);
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
         Device device = await MakeDevice(t, tenantId);
-        await _repo.DeviceAssignToParcelAsync(device.IDDevice!.Value, parcel.IDFarmOpenfieldCropParcel!.Value);
+        await _repo.DeviceAssignToFarmParcelZoneAsync(device.IDDevice!.Value, zone.IDFarmParcelZone!.Value);
         await _repo.SensorDataPushAsync([new SensorDataPushReading { Temperature = 21.0 }], device.IDDevice!.Value, tenantId, null, null);
 
-        DashboardAggregate aggregate = await _repo.DashboardAggregateGetAsync(HierarchyNodeKind.Parcel, parcel.IDFarmOpenfieldCropParcel!.Value);
+        DashboardAggregate aggregate = await _repo.DashboardAggregateGetAsync(HierarchyNodeKind.FarmParcelZone, zone.IDFarmParcelZone!.Value);
 
         Assert.Equal(21.0, aggregate.Averages.Temperature);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task ActiveExperimentIdForParcelAsync_CascadesParcelThenCropThenFarm(DbProviderKind provider)
+    public async Task ActiveExperimentIdForFarmParcelZoneAsync_CascadesZoneThenSowingThenFarm(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var crop = await _repo.CropAddAsync(new FarmOpenfieldCrop { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmOpenfieldCropName = "Crop_" + U() });
-        var parcel = await _repo.ParcelAddAsync(new FarmOpenfieldCropParcel { TenantID = tenantId, FarmOpenfieldCropID = crop.IDFarmOpenfieldCrop!.Value, FarmOpenfieldCropParcelName = "Parcel_" + U() });
+        var (_, zone, farm) = await MakeSowingAndZone(tenantId);
         Experiment farmExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "FarmExp_" + U(), Scope = HierarchyNodeKind.Farm, ScopeID = farm.IDDeviceFarm!.Value });
 
-        // Farm-scope experiment applies (no more specific Crop/Parcel-scope experiment yet)...
-        Assert.Equal(farmExperiment.IDExperiment, await _repo.ActiveExperimentIdForParcelAsync(parcel.IDFarmOpenfieldCropParcel!.Value));
+        // Farm-scope experiment applies (no more specific Sowing/Zone-scope experiment yet)...
+        Assert.Equal(farmExperiment.IDExperiment, await _repo.ActiveExperimentIdForFarmParcelZoneAsync(zone.IDFarmParcelZone!.Value));
 
-        // ...but a Parcel-scope experiment wins once one exists, same "most specific wins" precedence as the Greenhouse Zone>Unit>Farm cascade.
-        Experiment parcelExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "ParcelExp_" + U(), Scope = HierarchyNodeKind.Parcel, ScopeID = parcel.IDFarmOpenfieldCropParcel!.Value });
-        Assert.Equal(parcelExperiment.IDExperiment, await _repo.ActiveExperimentIdForParcelAsync(parcel.IDFarmOpenfieldCropParcel!.Value));
+        // ...but a Zone-scope experiment wins once one exists, same "most specific wins" precedence as the Greenhouse Zone>Unit>Farm cascade.
+        Experiment zoneExperiment = await _repo.ExperimentAddAsync(new Experiment { TenantID = tenantId, Name = "ZoneExp_" + U(), Scope = HierarchyNodeKind.FarmParcelZone, ScopeID = zone.IDFarmParcelZone!.Value });
+        Assert.Equal(zoneExperiment.IDExperiment, await _repo.ActiveExperimentIdForFarmParcelZoneAsync(zone.IDFarmParcelZone!.Value));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
@@ -3649,13 +3688,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 1, MaxParcels = 1 });
-        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo);
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
 
         Assert.Null(await enforcer.CheckCanAddCropAsync(tenantId));
-        var (crop, _) = await MakeCropAndParcel(tenantId);
+        await MakeSowingAndZone(tenantId);
         Assert.NotNull(await enforcer.CheckCanAddCropAsync(tenantId));
 
-        // Parcel cap is independent of the Crop cap above - the one Crop we already have is well under MaxCrops' sibling MaxParcels check target (the crop's own single parcel from MakeCropAndParcel already consumed it).
+        // Parcel cap is independent of the Crop cap above - the one Sowing we already have is well under MaxCrops' sibling MaxParcels check target (its own single zone from MakeSowingAndZone already consumed it).
         Assert.NotNull(await enforcer.CheckCanAddParcelAsync(tenantId));
     }
 }

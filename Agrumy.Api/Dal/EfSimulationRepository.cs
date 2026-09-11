@@ -146,8 +146,8 @@ namespace Agrumy.Api.Dal
             {
                 HierarchyNodeKind.Unit => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
                 HierarchyNodeKind.Zone => await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
-                HierarchyNodeKind.Crop => await db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
-                HierarchyNodeKind.Parcel => await db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                HierarchyNodeKind.Sowing => await db.Devices.AsNoTracking().Where(d => d.SowingID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
+                HierarchyNodeKind.FarmParcelZone => await db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID == group.ScopeID).Select(d => d.IDDevice).ToListAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(group), group.Scope, "Unknown simulation group scope"),
             };
 
@@ -246,11 +246,25 @@ namespace Agrumy.Api.Dal
             dto.ScopeName = (HierarchyNodeKind)row.Scope switch
             {
                 HierarchyNodeKind.Unit => (await db.DeviceFarmUnits.AsNoTracking().FirstOrDefaultAsync(u => u.IDDeviceFarmUnit == row.ScopeID))?.DeviceFarmUnitName,
-                HierarchyNodeKind.Crop => (await db.FarmOpenfieldCrops.AsNoTracking().FirstOrDefaultAsync(c => c.IDFarmOpenfieldCrop == row.ScopeID))?.FarmOpenfieldCropName,
-                HierarchyNodeKind.Parcel => (await db.FarmOpenfieldCropParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == row.ScopeID))?.FarmOpenfieldCropParcelName,
+                // Sowing has no free-text name of its own (restructure R) - display its catalog crop's name, plus variety when set.
+                HierarchyNodeKind.Sowing => await SowingDisplayNameAsync(row.ScopeID),
+                HierarchyNodeKind.FarmParcelZone => (await db.FarmParcelZones.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmParcelZone == row.ScopeID))?.FarmParcelZoneName,
                 _ => (await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == row.ScopeID))?.DeviceFarmUnitZoneName,
             };
             return dto;
+        }
+
+        private async Task<string?> SowingDisplayNameAsync(int idSowing)
+        {
+            var row = await db.Sowings.AsNoTracking()
+                .Where(s => s.IDSowing == idSowing)
+                .Select(s => new { s.Variety, CropName = db.Crops.Where(c => c.IDCrop == s.CropID).Select(c => c.Name).FirstOrDefault() })
+                .FirstOrDefaultAsync();
+            if (row == null)
+            {
+                return null;
+            }
+            return string.IsNullOrEmpty(row.Variety) ? row.CropName : $"{row.CropName} ({row.Variety})";
         }
 
         private static SimulationGroupRow ToRowGroup(SimulationGroup g) => new()
@@ -337,8 +351,8 @@ namespace Agrumy.Api.Dal
                 .ToListAsync();
             // Open-Field's Parcel is Zone's own equivalent leaf - same dictionary, same "last write wins on overlap" convention, so RuleNotificationEvaluator's single per-tenant lookup covers both branches.
             var parcelRows = await activeMembers
-                .Join(db.Devices.AsNoTracking().Where(d => d.FarmOpenfieldCropParcelID != null),
-                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.FarmOpenfieldCropParcelID!.Value, ms.IDSimulationSession })
+                .Join(db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID != null),
+                    ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.FarmParcelZoneID!.Value, ms.IDSimulationSession })
                 .ToListAsync();
 
             var map = new Dictionary<int, int>();

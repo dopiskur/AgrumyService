@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Open-Field's Crop/Parcel CRUD, device assignment, and Farm-with-extension creation - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new. DeviceUnassignedGetAsync is likewise reused from there rather than duplicated - it already excludes both branches' assigned devices.
+    /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new. Interim surface - the real sjetva wizard/Start/Close flow is a later restructure R session; today's Add just creates a Planned sowing with placeholder dates.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -39,171 +39,160 @@ namespace Agrumy.Api.Controllers.API
 
         #endregion
 
-        #region Crop CRUD
+        #region Sowing CRUD ("Crop" wire endpoints - see IApi.cs's own naming note)
 
         [Authorize]
         [HttpGet("Crop/All")]
-        public async Task<ActionResult<IList<FarmOpenfieldCrop>>> CropsGet() =>
-            Ok(await farmOpenfieldRepo.CropsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
+        public async Task<ActionResult<IList<Sowing>>> CropsGet() =>
+            Ok(await sowingRepo.SowingsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
 
-        /// Roadmap #513(1) - Farm page's Crop cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitDashboardGet.
+        /// Farm page's Sowing cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitDashboardGet.
         [Authorize]
         [HttpGet("Crop/Dashboard")]
-        public async Task<ActionResult<IList<FarmOpenfieldCropDashboard>>> CropDashboardGet() =>
-            Ok(await farmOpenfieldRepo.CropDashboardGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
+        public async Task<ActionResult<IList<SowingDashboard>>> CropDashboardGet() =>
+            Ok(await sowingRepo.SowingDashboardGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
 
         [Authorize]
         [HttpGet("Crop")]
-        public async Task<ActionResult<FarmOpenfieldCrop>> CropGet(int? idFarmOpenfieldCrop)
+        public async Task<ActionResult<Sowing>> CropGet(int? idSowing)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: false);
+            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
             return error ?? Ok(crop);
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Crop")]
-        public async Task<ActionResult<FarmOpenfieldCrop>> CropAdd([FromBody] FarmOpenfieldCrop crop)
+        public async Task<ActionResult<Sowing>> CropAdd([FromBody] Sowing crop)
         {
-            var (openfield, farm, error) = await EnsureOwnedOpenfieldAsync(crop.FarmOpenfieldID, forWrite: true);
+            var (openfield, farm, error) = await EnsureOwnedOpenfieldAsync(crop.FarmID, forWrite: true);
             if (error != null)
             {
                 return error;
             }
             crop.TenantID = farm!.TenantID;
-            FarmOpenfieldCrop added;
+            crop.FarmID = farm.IDDeviceFarm!.Value;
             try
             {
-                added = await farmOpenfieldRepo.CropAddAsync(crop, () => quotaEnforcer.CheckCanAddCropAsync(crop.TenantID));
+                await quotaEnforcer.CheckCanAddCropAsync(crop.TenantID);
             }
             catch (QuotaLimitExceededException ex)
             {
                 return StatusCode(403, ex.Message);
             }
-            await WriteAuditAsync("FarmOpenfieldCrop.Created", added.TenantID, "FarmOpenfieldCrop", added.IDFarmOpenfieldCrop.ToString()!, added.FarmOpenfieldCropName);
+            Sowing added = await sowingRepo.SowingAddAsync(crop);
+            await WriteAuditAsync("Sowing.Created", added.TenantID, "Sowing", added.IDSowing.ToString()!, added.SowingName);
             return Ok(added);
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPut("Crop")]
-        public async Task<ActionResult<bool>> CropUpdate([FromBody] FarmOpenfieldCrop crop)
+        public async Task<ActionResult<bool>> CropUpdate([FromBody] Sowing crop)
         {
-            var (existing, error) = await EnsureOwnedCropAsync(crop.IDFarmOpenfieldCrop, forWrite: true);
+            var (existing, error) = await EnsureOwnedCropAsync(crop.IDSowing, forWrite: true);
             if (error != null)
             {
                 return error;
             }
             crop.TenantID = existing!.TenantID;
-            await farmOpenfieldRepo.CropUpdateAsync(crop);
-            await WriteAuditAsync("FarmOpenfieldCrop.Updated", existing.TenantID, "FarmOpenfieldCrop", existing.IDFarmOpenfieldCrop.ToString()!, crop.FarmOpenfieldCropName);
-            return true;
-        }
-
-        [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost("Crop/Reorder")]
-        public async Task<ActionResult<bool>> CropsReorder([FromBody] List<int> orderedCropIds)
-        {
-            if (orderedCropIds is null or [])
-            {
-                return BadRequest("orderedCropIds is required.");
-            }
-            int? tenantId = null;
-            foreach (int id in orderedCropIds)
-            {
-                var (crop, error) = await EnsureOwnedCropAsync(id, forWrite: true);
-                if (error != null)
-                {
-                    return error;
-                }
-                tenantId ??= crop!.TenantID;
-                if (crop!.TenantID != tenantId)
-                {
-                    return BadRequest("All crops in one reorder request must belong to the same tenant.");
-                }
-            }
-            await farmOpenfieldRepo.CropsReorderAsync(tenantId!.Value, orderedCropIds);
-            await WriteAuditAsync("FarmOpenfieldCrop.Reordered", tenantId, "FarmOpenfieldCrop", string.Join(",", orderedCropIds), null);
+            await sowingRepo.SowingUpdateAsync(crop);
+            await WriteAuditAsync("Sowing.Updated", existing.TenantID, "Sowing", existing.IDSowing.ToString()!, crop.SowingName);
             return true;
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Crop")]
-        public async Task<ActionResult<bool>> CropDelete(int? idFarmOpenfieldCrop)
+        public async Task<ActionResult<bool>> CropDelete(int? idSowing)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: true);
+            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            await farmOpenfieldRepo.CropDeleteAsync(crop!.IDFarmOpenfieldCrop!.Value);
-            await WriteAuditAsync("FarmOpenfieldCrop.Deleted", crop.TenantID, "FarmOpenfieldCrop", idFarmOpenfieldCrop.ToString()!, crop.FarmOpenfieldCropName);
+            await sowingRepo.SowingDeleteAsync(crop!.IDSowing!.Value);
+            await WriteAuditAsync("Sowing.Deleted", crop.TenantID, "Sowing", idSowing.ToString()!, crop.SowingName);
             return true;
         }
 
         #endregion
 
-        #region Parcel CRUD
+        #region FarmParcel / FarmParcelZone CRUD ("Parcel" wire endpoints)
 
+        /// The Sowing's currently-occupied zones (D3/D11) - a sowing has no fixed parcel list of its own, occupancy is dynamic.
         [Authorize]
         [HttpGet("Parcel")]
-        public async Task<ActionResult<IList<FarmOpenfieldCropParcel>>> ParcelsGet(int? idFarmOpenfieldCrop)
+        public async Task<ActionResult<IList<FarmParcelZone>>> ParcelsGet(int? idSowing)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: false);
+            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            return Ok(await farmOpenfieldRepo.ParcelsGetAsync(crop!.IDFarmOpenfieldCrop!.Value));
+            return Ok(await sowingRepo.SowingOccupiedZonesGetAsync(crop!.IDSowing!.Value));
         }
 
-        /// Roadmap #513(1) - Crop detail page's Parcel cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitZoneDashboardListGet.
+        /// Sowing detail page's zone cube grid, same sensor-average/status styling as DeviceFarmUnitApiController.DeviceFarmUnitZoneDashboardListGet.
         [Authorize]
         [HttpGet("Crop/Parcel/Dashboard")]
-        public async Task<ActionResult<IList<FarmOpenfieldCropParcelDashboard>>> ParcelDashboardListGet(int? idFarmOpenfieldCrop)
+        public async Task<ActionResult<IList<FarmParcelZoneDashboard>>> ParcelDashboardListGet(int? idSowing)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: false);
+            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            return Ok(await farmOpenfieldRepo.ParcelDashboardListGetAsync(crop!.IDFarmOpenfieldCrop!.Value));
+            var zones = await sowingRepo.SowingOccupiedZonesGetAsync(crop!.IDSowing!.Value);
+            var result = new List<FarmParcelZoneDashboard>();
+            foreach (FarmParcelZone zone in zones)
+            {
+                (SensorAverages averages, SensorTrend trend) = await farmParcelRepo.FarmParcelZoneAggregateAsync(zone.IDFarmParcelZone!.Value);
+                result.Add(new FarmParcelZoneDashboard
+                {
+                    IDFarmParcelZone = zone.IDFarmParcelZone!.Value,
+                    IDSowing = zone.CurrentSowingID,
+                    FarmParcelZoneName = zone.FarmParcelZoneName,
+                    Averages = averages,
+                    Trend = trend,
+                });
+            }
+            return Ok(result);
         }
 
         [Authorize]
         [HttpGet("ParcelById")]
-        public async Task<ActionResult<FarmOpenfieldCropParcel>> ParcelGetById(int? idFarmOpenfieldCropParcel)
+        public async Task<ActionResult<FarmParcelZone>> ParcelGetById(int? idFarmParcelZone)
         {
-            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: false);
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
             return error ?? Ok(parcel);
         }
 
+        /// Creates a FarmParcel (container) under an Open-Field farm - and its first zone, IsWholeParcel=true (D3). Replaces the pre-restructure "add a parcel under a crop" endpoint, which no longer has a matching concept.
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost("Parcel")]
-        public async Task<ActionResult<FarmOpenfieldCropParcel>> ParcelAdd([FromBody] FarmOpenfieldCropParcel parcel)
+        [HttpPost("FarmParcel")]
+        public async Task<ActionResult<FarmParcelZone>> FarmParcelAdd(int idFarmOpenfield, string farmParcelName)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(parcel.FarmOpenfieldCropID, forWrite: true);
+            var (openfield, farm, error) = await EnsureOwnedOpenfieldByIdAsync(idFarmOpenfield, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            parcel.TenantID = crop!.TenantID;
-            FarmOpenfieldCropParcel added;
             try
             {
-                added = await farmOpenfieldRepo.ParcelAddAsync(parcel, () => quotaEnforcer.CheckCanAddParcelAsync(parcel.TenantID));
+                await quotaEnforcer.CheckCanAddParcelAsync(farm!.TenantID);
             }
             catch (QuotaLimitExceededException ex)
             {
                 return StatusCode(403, ex.Message);
             }
-            await WriteAuditAsync("FarmOpenfieldCropParcel.Created", added.TenantID, "FarmOpenfieldCropParcel", added.IDFarmOpenfieldCropParcel.ToString()!, added.FarmOpenfieldCropParcelName);
-            return Ok(added);
+            (FarmParcel parcel, FarmParcelZone zone) = await farmParcelRepo.FarmParcelAddAsync(new FarmParcel { TenantID = farm.TenantID, FarmOpenfieldID = idFarmOpenfield, FarmParcelName = farmParcelName });
+            await WriteAuditAsync("FarmParcel.Created", parcel.TenantID, "FarmParcel", parcel.IDFarmParcel.ToString()!, parcel.FarmParcelName);
+            return Ok(zone);
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPut("Parcel")]
-        public async Task<ActionResult<bool>> ParcelUpdate([FromBody] FarmOpenfieldCropParcel parcel)
+        public async Task<ActionResult<bool>> ParcelUpdate([FromBody] FarmParcelZone parcel)
         {
-            var (existing, error) = await EnsureOwnedParcelAsync(parcel.IDFarmOpenfieldCropParcel, forWrite: true);
+            var (existing, error) = await EnsureOwnedParcelAsync(parcel.IDFarmParcelZone, forWrite: true);
             if (error != null)
             {
                 return error;
@@ -228,53 +217,22 @@ namespace Agrumy.Api.Controllers.API
             }
 
             parcel.TenantID = existing!.TenantID;
-            parcel.FarmOpenfieldCropID = existing.FarmOpenfieldCropID; // rename only - see ParcelMigrate for the deliberate move
-            await farmOpenfieldRepo.ParcelUpdateAsync(parcel);
-            await WriteAuditAsync("FarmOpenfieldCropParcel.Updated", existing.TenantID, "FarmOpenfieldCropParcel", existing.IDFarmOpenfieldCropParcel.ToString()!, parcel.FarmOpenfieldCropParcelName);
-            return true;
-        }
-
-        /// Deliberate crop reassignment, same shape as DeviceFarmUnitApiController.DeviceFarmUnitZoneMigrate.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPut("Parcel/{idFarmOpenfieldCropParcel}/Migrate")]
-        public async Task<ActionResult<bool>> ParcelMigrate(int idFarmOpenfieldCropParcel, int idTargetFarmOpenfieldCrop)
-        {
-            var (parcel, parcelError) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
-            if (parcelError != null)
-            {
-                return parcelError;
-            }
-            var (targetCrop, cropError) = await EnsureOwnedCropAsync(idTargetFarmOpenfieldCrop, forWrite: true);
-            if (cropError != null)
-            {
-                return cropError;
-            }
-            if (targetCrop!.TenantID != parcel!.TenantID)
-            {
-                return BadRequest("Target crop belongs to a different tenant.");
-            }
-            if (targetCrop.IDFarmOpenfieldCrop == parcel.FarmOpenfieldCropID)
-            {
-                return BadRequest("Parcel is already in that crop.");
-            }
-
-            string fromCropName = (await farmOpenfieldRepo.CropGetByIdAsync(parcel.FarmOpenfieldCropID))?.FarmOpenfieldCropName ?? parcel.FarmOpenfieldCropID.ToString();
-            await farmOpenfieldRepo.ParcelMigrateAsync(parcel.IDFarmOpenfieldCropParcel!.Value, targetCrop.IDFarmOpenfieldCrop!.Value);
-            await WriteAuditAsync("FarmOpenfieldCropParcel.Migrated", parcel.TenantID, "FarmOpenfieldCropParcel", parcel.IDFarmOpenfieldCropParcel.ToString()!, $"{parcel.FarmOpenfieldCropParcelName}: {fromCropName} -> {targetCrop.FarmOpenfieldCropName}");
+            await farmParcelRepo.FarmParcelZoneUpdateAsync(parcel);
+            await WriteAuditAsync("FarmParcelZone.Updated", existing.TenantID, "FarmParcelZone", existing.IDFarmParcelZone.ToString()!, parcel.FarmParcelZoneName);
             return true;
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Parcel")]
-        public async Task<ActionResult<bool>> ParcelDelete(int? idFarmOpenfieldCropParcel)
+        public async Task<ActionResult<bool>> ParcelDelete(int? idFarmParcelZone)
         {
-            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            await farmOpenfieldRepo.ParcelDeleteAsync(parcel!.IDFarmOpenfieldCropParcel!.Value);
-            await WriteAuditAsync("FarmOpenfieldCropParcel.Deleted", parcel.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString()!, parcel.FarmOpenfieldCropParcelName);
+            await farmParcelRepo.FarmParcelZoneDeleteAsync(parcel!.IDFarmParcelZone!.Value);
+            await WriteAuditAsync("FarmParcelZone.Deleted", parcel.TenantID, "FarmParcelZone", idFarmParcelZone.ToString()!, parcel.FarmParcelZoneName);
             return true;
         }
 
@@ -291,7 +249,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return deviceError;
             }
-            var (parcel, parcelError) = await EnsureOwnedParcelAsync(body.IDFarmOpenfieldCropParcel, forWrite: true);
+            var (parcel, parcelError) = await EnsureOwnedParcelAsync(body.IDFarmParcelZone, forWrite: true);
             if (parcelError != null)
             {
                 return parcelError;
@@ -300,13 +258,13 @@ namespace Agrumy.Api.Controllers.API
             {
                 return StatusCode(403, "Device and parcel belong to different tenants.");
             }
-            if (device.DeviceControllerEnabled == true && await farmOpenfieldRepo.ParcelHasControllerAsync(body.IDFarmOpenfieldCropParcel))
+            if (device.DeviceControllerEnabled == true && await farmParcelRepo.FarmParcelZoneHasControllerAsync(body.IDFarmParcelZone))
             {
-                return Conflict("This parcel already has a controller assigned.");
+                return Conflict("This zone already has a controller assigned.");
             }
 
-            await farmOpenfieldRepo.DeviceAssignToParcelAsync(body.IDDevice, body.IDFarmOpenfieldCropParcel);
-            await WriteAuditAsync("Device.AssignedToParcel", device.TenantID, "Device", body.IDDevice.ToString(), $"parcel {body.IDFarmOpenfieldCropParcel}");
+            await farmParcelRepo.DeviceAssignToFarmParcelZoneAsync(body.IDDevice, body.IDFarmParcelZone);
+            await WriteAuditAsync("Device.AssignedToParcel", device.TenantID, "Device", body.IDDevice.ToString(), $"zone {body.IDFarmParcelZone}");
             return true;
         }
 
@@ -319,7 +277,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
-            await farmOpenfieldRepo.DeviceUnassignFromParcelAsync(device!.IDDevice!.Value);
+            await farmParcelRepo.DeviceUnassignFromFarmParcelZoneAsync(device!.IDDevice!.Value);
             await WriteAuditAsync("Device.UnassignedFromParcel", device.TenantID, "Device", idDevice.ToString()!, null);
             return true;
         }
@@ -330,17 +288,17 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Parcel/ManualActuate")]
-        public async Task<ActionResult<IReadOnlyList<int>>> ParcelManualActuateStart(int idFarmOpenfieldCropParcel, [FromBody] ManualActuateRequest request)
+        public async Task<ActionResult<IReadOnlyList<int>>> ParcelManualActuateStart(int idFarmParcelZone, [FromBody] ManualActuateRequest request)
         {
-            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            ManualActuateResult result = await manualActuate.StartForParcelAsync(idFarmOpenfieldCropParcel, request);
+            ManualActuateResult result = await manualActuate.StartForParcelAsync(idFarmParcelZone, request);
             if (result.Outcome == ManualActuateOutcome.Success)
             {
-                await WriteAuditAsync("FarmOpenfieldCropParcel.ManualActuateStarted", parcel!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), $"{request.RelayFunction}/{request.Mode}");
+                await WriteAuditAsync("FarmParcelZone.ManualActuateStarted", parcel!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), $"{request.RelayFunction}/{request.Mode}");
             }
             return result.Outcome switch
             {
@@ -352,29 +310,29 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Parcel/ManualActuate/Stop")]
-        public async Task<ActionResult> ParcelManualActuateStop(int idFarmOpenfieldCropParcel, RelayFunction relayFunction)
+        public async Task<ActionResult> ParcelManualActuateStop(int idFarmParcelZone, RelayFunction relayFunction)
         {
-            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            await manualActuate.StopForParcelAsync(idFarmOpenfieldCropParcel, relayFunction);
-            await WriteAuditAsync("FarmOpenfieldCropParcel.ManualActuateStopped", parcel!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), relayFunction.ToString());
+            await manualActuate.StopForParcelAsync(idFarmParcelZone, relayFunction);
+            await WriteAuditAsync("FarmParcelZone.ManualActuateStopped", parcel!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), relayFunction.ToString());
             return Ok();
         }
 
-        /// The parcel's currently-active manual commands (not yet past ExpiresAtUtc) - what the Web UI polls to render "currently active, X remaining".
+        /// The zone's currently-active manual commands (not yet past ExpiresAtUtc) - what the Web UI polls to render "currently active, X remaining".
         [Authorize]
         [HttpGet("Parcel/ManualActuate")]
-        public async Task<ActionResult<IList<DeviceManualOverride>>> ParcelManualActuateStatus(int idFarmOpenfieldCropParcel)
+        public async Task<ActionResult<IList<DeviceManualOverride>>> ParcelManualActuateStatus(int idFarmParcelZone)
         {
-            var (_, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: false);
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            Device? controller = await farmParcelRepo.FarmParcelZoneGetControllerAsync(idFarmParcelZone);
             if (controller?.IDDevice is not int deviceId)
             {
                 return Ok(Array.Empty<DeviceManualOverride>());
@@ -390,10 +348,10 @@ namespace Agrumy.Api.Controllers.API
         private const int MaxWidgetsPerParcel = 20;
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPut("Parcel/{idFarmOpenfieldCropParcel}/Widgets")]
-        public async Task<ActionResult<bool>> ParcelWidgetsSet(int idFarmOpenfieldCropParcel, [FromBody] List<DashboardWidget> widgets)
+        [HttpPut("Parcel/{idFarmParcelZone}/Widgets")]
+        public async Task<ActionResult<bool>> ParcelWidgetsSet(int idFarmParcelZone, [FromBody] List<DashboardWidget> widgets)
         {
-            var (existing, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            var (existing, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
             if (error != null)
             {
                 return error;
@@ -417,7 +375,7 @@ namespace Agrumy.Api.Controllers.API
                     }
                     if (await EnsureOwnedAggregationTargetAsync(level, levelId) != null)
                     {
-                        return BadRequest("A sensor widget references a farm/unit/zone/crop/parcel you don't have access to.");
+                        return BadRequest("A sensor widget references a farm/unit/zone/sowing/parcel you don't have access to.");
                     }
                 }
                 else if (w.Type == DashboardWidgetType.RelayStatus)
@@ -429,8 +387,8 @@ namespace Agrumy.Api.Controllers.API
                 }
             }
 
-            await farmOpenfieldRepo.ParcelWidgetsSetAsync(idFarmOpenfieldCropParcel, widgets);
-            await WriteAuditAsync("FarmOpenfieldCropParcel.WidgetsUpdated", existing!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), $"{widgets.Count} widget(s)");
+            await farmParcelRepo.FarmParcelZoneWidgetsSetAsync(idFarmParcelZone, widgets);
+            await WriteAuditAsync("FarmParcelZone.WidgetsUpdated", existing!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), $"{widgets.Count} widget(s)");
             return true;
         }
 
@@ -440,8 +398,8 @@ namespace Agrumy.Api.Controllers.API
             HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite: false)).Error,
             HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite: false)).Error,
             HierarchyNodeKind.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite: false)).Error,
-            HierarchyNodeKind.Parcel => (await EnsureOwnedParcelAsync(levelId, forWrite: false)).Error,
-            HierarchyNodeKind.Crop => (await EnsureOwnedCropAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.FarmParcelZone => (await EnsureOwnedParcelAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.Sowing => (await EnsureOwnedCropAsync(levelId, forWrite: false)).Error,
             _ => BadRequest("Unsupported aggregation level."),
         };
 
@@ -456,17 +414,29 @@ namespace Agrumy.Api.Controllers.API
 
         #endregion
 
-        private Task<OwnedResult<FarmOpenfieldCrop>> EnsureOwnedCropAsync(int? idFarmOpenfieldCrop, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.CropGetByIdAsync(idFarmOpenfieldCrop), c => c.TenantID, "Crop", forWrite);
+        private Task<OwnedResult<Sowing>> EnsureOwnedCropAsync(int? idSowing, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => sowingRepo.SowingGetByIdAsync(idSowing ?? 0), c => c.TenantID, "Crop", forWrite);
 
-        private Task<OwnedResult<FarmOpenfieldCropParcel>> EnsureOwnedParcelAsync(int? idFarmOpenfieldCropParcel, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel), p => p.TenantID, "Parcel", forWrite);
+        private Task<OwnedResult<FarmParcelZone>> EnsureOwnedParcelAsync(int? idFarmParcelZone, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelZoneGetByIdAsync(idFarmParcelZone ?? 0), p => p.TenantID, "Parcel", forWrite);
 
         private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);
 
-        /// Resolves the owning Farm (for its TenantID) from a FarmOpenfieldID - CropAdd's ownership check is really "does the caller own the Farm this Open-Field extension belongs to". No direct "get FarmOpenfield by its own id" repository lookup exists (FarmOpenfieldGetByFarmIdAsync is keyed by FarmID, the FK direction FarmOpenfieldCreateAsync needs), so this scans FarmOpenfieldsGetAsync's small admin-managed set instead of adding a second lookup shape for one caller.
-        private async Task<(FarmOpenfield? Openfield, DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedOpenfieldAsync(int idFarmOpenfield, bool forWrite)
+        /// Resolves the owning Farm (for its TenantID) from a FarmID - CropAdd's ownership check is really "does the caller own the Farm this sowing belongs to".
+        private async Task<(FarmOpenfield? Openfield, DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedOpenfieldAsync(int idFarm, bool forWrite)
+        {
+            var (farm, error) = await EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idFarm), f => f.TenantID, "Farm", forWrite);
+            if (error != null)
+            {
+                return (null, null, error);
+            }
+            FarmOpenfield? openfield = await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(idFarm);
+            return (openfield, farm, null);
+        }
+
+        /// Resolves the owning Farm (for its TenantID) from a FarmOpenfieldID - FarmParcelAdd's ownership check is really "does the caller own the Farm this Open-Field extension belongs to". No direct "get FarmOpenfield by its own id" repository lookup exists (FarmOpenfieldGetByFarmIdAsync is keyed by FarmID), so this scans FarmOpenfieldsGetAsync's small admin-managed set instead of adding a second lookup shape for one caller.
+        private async Task<(FarmOpenfield? Openfield, DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedOpenfieldByIdAsync(int idFarmOpenfield, bool forWrite)
         {
             IList<FarmOpenfield> openfields = await farmOpenfieldRepo.FarmOpenfieldsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId);
             FarmOpenfield? openfield = openfields.FirstOrDefault(o => o.IDFarmOpenfield == idFarmOpenfield);

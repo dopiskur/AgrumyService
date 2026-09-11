@@ -22,7 +22,12 @@ namespace Agrumy.Api.Tests.TestSupport
         ISimulationRepository,
         IExperimentRepository,
         IHorticultureCatalogRepository,
-        ISsrfAllowlistRepository
+        ISsrfAllowlistRepository,
+        ISowingRepository,
+        IFarmParcelRepository,
+        ICropCatalogRepository,
+        IFieldLogRepository,
+        IZonePlantingRepository
     {
     }
 }

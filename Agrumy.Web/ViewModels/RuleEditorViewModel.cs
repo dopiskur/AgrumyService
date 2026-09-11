@@ -39,8 +39,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleAdd",
             RuleScope.Simulation => "SessionRuleAdd",
             RuleScope.Experiment => "ExperimentRuleAdd",
-            RuleScope.Crop => "FarmOpenfieldCropRuleAdd",
-            RuleScope.Parcel => "FarmOpenfieldCropParcelRuleAdd",
+            RuleScope.Crop => "SowingRuleAdd",
+            RuleScope.Parcel => "FarmParcelZoneRuleAdd",
             _ => "GlobalRuleAdd",
         };
 
@@ -53,8 +53,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleDelete",
             RuleScope.Simulation => "SessionRuleDelete",
             RuleScope.Experiment => "ExperimentRuleDelete",
-            RuleScope.Crop => "FarmOpenfieldCropRuleDelete",
-            RuleScope.Parcel => "FarmOpenfieldCropParcelRuleDelete",
+            RuleScope.Crop => "SowingRuleDelete",
+            RuleScope.Parcel => "FarmParcelZoneRuleDelete",
             _ => "GlobalRuleDelete",
         };
 
@@ -66,8 +66,8 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Farm or RuleScope.FarmAlert => "idDeviceFarm",
             RuleScope.Simulation => "idSimulationSession",
             RuleScope.Experiment => "idExperiment",
-            RuleScope.Crop => "idFarmOpenfieldCrop",
-            RuleScope.Parcel => "idFarmOpenfieldCropParcel",
+            RuleScope.Crop => "idSowing",
+            RuleScope.Parcel => "idFarmParcelZone",
             _ => "",
         };
 

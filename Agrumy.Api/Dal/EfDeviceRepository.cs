@@ -430,8 +430,8 @@ namespace Agrumy.Api.Dal
             DeviceRoleID = d.DeviceRoleID,
             DeviceFarmUnitID = d.DeviceFarmUnitID,
             DeviceFarmUnitZoneID = d.DeviceFarmUnitZoneID,
-            FarmOpenfieldCropID = d.FarmOpenfieldCropID,
-            FarmOpenfieldCropParcelID = d.FarmOpenfieldCropParcelID,
+            SowingID = d.SowingID,
+            FarmParcelZoneID = d.FarmParcelZoneID,
             DeviceConfigSensorID = d.DeviceConfigSensorID,
             DeviceConfigControllerID = d.DeviceConfigControllerID,
             DeviceTypeServiceID = d.DeviceTypeServiceID,
@@ -968,15 +968,13 @@ namespace Agrumy.Api.Dal
             Dictionary<int, string?> zoneNames = await db.DeviceFarmUnitZones.AsNoTracking()
                 .ToDictionaryAsync(z => z.IDDeviceFarmUnitZone, z => z.DeviceFarmUnitZoneName);
 
-            // Fleet's "Farm" column resolves the top-level DeviceFarm regardless of branch (Unit->Farm for Greenhouse, Crop->FarmOpenfield->Farm for Open-Field); same in-memory-lookup reasoning as unitNames/zoneNames above.
+            // Fleet's "Farm" column resolves the top-level DeviceFarm regardless of branch (Unit->Farm for Greenhouse, Sowing->Farm directly for Open-Field, restructure R); same in-memory-lookup reasoning as unitNames/zoneNames above.
             Dictionary<int, string?> farmNames = await db.DeviceFarms.AsNoTracking()
                 .ToDictionaryAsync(f => f.IDDeviceFarm, f => f.DeviceFarmName);
             Dictionary<int, int?> unitFarmIds = await db.DeviceFarmUnits.AsNoTracking()
                 .ToDictionaryAsync(u => u.IDDeviceFarmUnit, u => u.DeviceFarmID);
-            Dictionary<int, int> cropOpenfieldIds = await db.FarmOpenfieldCrops.AsNoTracking()
-                .ToDictionaryAsync(c => c.IDFarmOpenfieldCrop, c => c.FarmOpenfieldID);
-            Dictionary<int, int> openfieldFarmIds = await db.FarmOpenfields.AsNoTracking()
-                .ToDictionaryAsync(o => o.IDFarmOpenfield, o => o.FarmID);
+            Dictionary<int, int> sowingFarmIds = await db.Sowings.AsNoTracking()
+                .ToDictionaryAsync(s => s.IDSowing, s => s.FarmID);
 
             string? FarmNameFor(DeviceRow device)
             {
@@ -984,9 +982,9 @@ namespace Agrumy.Api.Dal
                 {
                     return farmNames.GetValueOrDefault(fid);
                 }
-                if (device.FarmOpenfieldCropID is int cropId && cropOpenfieldIds.TryGetValue(cropId, out int openfieldId) && openfieldFarmIds.TryGetValue(openfieldId, out int openfieldFarmId))
+                if (device.SowingID is int cropId && sowingFarmIds.TryGetValue(cropId, out int sowingFarmId))
                 {
-                    return farmNames.GetValueOrDefault(openfieldFarmId);
+                    return farmNames.GetValueOrDefault(sowingFarmId);
                 }
                 return null;
             }
@@ -1051,8 +1049,8 @@ namespace Agrumy.Api.Dal
                     DeviceFarmUnitZoneID = r.Device.DeviceFarmUnitZoneID,
                     DeviceFarmUnitName = r.Device.DeviceFarmUnitID is int uid ? unitNames.GetValueOrDefault(uid) : null,
                     DeviceFarmUnitZoneName = r.Device.DeviceFarmUnitZoneID is int zid ? zoneNames.GetValueOrDefault(zid) : null,
-                    FarmOpenfieldCropID = r.Device.FarmOpenfieldCropID,
-                    FarmOpenfieldCropParcelID = r.Device.FarmOpenfieldCropParcelID,
+                    SowingID = r.Device.SowingID,
+                    FarmParcelZoneID = r.Device.FarmParcelZoneID,
                     FarmName = FarmNameFor(r.Device),
                     RelayStates = relayStates.GetValueOrDefault(r.Device.IDDevice),
                 };

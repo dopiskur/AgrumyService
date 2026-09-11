@@ -72,28 +72,24 @@ namespace Agrumy.Api.Dal
             return unit?.DeviceFarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
-        /// Open-Field's Parcel>Crop>Farm equivalent of ActiveExperimentIdForZoneAsync's Zone>Unit>Farm cascade - queries FarmOpenfield*Row directly, same "no repo dependency, just db" shape the Zone version already uses.
-        public async Task<int?> ActiveExperimentIdForParcelAsync(int idFarmOpenfieldCropParcel)
+        /// Open-Field's FarmParcelZone>Sowing>Farm equivalent of ActiveExperimentIdForZoneAsync's Zone>Unit>Farm cascade (restructure R, D5) - queries FarmParcel/FarmOpenfield*Row directly, same "no repo dependency, just db" shape the Zone version already uses. The Sowing tier is skipped (not treated as "no experiment") when the zone currently has no active sowing - CurrentSowingID null.
+        public async Task<int?> ActiveExperimentIdForFarmParcelZoneAsync(int idFarmParcelZone)
         {
-            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Parcel, idFarmOpenfieldCropParcel) is int parcelExperimentId)
+            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.FarmParcelZone, idFarmParcelZone) is int zoneExperimentId)
             {
-                return parcelExperimentId;
+                return zoneExperimentId;
             }
-            FarmOpenfieldCropParcelRow? parcel = await db.FarmOpenfieldCropParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == idFarmOpenfieldCropParcel);
-            if (parcel == null)
-            {
-                return null;
-            }
-            if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Crop, parcel.FarmOpenfieldCropID) is int cropExperimentId)
-            {
-                return cropExperimentId;
-            }
-            FarmOpenfieldCropRow? crop = await db.FarmOpenfieldCrops.AsNoTracking().FirstOrDefaultAsync(c => c.IDFarmOpenfieldCrop == parcel.FarmOpenfieldCropID);
-            if (crop == null)
+            FarmParcelZoneRow? zone = await db.FarmParcelZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
+            if (zone == null)
             {
                 return null;
             }
-            FarmOpenfieldRow? openfield = await db.FarmOpenfields.AsNoTracking().FirstOrDefaultAsync(o => o.IDFarmOpenfield == crop.FarmOpenfieldID);
+            if (zone.CurrentSowingID is int idSowing && await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Sowing, idSowing) is int sowingExperimentId)
+            {
+                return sowingExperimentId;
+            }
+            FarmParcelRow? parcel = await db.FarmParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmParcel == zone.FarmParcelID);
+            FarmOpenfieldRow? openfield = parcel == null ? null : await db.FarmOpenfields.AsNoTracking().FirstOrDefaultAsync(o => o.IDFarmOpenfield == parcel.FarmOpenfieldID);
             return openfield?.FarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
@@ -121,8 +117,8 @@ namespace Agrumy.Api.Dal
             Dictionary<int, int> zoneScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Zone).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
             Dictionary<int, int> unitScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Unit).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
             Dictionary<int, int> farmScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Farm).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
-            Dictionary<int, int> cropScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Crop).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
-            Dictionary<int, int> parcelScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Parcel).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> sowingScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.Sowing).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
+            Dictionary<int, int> farmParcelZoneScoped = active.Where(e => (HierarchyNodeKind)e.Scope == HierarchyNodeKind.FarmParcelZone).ToDictionary(e => e.ScopeID, e => e.IDExperiment);
 
             List<DeviceFarmUnitZoneRow> zones = await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.TenantID == tenantID).ToListAsync();
             Dictionary<int, int?> unitFarmById = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.TenantID == tenantID)
@@ -144,25 +140,25 @@ namespace Agrumy.Api.Dal
                 }
             }
 
-            // Open-Field's own Crop>Parcel>Farm cascade, same resolution order as Unit>Zone>Farm above.
-            List<FarmOpenfieldCropParcelRow> parcels = await db.FarmOpenfieldCropParcels.AsNoTracking().Where(p => p.TenantID == tenantID).ToListAsync();
-            Dictionary<int, int?> cropFarmById = await db.FarmOpenfieldCrops.AsNoTracking().Where(c => c.TenantID == tenantID)
-                .Join(db.FarmOpenfields.AsNoTracking(), c => c.FarmOpenfieldID, o => o.IDFarmOpenfield, (c, o) => new { c.IDFarmOpenfieldCrop, o.FarmID })
-                .ToDictionaryAsync(x => x.IDFarmOpenfieldCrop, x => (int?)x.FarmID);
+            // Open-Field's own FarmParcelZone>Sowing>Farm cascade (restructure R, D5), same resolution order as Zone>Unit>Farm above. The Sowing tier is skipped for a zone with no active sowing (CurrentSowingID null), same as ActiveExperimentIdForFarmParcelZoneAsync.
+            List<FarmParcelZoneRow> zonesOpenfield = await db.FarmParcelZones.AsNoTracking().Where(z => z.TenantID == tenantID).ToListAsync();
+            Dictionary<int, int> farmParcelZoneFarmId = await db.FarmParcels.AsNoTracking().Where(p => p.TenantID == tenantID)
+                .Join(db.FarmOpenfields.AsNoTracking(), p => p.FarmOpenfieldID, o => o.IDFarmOpenfield, (p, o) => new { p.IDFarmParcel, o.FarmID })
+                .ToDictionaryAsync(x => x.IDFarmParcel, x => x.FarmID);
 
-            foreach (FarmOpenfieldCropParcelRow parcel in parcels)
+            foreach (FarmParcelZoneRow zone in zonesOpenfield)
             {
-                if (parcelScoped.TryGetValue(parcel.IDFarmOpenfieldCropParcel, out int parcelExperimentId))
+                if (farmParcelZoneScoped.TryGetValue(zone.IDFarmParcelZone, out int zoneExperimentId2))
                 {
-                    map[parcel.IDFarmOpenfieldCropParcel] = parcelExperimentId;
+                    map[zone.IDFarmParcelZone] = zoneExperimentId2;
                 }
-                else if (cropScoped.TryGetValue(parcel.FarmOpenfieldCropID, out int cropExperimentId))
+                else if (zone.CurrentSowingID is int idSowing && sowingScoped.TryGetValue(idSowing, out int sowingExperimentId))
                 {
-                    map[parcel.IDFarmOpenfieldCropParcel] = cropExperimentId;
+                    map[zone.IDFarmParcelZone] = sowingExperimentId;
                 }
-                else if (cropFarmById.TryGetValue(parcel.FarmOpenfieldCropID, out int? idFarm) && idFarm is int farmId && farmScoped.TryGetValue(farmId, out int farmExperimentId))
+                else if (farmParcelZoneFarmId.TryGetValue(zone.FarmParcelID, out int idFarm) && farmScoped.TryGetValue(idFarm, out int farmExperimentId))
                 {
-                    map[parcel.IDFarmOpenfieldCropParcel] = farmExperimentId;
+                    map[zone.IDFarmParcelZone] = farmExperimentId;
                 }
             }
             return map;

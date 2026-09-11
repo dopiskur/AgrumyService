@@ -1,14 +1,14 @@
 @model ParcelViewModel
 @{
     var parcel = Model.Parcel;
-    ViewData["Title"] = parcel.FarmOpenfieldCropParcelName;
+    ViewData["Title"] = parcel.FarmParcelZoneName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
     bool hasController = Model.Devices.Any(d => d.ControllerCapable);
     var ruleEditorModel = new RuleEditorViewModel
     {
         Scope = RuleScope.Parcel,
-        ScopeId = parcel.IDFarmOpenfieldCropParcel,
+        ScopeId = parcel.IDFarmParcelZone,
         Rules = Model.Rules,
         RedirectActionName = "Parcel",
     };
@@ -16,19 +16,19 @@
     DeviceManualOverride? ActiveFor(RelayFunction f) => Model.ManualOverrides.FirstOrDefault(o => o.RelayFunction == f);
     var heatingModel = new ManualActuateFunctionViewModel
     {
-        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
+        ScopeId = parcel.IDFarmParcelZone!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
         MaxRunSeconds = parcel.HeatingMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Temperature],
         Active = ActiveFor(RelayFunction.Heating), DisplayTimeZone = Model.DisplayTimeZone,
     };
     var ventilationModel = new ManualActuateFunctionViewModel
     {
-        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
+        ScopeId = parcel.IDFarmParcelZone!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
         MaxRunSeconds = parcel.VentilationMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Temperature, SensorMetric.Humidity],
         Active = ActiveFor(RelayFunction.Ventilation), DisplayTimeZone = Model.DisplayTimeZone,
     };
     var irrigationModel = new ManualActuateFunctionViewModel
     {
-        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
+        ScopeId = parcel.IDFarmParcelZone!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
         MaxRunSeconds = parcel.WaterPumpMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Moisture],
         Active = ActiveFor(RelayFunction.WaterPump), DisplayTimeZone = Model.DisplayTimeZone,
     };
@@ -37,8 +37,11 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
-        <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@Model.Crop.IDFarmOpenfieldCrop">@Model.Crop.FarmOpenfieldCropName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@parcel.FarmOpenfieldCropParcelName</li>
+        @if (Model.Crop is { } crop)
+        {
+            <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idSowing="@crop.IDSowing">@crop.SowingName</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@parcel.FarmParcelZoneName</li>
     </ol>
 </nav>
 
@@ -63,7 +66,7 @@
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
         <form asp-action="ScanParcel" method="post" class="d-inline">
-            <input type="hidden" name="ParcelID" value="@parcel.IDFarmOpenfieldCropParcel" />
+            <input type="hidden" name="ParcelID" value="@parcel.IDFarmParcelZone" />
             <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
         </form>
     </div>
@@ -82,27 +85,27 @@
 
 <div class="card mb-3">
     <div class="card-header">
-        <h3 class="card-title">@parcel.FarmOpenfieldCropParcelName</h3>
+        <h3 class="card-title">@parcel.FarmParcelZoneName</h3>
         @if (canManage)
         {
             <div class="float-end d-flex align-items-center gap-2">
                 @if (!hasController)
                 {
-                    <a asp-action="ParcelAssignPicker" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" asp-route-controllerCapable="true" class="btn btn-sm btn-outline-primary">
+                    <a asp-action="ParcelAssignPicker" asp-route-idFarmParcelZone="@parcel.IDFarmParcelZone" asp-route-controllerCapable="true" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-cpu"></i> Add Controller
                     </a>
                 }
-                <a asp-action="ParcelAssignPicker" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" asp-route-controllerCapable="false" class="btn btn-sm btn-outline-primary">
+                <a asp-action="ParcelAssignPicker" asp-route-idFarmParcelZone="@parcel.IDFarmParcelZone" asp-route-controllerCapable="false" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-broadcast"></i> Add Sensor
                 </a>
                 <form asp-action="ParcelRename" method="post" class="d-flex gap-1">
-                    <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
-                    <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" value="@parcel.FarmOpenfieldCropParcelName" required maxlength="120" />
+                    <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
+                    <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" value="@parcel.FarmParcelZoneName" required maxlength="120" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                 </form>
                 <form asp-action="ParcelDelete" method="post" onsubmit="return confirm('Delete this parcel? Its devices are unassigned, not deleted.');">
-                    <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
-                    <input type="hidden" name="idFarmOpenfieldCrop" value="@Model.Crop.IDFarmOpenfieldCrop" />
+                    <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
+                    <input type="hidden" name="idSowing" value="@Model.Crop?.IDSowing" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete parcel"><i class="bi bi-trash"></i></button>
                 </form>
             </div>
@@ -134,7 +137,7 @@
                                 {
                                     <form asp-action="Remove" method="post" class="d-inline" onsubmit="return confirm('Remove this device from the parcel?');">
                                         <input type="hidden" name="idDevice" value="@d.IDDevice" />
-                                        <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                                        <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                                     </form>
                                 }
@@ -153,7 +156,7 @@
         <div class="card-header"><h3 class="card-title">Safety limits &amp; tank calibration</h3></div>
         <div class="card-body">
             <form asp-action="SafetyLimitsUpdate" method="post" class="row g-3">
-                <input type="hidden" name="idFarmOpenfieldCropParcel" value="@parcel.IDFarmOpenfieldCropParcel" />
+                <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
                 <div class="col-md-3">
                     <label class="form-label small">WaterPump max run (s)</label>
                     <input type="number" name="waterPumpMaxRunSeconds" class="form-control form-control-sm" value="@parcel.WaterPumpMaxRunSeconds" min="0" />
@@ -209,7 +212,7 @@
 @if (canManage)
 {
     <p class="text-end">
-        <a asp-controller="DeviceFarmUnit" asp-action="Index" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" class="small">
+        <a asp-controller="DeviceFarmUnit" asp-action="Index" asp-route-idFarmParcelZone="@parcel.IDFarmParcelZone" class="small">
             <i class="bi bi-magic"></i> Build this parcel's dashboard in the wizard
         </a>
     </p>
@@ -244,7 +247,7 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="DiscoveredApMac" id="registerApMac" />
-                    <input type="hidden" name="ParcelID" value="@parcel.IDFarmOpenfieldCropParcel" />
+                    <input type="hidden" name="ParcelID" value="@parcel.IDFarmParcelZone" />
                     <div class="mb-3">
                         <label class="form-label" for="registerDeviceName">Name (optional)</label>
                         <input type="text" name="DeviceName" id="registerDeviceName" class="form-control" maxlength="128" />

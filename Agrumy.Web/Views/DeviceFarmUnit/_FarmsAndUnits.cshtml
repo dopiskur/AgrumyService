@@ -49,17 +49,16 @@
 }
 else if (!multipleFarms)
 {
-    // The sole farm is Open-Field typed - show its crops instead of the Units card above.
+    // The sole farm is Open-Field typed - show its sowings instead of the Units card above.
     var farm = Model.Farms[0];
-    int? openfieldId = openfieldIdByFarm.GetValueOrDefault(farm.IDDeviceFarm ?? 0);
-    var crops = Model.Crops.Where(c => c.FarmOpenfieldID == openfieldId).ToList();
+    var crops = Model.Crops.Where(c => c.FarmID == farm.IDDeviceFarm).ToList();
     <div class="card">
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
             <h3 class="card-title mb-0">Crops</h3>
-            @if (canManage && openfieldId is int ofid)
+            @if (canManage && farm.IDDeviceFarm is int fid)
             {
                 <form asp-controller="FarmOpenfield" asp-action="CropAdd" method="post" class="d-flex gap-2 ms-auto">
-                    <input type="hidden" name="idFarmOpenfield" value="@ofid" />
+                    <input type="hidden" name="idFarm" value="@fid" />
                     <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" placeholder="New crop name" required maxlength="100" />
                     <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Crop</button>
                 </form>
@@ -78,12 +77,12 @@ else if (!multipleFarms)
                         <div class="col-md-4">
                             <div class="small-box text-bg-primary position-relative">
                                 <div class="inner">
-                                    <h3 class="fs-4">@c.FarmOpenfieldCropName <partial name="_ZoneStatusBadge" model="(c.Status, c.ProblemAlerts)" /></h3>
-                                    <p class="mb-2">@c.ParcelCount parcel@(c.ParcelCount == 1 ? "" : "s") &middot; @c.DeviceCount device@(c.DeviceCount == 1 ? "" : "s")</p>
+                                    <h3 class="fs-4">@c.SowingName <partial name="_ZoneStatusBadge" model="(c.Status, c.ProblemAlerts)" /></h3>
+                                    <p class="mb-2">@c.ZoneCount zone@(c.ZoneCount == 1 ? "" : "s") &middot; @c.DeviceCount device@(c.DeviceCount == 1 ? "" : "s")</p>
                                     <partial name="_SensorAverages" model="new SensorSummaryViewModel { Averages = c.Averages, Trend = c.Trend }" />
                                 </div>
                                 <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
-                                <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@c.IDFarmOpenfieldCrop" class="stretched-link" aria-label="Open @c.FarmOpenfieldCropName"></a>
+                                <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idSowing="@c.IDSowing" class="stretched-link" aria-label="Open @c.SowingName"></a>
                             </div>
                         </div>
                     }
@@ -140,12 +139,11 @@ else
             <div class="card-body">
                 @if (farm.FarmType == FarmType.OpenField)
                 {
-                    int? openfieldId = openfieldIdByFarm.GetValueOrDefault(farm.IDDeviceFarm ?? 0);
-                    var cropsInFarm = Model.Crops.Where(c => c.FarmOpenfieldID == openfieldId).ToList();
-                    @if (canManage && openfieldId is int ofid)
+                    var cropsInFarm = Model.Crops.Where(c => c.FarmID == farm.IDDeviceFarm).ToList();
+                    @if (canManage && farm.IDDeviceFarm is int fid)
                     {
                         <form asp-controller="FarmOpenfield" asp-action="CropAdd" method="post" class="d-flex gap-2 mb-3">
-                            <input type="hidden" name="idFarmOpenfield" value="@ofid" />
+                            <input type="hidden" name="idFarm" value="@fid" />
                             <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" placeholder="New crop name" required maxlength="100" />
                             <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Crop</button>
                         </form>
@@ -161,9 +159,9 @@ else
                             {
                                 <div class="col-md-4">
                                     <div class="small-box bg-hierarchy-mid position-relative">
-                                        <div class="inner"><h3 class="fs-4">@c.FarmOpenfieldCropName</h3></div>
+                                        <div class="inner"><h3 class="fs-4">@c.SowingName</h3></div>
                                         <div class="small-box-icon"><i class="bi bi-flower1"></i></div>
-                                        <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idFarmOpenfieldCrop="@c.IDFarmOpenfieldCrop" class="stretched-link" aria-label="Open @c.FarmOpenfieldCropName"></a>
+                                        <a asp-controller="FarmOpenfield" asp-action="Parcels" asp-route-idSowing="@c.IDSowing" class="stretched-link" aria-label="Open @c.SowingName"></a>
                                     </div>
                                 </div>
                             }

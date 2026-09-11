@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Unit/Zone CRUD, device assignment, and hierarchical dashboard aggregation - ownership checks mirror DeviceApiController.EnsureOwnedDeviceAsync, same CallerReadsDevicesGlobally/CallerManagesDevicesGlobally rules as the rest of the Device domain.
     [Route("/api/DeviceFarmUnit")]
-    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, DeviceOutboxService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation, Agrumy.Api.Devices.RuleScopeConflictService ruleScopeConflict, IHorticultureCatalogRepository horticultureCatalogRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DeviceFarmUnitApiController(IDeviceFarmUnitRepository deviceFarmUnitRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IDeviceRepository deviceRepo, IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IOptions<AgrumySettings> settingsOptions, ManualActuateService manualActuate, DeviceOutboxService commandQueue, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Devices.RuleValidationService ruleValidation, Agrumy.Api.Devices.RuleScopeConflictService ruleScopeConflict, IHorticultureCatalogRepository horticultureCatalogRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -494,34 +494,34 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize]
         [HttpGet("Crop/Rule")]
-        public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> FarmOpenfieldCropRulesGet(int? idFarmOpenfieldCrop)
+        public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> SowingRulesGet(int? idSowing)
         {
             if (CallerIsDataReaderOnly)
             {
                 return StatusCode(403, "Data Reader role cannot view crop rules.");
             }
-            var (crop, error) = await EnsureOwnedCropAsync(idFarmOpenfieldCrop, forWrite: false);
+            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            return Ok(await deviceFarmUnitRepo.RulesGetForCropAsync(crop!.IDFarmOpenfieldCrop!.Value));
+            return Ok(await deviceFarmUnitRepo.RulesGetForSowingAsync(crop!.IDSowing!.Value));
         }
 
         [Authorize]
         [HttpGet("Parcel/Rule")]
-        public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> FarmOpenfieldCropParcelRulesGet(int? idFarmOpenfieldCropParcel)
+        public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> FarmParcelZoneRulesGet(int? idFarmParcelZone)
         {
             if (CallerIsDataReaderOnly)
             {
                 return StatusCode(403, "Data Reader role cannot view parcel rules.");
             }
-            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: false);
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            return Ok(await deviceFarmUnitRepo.RulesGetForParcelAsync(parcel!.IDFarmOpenfieldCropParcel!.Value));
+            return Ok(await deviceFarmUnitRepo.RulesGetForFarmParcelZoneAsync(parcel!.IDFarmParcelZone!.Value));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -535,8 +535,8 @@ namespace Agrumy.Api.Controllers.API
             }
             rule.DeviceFarmUnitID = null;
             rule.DeviceFarmID = null;
-            rule.DeviceFarmOpenfieldCropID = null;
-            rule.DeviceFarmOpenfieldCropParcelID = null;
+            rule.DeviceSowingID = null;
+            rule.DeviceFarmParcelZoneID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = zone!.TenantID ?? CallerTenantId ?? 0;
@@ -545,36 +545,36 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Crop/Rule")]
-        public async Task<ActionResult<RuleAddResult>> FarmOpenfieldCropRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> SowingRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(rule.DeviceFarmOpenfieldCropID, forWrite: true);
+            var (crop, error) = await EnsureOwnedCropAsync(rule.DeviceSowingID, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            rule.DeviceFarmOpenfieldCropParcelID = null;
+            rule.DeviceFarmParcelZoneID = null;
             rule.DeviceFarmID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = crop!.TenantID ?? CallerTenantId ?? 0;
-            return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForCropAsync(crop.IDFarmOpenfieldCrop!.Value)).Count, scopeLabel: $"crop {rule.DeviceFarmOpenfieldCropID}");
+            return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForSowingAsync(crop.IDSowing!.Value)).Count, scopeLabel: $"crop {rule.DeviceSowingID}");
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Parcel/Rule")]
-        public async Task<ActionResult<RuleAddResult>> FarmOpenfieldCropParcelRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
+        public async Task<ActionResult<RuleAddResult>> FarmParcelZoneRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
-            var (parcel, error) = await EnsureOwnedParcelAsync(rule.DeviceFarmOpenfieldCropParcelID, forWrite: true);
+            var (parcel, error) = await EnsureOwnedParcelAsync(rule.DeviceFarmParcelZoneID, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            rule.DeviceFarmOpenfieldCropID = null;
+            rule.DeviceSowingID = null;
             rule.DeviceFarmID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = parcel!.TenantID ?? CallerTenantId ?? 0;
-            return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForParcelAsync(parcel.IDFarmOpenfieldCropParcel!.Value)).Count, scopeLabel: $"parcel {rule.DeviceFarmOpenfieldCropParcelID}");
+            return await AddRuleAsync(rule, existingCount: (await deviceFarmUnitRepo.RulesGetForFarmParcelZoneAsync(parcel.IDFarmParcelZone!.Value)).Count, scopeLabel: $"parcel {rule.DeviceFarmParcelZoneID}");
         }
 
         /// Reuses AddRuleAsync per generated rule (same validation/cap-check/audit as adding one rule by hand) - a catalog entry's ranges are a starting point, not guaranteed to fit if the zone is already near its rule-count cap.
@@ -684,8 +684,8 @@ namespace Agrumy.Api.Controllers.API
             }
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmID = null;
-            rule.DeviceFarmOpenfieldCropID = null;
-            rule.DeviceFarmOpenfieldCropParcelID = null;
+            rule.DeviceSowingID = null;
+            rule.DeviceFarmParcelZoneID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = unit!.TenantID ?? CallerTenantId ?? 0;
@@ -703,8 +703,8 @@ namespace Agrumy.Api.Controllers.API
             }
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmUnitID = null;
-            rule.DeviceFarmOpenfieldCropID = null;
-            rule.DeviceFarmOpenfieldCropParcelID = null;
+            rule.DeviceSowingID = null;
+            rule.DeviceFarmParcelZoneID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = farm!.TenantID ?? CallerTenantId ?? 0;
@@ -722,8 +722,8 @@ namespace Agrumy.Api.Controllers.API
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmUnitID = null;
             rule.DeviceFarmID = null;
-            rule.DeviceFarmOpenfieldCropID = null;
-            rule.DeviceFarmOpenfieldCropParcelID = null;
+            rule.DeviceSowingID = null;
+            rule.DeviceFarmParcelZoneID = null;
             rule.SimulationSessionID = null;
             rule.ExperimentID = null;
             rule.TenantID = tenantId;
@@ -767,11 +767,11 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Crop/Rule")]
-        public Task<ActionResult<bool>> FarmOpenfieldCropRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
+        public Task<ActionResult<bool>> SowingRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete("Parcel/Rule")]
-        public Task<ActionResult<bool>> FarmOpenfieldCropParcelRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
+        public Task<ActionResult<bool>> FarmParcelZoneRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
 
         /// One shared delete body regardless of which scope route it came in through - ownership is resolved from the rule's OWN scope fields, not the route.
         private async Task<ActionResult<bool>> DeleteRuleAsync(int? idRule)
@@ -812,11 +812,11 @@ namespace Agrumy.Api.Controllers.API
             {
                 return (await EnsureOwnedFarmAsync(idFarm, forWrite)).Error;
             }
-            if (rule.DeviceFarmOpenfieldCropParcelID is int idParcel)
+            if (rule.DeviceFarmParcelZoneID is int idParcel)
             {
                 return (await EnsureOwnedParcelAsync(idParcel, forWrite)).Error;
             }
-            if (rule.DeviceFarmOpenfieldCropID is int idCrop)
+            if (rule.DeviceSowingID is int idCrop)
             {
                 return (await EnsureOwnedCropAsync(idCrop, forWrite)).Error;
             }
@@ -1050,18 +1050,18 @@ namespace Agrumy.Api.Controllers.API
             HierarchyNodeKind.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite)).Error,
             HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite)).Error,
             HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite)).Error,
-            HierarchyNodeKind.Crop => (await EnsureOwnedCropAsync(levelId, forWrite)).Error,
-            HierarchyNodeKind.Parcel => (await EnsureOwnedParcelAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.Sowing => (await EnsureOwnedCropAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.FarmParcelZone => (await EnsureOwnedParcelAsync(levelId, forWrite)).Error,
             _ => BadRequest("Unknown dashboard aggregation level."),
         };
 
         /// Open-Field's mid-level equivalent of EnsureOwnedUnitAsync.
-        private Task<OwnedResult<FarmOpenfieldCrop>> EnsureOwnedCropAsync(int? idFarmOpenfieldCrop, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.CropGetByIdAsync(idFarmOpenfieldCrop), c => c.TenantID, "Crop", forWrite);
+        private Task<OwnedResult<Sowing>> EnsureOwnedCropAsync(int? idSowing, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => sowingRepo.SowingGetByIdAsync(idSowing ?? 0), c => c.TenantID, "Crop", forWrite);
 
         /// Open-Field's leaf-level equivalent of EnsureOwnedZoneAsync.
-        private Task<OwnedResult<FarmOpenfieldCropParcel>> EnsureOwnedParcelAsync(int? idFarmOpenfieldCropParcel, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel), p => p.TenantID, "Parcel", forWrite);
+        private Task<OwnedResult<FarmParcelZone>> EnsureOwnedParcelAsync(int? idFarmParcelZone, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelZoneGetByIdAsync(idFarmParcelZone ?? 0), p => p.TenantID, "Parcel", forWrite);
 
         /// Same shape as EnsureOwnedUnitAsync, for Device.
         private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(

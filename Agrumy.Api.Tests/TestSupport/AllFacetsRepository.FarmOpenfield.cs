@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IFarmOpenfieldRepository members - forwarded to the standalone EfFarmOpenfieldRepository so IAllFacetsRepository's broad consumers keep working unchanged.
+    /// IFarmOpenfieldRepository/ISowingRepository/IFarmParcelRepository/ICropCatalogRepository/IFieldLogRepository/IZonePlantingRepository members - forwarded to the standalone Ef*Repository instances so IAllFacetsRepository's broad consumers keep working unchanged (restructure R split the old single IFarmOpenfieldRepository into these five facets).
     internal sealed partial class AllFacetsRepository
     {
         public Task<(DeviceFarm Farm, FarmOpenfield Openfield)> FarmOpenfieldCreateAsync(string? farmName, int? tenantID, Func<Task<string?>>? quotaCheckAsync = null) =>
@@ -13,50 +13,113 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<FarmOpenfield>> FarmOpenfieldsGetAsync(int? tenantID) => farmOpenfieldRepository.FarmOpenfieldsGetAsync(tenantID);
 
-        public Task<IList<FarmOpenfieldCrop>> CropsGetAsync(int? tenantID) => farmOpenfieldRepository.CropsGetAsync(tenantID);
+        // ---- ISowingRepository ----
 
-        public Task<FarmOpenfieldCrop?> CropGetByIdAsync(int? idFarmOpenfieldCrop) => farmOpenfieldRepository.CropGetByIdAsync(idFarmOpenfieldCrop);
+        public Task<IList<Sowing>> SowingsGetAsync(int? tenantID) => sowingRepository.SowingsGetAsync(tenantID);
 
-        public Task<FarmOpenfieldCrop> CropAddAsync(FarmOpenfieldCrop crop, Func<Task<string?>>? quotaCheckAsync = null) => farmOpenfieldRepository.CropAddAsync(crop, quotaCheckAsync);
+        public Task<Sowing?> SowingGetByIdAsync(int idSowing) => sowingRepository.SowingGetByIdAsync(idSowing);
 
-        public Task CropUpdateAsync(FarmOpenfieldCrop crop) => farmOpenfieldRepository.CropUpdateAsync(crop);
+        public Task<Sowing> SowingAddAsync(Sowing sowing) => sowingRepository.SowingAddAsync(sowing);
 
-        public Task CropsReorderAsync(int tenantId, IReadOnlyList<int> orderedCropIds) => farmOpenfieldRepository.CropsReorderAsync(tenantId, orderedCropIds);
+        public Task SowingUpdateAsync(Sowing sowing) => sowingRepository.SowingUpdateAsync(sowing);
 
-        public Task CropDeleteAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.CropDeleteAsync(idFarmOpenfieldCrop);
+        public Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds) => sowingRepository.SowingStartAsync(idSowing, farmParcelZoneIds);
 
-        public Task<IList<FarmOpenfieldCropParcel>> ParcelsGetAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.ParcelsGetAsync(idFarmOpenfieldCrop);
+        public Task SowingCloseAsync(int idSowing, int? closedByUserID) => sowingRepository.SowingCloseAsync(idSowing, closedByUserID);
 
-        public Task<FarmOpenfieldCropParcel?> ParcelGetByIdAsync(int? idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelGetByIdAsync(idFarmOpenfieldCropParcel);
+        public Task SowingDeleteAsync(int idSowing) => sowingRepository.SowingDeleteAsync(idSowing);
 
-        public Task<FarmOpenfieldCropParcel> ParcelAddAsync(FarmOpenfieldCropParcel parcel, Func<Task<string?>>? quotaCheckAsync = null) => farmOpenfieldRepository.ParcelAddAsync(parcel, quotaCheckAsync);
+        public Task<IList<FarmParcelZone>> SowingOccupiedZonesGetAsync(int idSowing) => sowingRepository.SowingOccupiedZonesGetAsync(idSowing);
 
-        public Task ParcelUpdateAsync(FarmOpenfieldCropParcel parcel) => farmOpenfieldRepository.ParcelUpdateAsync(parcel);
+        public Task<(SensorAverages Averages, SensorTrend Trend)> SowingAggregateAsync(int idSowing) => sowingRepository.SowingAggregateAsync(idSowing);
 
-        public Task<bool> ParcelMigrateAsync(int idFarmOpenfieldCropParcel, int idTargetFarmOpenfieldCrop) => farmOpenfieldRepository.ParcelMigrateAsync(idFarmOpenfieldCropParcel, idTargetFarmOpenfieldCrop);
+        public Task<IList<SowingDashboard>> SowingDashboardGetAsync(int? tenantID) => sowingRepository.SowingDashboardGetAsync(tenantID);
 
-        public Task ParcelConfigVersionBumpAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelConfigVersionBumpAsync(idFarmOpenfieldCropParcel);
+        // ---- IFarmParcelRepository ----
 
-        public Task ParcelDeleteAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelDeleteAsync(idFarmOpenfieldCropParcel);
+        public Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarmOpenfield) => farmParcelRepository.FarmParcelsGetAsync(idFarmOpenfield);
 
-        public Task ParcelWidgetsSetAsync(int idFarmOpenfieldCropParcel, List<DashboardWidget> widgets) => farmOpenfieldRepository.ParcelWidgetsSetAsync(idFarmOpenfieldCropParcel, widgets);
+        public Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel) => farmParcelRepository.FarmParcelGetByIdAsync(idFarmParcel);
 
-        public Task DeviceAssignToParcelAsync(int idDevice, int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.DeviceAssignToParcelAsync(idDevice, idFarmOpenfieldCropParcel);
+        public Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel) => farmParcelRepository.FarmParcelAddAsync(parcel);
 
-        public Task DeviceUnassignFromParcelAsync(int idDevice) => farmOpenfieldRepository.DeviceUnassignFromParcelAsync(idDevice);
+        public Task FarmParcelUpdateAsync(FarmParcel parcel) => farmParcelRepository.FarmParcelUpdateAsync(parcel);
 
-        public Task<bool> ParcelHasControllerAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelHasControllerAsync(idFarmOpenfieldCropParcel);
+        public Task FarmParcelDeleteAsync(int idFarmParcel) => farmParcelRepository.FarmParcelDeleteAsync(idFarmParcel);
 
-        public Task<Device?> ParcelGetControllerAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+        public Task<IList<FarmParcelZone>> FarmParcelZonesGetAsync(int idFarmParcel) => farmParcelRepository.FarmParcelZonesGetAsync(idFarmParcel);
 
-        public Task<IList<Device>> ParcelGetSensorsAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelGetSensorsAsync(idFarmOpenfieldCropParcel);
+        public Task<FarmParcelZone?> FarmParcelZoneGetByIdAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneGetByIdAsync(idFarmParcelZone);
 
-        public Task<(SensorAverages Averages, SensorTrend Trend)> CropAggregateAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.CropAggregateAsync(idFarmOpenfieldCrop);
+        public Task FarmParcelZoneUpdateAsync(FarmParcelZone zone) => farmParcelRepository.FarmParcelZoneUpdateAsync(zone);
 
-        public Task<(SensorAverages Averages, SensorTrend Trend)> ParcelAggregateAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelAggregateAsync(idFarmOpenfieldCropParcel);
+        public Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneConfigVersionBumpAsync(idFarmParcelZone);
 
-        public Task<IList<FarmOpenfieldCropDashboard>> CropDashboardGetAsync(int? tenantID) => farmOpenfieldRepository.CropDashboardGetAsync(tenantID);
+        public Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames) => farmParcelRepository.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames);
 
-        public Task<IList<FarmOpenfieldCropParcelDashboard>> ParcelDashboardListGetAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.ParcelDashboardListGetAsync(idFarmOpenfieldCrop);
+        public Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName) => farmParcelRepository.FarmParcelZoneMergeAsync(farmParcelZoneIds, mergedName);
+
+        public Task FarmParcelZoneDeleteAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneDeleteAsync(idFarmParcelZone);
+
+        public Task FarmParcelZoneWidgetsSetAsync(int idFarmParcelZone, List<DashboardWidget> widgets) => farmParcelRepository.FarmParcelZoneWidgetsSetAsync(idFarmParcelZone, widgets);
+
+        public Task DeviceAssignToFarmParcelZoneAsync(int idDevice, int idFarmParcelZone) => farmParcelRepository.DeviceAssignToFarmParcelZoneAsync(idDevice, idFarmParcelZone);
+
+        public Task DeviceUnassignFromFarmParcelZoneAsync(int idDevice) => farmParcelRepository.DeviceUnassignFromFarmParcelZoneAsync(idDevice);
+
+        public Task<bool> FarmParcelZoneHasControllerAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneHasControllerAsync(idFarmParcelZone);
+
+        public Task<Device?> FarmParcelZoneGetControllerAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneGetControllerAsync(idFarmParcelZone);
+
+        public Task<IList<Device>> FarmParcelZoneGetSensorsAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneGetSensorsAsync(idFarmParcelZone);
+
+        public Task<(SensorAverages Averages, SensorTrend Trend)> FarmParcelZoneAggregateAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneAggregateAsync(idFarmParcelZone);
+
+        public Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel) => farmParcelRepository.FarmParcelZoneDashboardListGetAsync(idFarmParcel);
+
+        // ---- ICropCatalogRepository ----
+
+        public Task<IList<Crop>> CropsGetAsync(int? tenantID) => cropCatalogRepository.CropsGetAsync(tenantID);
+
+        public Task<Crop?> CropGetByIdAsync(int idCrop) => cropCatalogRepository.CropGetByIdAsync(idCrop);
+
+        public Task<Crop> CropAddAsync(Crop crop) => cropCatalogRepository.CropAddAsync(crop);
+
+        public Task CropUpdateAsync(Crop crop) => cropCatalogRepository.CropUpdateAsync(crop);
+
+        public Task CropDeleteAsync(int idCrop) => cropCatalogRepository.CropDeleteAsync(idCrop);
+
+        public Task<int> CropFindOrCreateByNameAsync(int? tenantID, string name) => cropCatalogRepository.CropFindOrCreateByNameAsync(tenantID, name);
+
+        // ---- IFieldLogRepository ----
+
+        public Task<IList<FieldLogEntry>> FieldLogEntriesGetAsync(int? sowingID, int? farmParcelZoneID, int? zonePlantingID, int? deviceFarmUnitZoneID) =>
+            fieldLogRepository.FieldLogEntriesGetAsync(sowingID, farmParcelZoneID, zonePlantingID, deviceFarmUnitZoneID);
+
+        public Task<FieldLogEntry?> FieldLogEntryGetByIdAsync(int idFieldLogEntry) => fieldLogRepository.FieldLogEntryGetByIdAsync(idFieldLogEntry);
+
+        public Task<FieldLogEntry> FieldLogEntryAddAsync(FieldLogEntry entry) => fieldLogRepository.FieldLogEntryAddAsync(entry);
+
+        public Task FieldLogEntryDeleteAsync(int idFieldLogEntry) => fieldLogRepository.FieldLogEntryDeleteAsync(idFieldLogEntry);
+
+        public Task<IList<FieldLogAttachment>> FieldLogAttachmentsGetAsync(int idFieldLogEntry) => fieldLogRepository.FieldLogAttachmentsGetAsync(idFieldLogEntry);
+
+        public Task<FieldLogAttachment> FieldLogAttachmentAddAsync(FieldLogAttachment attachment) => fieldLogRepository.FieldLogAttachmentAddAsync(attachment);
+
+        public Task FieldLogAttachmentDeleteAsync(int idFieldLogAttachment) => fieldLogRepository.FieldLogAttachmentDeleteAsync(idFieldLogAttachment);
+
+        public Task<IList<HarvestResult>> HarvestResultsGetAsync(int? sowingID, int? zonePlantingID) => fieldLogRepository.HarvestResultsGetAsync(sowingID, zonePlantingID);
+
+        public Task<HarvestResult> HarvestResultAddAsync(HarvestResult result) => fieldLogRepository.HarvestResultAddAsync(result);
+
+        // ---- IZonePlantingRepository ----
+
+        public Task<ZonePlanting?> ZonePlantingGetActiveAsync(int idDeviceFarmUnitZone) => zonePlantingRepository.ZonePlantingGetActiveAsync(idDeviceFarmUnitZone);
+
+        public Task<IList<ZonePlanting>> ZonePlantingsGetAsync(int idDeviceFarmUnitZone) => zonePlantingRepository.ZonePlantingsGetAsync(idDeviceFarmUnitZone);
+
+        public Task<ZonePlanting> ZonePlantingStartAsync(ZonePlanting planting) => zonePlantingRepository.ZonePlantingStartAsync(planting);
+
+        public Task ZonePlantingCloseAsync(int idZonePlanting) => zonePlantingRepository.ZonePlantingCloseAsync(idZonePlanting);
     }
 }

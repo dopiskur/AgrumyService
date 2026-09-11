@@ -15,7 +15,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<int?> ActiveExperimentIdForZoneAsync(int idDeviceFarmUnitZone) => experimentRepository.ActiveExperimentIdForZoneAsync(idDeviceFarmUnitZone);
 
-        public Task<int?> ActiveExperimentIdForParcelAsync(int idFarmOpenfieldCropParcel) => experimentRepository.ActiveExperimentIdForParcelAsync(idFarmOpenfieldCropParcel);
+        public Task<int?> ActiveExperimentIdForFarmParcelZoneAsync(int idFarmParcelZone) => experimentRepository.ActiveExperimentIdForFarmParcelZoneAsync(idFarmParcelZone);
 
         public Task<IDictionary<int, int>> ActiveExperimentIdsByZoneAsync(int tenantID) => experimentRepository.ActiveExperimentIdsByZoneAsync(tenantID);
 

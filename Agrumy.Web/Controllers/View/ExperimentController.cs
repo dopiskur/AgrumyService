@@ -28,19 +28,16 @@ namespace Agrumy.Web.Controllers.View
                     zones.Add(new ZoneOption { IDDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone!.Value, ZoneName = zone.DeviceFarmUnitZoneName ?? "", GroupLabel = groupLabel });
                 }
             }
-            IList<FarmOpenfieldCrop> crops = await api.CropsGet();
-            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
+            IList<Sowing> crops = await api.CropsGet();
             var parcels = new List<ParcelOption>();
-            foreach (FarmOpenfieldCrop crop in crops)
+            foreach (Sowing crop in crops)
             {
-                if (crop.IDFarmOpenfieldCrop is not int cropId) { continue; }
-                string? farmName = openfields.FirstOrDefault(o => o.IDFarmOpenfield == crop.FarmOpenfieldID)?.FarmID is int farmId
-                    ? farms.FirstOrDefault(f => f.IDDeviceFarm == farmId)?.DeviceFarmName
-                    : null;
-                string groupLabel = farmName is null ? crop.FarmOpenfieldCropName ?? "" : $"{farmName} / {crop.FarmOpenfieldCropName}";
-                foreach (FarmOpenfieldCropParcel parcel in await api.ParcelsGet(cropId))
+                if (crop.IDSowing is not int cropId) { continue; }
+                string? farmName = farms.FirstOrDefault(f => f.IDDeviceFarm == crop.FarmID)?.DeviceFarmName;
+                string groupLabel = farmName is null ? crop.SowingName ?? "" : $"{farmName} / {crop.SowingName}";
+                foreach (FarmParcelZone parcel in await api.ParcelsGet(cropId))
                 {
-                    parcels.Add(new ParcelOption { IDFarmOpenfieldCropParcel = parcel.IDFarmOpenfieldCropParcel!.Value, ParcelName = parcel.FarmOpenfieldCropParcelName ?? "", GroupLabel = groupLabel });
+                    parcels.Add(new ParcelOption { IDFarmParcelZone = parcel.IDFarmParcelZone!.Value, ParcelName = parcel.FarmParcelZoneName ?? "", GroupLabel = groupLabel });
                 }
             }
             return View(new ExperimentIndexViewModel

@@ -13,7 +13,7 @@ namespace Agrumy.Api.BackgroundWorkers
     /// rule's OR-across-rules/AND-OR-within-a-rule fold happens on-device, this is the server-side
     /// equivalent for the action type firmware has no way to perform itself.
     public sealed class RuleNotificationEvaluator(
-        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository openfieldRepo, IUserRepository userRepo,
+        ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IUserRepository userRepo,
         INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo,
         IExperimentRepository experimentRepo)
     {
@@ -73,7 +73,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     : [];
                 // Also excludes a Crop/Parcel-scoped rule - without this, a rule meant for one Open-Field crop/parcel would leak into every Greenhouse zone's "Global" set, since it likewise has DeviceFarmID/DeviceFarmUnitID/DeviceFarmUnitZoneID all null.
                 var globalScoped = notificationRules.Where(r => r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
-                    && r.DeviceFarmOpenfieldCropID == null && r.DeviceFarmOpenfieldCropParcelID == null).ToList();
+                    && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null).ToList();
 
                 foreach (DeviceFarmUnitZone zone in await unitRepo.DeviceFarmUnitZonesGetAsync(unitId))
                 {
@@ -121,30 +121,25 @@ namespace Agrumy.Api.BackgroundWorkers
                 }
             }
 
-            // Open-Field's own Farm>Crop>Parcel walk, mirrors the Unit>Zone loop above field-for-field - simulationSessionIdByZone/experimentIdByZone already cover Parcel ids too (see ActiveSimulationSessionIdsByZoneAsync/ActiveExperimentIdsByZoneAsync), and the *ScopedByExperiment/BySession caches above are shared across both branches since they're keyed by session/experiment id, not by zone/parcel.
-            IList<FarmOpenfield> openfields = await openfieldRepo.FarmOpenfieldsGetAsync(tenantId);
-            Dictionary<int, int> farmIdByOpenfieldId = openfields.Where(o => o.IDFarmOpenfield is int).ToDictionary(o => o.IDFarmOpenfield!.Value, o => o.FarmID);
-
-            foreach (FarmOpenfieldCrop crop in await openfieldRepo.CropsGetAsync(tenantId))
+            // Open-Field's own Farm>Sowing>FarmParcelZone walk (restructure R, D5), mirrors the Unit>Zone loop above field-for-field - a sowing's occupied-zone list is already empty for one that never started (Planned) or has closed, so D10's "no active sowing = no rules" falls out naturally without extra filtering. simulationSessionIdByZone/experimentIdByZone already cover FarmParcelZone ids too (see ActiveSimulationSessionIdsByZoneAsync/ActiveExperimentIdsByZoneAsync), and the *ScopedByExperiment/BySession caches above are shared across both branches since they're keyed by session/experiment id, not by zone.
+            foreach (Sowing sowing in await sowingRepo.SowingsGetAsync(tenantId))
             {
-                if (crop.IDFarmOpenfieldCrop is not int cropId)
+                if (sowing.IDSowing is not int sowingId)
                 {
                     continue;
                 }
-                var cropScoped = notificationRules.Where(r => r.DeviceFarmOpenfieldCropID == cropId).ToList();
-                var farmScoped = farmIdByOpenfieldId.TryGetValue(crop.FarmOpenfieldID, out int cropFarmId)
-                    ? notificationRules.Where(r => r.DeviceFarmID == cropFarmId).ToList()
-                    : [];
+                var sowingScoped = notificationRules.Where(r => r.DeviceSowingID == sowingId).ToList();
+                var farmScoped = notificationRules.Where(r => r.DeviceFarmID == sowing.FarmID).ToList();
                 var globalScoped = notificationRules.Where(r => r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
-                    && r.DeviceFarmOpenfieldCropID == null && r.DeviceFarmOpenfieldCropParcelID == null).ToList();
+                    && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null).ToList();
 
-                foreach (FarmOpenfieldCropParcel parcel in await openfieldRepo.ParcelsGetAsync(cropId))
+                foreach (FarmParcelZone parcel in await sowingRepo.SowingOccupiedZonesGetAsync(sowingId))
                 {
-                    if (parcel.IDFarmOpenfieldCropParcel is not int parcelId)
+                    if (parcel.IDFarmParcelZone is not int parcelId)
                     {
                         continue;
                     }
-                    var parcelScoped = notificationRules.Where(r => r.DeviceFarmOpenfieldCropParcelID == parcelId).ToList();
+                    var parcelScoped = notificationRules.Where(r => r.DeviceFarmParcelZoneID == parcelId).ToList();
                     List<DeviceFarmUnitZoneRule> simulationScoped = [];
                     if (simulationSessionIdByZone.TryGetValue(parcelId, out int simSessionId))
                     {
@@ -165,13 +160,13 @@ namespace Agrumy.Api.BackgroundWorkers
                         }
                         experimentScoped = cachedExperiment;
                     }
-                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, experimentScoped, parcelScoped, cropScoped, farmScoped, globalScoped);
+                    IList<DeviceFarmUnitZoneRule> effective = RuleHierarchyResolver.ResolveNotificationRules(simulationScoped, experimentScoped, parcelScoped, sowingScoped, farmScoped, globalScoped);
                     if (effective.Count == 0)
                     {
                         continue;
                     }
 
-                    (SensorAverages averages, SensorTrend trend) = await openfieldRepo.ParcelAggregateAsync(parcelId);
+                    (SensorAverages averages, SensorTrend trend) = await farmParcelRepo.FarmParcelZoneAggregateAsync(parcelId);
                     foreach (DeviceFarmUnitZoneRule rule in effective)
                     {
                         if (rule.IDDeviceFarmUnitZoneRule is not int ruleId)

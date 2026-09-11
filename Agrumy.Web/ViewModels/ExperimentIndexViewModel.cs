@@ -9,14 +9,14 @@ namespace Agrumy.Web.ViewModels
         public required IList<DeviceFarm> Farms { get; init; }
         public required IList<DeviceFarmUnit> Units { get; init; }
         public required IList<ZoneOption> Zones { get; init; }
-        public required IList<FarmOpenfieldCrop> Crops { get; init; }
+        public required IList<Sowing> Crops { get; init; }
         public required IList<ParcelOption> Parcels { get; init; }
     }
 
     /// Same "Farm / Crop name" grouped-label convention as ZoneOption, for the Open-Field branch.
     public class ParcelOption
     {
-        public int IDFarmOpenfieldCropParcel { get; init; }
+        public int IDFarmParcelZone { get; init; }
         public string ParcelName { get; init; } = "";
         public string GroupLabel { get; init; } = "";
     }

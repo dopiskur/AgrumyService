@@ -64,12 +64,12 @@ namespace Agrumy.Web.Controllers.View
                 zones.AddRange(await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit));
             }
             ViewBag.Zones = zones;
-            IList<FarmOpenfieldCrop> crops = await api.CropsGet();
+            IList<Sowing> crops = await api.CropsGet();
             ViewBag.Crops = crops;
-            var parcels = new List<FarmOpenfieldCropParcel>();
-            foreach (FarmOpenfieldCrop crop in crops)
+            var parcels = new List<FarmParcelZone>();
+            foreach (Sowing crop in crops)
             {
-                parcels.AddRange(await api.ParcelsGet(crop.IDFarmOpenfieldCrop));
+                parcels.AddRange(await api.ParcelsGet(crop.IDSowing));
             }
             ViewBag.Parcels = parcels;
             return View(session);

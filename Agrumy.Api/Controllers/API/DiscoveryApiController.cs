@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// "Scan for new devices" - device-facing report intake, the admin scan trigger, the aggregated results list, and Register (PIN + WiFi credentials to the winning scanning device).
     [Route("/api/Discovery")]
-    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, DeviceOutboxService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmParcelRepository farmParcelRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, DeviceOutboxService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
         private readonly IUserRepository users = userRepo;
@@ -323,8 +323,8 @@ namespace Agrumy.Api.Controllers.API
         private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 
-        private Task<OwnedResult<FarmOpenfieldCropParcel>> EnsureOwnedParcelAsync(int idFarmOpenfieldCropParcel, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel), p => p.TenantID, "Parcel", forWrite);
+        private Task<OwnedResult<FarmParcelZone>> EnsureOwnedParcelAsync(int idFarmParcelZone, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelZoneGetByIdAsync(idFarmParcelZone), p => p.TenantID, "Parcel", forWrite);
 
         private Task<OwnedResult<TenantWifiConfig>> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
             EnsureOwnedDeviceEntityAsync(() => tenantRepo.TenantWifiConfigGetByIdAsync(idTenantWifiConfig), c => (int?)c.TenantID, "WiFi network", forWrite: true);

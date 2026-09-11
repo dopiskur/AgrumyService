@@ -3,7 +3,7 @@
 @{
     int idZone = Model.Leaf.Id!.Value;
     var widgets = Model.Leaf.DashboardWidgets;
-    string leafFieldName = Model.IsParcelLeaf ? "idFarmOpenfieldCropParcel" : "idDeviceFarmUnitZone";
+    string leafFieldName = Model.IsParcelLeaf ? "idFarmParcelZone" : "idDeviceFarmUnitZone";
     string widgetAddAction = Model.IsParcelLeaf ? "ParcelWidgetAdd" : "WidgetAdd";
     string widgetRemoveAction = Model.IsParcelLeaf ? "ParcelWidgetRemove" : "WidgetRemove";
     string widgetMoveAction = Model.IsParcelLeaf ? "ParcelWidgetMove" : "WidgetMove";

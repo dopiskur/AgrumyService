@@ -8,7 +8,7 @@ using Agrumy.Shared.Utils;
 namespace Agrumy.Api.Devices
 {
     /// Builds the DeviceConfig body a Config poll or Register response sends back, shared so GatewayApiController.Batch's Config entries produce byte-for-byte the same response as a direct POST /api/Device/Config.
-    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog, DeviceOutboxService outboxService)
+    public class DeviceConfigBuilder(IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, ISimulationRepository simulationRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, IExperimentRepository experimentRepo, FirmwareCatalogService firmwareCatalog, DeviceOutboxService outboxService)
     {
         /// Whether GetConfig/RunConfigAsync must send a full config this poll: a pending ConfigChanged outbox signal, a pending actionable command, or - because BuildAsync recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh every call without either ever consuming a signal for it - the periodic heartbeat window has elapsed since the device's last full send. Not used by Register, which always sends a fresh config unconditionally.
         public async Task<bool> NeedsRefreshAsync(Device device, bool configChangePending, PendingCommand? pendingCommand)
@@ -85,7 +85,7 @@ namespace Agrumy.Api.Devices
             {
                 // Relay-pin mapping comes from the device row, but Rules/safety limits come from its zone, merged into the same DeviceConfigController; no zone means an empty Rules list so every relay stays off.
                 DeviceConfigController? controller = await deviceRepo.DeviceConfigControllerGetAsync(device.DeviceConfigControllerID);
-                if (controller != null && (device.DeviceFarmUnitZoneID is int || device.FarmOpenfieldCropParcelID is int))
+                if (controller != null && (device.DeviceFarmUnitZoneID is int || device.FarmParcelZoneID is int))
                 {
                     // Most specific tier, checked ahead of the real hierarchy below - empty unless this device is currently a member of an active simulation session, in which case that session's own rules apply first, falling back to the real hierarchy for whatever they don't cover. Shared by both branches - a simulation session isn't itself Greenhouse/Open-Field-specific.
                     IList<DeviceFarmUnitZoneRule> simulationRules = await simulationRepo.DeviceActiveSimulationSessionIdGetAsync(device.IDDevice!.Value) is int idSession
@@ -108,19 +108,29 @@ namespace Agrumy.Api.Devices
                     }
                     else
                     {
-                        // Open-Field's Parcel>Crop>Farm equivalent of the Greenhouse Zone>Unit>Farm cascade above.
-                        int idParcel = device.FarmOpenfieldCropParcelID!.Value;
-                        experimentRules = await experimentRepo.ActiveExperimentIdForParcelAsync(idParcel) is int idExperiment
-                            ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
-                        leafRules = await deviceFarmUnitRepo.RulesGetForParcelAsync(idParcel);
-                        midRules = device.FarmOpenfieldCropID is int idCrop ? await deviceFarmUnitRepo.RulesGetForCropAsync(idCrop) : [];
-                        farmRules = device.FarmOpenfieldCropID is int farmCropId
-                            && (await farmOpenfieldRepo.CropGetByIdAsync(farmCropId))?.FarmOpenfieldID is int idFarmOpenfield
-                            && (await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(idFarmOpenfield))?.FarmID is int idFarm
-                            ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
-                        leafNode = await farmOpenfieldRepo.ParcelGetByIdAsync(idParcel);
+                        // Open-Field's FarmParcelZone>Sowing>Farm cascade (restructure R, D5) - a zone with no active sowing gets NO rules at all, not even Farm/Global (D10); the zone's own safety limits (WaterPump/Heating, set below from leafNode) still apply regardless, those aren't rule-scoped.
+                        int idParcel = device.FarmParcelZoneID!.Value;
+                        leafNode = await farmParcelRepo.FarmParcelZoneGetByIdAsync(idParcel);
+                        if (device.SowingID is int idSowing)
+                        {
+                            experimentRules = await experimentRepo.ActiveExperimentIdForFarmParcelZoneAsync(idParcel) is int idExperiment
+                                ? await deviceFarmUnitRepo.RulesGetForExperimentAsync(idExperiment) : [];
+                            leafRules = await deviceFarmUnitRepo.RulesGetForFarmParcelZoneAsync(idParcel);
+                            midRules = await deviceFarmUnitRepo.RulesGetForSowingAsync(idSowing);
+                            farmRules = (await sowingRepo.SowingGetByIdAsync(idSowing))?.FarmID is int idFarm
+                                ? await deviceFarmUnitRepo.RulesGetForFarmAsync(idFarm) : [];
+                        }
+                        else
+                        {
+                            experimentRules = [];
+                            leafRules = [];
+                            midRules = [];
+                            farmRules = [];
+                        }
                     }
-                    IList<DeviceFarmUnitZoneRule> globalRules = device.TenantID is int globalTenantId ? await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(globalTenantId) : [];
+                    // D10 - suppressed alongside the rest of the Open-Field cascade when the zone has no active sowing; the Greenhouse branch always sees Global.
+                    bool suppressGlobalRules = device.DeviceFarmUnitZoneID is null && device.SowingID is null;
+                    IList<DeviceFarmUnitZoneRule> globalRules = !suppressGlobalRules && device.TenantID is int globalTenantId ? await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(globalTenantId) : [];
                     IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, leafRules, midRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
                     // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.

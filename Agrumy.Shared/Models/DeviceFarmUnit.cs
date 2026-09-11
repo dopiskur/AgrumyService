@@ -10,7 +10,7 @@ namespace Agrumy.Shared.Models
         public int? IDDeviceFarm { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmName { get; set; }
-        /// Chosen once at creation - routes this farm's children to DeviceFarmUnit/DeviceFarmUnitZone (Greenhouse) or FarmOpenfieldCrop/FarmOpenfieldCropParcel (OpenField).
+        /// Chosen once at creation - routes this farm's children to DeviceFarmUnit/DeviceFarmUnitZone (Greenhouse) or Sowing/FarmParcelZone (OpenField).
         public FarmType FarmType { get; set; } = FarmType.Greenhouse;
         // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
@@ -297,7 +297,7 @@ namespace Agrumy.Shared.Models
         public IList<string> RulesSkipped { get; set; } = [];
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmOpenfieldCropParcelID/DeviceFarmOpenfieldCropID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmParcelZoneID/DeviceSowingID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]
@@ -306,8 +306,8 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
-        public int? DeviceFarmOpenfieldCropID { get; set; }
-        public int? DeviceFarmOpenfieldCropParcelID { get; set; }
+        public int? DeviceSowingID { get; set; }
+        public int? DeviceFarmParcelZoneID { get; set; }
         /// A device evaluates this ahead of its real Zone>Unit>Farm>Global rules while it's a member of this session, falling back to that real hierarchy for any RelayFunction/Name this scope has no rule for - lets a simulation test rule logic without a gap in coverage silently doing nothing.
         public int? SimulationSessionID { get; set; }
         /// Same "evaluated ahead of the real hierarchy, falls back for anything uncovered" precedence as SimulationSessionID, one tier below it - see RuleHierarchyResolver's Simulation&gt;Experiment&gt;Zone&gt;Unit&gt;Farm&gt;Global order. Unlike Simulation this controls real devices, so its rules are a real A/B test, not a sandboxed dry run.

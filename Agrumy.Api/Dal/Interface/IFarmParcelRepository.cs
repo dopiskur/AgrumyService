@@ -1,0 +1,52 @@
+using Agrumy.Shared.Models;
+
+namespace Agrumy.Api.Dal.Interface
+{
+    /// FarmParcel (container) and FarmParcelZone (unit of work) CRUD, split/merge, device assignment (Detaljni dizajn R, D2/D3). Devices/rules/dnevnik attach to the zone, never the parcel directly.
+    public interface IFarmParcelRepository
+    {
+        Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarmOpenfield);
+
+        Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel);
+
+        /// Creates the parcel AND its first zone (IsWholeParcel=true) in one call - D3, every parcel has at least one zone from the moment it exists.
+        Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel);
+
+        Task FarmParcelUpdateAsync(FarmParcel parcel);
+
+        Task FarmParcelDeleteAsync(int idFarmParcel);
+
+        Task<IList<FarmParcelZone>> FarmParcelZonesGetAsync(int idFarmParcel);
+
+        Task<FarmParcelZone?> FarmParcelZoneGetByIdAsync(int idFarmParcelZone);
+
+        Task FarmParcelZoneUpdateAsync(FarmParcelZone zone);
+
+        /// Bumps ConfigVersion for every device in the zone - mirrors DeviceFarmUnitZoneConfigVersionBumpAsync.
+        Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone);
+
+        /// D3/D4 - replaces one zone with N named zones; blocked (throws) while the source zone has an active sowing (CurrentSowingID != null).
+        Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames);
+
+        /// D3/D4 - merges N zones of the same parcel back into one; blocked while any source zone has an active sowing.
+        Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName);
+
+        Task FarmParcelZoneDeleteAsync(int idFarmParcelZone);
+
+        Task FarmParcelZoneWidgetsSetAsync(int idFarmParcelZone, List<DashboardWidget> widgets);
+
+        Task DeviceAssignToFarmParcelZoneAsync(int idDevice, int idFarmParcelZone);
+
+        Task DeviceUnassignFromFarmParcelZoneAsync(int idDevice);
+
+        Task<bool> FarmParcelZoneHasControllerAsync(int idFarmParcelZone);
+
+        Task<Device?> FarmParcelZoneGetControllerAsync(int idFarmParcelZone);
+
+        Task<IList<Device>> FarmParcelZoneGetSensorsAsync(int idFarmParcelZone);
+
+        Task<(SensorAverages Averages, SensorTrend Trend)> FarmParcelZoneAggregateAsync(int idFarmParcelZone);
+
+        Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel);
+    }
+}

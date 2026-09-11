@@ -33,10 +33,10 @@ public class DeviceFirmwareOtaTests
         var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         var controller = new DeviceApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             outboxService, catalog,
-            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
+            new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),
             Microsoft.Extensions.Options.Options.Create(new AgrumySettings()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DeviceApiController>.Instance,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         var result = controller.DeviceRegistration(new DeviceRegistration
         {
             Email = "owner@example.com",
