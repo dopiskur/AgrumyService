@@ -21,9 +21,10 @@ public class MqttCommandPublisherTests
     private readonly Mock<IDeviceOutboxRepository> _outbox = new(MockBehavior.Strict);
     private readonly Mock<IDeviceRepository> _devices = new(MockBehavior.Strict);
     private readonly Mock<IDeviceFarmUnitRepository> _units = new(MockBehavior.Strict);
+    private readonly Mock<IFarmOpenfieldRepository> _openfield = new(MockBehavior.Strict);
     private readonly Mock<IMqttCommandPublisher> _mqtt = new(MockBehavior.Strict);
 
-    private DeviceOutboxService NewService() => new(_outbox.Object, _devices.Object, _units.Object, _mqtt.Object);
+    private DeviceOutboxService NewService() => new(_outbox.Object, _devices.Object, _units.Object, _openfield.Object, _mqtt.Object);
 
     private static Device ControllerDevice(int id) => new() { IDDevice = id, DeviceControllerEnabled = true };
 

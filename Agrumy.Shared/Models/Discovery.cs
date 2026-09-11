@@ -7,12 +7,14 @@ namespace Agrumy.Shared.Models
         public int? Rssi { get; set; }
     }
 
-    /// Body of POST /api/Discovery/Scan - all null means Fleet-wide; precedence when more than one is set is Zone > Unit > Farm, same cascade order as rule scoping.
+    /// Body of POST /api/Discovery/Scan - all null means Fleet-wide; precedence when more than one is set is Zone/Parcel > Unit > Farm, same cascade order as rule scoping.
     public class DiscoveryScanRequest
     {
         public int? UnitID { get; set; }
         public int? ZoneID { get; set; }
         public int? FarmID { get; set; }
+        /// Open-Field's equivalent of ZoneID - a Parcel has no Unit/Farm-level fan-out yet, same "leaf only" scope as roadmap #519's Manual Actuate.
+        public int? ParcelID { get; set; }
     }
 
     /// One row per unique DiscoveredApMac in GET /api/Discovery/Results - see Agrumy.Api.Utils.DiscoveryResultPicker for the best-report/tiebreak rule.
@@ -34,6 +36,8 @@ namespace Agrumy.Shared.Models
         public string? DeviceName { get; set; }
         public int? UnitID { get; set; }
         public int? ZoneID { get; set; }
+        /// Open-Field's equivalent of ZoneID - see DiscoveryScanRequest.ParcelID.
+        public int? ParcelID { get; set; }
         /// Same catalog as Device.ManualDeviceTypeID - lets the admin pick a kit at first-registration instead of only afterwards via Device -> Edit.
         public int? ManualDeviceTypeID { get; set; }
 
@@ -59,7 +63,7 @@ namespace Agrumy.Shared.Models
         public IList<TenantWifiConfig>? WifiChoices { get; set; }
     }
 
-    /// The DeviceCommand.Payload JSON for a ProvisionDevice command - what the winning scanning device needs to connect to DiscoveredApMac as a client and POST these to its WiFiManager captive portal; DeviceName/UnitID/ZoneID ride along for a future step once the device completes its own /api/Device/Register, unused today.
+    /// The DeviceCommand.Payload JSON for a ProvisionDevice command - what the winning scanning device needs to connect to DiscoveredApMac as a client and POST these to its WiFiManager captive portal; DeviceName/UnitID/ZoneID/ParcelID ride along for a future step once the device completes its own /api/Device/Register, unused today.
     public class DiscoveryProvisionPayload
     {
         public string Username { get; set; } = "";
@@ -70,6 +74,7 @@ namespace Agrumy.Shared.Models
         public string? DeviceName { get; set; }
         public int? UnitID { get; set; }
         public int? ZoneID { get; set; }
+        public int? ParcelID { get; set; }
         public int? ManualDeviceTypeID { get; set; }
         /// This API's own host (see DiscoveryApiController.PublicHost) - not the scanning device's own, possibly-stale deviceConfig.servicePoint.
         public string? ServicePoint { get; set; }

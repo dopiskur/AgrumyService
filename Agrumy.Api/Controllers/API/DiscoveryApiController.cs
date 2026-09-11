@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// "Scan for new devices" - device-facing report intake, the admin scan trigger, the aggregated results list, and Register (PIN + WiFi credentials to the winning scanning device).
     [Route("/api/Discovery")]
-    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, DeviceOutboxService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class DiscoveryApiController(IDiscoveryRepository discoveryRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, IServerConfigRepository serverConfigRepo, ICache cache, DeviceOutboxService commandQueue, IOptions<AgrumySettings> settings) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         // Separate field, not the primary-constructor parameter directly - a parameter used both here and in the base(...) call trips CS9107 (ambiguous double-capture).
         private readonly IUserRepository users = userRepo;
@@ -53,6 +53,14 @@ namespace Agrumy.Api.Controllers.API
                     return error;
                 }
             }
+            else if (request.ParcelID is int scanParcelId)
+            {
+                var (_, error) = await EnsureOwnedParcelAsync(scanParcelId, forWrite: true);
+                if (error != null)
+                {
+                    return error;
+                }
+            }
             else if (request.UnitID is int unitId)
             {
                 var (_, error) = await EnsureOwnedUnitAsync(unitId, forWrite: true);
@@ -71,7 +79,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             int? tenantId = CallerManagesDevicesGlobally ? null : CallerTenantId;
-            IssueCommandResult result = await commandQueue.IssueScanCommandAsync(tenantId, request.UnitID, request.ZoneID, request.FarmID);
+            IssueCommandResult result = await commandQueue.IssueScanCommandAsync(tenantId, request.UnitID, request.ZoneID, request.FarmID, request.ParcelID);
             return result.Outcome switch
             {
                 IssueCommandOutcome.Success => Ok(result.CreatedCommandIds),
@@ -154,11 +162,19 @@ namespace Agrumy.Api.Controllers.API
         /// Open to any authenticated caller, same rule as DeviceApiController.DeviceFleetGet - the Register modal that acts on these results is still gated to DeviceManagers in the Web UI.
         [Authorize]
         [HttpGet("Results")]
-        public async Task<ActionResult<IList<DiscoveryResult>>> Results(int? unitID, int? zoneID)
+        public async Task<ActionResult<IList<DiscoveryResult>>> Results(int? unitID, int? zoneID, int? parcelID = null)
         {
             if (zoneID is int zoneId)
             {
                 var (_, error) = await EnsureOwnedZoneAsync(zoneId, forWrite: false);
+                if (error != null)
+                {
+                    return error;
+                }
+            }
+            else if (parcelID is int parcelId)
+            {
+                var (_, error) = await EnsureOwnedParcelAsync(parcelId, forWrite: false);
                 if (error != null)
                 {
                     return error;
@@ -174,7 +190,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             int? tenantId = CallerReadsDevicesGlobally ? null : CallerTenantId;
-            return Ok(await discoveryRepo.DiscoveryResultsGetAsync(tenantId, unitID, zoneID));
+            return Ok(await discoveryRepo.DiscoveryResultsGetAsync(tenantId, unitID, zoneID, parcelID));
         }
 
         /// Resolves the winning scanning device for DiscoveredApMac, resolves WiFi credentials (0/1/many saved TenantWifiConfig rows - see Agrumy.Shared.Models.DiscoveryRegisterRequest), (re)issues the caller's own device-PIN, and queues a ProvisionDevice command carrying both plus DeviceName/UnitID/ZoneID/ManualDeviceTypeID to that device, applied once it completes its own real registration (see DeviceOutboxService.ConsumePendingProvisionAsync).
@@ -193,6 +209,14 @@ namespace Agrumy.Api.Controllers.API
                 if (zoneError != null)
                 {
                     return zoneError;
+                }
+            }
+            else if (request.ParcelID is int registerParcelId)
+            {
+                var (_, parcelError) = await EnsureOwnedParcelAsync(registerParcelId, forWrite: true);
+                if (parcelError != null)
+                {
+                    return parcelError;
                 }
             }
             else if (request.UnitID is int unitId)
@@ -276,6 +300,7 @@ namespace Agrumy.Api.Controllers.API
                 DeviceName = request.DeviceName,
                 UnitID = request.UnitID,
                 ZoneID = request.ZoneID,
+                ParcelID = request.ParcelID,
                 ManualDeviceTypeID = request.ManualDeviceTypeID,
                 ServicePoint = PublicHost,
             });
@@ -297,6 +322,9 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
+
+        private Task<OwnedResult<FarmOpenfieldCropParcel>> EnsureOwnedParcelAsync(int idFarmOpenfieldCropParcel, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel), p => p.TenantID, "Parcel", forWrite);
 
         private Task<OwnedResult<TenantWifiConfig>> EnsureOwnedWifiConfigAsync(int idTenantWifiConfig) =>
             EnsureOwnedDeviceEntityAsync(() => tenantRepo.TenantWifiConfigGetByIdAsync(idTenantWifiConfig), c => (int?)c.TenantID, "WiFi network", forWrite: true);

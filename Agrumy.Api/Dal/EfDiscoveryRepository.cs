@@ -22,12 +22,16 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        public async Task<IList<DiscoveryResult>> DiscoveryResultsGetAsync(int? tenantId, int? unitId, int? zoneId)
+        public async Task<IList<DiscoveryResult>> DiscoveryResultsGetAsync(int? tenantId, int? unitId, int? zoneId, int? parcelId = null)
         {
             IQueryable<DeviceRow> scanners = db.Devices.AsNoTracking();
             if (zoneId is int zid)
             {
                 scanners = scanners.Where(d => d.DeviceFarmUnitZoneID == zid);
+            }
+            else if (parcelId is int pid)
+            {
+                scanners = scanners.Where(d => d.FarmOpenfieldCropParcelID == pid);
             }
             else if (unitId is int uid)
             {

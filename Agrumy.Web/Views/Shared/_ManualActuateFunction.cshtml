@@ -2,8 +2,9 @@
 @using Agrumy.Shared.Utils
 @{
     string fid = $"manualActuate_{Model.RelayFunction}_{Model.ScopeId}";
-    string startAction = Model.IsFarmLevel ? "DeviceFarmManualActuateStart" : Model.IsUnitLevel ? "UnitManualActuateStart" : "ZoneManualActuateStart";
-    string scopeFieldName = Model.IsFarmLevel ? "idDeviceFarm" : Model.IsUnitLevel ? "idDeviceFarmUnit" : "idDeviceFarmUnitZone";
+    string startAction = Model.IsFarmLevel ? "DeviceFarmManualActuateStart" : Model.IsUnitLevel ? "UnitManualActuateStart" : Model.IsParcelLevel ? "ParcelManualActuateStart" : "ZoneManualActuateStart";
+    string stopAction = Model.IsParcelLevel ? "ParcelManualActuateStop" : "ZoneManualActuateStop";
+    string scopeFieldName = Model.IsFarmLevel ? "idDeviceFarm" : Model.IsUnitLevel ? "idDeviceFarmUnit" : Model.IsParcelLevel ? "idFarmOpenfieldCropParcel" : "idDeviceFarmUnitZone";
     // Target mode is always offered at Unit/Farm level - individual zones lacking MaxRunSeconds are skipped server-side, not gated here (a Unit/Farm can span zones with different or no configured cap).
     bool targetModeAvailable = Model.IsUnitLevel || Model.IsFarmLevel || Model.MaxRunSeconds is > 0;
     bool isReadOnly = ViewBag.IsReadOnly is true;
@@ -25,8 +26,8 @@
         </div>
         @if (!isReadOnly)
         {
-            <form asp-action="ZoneManualActuateStop" method="post">
-                <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.ScopeId" />
+            <form asp-action="@stopAction" method="post">
+                <input type="hidden" name="@scopeFieldName" value="@Model.ScopeId" />
                 <input type="hidden" name="relayFunction" value="@((int)Model.RelayFunction)" />
                 <button type="submit" class="btn btn-sm btn-outline-danger" data-action="stop">Stop</button>
             </form>
@@ -51,7 +52,7 @@
             </div>
             @if (!targetModeAvailable)
             {
-                <span class="text-secondary small d-block">Target mode needs a MaxRunSeconds safety limit configured on this zone first.</span>
+                <span class="text-secondary small d-block">Target mode needs a MaxRunSeconds safety limit configured here first.</span>
             }
 
             <div id="@(fid)_durationFields" class="d-flex flex-wrap align-items-center gap-1">

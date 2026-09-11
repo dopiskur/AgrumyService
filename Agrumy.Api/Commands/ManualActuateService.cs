@@ -15,7 +15,7 @@ namespace Agrumy.Api.Commands
     public sealed record ManualActuateResult(ManualActuateOutcome Outcome, IReadOnlyList<int> AffectedDeviceIds, string? Message = null);
 
     /// Roadmap #219 - target resolution/fan-out (a Zone's one controller, or every controller across a Unit's zones), validation, and the ExpiresAtUtc safety-cap math; no background worker, DeviceConfigBuilder reads the resulting rows lazily on each device's next poll.
-    public sealed class ManualActuateService(IDeviceFarmUnitRepository unitRepo)
+    public sealed class ManualActuateService(IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository farmOpenfieldRepo)
     {
         /// Heating->Temperature only, Ventilation->Temperature or Humidity, WaterPump->Moisture (soil moisture - see AgrumyFirmware's sensor_analog_moist) only - roadmap #219's explicit per-function allowed subset.
         private static readonly Dictionary<RelayFunction, SensorMetric[]> AllowedTargetMetrics = new()
@@ -25,11 +25,11 @@ namespace Agrumy.Api.Commands
             [RelayFunction.WaterPump] = [SensorMetric.Moisture],
         };
 
-        private static int? MaxRunSecondsForFunction(DeviceFarmUnitZone zone, RelayFunction function) => function switch
+        private static int? MaxRunSecondsForFunction(IFarmLeafLevelNode leaf, RelayFunction function) => function switch
         {
-            RelayFunction.Heating => zone.HeatingMaxRunSeconds,
-            RelayFunction.Ventilation => zone.VentilationMaxRunSeconds,
-            RelayFunction.WaterPump => zone.WaterPumpMaxRunSeconds,
+            RelayFunction.Heating => leaf.HeatingMaxRunSeconds,
+            RelayFunction.Ventilation => leaf.VentilationMaxRunSeconds,
+            RelayFunction.WaterPump => leaf.WaterPumpMaxRunSeconds,
             _ => null,
         };
 
@@ -45,7 +45,23 @@ namespace Agrumy.Api.Commands
             {
                 return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Zone {idDeviceFarmUnitZone} not found.");
             }
-            return await StartForTargetsAsync([(deviceId, zone)], request);
+            return await StartForTargetsAsync([(deviceId, zone)], request, unitRepo.DeviceFarmUnitZoneConfigVersionBumpAsync);
+        }
+
+        /// Open-Field's equivalent of StartForZoneAsync - a parcel has at most one controller, same cap as a zone.
+        public async Task<ManualActuateResult> StartForParcelAsync(int idFarmOpenfieldCropParcel, ManualActuateRequest request)
+        {
+            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            if (controller?.IDDevice is not int deviceId)
+            {
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmOpenfieldCropParcel} has no controller assigned.");
+            }
+            FarmOpenfieldCropParcel? parcel = await farmOpenfieldRepo.ParcelGetByIdAsync(idFarmOpenfieldCropParcel);
+            if (parcel == null)
+            {
+                return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Parcel {idFarmOpenfieldCropParcel} not found.");
+            }
+            return await StartForTargetsAsync([(deviceId, parcel)], request, farmOpenfieldRepo.ParcelConfigVersionBumpAsync);
         }
 
         /// Fans out to every zone under the unit that has a controller - a zone with no controller is simply skipped, not an error (same "absent zones are fine" reasoning as DeviceOutboxService's Unit fan-out for ScanForDevices).
@@ -56,7 +72,7 @@ namespace Agrumy.Api.Commands
             {
                 return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Unit {idDeviceFarmUnit} has no controllers across any of its zones.");
             }
-            var targets = new List<(int DeviceId, DeviceFarmUnitZone Zone)>();
+            var targets = new List<(int DeviceId, IFarmLeafLevelNode Leaf)>();
             foreach (Device controller in controllers)
             {
                 if (controller.IDDevice is not int deviceId || controller.DeviceFarmUnitZoneID is not int idZone)
@@ -73,7 +89,7 @@ namespace Agrumy.Api.Commands
             {
                 return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Unit {idDeviceFarmUnit} has no controllers across any of its zones.");
             }
-            return await StartForTargetsAsync(targets, request);
+            return await StartForTargetsAsync(targets, request, unitRepo.DeviceFarmUnitZoneConfigVersionBumpAsync);
         }
 
         /// Fans out to every controller across every unit/zone under the farm - same "absent zones/units are fine" reasoning as StartForUnitAsync.
@@ -84,7 +100,7 @@ namespace Agrumy.Api.Commands
             {
                 return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Farm {idDeviceFarm} has no controllers across any of its units.");
             }
-            var targets = new List<(int DeviceId, DeviceFarmUnitZone Zone)>();
+            var targets = new List<(int DeviceId, IFarmLeafLevelNode Leaf)>();
             foreach (Device controller in controllers)
             {
                 if (controller.IDDevice is not int deviceId || controller.DeviceFarmUnitZoneID is not int idZone)
@@ -101,7 +117,7 @@ namespace Agrumy.Api.Commands
             {
                 return new ManualActuateResult(ManualActuateOutcome.TargetNotFound, [], $"Farm {idDeviceFarm} has no controllers across any of its units.");
             }
-            return await StartForTargetsAsync(targets, request);
+            return await StartForTargetsAsync(targets, request, unitRepo.DeviceFarmUnitZoneConfigVersionBumpAsync);
         }
 
         public async Task StopAsync(int idDeviceFarmUnitZone, RelayFunction relayFunction)
@@ -114,7 +130,17 @@ namespace Agrumy.Api.Commands
             }
         }
 
-        private async Task<ManualActuateResult> StartForTargetsAsync(List<(int DeviceId, DeviceFarmUnitZone Zone)> targets, ManualActuateRequest request)
+        public async Task StopForParcelAsync(int idFarmOpenfieldCropParcel, RelayFunction relayFunction)
+        {
+            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            if (controller?.IDDevice is int deviceId)
+            {
+                await unitRepo.ManualOverrideStopAsync(deviceId, relayFunction);
+                await farmOpenfieldRepo.ParcelConfigVersionBumpAsync(idFarmOpenfieldCropParcel);
+            }
+        }
+
+        private async Task<ManualActuateResult> StartForTargetsAsync(List<(int DeviceId, IFarmLeafLevelNode Leaf)> targets, ManualActuateRequest request, Func<int, Task> bumpConfigVersionAsync)
         {
             if (!AllowedTargetMetrics.TryGetValue(request.RelayFunction, out SensorMetric[]? allowedMetrics))
             {
@@ -132,9 +158,9 @@ namespace Agrumy.Api.Commands
             bool anySkippedForMissingCap = false;
 
             // Runs the full loop regardless of a per-target skip - a Unit-level fan-out must not abandon zones already processed (and their pending ConfigVersion bump below) just because a LATER zone in the same batch lacks Target mode's required MaxRunSeconds.
-            foreach (var (deviceId, zone) in targets)
+            foreach (var (deviceId, leaf) in targets)
             {
-                int? maxRunSeconds = MaxRunSecondsForFunction(zone, request.RelayFunction);
+                int? maxRunSeconds = MaxRunSecondsForFunction(leaf, request.RelayFunction);
                 DateTime expiresAtUtc;
                 if (request.Mode == ManualOverrideMode.Duration)
                 {
@@ -156,7 +182,7 @@ namespace Agrumy.Api.Commands
                 await unitRepo.ManualOverrideStartAsync(new DeviceManualOverride
                 {
                     DeviceID = deviceId,
-                    TenantID = zone.TenantID ?? 0,
+                    TenantID = leaf.TenantID ?? 0,
                     RelayFunction = request.RelayFunction,
                     Mode = request.Mode,
                     StartedAtUtc = utcNow,
@@ -166,9 +192,9 @@ namespace Agrumy.Api.Commands
                     TargetHysteresis = request.Mode == ManualOverrideMode.Target ? request.TargetHysteresis : null,
                 });
                 affected.Add(deviceId);
-                if (zone.IDDeviceFarmUnitZone is int idZone)
+                if (leaf.Id is int idLeaf)
                 {
-                    zonesToBump.Add(idZone);
+                    zonesToBump.Add(idLeaf);
                 }
             }
 
@@ -180,7 +206,7 @@ namespace Agrumy.Api.Commands
 
             foreach (int idZone in zonesToBump)
             {
-                await unitRepo.DeviceFarmUnitZoneConfigVersionBumpAsync(idZone);
+                await bumpConfigVersionAsync(idZone);
             }
 
             return new ManualActuateResult(ManualActuateOutcome.Success, affected,

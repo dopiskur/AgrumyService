@@ -15,16 +15,21 @@ namespace Agrumy.Web.Controllers.View
     {
         // ---- Dashboard widget wizard ------------------------------------
 
-        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's custom dashboard. Picking a zone here only chooses WHICH zone's widget page you're editing - each widget added on it independently picks its own Farm/Unit/Zone data source, it is no longer a dashboard-wide scope every widget shares.
-        public async Task<ActionResult> Index(int? idDeviceFarmUnitZone)
+        /// The old Unit/Zone cube overview lives on Farms now; this route is the guided flow for building a zone's (or, roadmap #519, a parcel's) custom dashboard. Picking a zone/parcel here only chooses WHICH page you're editing - each widget added on it independently picks its own Farm/Unit/Zone data source, it is no longer a dashboard-wide scope every widget shares.
+        public async Task<ActionResult> Index(int? idDeviceFarmUnitZone, int? idFarmOpenfieldCropParcel)
         {
             IList<ZoneOption> zones = await BuildZoneOptionsAsync();
+            IList<ParcelOption> parcels = await BuildParcelOptionsAsync();
             DashboardWidgetsViewModel? selected = null;
             if (idDeviceFarmUnitZone is int zoneId && zones.Any(z => z.IDDeviceFarmUnitZone == zoneId))
             {
                 selected = await BuildDashboardWidgetsViewModelAsync(zoneId, zones);
             }
-            return View(new DashboardWizardViewModel { Zones = zones, SelectedZoneId = idDeviceFarmUnitZone, Selected = selected });
+            else if (idFarmOpenfieldCropParcel is int parcelId && parcels.Any(p => p.IDFarmOpenfieldCropParcel == parcelId))
+            {
+                selected = await BuildParcelDashboardWidgetsViewModelAsync(parcelId, zones);
+            }
+            return View(new DashboardWizardViewModel { Zones = zones, Parcels = parcels, SelectedZoneId = idDeviceFarmUnitZone, SelectedParcelId = idFarmOpenfieldCropParcel, Selected = selected });
         }
 
         private async Task<DashboardWidgetsViewModel> BuildDashboardWidgetsViewModelAsync(int zoneId, IList<ZoneOption> zones)
@@ -35,8 +40,28 @@ namespace Agrumy.Web.Controllers.View
 
             return new DashboardWidgetsViewModel
             {
-                Zone = zone,
+                Leaf = zone,
                 Dashboard = dashboard,
+                Fleet = ctx.Fleet,
+                CanManage = hasAnyRole(RoleNames.DeviceManagers),
+                Farms = ctx.Farms,
+                Units = ctx.Units,
+                Zones = ctx.Zones,
+                WidgetData = ctx.WidgetData,
+            };
+        }
+
+        /// Parcel's equivalent of BuildDashboardWidgetsViewModelAsync - Dashboard has no Parcel-shaped equivalent consumer (see DashboardWidgetsViewModel.Dashboard's own remarks: unused by _DashboardWidgets.cshtml), so a placeholder is enough.
+        private async Task<DashboardWidgetsViewModel> BuildParcelDashboardWidgetsViewModelAsync(int parcelId, IList<ZoneOption> zones)
+        {
+            FarmOpenfieldCropParcel parcel = await api.ParcelGetById(parcelId);
+            var ctx = await BuildWidgetContextAsync(parcel.DashboardWidgets, zones);
+
+            return new DashboardWidgetsViewModel
+            {
+                Leaf = parcel,
+                IsParcelLeaf = true,
+                Dashboard = new DeviceFarmUnitZoneDashboard(),
                 Fleet = ctx.Fleet,
                 CanManage = hasAnyRole(RoleNames.DeviceManagers),
                 Farms = ctx.Farms,
@@ -67,6 +92,22 @@ namespace Agrumy.Web.Controllers.View
         }
 
         private bool hasAnyRole(string csv) => csv.Split(',').Any(User.IsInRole);
+
+        /// Open-Field's equivalent of BuildZoneOptionsAsync - flattens every parcel across every crop into one Crop-labeled list for the wizard's parcel picker.
+        private async Task<IList<ParcelOption>> BuildParcelOptionsAsync()
+        {
+            IList<FarmOpenfieldCrop> crops = await api.CropsGet();
+            var options = new List<ParcelOption>();
+            foreach (FarmOpenfieldCrop crop in crops)
+            {
+                if (crop.IDFarmOpenfieldCrop is not int cropId) { continue; }
+                foreach (FarmOpenfieldCropParcel parcel in await api.ParcelsGet(cropId))
+                {
+                    options.Add(new ParcelOption { IDFarmOpenfieldCropParcel = parcel.IDFarmOpenfieldCropParcel!.Value, ParcelName = parcel.FarmOpenfieldCropParcelName ?? "", GroupLabel = crop.FarmOpenfieldCropName ?? "" });
+                }
+            }
+            return options;
+        }
 
         /// Flattens every zone across every unit into one Farm/Unit-labeled list for the wizard's zone picker - no single API call returns this shape, so it composes DeviceFarmsGet+DeviceFarmUnitDashboardGet+per-unit DeviceFarmUnitZonesGet.
         private async Task<IList<ZoneOption>> BuildZoneOptionsAsync()
@@ -800,6 +841,63 @@ namespace Agrumy.Web.Controllers.View
                 await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
             }
             return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        // ---- Dashboard widgets, Open-Field's equivalent (roadmap #519) - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetAdd(int idFarmOpenfieldCropParcel, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, HierarchyNodeKind? aggregationLevel, int? levelId, string? label)
+        {
+            FarmOpenfieldCropParcel parcel = await api.ParcelGetById(idFarmOpenfieldCropParcel);
+            parcel.DashboardWidgets.Add(new DashboardWidget
+            {
+                Type = type,
+                Metric = metric,
+                RelayFunction = relayFunction,
+                AggregationLevel = type == DashboardWidgetType.RelayStatus ? HierarchyNodeKind.Zone : aggregationLevel,
+                LevelID = levelId,
+                Label = label,
+            });
+            try
+            {
+                await api.ParcelWidgetsSet(idFarmOpenfieldCropParcel, parcel.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idFarmOpenfieldCropParcel });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetRemove(int idFarmOpenfieldCropParcel, int index)
+        {
+            FarmOpenfieldCropParcel parcel = await api.ParcelGetById(idFarmOpenfieldCropParcel);
+            if (index >= 0 && index < parcel.DashboardWidgets.Count)
+            {
+                parcel.DashboardWidgets.RemoveAt(index);
+                await api.ParcelWidgetsSet(idFarmOpenfieldCropParcel, parcel.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idFarmOpenfieldCropParcel });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetMove(int idFarmOpenfieldCropParcel, int index, bool up)
+        {
+            FarmOpenfieldCropParcel parcel = await api.ParcelGetById(idFarmOpenfieldCropParcel);
+            int target = up ? index - 1 : index + 1;
+            if (index >= 0 && index < parcel.DashboardWidgets.Count && target >= 0 && target < parcel.DashboardWidgets.Count)
+            {
+                (parcel.DashboardWidgets[index], parcel.DashboardWidgets[target]) = (parcel.DashboardWidgets[target], parcel.DashboardWidgets[index]);
+                await api.ParcelWidgetsSet(idFarmOpenfieldCropParcel, parcel.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idFarmOpenfieldCropParcel });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

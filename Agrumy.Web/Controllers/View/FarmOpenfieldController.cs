@@ -119,6 +119,7 @@ namespace Agrumy.Web.Controllers.View
                 .ToList();
             bool hasController = devices.Any(d => d.ControllerCapable);
 
+            string? timeZone = User.GetTimeZone();
             return new ParcelViewModel
             {
                 Parcel = parcel,
@@ -126,7 +127,86 @@ namespace Agrumy.Web.Controllers.View
                 Farm = farm ?? new DeviceFarm(),
                 Devices = devices,
                 Rules = hasController ? await api.FarmOpenfieldCropParcelRulesGet(idFarmOpenfieldCropParcel) : [],
+                ManualOverrides = hasController ? await api.ParcelManualActuateStatus(idFarmOpenfieldCropParcel) : [],
+                DisplayTimeZone = string.IsNullOrWhiteSpace(timeZone) ? "UTC" : timeZone,
+                DiscoveredDevices = await api.DiscoveryResultsGet(null, null, idFarmOpenfieldCropParcel),
+                WifiConfigs = await api.DiscoveryWifiConfigsGet(),
             };
+        }
+
+        // ---- Manual Actuate (roadmap #219/#519) - Open-Field's equivalent of DeviceFarmUnitController's ZoneManualActuateStart/Stop ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelManualActuateStart(int idFarmOpenfieldCropParcel, RelayFunction relayFunction, ManualOverrideMode mode,
+            int? durationMinutes, SensorMetric? targetMetric, double? targetThreshold, double? targetHysteresis)
+        {
+            var request = new ManualActuateRequest(relayFunction, mode, durationMinutes is int m ? m * 60 : null, targetMetric, targetThreshold, targetHysteresis);
+            try
+            {
+                await api.ParcelManualActuateStart(idFarmOpenfieldCropParcel, request);
+                TempData["Message"] = $"{relayFunction} manually started.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcel), new { idFarmOpenfieldCropParcel });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelManualActuateStop(int idFarmOpenfieldCropParcel, RelayFunction relayFunction)
+        {
+            try
+            {
+                await api.ParcelManualActuateStop(idFarmOpenfieldCropParcel, relayFunction);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcel), new { idFarmOpenfieldCropParcel });
+        }
+
+        // ---- Device discovery (roadmap #519) - Open-Field's equivalent of DeviceFarmUnitController's ScanZone/RegisterDiscoveredDeviceZone ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ScanParcel(DiscoveryScanRequest request)
+        {
+            try
+            {
+                await api.DiscoveryScan(request);
+                TempData["Message"] = "Scan started - discovered devices will appear here shortly.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcel), new { idFarmOpenfieldCropParcel = request.ParcelID });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> RegisterDiscoveredDeviceParcel(DiscoveryRegisterRequest request)
+        {
+            try
+            {
+                DiscoveryRegisterResult result = await api.DiscoveryRegister(request);
+                var (message, error) = DiscoveryRegisterOutcomeMessage.For(result.Outcome);
+                TempData["Message"] = message;
+                TempData["Error"] = error;
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcel), new { idFarmOpenfieldCropParcel = request.ParcelID });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

@@ -28,12 +28,29 @@ namespace Agrumy.Web.Controllers.View
                     zones.Add(new ZoneOption { IDDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone!.Value, ZoneName = zone.DeviceFarmUnitZoneName ?? "", GroupLabel = groupLabel });
                 }
             }
+            IList<FarmOpenfieldCrop> crops = await api.CropsGet();
+            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
+            var parcels = new List<ParcelOption>();
+            foreach (FarmOpenfieldCrop crop in crops)
+            {
+                if (crop.IDFarmOpenfieldCrop is not int cropId) { continue; }
+                string? farmName = openfields.FirstOrDefault(o => o.IDFarmOpenfield == crop.FarmOpenfieldID)?.FarmID is int farmId
+                    ? farms.FirstOrDefault(f => f.IDDeviceFarm == farmId)?.DeviceFarmName
+                    : null;
+                string groupLabel = farmName is null ? crop.FarmOpenfieldCropName ?? "" : $"{farmName} / {crop.FarmOpenfieldCropName}";
+                foreach (FarmOpenfieldCropParcel parcel in await api.ParcelsGet(cropId))
+                {
+                    parcels.Add(new ParcelOption { IDFarmOpenfieldCropParcel = parcel.IDFarmOpenfieldCropParcel!.Value, ParcelName = parcel.FarmOpenfieldCropParcelName ?? "", GroupLabel = groupLabel });
+                }
+            }
             return View(new ExperimentIndexViewModel
             {
                 Experiments = await api.ExperimentList(),
                 Farms = farms,
                 Units = units,
                 Zones = zones,
+                Crops = crops,
+                Parcels = parcels,
             });
         }
 

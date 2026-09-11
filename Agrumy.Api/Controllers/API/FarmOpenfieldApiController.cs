@@ -1,3 +1,4 @@
+using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
@@ -10,7 +11,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Open-Field's Crop/Parcel CRUD, device assignment, and Farm-with-extension creation - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new. DeviceUnassignedGetAsync is likewise reused from there rather than duplicated - it already excludes both branches' assigned devices.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -322,6 +323,136 @@ namespace Agrumy.Api.Controllers.API
             await WriteAuditAsync("Device.UnassignedFromParcel", device.TenantID, "Device", idDevice.ToString()!, null);
             return true;
         }
+
+        #endregion
+
+        #region Manual Actuate (roadmap #219/#519) - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/ManualActuate
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Parcel/ManualActuate")]
+        public async Task<ActionResult<IReadOnlyList<int>>> ParcelManualActuateStart(int idFarmOpenfieldCropParcel, [FromBody] ManualActuateRequest request)
+        {
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            ManualActuateResult result = await manualActuate.StartForParcelAsync(idFarmOpenfieldCropParcel, request);
+            if (result.Outcome == ManualActuateOutcome.Success)
+            {
+                await WriteAuditAsync("FarmOpenfieldCropParcel.ManualActuateStarted", parcel!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), $"{request.RelayFunction}/{request.Mode}");
+            }
+            return result.Outcome switch
+            {
+                ManualActuateOutcome.Success => Ok(result.AffectedDeviceIds),
+                ManualActuateOutcome.TargetNotFound => NotFound(result.Message),
+                _ => BadRequest(result.Message),
+            };
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Parcel/ManualActuate/Stop")]
+        public async Task<ActionResult> ParcelManualActuateStop(int idFarmOpenfieldCropParcel, RelayFunction relayFunction)
+        {
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await manualActuate.StopForParcelAsync(idFarmOpenfieldCropParcel, relayFunction);
+            await WriteAuditAsync("FarmOpenfieldCropParcel.ManualActuateStopped", parcel!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), relayFunction.ToString());
+            return Ok();
+        }
+
+        /// The parcel's currently-active manual commands (not yet past ExpiresAtUtc) - what the Web UI polls to render "currently active, X remaining".
+        [Authorize]
+        [HttpGet("Parcel/ManualActuate")]
+        public async Task<ActionResult<IList<DeviceManualOverride>>> ParcelManualActuateStatus(int idFarmOpenfieldCropParcel)
+        {
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            Device? controller = await farmOpenfieldRepo.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+            if (controller?.IDDevice is not int deviceId)
+            {
+                return Ok(Array.Empty<DeviceManualOverride>());
+            }
+            return Ok(await deviceFarmUnitRepo.ManualOverridesActiveForDeviceAsync(deviceId));
+        }
+
+        #endregion
+
+        #region Dashboard widgets (roadmap #238/#519) - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/{id}/Widgets
+
+        // Roadmap #238 - same cap as DeviceFarmUnitApiController.MaxWidgetsPerZone.
+        private const int MaxWidgetsPerParcel = 20;
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Parcel/{idFarmOpenfieldCropParcel}/Widgets")]
+        public async Task<ActionResult<bool>> ParcelWidgetsSet(int idFarmOpenfieldCropParcel, [FromBody] List<DashboardWidget> widgets)
+        {
+            var (existing, error) = await EnsureOwnedParcelAsync(idFarmOpenfieldCropParcel, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (widgets.Count > MaxWidgetsPerParcel)
+            {
+                return BadRequest($"At most {MaxWidgetsPerParcel} widgets per parcel.");
+            }
+            if (widgets.Any(w => w.Type == DashboardWidgetType.Text && string.IsNullOrWhiteSpace(w.Label)))
+            {
+                return BadRequest("A text widget needs a label.");
+            }
+
+            foreach (DashboardWidget w in widgets)
+            {
+                if (w.Type == DashboardWidgetType.SensorValue || w.Type == DashboardWidgetType.SensorTrend)
+                {
+                    if (w.AggregationLevel is not HierarchyNodeKind level || w.LevelID is not int levelId)
+                    {
+                        return BadRequest("A sensor widget needs an aggregation level and target.");
+                    }
+                    if (await EnsureOwnedAggregationTargetAsync(level, levelId) != null)
+                    {
+                        return BadRequest("A sensor widget references a farm/unit/zone/crop/parcel you don't have access to.");
+                    }
+                }
+                else if (w.Type == DashboardWidgetType.RelayStatus)
+                {
+                    if (w.LevelID is not int relayZoneId || (await EnsureOwnedZoneAsync(relayZoneId, forWrite: false)).Error != null)
+                    {
+                        return BadRequest("A relay status widget needs a zone you have access to.");
+                    }
+                }
+            }
+
+            await farmOpenfieldRepo.ParcelWidgetsSetAsync(idFarmOpenfieldCropParcel, widgets);
+            await WriteAuditAsync("FarmOpenfieldCropParcel.WidgetsUpdated", existing!.TenantID, "FarmOpenfieldCropParcel", idFarmOpenfieldCropParcel.ToString(), $"{widgets.Count} widget(s)");
+            return true;
+        }
+
+        /// Same dispatch as DeviceFarmUnitApiController's own private helper of the same shape - duplicated rather than shared since the two controllers don't have a common base beyond ApiControllerBase.
+        private async Task<ActionResult?> EnsureOwnedAggregationTargetAsync(HierarchyNodeKind level, int levelId) => level switch
+        {
+            HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.Parcel => (await EnsureOwnedParcelAsync(levelId, forWrite: false)).Error,
+            HierarchyNodeKind.Crop => (await EnsureOwnedCropAsync(levelId, forWrite: false)).Error,
+            _ => BadRequest("Unsupported aggregation level."),
+        };
+
+        private Task<OwnedResult<DeviceFarmUnitZone>> EnsureOwnedZoneAsync(int idDeviceFarmUnitZone, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(idDeviceFarmUnitZone), z => z.TenantID, "Zone", forWrite);
+
+        private Task<OwnedResult<DeviceFarmUnit>> EnsureOwnedUnitAsync(int idDeviceFarmUnit, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(idDeviceFarmUnit), u => u.TenantID, "Unit", forWrite);
+
+        private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int idDeviceFarm, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 
         #endregion
 

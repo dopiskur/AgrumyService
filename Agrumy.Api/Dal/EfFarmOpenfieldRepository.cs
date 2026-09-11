@@ -215,6 +215,17 @@ namespace Agrumy.Api.Dal
             await ParcelConfigVersionBumpAsync(row.IDFarmOpenfieldCropParcel);
         }
 
+        public async Task ParcelWidgetsSetAsync(int idFarmOpenfieldCropParcel, List<DashboardWidget> widgets)
+        {
+            var row = await db.FarmOpenfieldCropParcels.FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == idFarmOpenfieldCropParcel);
+            if (row == null)
+            {
+                return;
+            }
+            row.DashboardWidgetsJson = System.Text.Json.JsonSerializer.Serialize(widgets, ConditionConfigJson.Options);
+            await db.SaveChangesAsync();
+        }
+
         public async Task<bool> ParcelMigrateAsync(int idFarmOpenfieldCropParcel, int idTargetFarmOpenfieldCrop)
         {
             var row = await db.FarmOpenfieldCropParcels.FirstOrDefaultAsync(p => p.IDFarmOpenfieldCropParcel == idFarmOpenfieldCropParcel);
@@ -294,6 +305,21 @@ namespace Agrumy.Api.Dal
 
         public async Task<bool> ParcelHasControllerAsync(int idFarmOpenfieldCropParcel) =>
             await db.Devices.AsNoTracking().AnyAsync(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel && d.DeviceControllerEnabled == true);
+
+        public async Task<Device?> ParcelGetControllerAsync(int idFarmOpenfieldCropParcel)
+        {
+            var row = await db.Devices.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel && d.DeviceControllerEnabled == true);
+            return row == null ? null : EfDeviceRepository.ToDto(row);
+        }
+
+        public async Task<IList<Device>> ParcelGetSensorsAsync(int idFarmOpenfieldCropParcel)
+        {
+            var rows = await db.Devices.AsNoTracking()
+                .Where(d => d.FarmOpenfieldCropParcelID == idFarmOpenfieldCropParcel && d.DeviceSensorEnabled == true && d.DeviceControllerEnabled != true)
+                .ToListAsync();
+            return rows.Select(EfDeviceRepository.ToDto).ToList();
+        }
 
         public async Task DeviceUnassignFromParcelAsync(int idDevice)
         {

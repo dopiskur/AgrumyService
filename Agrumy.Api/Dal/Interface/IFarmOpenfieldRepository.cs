@@ -49,6 +49,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task ParcelDeleteAsync(int idFarmOpenfieldCropParcel);
 
+        /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync (roadmap #519).
+        Task ParcelWidgetsSetAsync(int idFarmOpenfieldCropParcel, List<DashboardWidget> widgets);
+
         // ---- Device assignment -----------------------------------------
 
         Task DeviceAssignToParcelAsync(int idDevice, int idFarmOpenfieldCropParcel);
@@ -57,6 +60,12 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneHasControllerAsync - a parcel has at most one controller, same cap as a zone.
         Task<bool> ParcelHasControllerAsync(int idFarmOpenfieldCropParcel);
+
+        /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneGetControllerAsync - Manual Actuate's target device.
+        Task<Device?> ParcelGetControllerAsync(int idFarmOpenfieldCropParcel);
+
+        /// Open-Field's equivalent of IDeviceFarmUnitRepository.DeviceFarmUnitZoneGetSensorsAsync - device discovery's scan-command fan-out target.
+        Task<IList<Device>> ParcelGetSensorsAsync(int idFarmOpenfieldCropParcel);
 
         // ---- Dashboard widget aggregation -----------------
 

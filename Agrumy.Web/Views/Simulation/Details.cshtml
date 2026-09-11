@@ -20,6 +20,8 @@
     var groups = (IList<SimulationGroup>)ViewBag.Groups;
     var units = (IList<DeviceFarmUnit>)ViewBag.Units;
     var zones = (IList<DeviceFarmUnitZone>)ViewBag.Zones;
+    var crops = (IList<FarmOpenfieldCrop>)ViewBag.Crops;
+    var parcels = (IList<FarmOpenfieldCropParcel>)ViewBag.Parcels;
     bool isReadOnly = ViewBag.IsReadOnly is true;
 
     // One number input per overridable metric, blank = no override for that metric - same 13 fields DeviceSimulation itself has, just without the per-device slider (a group covers several devices at once, a single slider position wouldn't mean the same thing for all of them).
@@ -212,6 +214,8 @@ else
             <select name="Scope" form="groupAddForm" id="groupScopeSelect" class="form-select form-select-sm">
                 <option value="@((int)HierarchyNodeKind.Unit)">Whole Unit</option>
                 <option value="@((int)HierarchyNodeKind.Zone)" selected>Whole Zone</option>
+                <option value="@((int)HierarchyNodeKind.Crop)">Whole Crop</option>
+                <option value="@((int)HierarchyNodeKind.Parcel)">Whole Parcel</option>
             </select>
         </div>
         <div class="col-auto" id="groupUnitTargetWrap" style="display:none">
@@ -229,6 +233,24 @@ else
                 @foreach (var z in zones)
                 {
                     <option value="@z.IDDeviceFarmUnitZone">@z.DeviceFarmUnitZoneName</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto" id="groupCropTargetWrap" style="display:none">
+            <label class="form-label small mb-0">Crop</label>
+            <select name="ScopeID" form="groupAddForm" id="groupCropTargetSelect" class="form-select form-select-sm" disabled>
+                @foreach (var c in crops)
+                {
+                    <option value="@c.IDFarmOpenfieldCrop">@c.FarmOpenfieldCropName</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto" id="groupParcelTargetWrap" style="display:none">
+            <label class="form-label small mb-0">Parcel</label>
+            <select name="ScopeID" form="groupAddForm" id="groupParcelTargetSelect" class="form-select form-select-sm" disabled>
+                @foreach (var p in parcels)
+                {
+                    <option value="@p.IDFarmOpenfieldCropParcel">@p.FarmOpenfieldCropParcelName</option>
                 }
             </select>
         </div>
@@ -255,13 +277,24 @@ else
 }
 
 <script nonce="@Context.CspNonce()">
-    document.getElementById('groupScopeSelect')?.addEventListener('change', function () {
-        var isUnit = this.value === '@((int)HierarchyNodeKind.Unit)';
-        document.getElementById('groupUnitTargetWrap').style.display = isUnit ? '' : 'none';
-        document.getElementById('groupZoneTargetWrap').style.display = isUnit ? 'none' : '';
-        document.getElementById('groupUnitTargetSelect').disabled = !isUnit;
-        document.getElementById('groupZoneTargetSelect').disabled = isUnit;
-    });
+    (function () {
+        var scopeSelect = document.getElementById('groupScopeSelect');
+        if (!scopeSelect) { return; }
+        var groups = {};
+        groups['@((int)HierarchyNodeKind.Unit)'] = { wrap: document.getElementById('groupUnitTargetWrap'), select: document.getElementById('groupUnitTargetSelect') };
+        groups['@((int)HierarchyNodeKind.Zone)'] = { wrap: document.getElementById('groupZoneTargetWrap'), select: document.getElementById('groupZoneTargetSelect') };
+        groups['@((int)HierarchyNodeKind.Crop)'] = { wrap: document.getElementById('groupCropTargetWrap'), select: document.getElementById('groupCropTargetSelect') };
+        groups['@((int)HierarchyNodeKind.Parcel)'] = { wrap: document.getElementById('groupParcelTargetWrap'), select: document.getElementById('groupParcelTargetSelect') };
+        function updateVisibility() {
+            Object.keys(groups).forEach(function (key) {
+                var isActive = key === scopeSelect.value;
+                groups[key].wrap.style.display = isActive ? '' : 'none';
+                groups[key].select.disabled = !isActive;
+            });
+        }
+        scopeSelect.addEventListener('change', updateVisibility);
+        updateVisibility();
+    })();
 </script>
 
 @* "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@

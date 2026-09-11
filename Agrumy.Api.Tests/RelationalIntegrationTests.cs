@@ -1278,7 +1278,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var d = await MakeDevice(t, tenantId);
         await _repo.DeviceAssignToZoneAsync(d.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
         Device assigned = (await _repo.DeviceGetByIdAsync(d.IDDevice))!;
-        var outboxService = new Agrumy.Api.Commands.DeviceOutboxService(_repo, _repo, _repo, new NoOpMqttCommandPublisher());
+        var outboxService = new Agrumy.Api.Commands.DeviceOutboxService(_repo, _repo, _repo, _repo, new NoOpMqttCommandPublisher());
         var builder = new Agrumy.Api.Devices.DeviceConfigBuilder(_repo, _repo, _repo, _repo, _repo, _repo, _repo, FirmwareTestSupport.NewCatalog(_repo, _repo, _repo), outboxService);
         DeviceConfig config = await builder.BuildAsync(assigned, pendingCommand: null, board: null);
         Assert.Equal(HeatingFailSafePolicyType.ScheduleOnly, config.DeviceConfigController!.HeatingFailSafePolicy);

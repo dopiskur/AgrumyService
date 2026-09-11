@@ -18,7 +18,7 @@ namespace Agrumy.Api.Commands
     public sealed record PendingItems(PendingCommand? Actionable, bool ConfigChangePending, bool HardResetPending);
 
     /// Dedup, target resolution/fan-out, FIFO pending-item lookup, and ack/execute state transitions over the single deviceOutbox table; no background worker for the queue itself - expiry is lazy, applied the moment a stale Pending row is next looked at. DeviceOutboxDispatchBackgroundService separately sweeps for anything still owed an MQTT dispatch attempt.
-    public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IMqttCommandPublisher mqttPublisher)
+    public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, IMqttCommandPublisher mqttPublisher)
     {
         private static readonly TimeSpan DefaultExpiry = TimeSpan.FromMinutes(30);
         // A hard-reset intent must survive until the device actually checks in (which may be days away for a long-sleep node), not expire like an ordinary 30-minute command.
@@ -70,7 +70,7 @@ namespace Agrumy.Api.Commands
         }
 
         /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else farm, else tenant-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
-        public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId, int? farmId = null)
+        public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId, int? farmId = null, int? parcelId = null)
         {
             IList<Device> targets;
             string notFoundMessage;
@@ -78,6 +78,11 @@ namespace Agrumy.Api.Commands
             {
                 targets = await unitRepo.DeviceFarmUnitZoneGetSensorsAsync(zid);
                 notFoundMessage = $"Zone {zid} has no sensor-only devices.";
+            }
+            else if (parcelId is int pid)
+            {
+                targets = await farmOpenfieldRepo.ParcelGetSensorsAsync(pid);
+                notFoundMessage = $"Parcel {pid} has no sensor-only devices.";
             }
             else if (unitId is int uid)
             {

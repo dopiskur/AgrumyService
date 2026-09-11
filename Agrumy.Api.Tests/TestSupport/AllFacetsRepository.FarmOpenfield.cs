@@ -39,11 +39,17 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task ParcelDeleteAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelDeleteAsync(idFarmOpenfieldCropParcel);
 
+        public Task ParcelWidgetsSetAsync(int idFarmOpenfieldCropParcel, List<DashboardWidget> widgets) => farmOpenfieldRepository.ParcelWidgetsSetAsync(idFarmOpenfieldCropParcel, widgets);
+
         public Task DeviceAssignToParcelAsync(int idDevice, int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.DeviceAssignToParcelAsync(idDevice, idFarmOpenfieldCropParcel);
 
         public Task DeviceUnassignFromParcelAsync(int idDevice) => farmOpenfieldRepository.DeviceUnassignFromParcelAsync(idDevice);
 
         public Task<bool> ParcelHasControllerAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelHasControllerAsync(idFarmOpenfieldCropParcel);
+
+        public Task<Device?> ParcelGetControllerAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelGetControllerAsync(idFarmOpenfieldCropParcel);
+
+        public Task<IList<Device>> ParcelGetSensorsAsync(int idFarmOpenfieldCropParcel) => farmOpenfieldRepository.ParcelGetSensorsAsync(idFarmOpenfieldCropParcel);
 
         public Task<(SensorAverages Averages, SensorTrend Trend)> CropAggregateAsync(int idFarmOpenfieldCrop) => farmOpenfieldRepository.CropAggregateAsync(idFarmOpenfieldCrop);
 

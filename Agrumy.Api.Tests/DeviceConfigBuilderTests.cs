@@ -39,7 +39,7 @@ public class DeviceConfigBuilderTests
 
     private DeviceConfigBuilder NewBuilder() => new(_repo.Object, TenantRepo, DeviceRepo, SimulationRepo, FarmUnitRepo, FarmOpenfieldRepo, ExperimentRepo,
         FirmwareTestSupport.NewCatalog(FirmwareRepo, _repo.Object, DeviceRepo),
-        new DeviceOutboxService(OutboxRepo, DeviceRepo, FarmUnitRepo, new NoOpMqttCommandPublisher()));
+        new DeviceOutboxService(OutboxRepo, DeviceRepo, FarmUnitRepo, FarmOpenfieldRepo, new NoOpMqttCommandPublisher()));
 
     /// Every BuildAsync call now unconditionally consumes any pending ConfigChanged/HardReset outbox rows for the device - an empty pending list means ConsumeHardResetIfPendingAsync's own GetPendingOutboxItemsAsync read is the only outbox call, no HardReset means config.Reset comes back false.
     private void SetUpNoPendingOutboxItems(int deviceId)

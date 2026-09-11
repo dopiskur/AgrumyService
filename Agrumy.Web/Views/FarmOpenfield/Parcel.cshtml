@@ -12,6 +12,26 @@
         Rules = Model.Rules,
         RedirectActionName = "Parcel",
     };
+
+    DeviceManualOverride? ActiveFor(RelayFunction f) => Model.ManualOverrides.FirstOrDefault(o => o.RelayFunction == f);
+    var heatingModel = new ManualActuateFunctionViewModel
+    {
+        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Heating, Label = "Heating",
+        MaxRunSeconds = parcel.HeatingMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Temperature],
+        Active = ActiveFor(RelayFunction.Heating), DisplayTimeZone = Model.DisplayTimeZone,
+    };
+    var ventilationModel = new ManualActuateFunctionViewModel
+    {
+        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.Ventilation, Label = "Ventilation",
+        MaxRunSeconds = parcel.VentilationMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Temperature, SensorMetric.Humidity],
+        Active = ActiveFor(RelayFunction.Ventilation), DisplayTimeZone = Model.DisplayTimeZone,
+    };
+    var irrigationModel = new ManualActuateFunctionViewModel
+    {
+        ScopeId = parcel.IDFarmOpenfieldCropParcel!.Value, IsParcelLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
+        MaxRunSeconds = parcel.WaterPumpMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Moisture],
+        Active = ActiveFor(RelayFunction.WaterPump), DisplayTimeZone = Model.DisplayTimeZone,
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -37,6 +57,27 @@
 @if (TempData["Warning"] is string scopeWarning)
 {
     <div class="alert alert-info">@scopeWarning</div>
+}
+
+@if (canManage)
+{
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <form asp-action="ScanParcel" method="post" class="d-inline">
+            <input type="hidden" name="ParcelID" value="@parcel.IDFarmOpenfieldCropParcel" />
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+        </form>
+    </div>
+    @if (Model.DiscoveredDevices.Count > 0)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">Discovered devices</h3>
+            </div>
+            <div class="card-body">
+                <partial name="_DiscoveredDevicesRows" model="Model.DiscoveredDevices" />
+            </div>
+        </div>
+    }
 }
 
 <div class="card mb-3">
@@ -165,7 +206,70 @@
     </div>
 }
 
+@if (canManage)
+{
+    <p class="text-end">
+        <a asp-controller="DeviceFarmUnit" asp-action="Index" asp-route-idFarmOpenfieldCropParcel="@parcel.IDFarmOpenfieldCropParcel" class="small">
+            <i class="bi bi-magic"></i> Build this parcel's dashboard in the wizard
+        </a>
+    </p>
+}
+
 @if (hasController)
 {
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="fw-semibold">Manual actuate</h6>
+            <p class="text-secondary small">
+                Overrides this parcel's automation rules for one function for a set duration (or a target
+                reading, if a MaxRunSeconds safety cap is configured below) until it stops itself or you
+                click Stop.
+            </p>
+            <partial name="_ManualActuateFunction" model="heatingModel" />
+            <partial name="_ManualActuateFunction" model="ventilationModel" />
+            <partial name="_ManualActuateFunction" model="irrigationModel" />
+        </div>
+    </div>
+
     <partial name="_RuleEditor" model="ruleEditorModel" />
+}
+
+<div class="modal fade" id="registerDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="RegisterDiscoveredDeviceParcel" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Register discovered device</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="DiscoveredApMac" id="registerApMac" />
+                    <input type="hidden" name="ParcelID" value="@parcel.IDFarmOpenfieldCropParcel" />
+                    <div class="mb-3">
+                        <label class="form-label" for="registerDeviceName">Name (optional)</label>
+                        <input type="text" name="DeviceName" id="registerDeviceName" class="form-control" maxlength="128" />
+                    </div>
+                    <partial name="_WifiConfigFields" model="Model.WifiConfigs" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script nonce="@Context.CspNonce()">
+        document.addEventListener('DOMContentLoaded', function () {
+            var registerModal = document.getElementById('registerDeviceModal');
+            if (registerModal)
+            {
+                registerModal.addEventListener('show.bs.modal', function (event) {
+                    document.getElementById('registerApMac').value = event.relatedTarget.getAttribute('data-ap-mac');
+                });
+            }
+        });
+    </script>
 }

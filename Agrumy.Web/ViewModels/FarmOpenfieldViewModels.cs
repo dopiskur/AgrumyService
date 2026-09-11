@@ -10,7 +10,7 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmOpenfieldCropParcelDashboard> Parcels { get; init; } = [];
     }
 
-    /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets, discovery, or day/night presets - fast-follow).
+    /// Drives FarmOpenfield/Parcel.cshtml - one parcel's detail page, the Open-Field mirror of ZoneViewModel (trimmed: no dashboard widgets or day/night presets - fast-follow; Manual Actuate/discovery added roadmap #519).
     public class ParcelViewModel
     {
         public required FarmOpenfieldCropParcel Parcel { get; init; }
@@ -18,6 +18,10 @@ namespace Agrumy.Web.ViewModels
         public required DeviceFarm Farm { get; init; }
         public IList<DeviceFleetStatus> Devices { get; init; } = [];
         public IList<DeviceFarmUnitZoneRule> Rules { get; init; } = [];
+        public IList<DeviceManualOverride> ManualOverrides { get; init; } = [];
+        public string DisplayTimeZone { get; init; } = "UTC";
+        public IList<DiscoveryResult> DiscoveredDevices { get; init; } = [];
+        public IList<TenantWifiConfig> WifiConfigs { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/ParcelAssignPicker.cshtml - the Open-Field mirror of AssignPickerViewModel, kept separate rather than generalizing the Zone one (same "avoid cross-controller coupling" reasoning as EfFarmOpenfieldRepository's own doc comment).

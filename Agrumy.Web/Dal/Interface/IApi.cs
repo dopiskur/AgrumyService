@@ -407,6 +407,10 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/FarmOpenfield/Parcel")]
         Task ParcelDelete(int? idFarmOpenfieldCropParcel);
 
+        // Roadmap #238/#519 - saves independently of ParcelUpdate above, same reasoning as DeviceFarmUnitZoneWidgetsSet.
+        [Put("/api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Widgets")]
+        Task ParcelWidgetsSet(int idFarmOpenfieldCropParcel, [Body] List<DashboardWidget> widgets);
+
         [Post("/api/FarmOpenfield/Assign")]
         Task ParcelDeviceAssign([Body] DeviceParcelAssignment body);
 
@@ -507,6 +511,15 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/DeviceFarmUnit/Zone/ManualActuate")]
         Task<IList<DeviceManualOverride>> DeviceFarmUnitZoneManualActuateStatus(int idDeviceFarmUnitZone);
 
+        [Post("/api/FarmOpenfield/Parcel/ManualActuate")]
+        Task<IReadOnlyList<int>> ParcelManualActuateStart(int idFarmOpenfieldCropParcel, [Body] ManualActuateRequest request);
+
+        [Post("/api/FarmOpenfield/Parcel/ManualActuate/Stop")]
+        Task ParcelManualActuateStop(int idFarmOpenfieldCropParcel, RelayFunction relayFunction);
+
+        [Get("/api/FarmOpenfield/Parcel/ManualActuate")]
+        Task<IList<DeviceManualOverride>> ParcelManualActuateStatus(int idFarmOpenfieldCropParcel);
+
         // ---- Device commands ---------------------------------
 
         [Post("/api/DeviceCommand")]
@@ -518,7 +531,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IReadOnlyList<int>> DiscoveryScan([Body] DiscoveryScanRequest request);
 
         [Get("/api/Discovery/Results")]
-        Task<IList<DiscoveryResult>> DiscoveryResultsGet(int? unitID, int? zoneID);
+        Task<IList<DiscoveryResult>> DiscoveryResultsGet(int? unitID, int? zoneID, int? parcelID = null);
 
         [Get("/api/Discovery/WifiConfigs")]
         Task<IList<TenantWifiConfig>> DiscoveryWifiConfigsGet();

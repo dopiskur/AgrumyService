@@ -103,6 +103,8 @@ POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Dev
 POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Crop/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Firmware/Import,Global admin
 POST,api/Firmware/Sync,Global admin
@@ -147,6 +149,7 @@ PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Te
 PUT,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Parcel/{idFarmOpenfieldCropParcel}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/HorticultureCatalog,Global admin
 PUT,api/ServerConfig,Global admin
 PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin

@@ -1,8 +1,12 @@
 @using Agrumy.Web.Utils
 @model Agrumy.Web.ViewModels.DashboardWidgetsViewModel
 @{
-    int idZone = Model.Zone.IDDeviceFarmUnitZone!.Value;
-    var widgets = Model.Zone.DashboardWidgets;
+    int idZone = Model.Leaf.Id!.Value;
+    var widgets = Model.Leaf.DashboardWidgets;
+    string leafFieldName = Model.IsParcelLeaf ? "idFarmOpenfieldCropParcel" : "idDeviceFarmUnitZone";
+    string widgetAddAction = Model.IsParcelLeaf ? "ParcelWidgetAdd" : "WidgetAdd";
+    string widgetRemoveAction = Model.IsParcelLeaf ? "ParcelWidgetRemove" : "WidgetRemove";
+    string widgetMoveAction = Model.IsParcelLeaf ? "ParcelWidgetMove" : "WidgetMove";
 
     // Resolves a widget's own (level, levelId) into a short "Farm/Unit/Zone: name" tag, so a tile's scope is visible even when it differs from the page it's shown on.
     string LevelTag(DashboardWidget w)
@@ -30,7 +34,7 @@
     <div class="card-body">
         @if (!widgets.Any())
         {
-            <p class="text-secondary fst-italic">No custom widgets configured for this zone yet.</p>
+            <p class="text-secondary fst-italic">No custom widgets configured here yet.</p>
         }
         else
         {
@@ -86,21 +90,21 @@
                             {
                                 <div class="card-footer d-flex justify-content-between p-1">
                                     <div class="btn-group btn-group-sm">
-                                        <form asp-action="WidgetMove" method="post">
-                                            <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                        <form asp-action="@widgetMoveAction" method="post">
+                                            <input type="hidden" name="@leafFieldName" value="@idZone" />
                                             <input type="hidden" name="index" value="@i" />
                                             <input type="hidden" name="up" value="true" />
                                             <button type="submit" class="btn btn-outline-secondary" title="Move left" @(i == 0 ? "disabled" : null)><i class="bi bi-arrow-left"></i></button>
                                         </form>
-                                        <form asp-action="WidgetMove" method="post">
-                                            <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                        <form asp-action="@widgetMoveAction" method="post">
+                                            <input type="hidden" name="@leafFieldName" value="@idZone" />
                                             <input type="hidden" name="index" value="@i" />
                                             <input type="hidden" name="up" value="false" />
                                             <button type="submit" class="btn btn-outline-secondary" title="Move right" @(i == widgets.Count - 1 ? "disabled" : null)><i class="bi bi-arrow-right"></i></button>
                                         </form>
                                     </div>
-                                    <form asp-action="WidgetRemove" method="post">
-                                        <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+                                    <form asp-action="@widgetRemoveAction" method="post">
+                                        <input type="hidden" name="@leafFieldName" value="@idZone" />
                                         <input type="hidden" name="index" value="@i" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-x"></i></button>
                                     </form>
@@ -115,8 +119,8 @@
         @if (Model.CanManage)
         {
             <!-- Metric/relay/text choice first, then (for a sensor metric) its own aggregation level+target, then chart type; no dashboard-wide zone scope. -->
-            <form asp-action="WidgetAdd" method="post" id="widgetAddForm">
-                <input type="hidden" name="idDeviceFarmUnitZone" value="@idZone" />
+            <form asp-action="@widgetAddAction" method="post" id="widgetAddForm">
+                <input type="hidden" name="@leafFieldName" value="@idZone" />
                 <input type="hidden" name="type" id="widgetTypeInput" value="@((int)DashboardWidgetType.SensorValue)" />
 
                 <div class="mb-2">
@@ -148,7 +152,7 @@
                             <select id="levelSelect" class="form-select form-select-sm" style="max-width:10rem">
                                 <option value="@((int)HierarchyNodeKind.Farm)">Farm-wide average</option>
                                 <option value="@((int)HierarchyNodeKind.Unit)">Unit-specific average</option>
-                                <option value="@((int)HierarchyNodeKind.Zone)" selected>Zone-specific</option>
+                                <option value="@((int)HierarchyNodeKind.Zone)" selected="@(!Model.IsParcelLeaf)">Zone-specific</option>
                             </select>
                             <select id="farmTargetSelect" class="form-select form-select-sm" style="max-width:14rem;display:none">
                                 @foreach (var f in Model.Farms)
@@ -165,7 +169,7 @@
                             <select id="zoneTargetSelect" class="form-select form-select-sm" style="max-width:14rem">
                                 @foreach (var z in Model.Zones)
                                 {
-                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
+                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(!Model.IsParcelLeaf && z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
                                 }
                             </select>
                         </div>
@@ -192,7 +196,7 @@
                             <select id="relayZoneSelect" class="form-select form-select-sm" style="max-width:14rem">
                                 @foreach (var z in Model.Zones)
                                 {
-                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
+                                    <option value="@z.IDDeviceFarmUnitZone" selected="@(!Model.IsParcelLeaf && z.IDDeviceFarmUnitZone == idZone ? "selected" : null)">@z.GroupLabel / @z.ZoneName</option>
                                 }
                             </select>
                         </div>

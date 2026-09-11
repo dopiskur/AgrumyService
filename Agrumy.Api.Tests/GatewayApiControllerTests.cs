@@ -38,7 +38,7 @@ public class GatewayApiControllerTests
     private GatewayApiController NewJwtController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
-        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new GatewayApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             outboxService, catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),

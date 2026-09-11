@@ -32,6 +32,8 @@
             <option value="@((int)HierarchyNodeKind.Farm)">Farm</option>
             <option value="@((int)HierarchyNodeKind.Unit)">Unit</option>
             <option value="@((int)HierarchyNodeKind.Zone)" selected>Zone</option>
+            <option value="@((int)HierarchyNodeKind.Crop)">Crop</option>
+            <option value="@((int)HierarchyNodeKind.Parcel)">Parcel</option>
         </select>
     </div>
     <div class="col-auto" id="expScopeFarmGroup" hidden>
@@ -59,6 +61,24 @@
             @foreach (var zone in Model.Zones)
             {
                 <option value="@zone.IDDeviceFarmUnitZone">@zone.GroupLabel / @zone.ZoneName</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto" id="expScopeCropGroup" hidden>
+        <label class="form-label" for="expScopeCropSelect">Crop</label>
+        <select id="expScopeCropSelect" class="form-select" style="width:16rem">
+            @foreach (var crop in Model.Crops)
+            {
+                <option value="@crop.IDFarmOpenfieldCrop">@crop.FarmOpenfieldCropName</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto" id="expScopeParcelGroup" hidden>
+        <label class="form-label" for="expScopeParcelSelect">Parcel</label>
+        <select id="expScopeParcelSelect" class="form-select" style="width:16rem">
+            @foreach (var parcel in Model.Parcels)
+            {
+                <option value="@parcel.IDFarmOpenfieldCropParcel">@parcel.GroupLabel / @parcel.ParcelName</option>
             }
         </select>
     </div>
@@ -128,6 +148,8 @@
             groups['@((int)HierarchyNodeKind.Farm)'] = { group: document.getElementById('expScopeFarmGroup'), select: document.getElementById('expScopeFarmSelect') };
             groups['@((int)HierarchyNodeKind.Unit)'] = { group: document.getElementById('expScopeUnitGroup'), select: document.getElementById('expScopeUnitSelect') };
             groups['@((int)HierarchyNodeKind.Zone)'] = { group: document.getElementById('expScopeZoneGroup'), select: document.getElementById('expScopeZoneSelect') };
+            groups['@((int)HierarchyNodeKind.Crop)'] = { group: document.getElementById('expScopeCropGroup'), select: document.getElementById('expScopeCropSelect') };
+            groups['@((int)HierarchyNodeKind.Parcel)'] = { group: document.getElementById('expScopeParcelGroup'), select: document.getElementById('expScopeParcelSelect') };
 
             function syncHidden() {
                 var active = groups[scopeSelect.value];

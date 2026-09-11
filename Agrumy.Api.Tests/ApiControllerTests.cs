@@ -43,14 +43,14 @@ public class ApiControllerTests
     private DeviceApiController NewDeviceController()
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
-        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             outboxService, catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService), TestSettings, NullLogger<DeviceApiController>.Instance, NewQuotaEnforcer());
     }
     private UserApiController NewUserController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, _jobQueue, TestSettings, NewQuotaEnforcer());
     private DeviceCommandApiController NewDeviceCommandController() =>
-        new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// UserApiController enqueues notification jobs instead of dispatching them inline (roadmap #305) - this runs the one job a test expects to have been queued against a fake scope resolving the same mocks, then lets the test assert on _notifications/_repo as before.
     private async Task RunOneQueuedJobAsync()
@@ -65,13 +65,13 @@ public class ApiControllerTests
 
     private void AssertNoJobWasQueued() =>
         Assert.False(_jobQueue.Reader.TryRead(out _), "Expected no background job to have been enqueued.");
-    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object),
-        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
+    private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object, _repo.Object),
+        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
-        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
+        new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId)
@@ -592,7 +592,7 @@ public class ApiControllerTests
     private DeviceApiController NewDeviceControllerWithGatewaySecret(string? serverSecret)
     {
         var catalog = FirmwareTestSupport.NewCatalog(_repo.Object, _repo.Object, _repo.Object);
-        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
+        var outboxService = new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher());
         return new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
             outboxService, catalog,
             new Agrumy.Api.Devices.DeviceConfigBuilder(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, catalog, outboxService),

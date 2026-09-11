@@ -9,8 +9,8 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task DiscoveryReportAddAsync(int scanningDeviceId, string discoveredApMac, int? rssi) =>
             discoveryRepository.DiscoveryReportAddAsync(scanningDeviceId, discoveredApMac, rssi);
 
-        public Task<IList<DiscoveryResult>> DiscoveryResultsGetAsync(int? tenantId, int? unitId, int? zoneId) =>
-            discoveryRepository.DiscoveryResultsGetAsync(tenantId, unitId, zoneId);
+        public Task<IList<DiscoveryResult>> DiscoveryResultsGetAsync(int? tenantId, int? unitId, int? zoneId, int? parcelId = null) =>
+            discoveryRepository.DiscoveryResultsGetAsync(tenantId, unitId, zoneId, parcelId);
 
         public Task<DiscoveryResult?> DiscoveryResultGetAsync(string discoveredApMac, int? tenantId) =>
             discoveryRepository.DiscoveryResultGetAsync(discoveredApMac, tenantId);
