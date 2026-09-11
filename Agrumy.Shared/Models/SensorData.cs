@@ -81,6 +81,13 @@ namespace Agrumy.Shared.Models
 
     }
 
+    /// One day's average Moisture for a FarmParcelZone - pairs with SatelliteSeriesPoint on the Zone-tab dual-axis trend chart (#558).
+    public class FarmParcelZoneMoistureSeriesPoint
+    {
+        public DateOnly Date { get; set; }
+        public double? Moisture { get; set; }
+    }
+
     /// The only bucket granularities SensorReportShaper's SQL ever groups by - the from/to window and this together fully replace the old timeRange+timeMDMY encoding.
     public enum SensorDataBucket
     {

@@ -53,6 +53,9 @@ namespace Agrumy.Api.Dal.Interface
 
         Task<(SensorAverages Averages, SensorTrend Trend)> FarmParcelZoneAggregateAsync(int idFarmParcelZone);
 
+        /// #558 - daily-bucketed Moisture average across every device assigned to the zone, for the Zone-tab dual-axis satellite/sensor trend chart.
+        Task<IList<FarmParcelZoneMoistureSeriesPoint>> FarmParcelZoneMoistureSeriesGetAsync(int idFarmParcelZone, DateOnly from, DateOnly to);
+
         Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel);
 
         /// S-B - every zone across every tenant that has a saved boundary (GeometryGeoJson != null) - the daily satellite job's own per-tenant, per-zone loop target.

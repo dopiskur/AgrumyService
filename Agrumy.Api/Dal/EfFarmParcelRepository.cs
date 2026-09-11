@@ -230,6 +230,26 @@ namespace Agrumy.Api.Dal
             }, new SensorTrend());
         }
 
+        public async Task<IList<FarmParcelZoneMoistureSeriesPoint>> FarmParcelZoneMoistureSeriesGetAsync(int idFarmParcelZone, DateOnly from, DateOnly to)
+        {
+            var deviceIds = await db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID == idFarmParcelZone).Select(d => d.IDDevice).ToListAsync();
+            if (deviceIds.Count == 0)
+            {
+                return [];
+            }
+            DateTime fromUtc = from.ToDateTime(TimeOnly.MinValue);
+            DateTime toUtc = to.ToDateTime(TimeOnly.MaxValue);
+            var readings = await db.SensorData.AsNoTracking()
+                .Where(s => deviceIds.Contains(s.DeviceID) && s.Moisture != null && s.DateCreated >= fromUtc && s.DateCreated <= toUtc)
+                .Select(s => new { s.DateCreated, s.Moisture })
+                .ToListAsync();
+            return readings
+                .GroupBy(r => DateOnly.FromDateTime(r.DateCreated!.Value.UtcDateTime))
+                .Select(g => new FarmParcelZoneMoistureSeriesPoint { Date = g.Key, Moisture = g.Average(r => (double)r.Moisture!.Value) })
+                .OrderBy(p => p.Date)
+                .ToList();
+        }
+
         public async Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel)
         {
             var rows = await db.FarmParcelZones.AsNoTracking().Where(z => z.FarmParcelID == idFarmParcel).ToListAsync();

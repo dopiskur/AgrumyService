@@ -242,14 +242,18 @@
 </div>
 
 <div class="card mt-3">
-    <div class="card-header d-flex align-items-center gap-2">
-        <h3 class="card-title mb-0">Satellite trend</h3>
+    <div class="card-header d-flex align-items-center gap-2 flex-wrap">
+        <h3 class="card-title mb-0">Satellite / soil-moisture trend</h3>
         <select class="form-select form-select-sm" style="width:auto" id="satSeriesIndex">
             <option value="1">Ndvi</option>
-            <option value="2">Ndmi</option>
+            <option value="2" selected>Ndmi</option>
             <option value="3">Ndwi</option>
             <option value="4">Ndsi</option>
         </select>
+        <div class="form-check form-switch ms-auto mb-0">
+            <input class="form-check-input" type="checkbox" id="satSeriesShowMoisture" checked>
+            <label class="form-check-label small" for="satSeriesShowMoisture">Overlay soil moisture</label>
+        </div>
     </div>
     <div class="card-body">
         <div id="satSeriesChart" style="height:280px;"></div>
@@ -263,8 +267,10 @@
         const chart = echarts.init(document.getElementById('satSeriesChart'));
         const select = document.getElementById('satSeriesIndex');
         const empty = document.getElementById('satSeriesEmpty');
+        const showMoisture = document.getElementById('satSeriesShowMoisture');
         const idZone = @parcel.IDFarmParcelZone;
 
+        // #558 - pairs the satellite index with the zone's own device moisture readings on a second y-axis, aligned by day, instead of the satellite-only trend this chart shipped with.
         async function loadSeries() {
             const response = await fetch(`/FarmOpenfield/SatelliteSeries?idFarmParcelZone=${idZone}&index=${select.value}&onlyReliable=true`);
             const points = response.ok ? await response.json() : [];
@@ -274,14 +280,34 @@
                 return;
             }
             empty.hidden = true;
+            const dates = points.map(p => p.sceneDateUtc);
+            const indexName = select.options[select.selectedIndex].text;
+
+            let moisturePoints = [];
+            if (showMoisture.checked) {
+                const moistureResponse = await fetch(`/FarmOpenfield/MoistureSeries?idFarmParcelZone=${idZone}&from=${dates[0]}&to=${dates[dates.length - 1]}`);
+                moisturePoints = moistureResponse.ok ? await moistureResponse.json() : [];
+            }
+
+            const series = [{ type: 'line', name: indexName, yAxisIndex: 0, data: points.map(p => p.mean) }];
+            const yAxis = [{ type: 'value', name: indexName }];
+            if (moisturePoints.length > 0) {
+                const moistureByDate = new Map(moisturePoints.map(p => [p.date, p.moisture]));
+                series.push({ type: 'line', name: 'Soil moisture (%)', yAxisIndex: 1, connectNulls: true, data: dates.map(d => moistureByDate.get(d) ?? null) });
+                yAxis.push({ type: 'value', name: 'Moisture %', min: 0, max: 100 });
+            }
+
+            // notMerge - toggling the moisture overlay changes the y-axis/series count, a merged setOption would leave a stale second axis behind.
             chart.setOption({
                 tooltip: { trigger: 'axis' },
-                xAxis: { type: 'category', data: points.map(p => p.sceneDateUtc) },
-                yAxis: { type: 'value' },
-                series: [{ type: 'line', data: points.map(p => p.mean), name: select.options[select.selectedIndex].text }],
-            });
+                legend: { show: series.length > 1 },
+                xAxis: { type: 'category', data: dates },
+                yAxis,
+                series,
+            }, true);
         }
         select.addEventListener('change', loadSeries);
+        showMoisture.addEventListener('change', loadSeries);
         loadSeries();
     });
 </script>

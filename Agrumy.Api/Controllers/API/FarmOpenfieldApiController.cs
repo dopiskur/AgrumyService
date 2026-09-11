@@ -899,6 +899,25 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await satelliteSceneRepo.SeriesGetAsync(idFarmParcelZone, index, from, to, onlyReliable));
         }
 
+        private const int MaxMoistureSeriesWindowDays = 400;
+
+        /// #558 - the sensor-side of the Zone-tab dual-axis chart, aligned by day against SatelliteSeriesGet's SceneDateUtc.
+        [Authorize]
+        [HttpGet("Parcel/{idFarmParcelZone}/Satellite/MoistureSeries")]
+        public async Task<ActionResult<IList<FarmParcelZoneMoistureSeriesPoint>>> MoistureSeriesGet(int idFarmParcelZone, DateOnly from, DateOnly to)
+        {
+            var (_, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            if (to < from || (to.ToDateTime(TimeOnly.MinValue) - from.ToDateTime(TimeOnly.MinValue)).TotalDays > MaxMoistureSeriesWindowDays)
+            {
+                return BadRequest($"Invalid window: 'to' must be on or after 'from', and the span must not exceed {MaxMoistureSeriesWindowDays} days.");
+            }
+            return Ok(await farmParcelRepo.FarmParcelZoneMoistureSeriesGetAsync(idFarmParcelZone, from, to));
+        }
+
         #endregion
 
         #region Satellite four-level map (Detaljni dizajn S, sesija C) - one partial, scope only changes which zones are drawn

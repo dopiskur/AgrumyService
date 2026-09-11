@@ -134,6 +134,9 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult<IList<SatelliteSeriesPoint>>> SatelliteSeries(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable = true) =>
             Json(await api.SatelliteSeriesGet(idFarmParcelZone, index, from, to, onlyReliable));
 
+        public async Task<ActionResult<IList<FarmParcelZoneMoistureSeriesPoint>>> MoistureSeries(int idFarmParcelZone, DateOnly from, DateOnly to) =>
+            Json(await api.MoistureSeriesGet(idFarmParcelZone, from, to));
+
         // ---- Sowing CRUD --------------------------------------------------
 
         /// Sjetva wizard step 1 (D3/D9): crop (looked up/created in the catalog server-side by name) + variety + start date + expected duration. Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show.

@@ -395,6 +395,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Series")]
         Task<IList<SatelliteSeriesPoint>> SatelliteSeriesGet(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable);
 
+        [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/MoistureSeries")]
+        Task<IList<FarmParcelZoneMoistureSeriesPoint>> MoistureSeriesGet(int idFarmParcelZone, DateOnly from, DateOnly to);
+
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();
 

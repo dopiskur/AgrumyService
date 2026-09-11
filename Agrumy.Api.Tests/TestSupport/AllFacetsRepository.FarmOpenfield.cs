@@ -81,6 +81,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<(SensorAverages Averages, SensorTrend Trend)> FarmParcelZoneAggregateAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneAggregateAsync(idFarmParcelZone);
 
+        public Task<IList<FarmParcelZoneMoistureSeriesPoint>> FarmParcelZoneMoistureSeriesGetAsync(int idFarmParcelZone, DateOnly from, DateOnly to) => farmParcelRepository.FarmParcelZoneMoistureSeriesGetAsync(idFarmParcelZone, from, to);
+
         public Task<IList<FarmParcelZoneDashboard>> FarmParcelZoneDashboardListGetAsync(int idFarmParcel) => farmParcelRepository.FarmParcelZoneDashboardListGetAsync(idFarmParcel);
 
         public Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId) => farmParcelRepository.FarmParcelZonesWithGeometryGetAsync(tenantId);
