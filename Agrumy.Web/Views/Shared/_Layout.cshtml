@@ -250,6 +250,12 @@
                                     <p>@Localizer["Alerts"]</p>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Satellite" asp-action="Index" class="nav-link @navActive("Satellite")">
+                                    <i class="nav-icon bi bi-globe"></i>
+                                    <p>@Localizer["Satellite"]</p>
+                                </a>
+                            </li>
                         }
                         @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
                         {

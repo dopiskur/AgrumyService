@@ -721,6 +721,15 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/Tenant/AlertConfig")]
         Task TenantAlertConfigUpdate([Body] TenantAlertConfig config);
 
+        [Get("/api/Tenant/Satellite")]
+        Task<TenantSatelliteConfig> TenantSatelliteConfigGet(int? idTenant);
+
+        [Put("/api/Tenant/Satellite")]
+        Task<TenantSatelliteConfig> TenantSatelliteConfigUpdate([Body] TenantSatelliteConfig config, int? idTenant);
+
+        [Post("/api/Tenant/Satellite/Test")]
+        Task<SatelliteConfigTestResult> TenantSatelliteConfigTest([Body] SatelliteConfigTestRequest request, int? idTenant);
+
         [Get("/api/Tenant/EmergencyStop")]
         Task<bool> EmergencyStopStatus(int? idTenant = null);
 

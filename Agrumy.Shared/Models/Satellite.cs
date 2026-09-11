@@ -22,6 +22,14 @@ namespace Agrumy.Shared.Models
         NaturalColor = 6,
     }
 
+    /// S-B2 - which imagery source a tenant reads from, all through the same CdseSentinelHubSource provider (D2); only PlanTier=Paid unlocks anything but Sentinel2.
+    public enum SatelliteCollection
+    {
+        Sentinel2 = 1,
+        PlanetScope = 2,
+        PleiadesSpot = 3,
+    }
+
     /// Per-tenant satellite module config (D1/D8) - a tenant with no row (or Enabled=false) has no module at all. ClientSecret is write-only on the wire: PUT with it blank keeps whatever is already stored, GET never echoes the real value back (HasSecret tells the UI whether one is configured).
     public class TenantSatelliteConfig
     {
@@ -31,6 +39,10 @@ namespace Agrumy.Shared.Models
         public string? ClientSecret { get; set; }
         public bool HasSecret { get; set; }
         public SatellitePlanTier PlanTier { get; set; } = SatellitePlanTier.Free;
+        /// S-B2 - only selectable when PlanTier=Paid; Free silently stays Sentinel2 regardless of what's stored (the API enforces this on write, not just the UI).
+        public SatelliteCollection Collection { get; set; } = SatelliteCollection.Sentinel2;
+        /// S-B2 - the tenant's own Sentinel Hub BYOC collection id for PlanetScope/Pleiades (each Paid tenant subscribes to their own commercial collection; Sentinel2 needs none).
+        public string? CommercialCollectionId { get; set; }
         public List<SatelliteIndex> DefaultIndices { get; set; } = [];
         public int MaxCloudPercent { get; set; } = 40;
         public int MinValidPixelPercent { get; set; } = 70;

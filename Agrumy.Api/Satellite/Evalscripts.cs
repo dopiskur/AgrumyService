@@ -24,6 +24,51 @@ namespace Agrumy.Api.Satellite
             [SatelliteIndex.NaturalColor] = new(BuildComposite(["B04", "B03", "B02"]), false),
         };
 
+        /// S-B2, D3 - PlanetScope has no SWIR band, so only NDVI/NDWI/NaturalColor exist for it; band names (blue/green/red/nir) match Sentinel Hub's PlanetScope collection docs (collections.sentinel-hub.com/planetscope), not Sentinel-2's B0x convention. No cloud/shadow mask evalscript function exists yet for PlanetScope's own udm1/cloud bands - built from documentation, not exercised against a live PlanetScope response.
+        public static readonly IReadOnlyDictionary<SatelliteIndex, Definition> PlanetScope = new Dictionary<SatelliteIndex, Definition>
+        {
+            [SatelliteIndex.Ndvi] = new(BuildScalarNoScl(["red", "nir"], "(s.nir - s.red) / (s.nir + s.red)"), true),
+            [SatelliteIndex.Ndwi] = new(BuildScalarNoScl(["green", "nir"], "(s.green - s.nir) / (s.green + s.nir)"), true),
+            [SatelliteIndex.NaturalColor] = new(BuildCompositeNoScl(["red", "green", "blue"]), false),
+        };
+
+        private static string BuildScalarNoScl(string[] bands, string formula) =>
+            $$"""
+            //VERSION=3
+            function setup() {
+              return {
+                input: [{ bands: [{{string.Join(", ", bands.Select(b => $"\"{b}\""))}}, "clear"] }],
+                output: [
+                  { id: "default", bands: 1, sampleType: "FLOAT32" },
+                  { id: "dataMask", bands: 1, sampleType: "UINT8" }
+                ]
+              };
+            }
+            function evaluatePixel(s) {
+              let value = {{formula}};
+              return { default: [value], dataMask: [s.clear] };
+            }
+            """;
+
+        private static string BuildCompositeNoScl(string[] rgbBands) =>
+            $$"""
+            //VERSION=3
+            function setup() {
+              return {
+                input: [{ bands: [{{string.Join(", ", rgbBands.Select(b => $"\"{b}\""))}}, "clear"] }],
+                output: [
+                  { id: "default", bands: 3, sampleType: "UINT8" },
+                  { id: "dataMask", bands: 1, sampleType: "UINT8" }
+                ]
+              };
+            }
+            function evaluatePixel(s) {
+              let gain = 2.5, gamma = 1.8;
+              function tone(v) { return 255 * Math.pow(Math.min(1, v * gain), 1 / gamma); }
+              return { default: [tone(s.{{rgbBands[0]}}), tone(s.{{rgbBands[1]}}), tone(s.{{rgbBands[2]}})], dataMask: [s.clear] };
+            }
+            """;
+
         private static string BuildScalar(string[] bands, string formula) =>
             $$"""
             //VERSION=3

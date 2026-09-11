@@ -1,0 +1,118 @@
+@model TenantSatelliteConfig
+@{
+    ViewData["Title"] = "Satellite settings";
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.Admins);
+    int? idTenant = ViewBag.IdTenant;
+}
+
+<h1 class="h3 mb-3">Satellite settings</h1>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+<div class="card">
+    <div class="card-body">
+        @if (!canManage)
+        {
+            <p class="text-secondary">Read-only.</p>
+        }
+        <form asp-action="Index" method="post">
+            <input type="hidden" name="idTenant" value="@idTenant" />
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Enabled</label>
+                    <div class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" name="Enabled" value="true" checked="@Model.Enabled" disabled="@(!canManage)" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Plan tier</label>
+                    <select name="PlanTier" id="planTierSelect" class="form-select" disabled="@(!canManage)">
+                        <option value="1" selected="@(Model.PlanTier == SatellitePlanTier.Free)">Free</option>
+                        <option value="2" selected="@(Model.PlanTier == SatellitePlanTier.Paid)">Paid</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Collection</label>
+                    <select name="Collection" id="collectionSelect" class="form-select" disabled="@(!canManage || Model.PlanTier != SatellitePlanTier.Paid)">
+                        <option value="1" selected="@(Model.Collection == SatelliteCollection.Sentinel2)">Sentinel-2 (10m, free-tier default)</option>
+                        <option value="2" selected="@(Model.Collection == SatelliteCollection.PlanetScope)">PlanetScope (3m, daily, no SWIR indices)</option>
+                        <option value="3" selected="@(Model.Collection == SatelliteCollection.PleiadesSpot)">Pleiades/SPOT (0.5m, on order, NaturalColor+NDVI only)</option>
+                    </select>
+                    <p class="form-text">Paid tier only - a Free tenant always stays on Sentinel-2 regardless of what's selected here.</p>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Client ID</label>
+                    <input type="text" name="ClientId" class="form-control" value="@Model.ClientId" maxlength="120" disabled="@(!canManage)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Client secret</label>
+                    <input type="password" name="ClientSecret" class="form-control" placeholder="@(Model.HasSecret ? "(configured - leave blank to keep)" : "not configured")" disabled="@(!canManage)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Commercial collection ID</label>
+                    <input type="text" name="CommercialCollectionId" class="form-control" value="@Model.CommercialCollectionId" maxlength="80" disabled="@(!canManage || Model.PlanTier != SatellitePlanTier.Paid)" placeholder="Sentinel Hub BYOC collection id (PlanetScope/Pleiades only)" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Max cloud %</label>
+                    <input type="number" name="MaxCloudPercent" class="form-control" value="@Model.MaxCloudPercent" min="0" max="100" disabled="@(!canManage)" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Min valid pixel %</label>
+                    <input type="number" name="MinValidPixelPercent" class="form-control" value="@Model.MinValidPixelPercent" min="0" max="100" disabled="@(!canManage)" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Raster retention override (days)</label>
+                    <input type="number" name="RasterRetentionDaysOverride" class="form-control" value="@Model.RasterRetentionDaysOverride" min="0" disabled="@(!canManage)" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Default indices</label>
+                    <div id="indexCheckboxes" class="d-flex flex-wrap gap-3">
+                        @foreach (Agrumy.Shared.Models.SatelliteIndex index in Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>())
+                        {
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="defaultIndices" value="@((int)index)" id="idx-@index" checked="@Model.DefaultIndices.Contains(index)" disabled="@(!canManage)" />
+                                <label class="form-check-label" for="idx-@index">@index</label>
+                            </div>
+                        }
+                    </div>
+                    <p class="form-text">NDMI/NDSI/SWIR composite only apply to Sentinel-2; Pleiades only supports NaturalColor + NDVI.</p>
+                </div>
+            </div>
+            @if (canManage)
+            {
+                <button type="submit" class="btn btn-primary mt-3">Save</button>
+            }
+        </form>
+
+        @if (canManage)
+        {
+            <form asp-action="Test" method="post" class="mt-3 border-top pt-3">
+                <input type="hidden" name="idTenant" value="@idTenant" />
+                <p class="text-secondary small">Tests the saved credentials (or type new ones below to test before saving).</p>
+                <div class="row g-2" style="max-width:40rem">
+                    <div class="col-6"><input type="text" name="clientId" class="form-control form-control-sm" placeholder="Client ID (optional - blank uses saved)" /></div>
+                    <div class="col-6"><input type="password" name="clientSecret" class="form-control form-control-sm" placeholder="Client secret (optional - blank uses saved)" /></div>
+                </div>
+                <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Test connection</button>
+            </form>
+        }
+    </div>
+</div>
+
+<script nonce="@Context.CspNonce()">
+    document.getElementById('planTierSelect')?.addEventListener('change', function () {
+        const isPaid = this.value === '2';
+        document.getElementById('collectionSelect').disabled = !isPaid || @((!canManage).ToString().ToLowerInvariant());
+    });
+</script>

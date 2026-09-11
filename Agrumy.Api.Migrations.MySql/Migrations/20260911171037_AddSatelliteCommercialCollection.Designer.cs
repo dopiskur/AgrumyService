@@ -3,61 +3,64 @@ using System;
 using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Agrumy.Api.Migrations.Postgres.Migrations
+namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911171037_AddSatelliteCommercialCollection")]
+    partial class AddSatelliteCommercialCollection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "9.0.19")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
             modelBuilder.Entity("Agrumy.Dal.Entities.AuditLogRow", b =>
                 {
                     b.Property<int>("IDAuditLog")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDAuditLog"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDAuditLog"));
 
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("ActorEmail")
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<int?>("ActorUserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Details")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("TargetId")
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("TargetType")
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("TimestampUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("IDAuditLog");
 
@@ -71,30 +74,30 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDControllerDataExperiment")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDControllerDataExperiment"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDControllerDataExperiment"));
 
                     b.Property<DateTimeOffset?>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("IDExperiment")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsOn")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("Percent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDControllerDataExperiment");
 
@@ -110,27 +113,27 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDControllerData")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDControllerData"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDControllerData"));
 
                     b.Property<DateTimeOffset?>("DateChanged")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsOn")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("Percent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDControllerData");
 
@@ -145,23 +148,23 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDCrop")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDCrop"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDCrop"));
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("QualityMetricsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TypicalCycleDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDCrop");
 
@@ -174,31 +177,31 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerFunctionControlRow", b =>
                 {
                     b.Property<int>("IDDeviceConfigController")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ControlMode")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("PidKd")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("PidKi")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("PidKp")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("PidSampleIntervalSeconds")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("PidSetpoint")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("PidSetpointMetric")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceConfigController", "RelayFunction");
 
@@ -210,52 +213,52 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceConfigControllerRelayRow", b =>
                 {
                     b.Property<int>("IDDeviceConfigController")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("Slot")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeadTimeSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("LatchingPulseMs")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("MinOffSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("MinOnSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("OutputKind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("PairSlot")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("PwmFrequencyHz")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RateLimitPercentPerSecond")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ServoMaxPulseUs")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ServoMinPulseUs")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ServoSafePositionPercent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TimeProportioningPeriodSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TravelSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceConfigController", "Slot");
 
@@ -268,96 +271,96 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceConfigController")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceConfigController"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceConfigController"));
 
                     b.Property<int?>("HeatingInterval")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("HeatingIntervalEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("HeatingIntervalLength")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("HumidHigh")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("HumidLow")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("HumidityHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightHigh")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("LightInterval")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("LightIntervalEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("LightIntervalLength")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LightLow")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("MoistHigh")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("MoistLow")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool?>("RelayEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("TempHigh")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("TempLow")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("TemperatureHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("VentilationInterval")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("VentilationIntervalEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("VentilationIntervalLength")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("WaterHigh")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("WaterLevelHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("WaterLow")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("WaterPumpCooldownSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpInterval")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("WaterPumpIntervalEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("WaterPumpIntervalLength")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceConfigController");
 
@@ -368,69 +371,69 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceConfigSensor")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceConfigSensor"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceConfigSensor"));
 
                     b.Property<double?>("BatteryDividerR1")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BatteryDividerR2")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("EcCalibrationOffset")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("EcCalibrationSlope")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("SensorBarometer")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorBattery")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorCo2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorEc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorHumid")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorLight")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorMoist")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorPH")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorRainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorTemp")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorTempSoil")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorTvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorWaterLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorWeight")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorWind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("WeightCalibrationFactor")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<long?>("WeightTareOffset")
                         .HasColumnType("bigint");
@@ -473,33 +476,33 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceDiagnosticRow", b =>
                 {
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Board")
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("varchar(40)");
 
                     b.Property<int?>("ConfigSchemaVersion")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceTypeID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FirmwareVersion")
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("varchar(40)");
 
                     b.Property<long?>("FreeHeapBytes")
                         .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset?>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("LastSensorPushAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("LowBatteryNotifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("MaxAllocHeapBytes")
                         .HasColumnType("bigint");
@@ -511,16 +514,16 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset?>("OfflineNotifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("RssiDbm")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<long?>("StackHighWaterMarkBytes")
                         .HasColumnType("bigint");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<long?>("UptimeSeconds")
                         .HasColumnType("bigint");
@@ -536,23 +539,23 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDReport")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDReport"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDReport"));
 
                     b.Property<DateTimeOffset>("DateReported")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("DiscoveredApMac")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<int?>("Rssi")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ScanningDeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDReport");
 
@@ -568,43 +571,43 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceFarm")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("IDFarm");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarm"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarm"));
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("DeviceFarmName")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("DisplayOrder")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(0);
 
                     b.Property<int>("FarmType")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(1);
 
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("PurgedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceFarm");
 
@@ -615,37 +618,37 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceFarmUnit")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("IDFarmGreenhouseUnit");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnit"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnit"));
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceFarmID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmID");
 
                     b.Property<string>("DeviceFarmUnitName")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("DisplayOrder")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(0);
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("ZoneEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("IDDeviceFarmUnit");
 
@@ -658,65 +661,65 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceFarmUnitZone")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("IDFarmGreenhouseUnitZone");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnitZone"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnitZone"));
 
                     b.Property<string>("DashboardWidgetsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceFarmUnitID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<string>("DeviceFarmUnitZoneName")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<int?>("HeatingFailSafePolicy")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("HeatingMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("SkipWaterPumpWhenRainPredicted")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("TankCapacityLiters")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<DateTimeOffset?>("TankRefillNotifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("VentilationMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevelRawEmpty")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevelRawFull")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpCooldownSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("WaterPumpMinLevel")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("IDDeviceFarmUnitZone");
 
@@ -729,63 +732,63 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceFarmUnitZoneRule")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnitZoneRule"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnitZoneRule"));
 
                     b.Property<int>("ActionType")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("DeviceFarmID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceFarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceFarmUnitID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceSowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ExperimentID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsSafetyRule")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("NotificationBody")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("NotificationSubject")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("RootConditionJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("SimulationSessionID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TargetPercent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceFarmUnitZoneRule");
 
@@ -820,59 +823,59 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceFirmware")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFirmware"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFirmware"));
 
                     b.Property<string>("Board")
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("varchar(40)");
 
                     b.Property<DateTimeOffset?>("DateAdded")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int?>("DeviceTypeID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FileName")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<string>("FullImageFileName")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<string>("FullImageSha256")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<long?>("FullImageSizeBytes")
                         .HasColumnType("bigint");
 
                     b.Property<string>("FullImageUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Sha256")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<long?>("SizeBytes")
                         .HasColumnType("bigint");
 
                     b.Property<int>("Source")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Url")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Version")
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("IDDeviceFirmware");
 
@@ -885,17 +888,17 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceLoRaSessionRow", b =>
                 {
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("BootNonceHex")
                         .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                        .HasColumnType("varchar(16)");
 
                     b.Property<DateTimeOffset>("FirstSeenUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset>("LastSeenUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("MaxCounter")
                         .HasColumnType("bigint");
@@ -912,36 +915,36 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceManualOverride")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceManualOverride"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceManualOverride"));
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Mode")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("RelayFunction")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("StartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<double?>("TargetHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("TargetMetric")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("TargetThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceManualOverride");
 
@@ -956,36 +959,36 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceOutbox")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceOutbox"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceOutbox"));
 
                     b.Property<int?>("ActiveKey")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("ExecutedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Payload")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("Type")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceOutbox");
 
@@ -1005,17 +1008,17 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceRoleRow", b =>
                 {
                     b.Property<int>("IDDeviceRole")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("ControllerEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("DeviceRoleName")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<bool?>("SensorEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("IDDeviceRole");
 
@@ -1026,170 +1029,170 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDevice")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDevice"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDevice"));
 
                     b.Property<string>("ActiveMacAddress")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasComputedColumnSql("(CASE WHEN NOT \"Deleted\" THEN \"MacAddress\" ELSE NULL END)", true);
+                        .HasColumnType("varchar(64)")
+                        .HasComputedColumnSql("(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)", true);
 
                     b.Property<DateTimeOffset?>("ApiAuthExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("ApiAuthToken")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("ApiId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<string>("ApiKey")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<bool?>("BatteryEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("ConfigVersion")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTimeOffset?>("DateModified")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<bool?>("Debug")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceConfigControllerID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("DeviceConfigSensorID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("DeviceControllerEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("DeviceFarmUnitID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmGreenhouseUnitZoneID");
 
                     b.Property<string>("DeviceName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int?>("DeviceRoleID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("DeviceSensorEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("DeviceTypeServiceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool?>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FirmwareTargetVersion")
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("varchar(20)");
 
                     b.Property<bool?>("FirmwareUpdate")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("GatewayProfile")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsGateway")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTimeOffset?>("LastFullConfigSentAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("LastSensorDetectionAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("LastSensorDetectionResult")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool?>("LoRaGatewayEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("LoRaPrivateKeyHex")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<int>("LocationSource")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("MacAddress")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<int?>("ManualDeviceTypeID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("PurgedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool?>("Reset")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("ServicePoint")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("varchar(200)");
 
                     b.Property<string>("ServicePublicKey")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool?>("SleepDeepEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("SleepSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDevice");
 
@@ -1224,55 +1227,55 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceSimulationRow", b =>
                 {
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Barometer")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Battery")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Co2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("Humidity")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Light")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LiquidPH")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Moisture")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("SoilTemperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Temperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Tvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Wind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("DeviceID");
 
@@ -1282,11 +1285,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceTypeRelayRow", b =>
                 {
                     b.Property<int>("IDDeviceTypeRelay")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("RelayName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.HasKey("IDDeviceTypeRelay");
 
@@ -1297,20 +1300,20 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDDeviceType")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceType"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceType"));
 
                     b.Property<bool>("ControllerCapable")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Kit")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("PinoutJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.HasKey("IDDeviceType");
 
@@ -1324,59 +1327,59 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceTypeSensorRow", b =>
                 {
                     b.Property<int>("IDDeviceTypeSensor")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Barometer")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Battery")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Co2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Ec")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Humidity")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Light")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Moisture")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("SensorDescription")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("SensorName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int?>("Temperature")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TemperatureSoil")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Tvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPH")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterTankLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Weight")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Wind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDDeviceTypeSensor");
 
@@ -1386,11 +1389,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceTypeServiceRow", b =>
                 {
                     b.Property<int>("IDDeviceTypeService")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("ServiceType")
                         .HasMaxLength(5)
-                        .HasColumnType("character varying(5)");
+                        .HasColumnType("varchar(5)");
 
                     b.HasKey("IDDeviceTypeService");
 
@@ -1400,11 +1403,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceVirtualRow", b =>
                 {
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.HasKey("DeviceID");
@@ -1416,27 +1419,27 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDEventDevice")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDEventDevice"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDEventDevice"));
 
                     b.Property<DateTimeOffset?>("AcknowledgedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("Date")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("EventID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Message")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDEventDevice");
 
@@ -1451,12 +1454,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.EventTypeRow", b =>
                 {
                     b.Property<int>("IDEventType")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("EventTypeName")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.HasKey("IDEventType");
 
@@ -1467,32 +1470,32 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDExperiment")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDExperiment"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDExperiment"));
 
                     b.Property<DateTimeOffset?>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int>("Scope")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ScopeID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("StartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("StoppedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDExperiment");
 
@@ -1506,23 +1509,23 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFarmOpenfield")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmOpenfield"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmOpenfield"));
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("FarmID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDFarmOpenfield");
 
@@ -1535,49 +1538,49 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFarmParcel")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmParcel"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcel"));
 
                     b.Property<double?>("AreaHectares")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("ArkodParcelId")
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("varchar(40)");
 
                     b.Property<double?>("BboxMaxLat")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMaxLon")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMinLat")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMinLon")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("FarmOpenfieldID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FarmParcelName")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<string>("GeometryGeoJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDFarmParcel");
 
@@ -1590,92 +1593,92 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFarmParcelZone")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmParcelZone"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcelZone"));
 
                     b.Property<double?>("AreaHectares")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMaxLat")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMaxLon")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMinLat")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BboxMinLon")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("CurrentSowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("DashboardWidgetsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("FarmParcelID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FarmParcelZoneName")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<string>("GeometryGeoJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("HeatingFailSafePolicy")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("HeatingMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsWholeParcel")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("SatelliteBackfillCompletedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("SkipWaterPumpWhenRainPredicted")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("TankCapacityLiters")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<DateTimeOffset?>("TankRefillNotifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("VentilationMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevelRawEmpty")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevelRawFull")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpCooldownSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("WaterPumpMinLevel")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("IDFarmParcelZone");
 
@@ -1690,21 +1693,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFarmParcelZoneSatelliteScene")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmParcelZoneSatelliteScene"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcelZoneSatelliteScene"));
 
                     b.Property<double>("CloudPercent")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("IngestedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("Reliable")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateOnly>("SceneDateUtc")
                         .HasColumnType("date");
@@ -1712,10 +1715,10 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("SourceSceneId")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<double>("ValidPixelPercent")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("IDFarmParcelZoneSatelliteScene");
 
@@ -1730,27 +1733,27 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFieldLogAttachment")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFieldLogAttachment"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFieldLogAttachment"));
 
                     b.Property<string>("ContentType")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("FieldLogEntryID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FileName")
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
                     b.Property<string>("StoragePath")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("varchar(500)");
 
                     b.HasKey("IDFieldLogAttachment");
 
@@ -1763,44 +1766,44 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFieldLogEntry")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFieldLogEntry"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFieldLogEntry"));
 
                     b.Property<int?>("CreatedByUserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("DateUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("EntryType")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsClosingEntry")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<string>("Note")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("PayloadJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("SowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ZonePlantingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDFieldLogEntry");
 
@@ -1826,20 +1829,20 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDFirmwareSsrfAllowlistEntry")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFirmwareSsrfAllowlistEntry"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFirmwareSsrfAllowlistEntry"));
 
                     b.Property<bool>("AllowInsecureHttp")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("AllowPrivateNetwork")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Pattern")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("IDFirmwareSsrfAllowlistEntry");
 
@@ -1854,25 +1857,25 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDGatewayDeviceMapping")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDGatewayDeviceMapping"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDGatewayDeviceMapping"));
 
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("DevEUI")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                        .HasColumnType("varchar(16)");
 
                     b.Property<int>("IDDevice")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("IDGatewayDevice")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDGatewayDeviceMapping");
 
@@ -1889,40 +1892,40 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDHarvestResult")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDHarvestResult"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDHarvestResult"));
 
                     b.Property<DateTimeOffset>("DateUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LossesKg")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("MetricsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<double?>("MoisturePercent")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Note")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("QualityGrade")
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("varchar(40)");
 
                     b.Property<int?>("SowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double>("YieldKg")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("ZonePlantingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDHarvestResult");
 
@@ -1941,66 +1944,66 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<double?>("AirHumidityMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirHumidityMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Max")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Min")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<double?>("LightMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<double?>("SoilECMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilECMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("ID");
 
@@ -2011,66 +2014,66 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<double?>("AirHumidityMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirHumidityMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Max")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Min")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<double?>("LightMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<double?>("SoilECMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilECMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("ID");
 
@@ -2081,66 +2084,66 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<double?>("AirHumidityMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirHumidityMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Max")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Min")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<double?>("LightMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<double?>("SoilECMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilECMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("ID");
 
@@ -2151,66 +2154,66 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<double?>("AirHumidityMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirHumidityMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("AirTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Max")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Co2Min")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<double?>("LightMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("LightMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<double?>("SoilECMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilECMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilMoistureMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilPHMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMax")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("SoilTempMin")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.HasKey("ID");
 
@@ -2221,27 +2224,27 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDParcelSatelliteIndex")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDParcelSatelliteIndex"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDParcelSatelliteIndex"));
 
                     b.Property<string>("BoundsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("GridBase64")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ImagePath")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int>("Index")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("SceneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("StatsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.HasKey("IDParcelSatelliteIndex");
 
@@ -2256,32 +2259,32 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDRefreshToken")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDRefreshToken"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDRefreshToken"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("ReplacedByTokenHash")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<int>("UserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDRefreshToken");
 
@@ -2299,21 +2302,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDRuleNotificationState")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDRuleNotificationState"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDRuleNotificationState"));
 
                     b.Property<int>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("LastFiredAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("RuleID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("WasTrue")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("IDRuleNotificationState");
 
@@ -2330,57 +2333,57 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDSensorDataExperiment")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSensorDataExperiment"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDSensorDataExperiment"));
 
                     b.Property<double?>("Barometer")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Co2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Humidity")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("IDExperiment")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Light")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LiquidPH")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Moisture")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("SoilTemperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Temperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Tvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Wind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDSensorDataExperiment");
 
@@ -2396,86 +2399,86 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDSensorData")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSensorData"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDSensorData"));
 
                     b.Property<double?>("Barometer")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Battery")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Co2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("DeviceFarmUnitID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmGreenhouseUnitID");
 
                     b.Property<int?>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasColumnName("FarmGreenhouseUnitZoneID");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Ec")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Humidity")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Light")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LiquidPH")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("LoRaRssiDbm")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("LoRaSnrDb")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Moisture")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("SoilTemperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("SowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Temperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Tvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Weight")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("WifiRssiDbm")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Wind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDSensorData");
 
@@ -2498,249 +2501,249 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.ServerConfigRow", b =>
                 {
                     b.Property<int>("IDServerConfig")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ActivationResendCooldownMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("AllowSelfServiceTenantCreation")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateOnly?>("ArchiveCustomCutoffDate")
                         .HasColumnType("date");
 
                     b.Property<int?>("ArchiveCustomRollingDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ArchiveCutoffMode")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("ArchiveDatabaseName")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<bool>("ArchiveEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("ArchiveHost")
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<DateTimeOffset?>("ArchiveLastRunAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("ArchivePassword")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<int?>("ArchivePort")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("ArchiveUsername")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<double?>("BatteryLowHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BatteryLowThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("ConfigHeartbeatHours")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("DevicePinValidMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("EmailEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("EmailFromAddress")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("EmailFromName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("EmailHost")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("EmailPassword")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<int>("EmailPort")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("EmailUseStartTls")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("EmailUsername")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("EventDedupeMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("FirmwareCustomRepositoryUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("FirmwareGitHubRepository")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("varchar(200)");
 
                     b.Property<DateTimeOffset?>("FirmwareLastRefreshedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("FirmwareRefreshIntervalHours")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("FirmwareSource")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<double?>("FrostCloudinessMaxPercent")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("FrostLookaheadHours")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("FrostPredicted")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("FrostPredictedHoursAhead")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("FrostTempThresholdC")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("FrostWindMaxMetersPerSecond")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool>("GatewayEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("GatewayMode")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("GatewayWaitWindowSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("HumidityHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("JWTKey")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<double?>("LightHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("MaxRulesPerZone")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("MqttBrokerHost")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<int>("MqttBrokerPort")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("MqttCredentialsSyncedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("MqttPassword")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<bool>("MqttTransportEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("MqttUsername")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("ODataEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("PasswordMinLength")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("PasswordRequireComplexity")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("PortHTTP")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("PortHTTPS")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("ProblemEventAlertsEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("ProblemEventExpiryHours")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("PurgeOrphanedSensorDataScheduleEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("RecycleBinRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SatelliteRasterRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SensorDataRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("TankRefillHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("TankRefillThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("TemperatureHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool>("TenantManagementEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("WaterLevelHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("WaterPumpCooldownSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterPumpMaxRunSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<double?>("WeatherLocationLat")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("WeatherLocationLon")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("WeatherPollIntervalMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("WeatherRainPredicted")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("WeatherRainSkipThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool>("WebhookEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("WebhookSecret")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<string>("WebhookUrl")
                         .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
+                        .HasColumnType("varchar(2048)");
 
                     b.HasKey("IDServerConfig");
 
@@ -2751,57 +2754,57 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDSimulationGroup")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSimulationGroup"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDSimulationGroup"));
 
                     b.Property<double?>("Barometer")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Battery")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Co2")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Humidity")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int>("IDSimulationSession")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Light")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("LiquidPH")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Moisture")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RainLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("Scope")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ScopeID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("SoilTemperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Temperature")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<int?>("Tvoc")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("WaterLevel")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Wind")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDSimulationGroup");
 
@@ -2814,13 +2817,13 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.SimulationSessionDeviceRow", b =>
                 {
                     b.Property<int>("IDSimulationSession")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("DeviceID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("IDSimulationGroup")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDSimulationSession", "DeviceID");
 
@@ -2835,25 +2838,25 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDSimulationSession")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSimulationSession"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDSimulationSession"));
 
                     b.Property<DateTimeOffset?>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<DateTimeOffset?>("StartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("StoppedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDSimulationSession");
 
@@ -2863,21 +2866,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.SowingFarmParcelZoneRow", b =>
                 {
                     b.Property<int>("SowingID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("FarmParcelZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ActiveFarmParcelZoneID")
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("integer")
-                        .HasComputedColumnSql("(CASE WHEN \"ReleasedUtc\" IS NULL THEN \"FarmParcelZoneID\" ELSE NULL END)", true);
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("(CASE WHEN `ReleasedUtc` IS NULL THEN `FarmParcelZoneID` ELSE NULL END)", true);
 
                     b.Property<DateTimeOffset>("AssignedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("ReleasedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("SowingID", "FarmParcelZoneID");
 
@@ -2895,56 +2898,56 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDSowing")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDSowing"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDSowing"));
 
                     b.Property<int?>("ClosedByUserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("ClosedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("CropID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("ExpectedDurationDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("FarmID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateOnly?>("HarvestDate")
                         .HasColumnType("date");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<double?>("SeedRateKgPerHa")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(1);
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("Variety")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("IDSowing");
 
@@ -2962,55 +2965,55 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantQuotaRow", b =>
                 {
                     b.Property<int>("IDTenant")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("GatewayEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("LoRaEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("MaxControllersPerDevice")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxCrops")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxDataRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxDevices")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxFarms")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxParcels")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxSensorsPerDevice")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxSimulations")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxUnits")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxUsers")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MaxZones")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MinSensorIntervalMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<bool>("MqttEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("RecycleBinRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDTenant");
 
@@ -3021,56 +3024,56 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDTenant")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDTenant"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDTenant"));
 
                     b.Property<double?>("BatteryLowHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("BatteryLowThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<bool>("EmergencyStopActive")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("EventDedupeMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<bool?>("ProblemEventAlertsEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int?>("ProblemEventExpiryHours")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int?>("RecycleBinRetentionDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("ScheduleTimeZone")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<double?>("TankRefillHysteresis")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<double?>("TankRefillThreshold")
-                        .HasColumnType("double precision");
+                        .HasColumnType("double");
 
                     b.Property<string>("TenantName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("IDTenant");
 
@@ -3084,55 +3087,55 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantSatelliteConfigRow", b =>
                 {
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("ClientId")
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("varchar(120)");
 
                     b.Property<string>("ClientSecretEncrypted")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<int>("Collection")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("CommercialCollectionId")
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("varchar(80)");
 
                     b.Property<string>("DefaultIndicesJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("LastQuotaSnapshotJson")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTimeOffset?>("LastTokenIssuedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("MaxCloudPercent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("MinValidPixelPercent")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("PlanTier")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("Provider")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("QuotaPausedNotifiedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("QuotaPausedUntilUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("RasterRetentionDaysOverride")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("TenantID");
 
@@ -3143,21 +3146,21 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDTenantUsageSnapshot")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDTenantUsageSnapshot"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDTenantUsageSnapshot"));
 
                     b.Property<int>("DeviceCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<long>("SensorDataRowCount")
                         .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("SnapshotDateUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDTenantUsageSnapshot");
 
@@ -3172,27 +3175,27 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDTenantWifiConfig")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDTenantWifiConfig"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDTenantWifiConfig"));
 
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasColumnType("varchar(512)");
 
                     b.Property<string>("Ssid")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasColumnType("varchar(32)");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDTenantWifiConfig");
 
@@ -3206,23 +3209,23 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDUserNotificationPreference")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDUserNotificationPreference"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDUserNotificationPreference"));
 
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("varchar(20)");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("EventType")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("UserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDUserNotificationPreference");
 
@@ -3237,13 +3240,13 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDUserRole")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDUserRole"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDUserRole"));
 
                     b.Property<string>("RoleName")
                         .HasMaxLength(45)
-                        .HasColumnType("character varying(45)");
+                        .HasColumnType("varchar(45)");
 
                     b.HasKey("IDUserRole");
 
@@ -3254,94 +3257,94 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDUser")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDUser"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDUser"));
 
                     b.Property<DateTimeOffset?>("ActivationLastSentAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTimeOffset?>("ActivationTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("ActivationTokenHash")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("BootstrapSecretHash")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("BootstrapSecretSalt")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTimeOffset?>("DateCreated")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTimeOffset?>("DateModified")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("datetime(6)")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("DevicePin")
                         .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
+                        .HasColumnType("varchar(8)");
 
                     b.Property<DateTimeOffset?>("DevicePinExpires")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<bool>("EmailVerified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool?>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<bool>("MustChangePassword")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(15)
-                        .HasColumnType("character varying(15)");
+                        .HasColumnType("varchar(15)");
 
                     b.Property<string>("PwdHash")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("PwdSalt")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<string>("TimeZone")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("varchar(64)");
 
                     b.Property<DateTimeOffset?>("TokensValidAfterUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("UIMode")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(0);
 
                     b.Property<string>("Username")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("IDUser");
 
@@ -3366,10 +3369,10 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
             modelBuilder.Entity("Agrumy.Dal.Entities.UserUserRoleRow", b =>
                 {
                     b.Property<int>("UserID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("UserRoleID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("UserID", "UserRoleID");
 
@@ -3382,20 +3385,20 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDWebhookSsrfAllowlistEntry")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDWebhookSsrfAllowlistEntry"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDWebhookSsrfAllowlistEntry"));
 
                     b.Property<bool>("AllowInsecureHttp")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("AllowPrivateNetwork")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Pattern")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("IDWebhookSsrfAllowlistEntry");
 
@@ -3410,43 +3413,43 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                 {
                     b.Property<int>("IDZonePlanting")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDZonePlanting"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDZonePlanting"));
 
                     b.Property<int?>("ActiveDeviceFarmUnitZoneID")
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("integer")
-                        .HasComputedColumnSql("(CASE WHEN \"Status\" = 2 THEN \"DeviceFarmUnitZoneID\" ELSE NULL END)", true);
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("(CASE WHEN `Status` = 2 THEN `DeviceFarmUnitZoneID` ELSE NULL END)", true);
 
                     b.Property<DateTimeOffset?>("ClosedUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("CropID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("DeviceFarmUnitZoneID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<int>("ExpectedDurationDays")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.Property<DateOnly?>("HarvestDate")
                         .HasColumnType("date");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateOnly>("PlantedDate")
                         .HasColumnType("date");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("int")
                         .HasDefaultValue(1);
 
                     b.Property<int?>("TenantID")
-                        .HasColumnType("integer");
+                        .HasColumnType("int");
 
                     b.HasKey("IDZonePlanting");
 

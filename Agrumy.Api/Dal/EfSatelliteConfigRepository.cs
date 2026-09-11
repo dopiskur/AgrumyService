@@ -35,6 +35,9 @@ namespace Agrumy.Api.Dal
                 row.ClientSecretEncrypted = secretProtector.Protect(config.ClientSecret);
             }
             row.PlanTier = (int)config.PlanTier;
+            // Free tenants stay on Sentinel2 no matter what the request body asked for - server-side enforcement of D2, not just a UI restriction.
+            row.Collection = config.PlanTier == SatellitePlanTier.Paid ? (int)config.Collection : (int)SatelliteCollection.Sentinel2;
+            row.CommercialCollectionId = config.PlanTier == SatellitePlanTier.Paid ? config.CommercialCollectionId : null;
             row.DefaultIndicesJson = System.Text.Json.JsonSerializer.Serialize(config.DefaultIndices);
             row.MaxCloudPercent = config.MaxCloudPercent;
             row.MinValidPixelPercent = config.MinValidPixelPercent;
@@ -73,6 +76,8 @@ namespace Agrumy.Api.Dal
             ClientId = r.ClientId,
             HasSecret = !string.IsNullOrEmpty(r.ClientSecretEncrypted),
             PlanTier = (SatellitePlanTier)r.PlanTier,
+            Collection = (SatelliteCollection)r.Collection,
+            CommercialCollectionId = r.CommercialCollectionId,
             DefaultIndices = string.IsNullOrEmpty(r.DefaultIndicesJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<SatelliteIndex>>(r.DefaultIndicesJson) ?? [],
             MaxCloudPercent = r.MaxCloudPercent,
             MinValidPixelPercent = r.MinValidPixelPercent,

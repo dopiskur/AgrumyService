@@ -67,13 +67,14 @@ namespace Agrumy.Api.BackgroundWorkers
                 return;
             }
 
-            IReadOnlyList<SatelliteIndex> indices = config.DefaultIndices.Count > 0 ? config.DefaultIndices : source.Capabilities.Indices;
+            SatelliteCapabilities capabilities = source.GetCapabilities(config.Collection);
+            IReadOnlyList<SatelliteIndex> indices = config.DefaultIndices.Count > 0 ? config.DefaultIndices : capabilities.Indices;
             IList<FarmParcelZone> zones = await farmParcelRepo.FarmParcelZonesWithGeometryGetAsync(config.IDTenant);
 
             int processedZones = 0;
             foreach (FarmParcelZone zone in zones)
             {
-                if (processedZones >= source.Capabilities.MaxParcelsPerDay)
+                if (processedZones >= capabilities.MaxParcelsPerDay)
                 {
                     break;
                 }
@@ -87,11 +88,11 @@ namespace Agrumy.Api.BackgroundWorkers
                     var bbox = new BoundingBox(minLat, minLon, maxLat, maxLon);
                     if (zone.SatelliteBackfillCompletedUtc == null)
                     {
-                        await BackfillZoneAsync(source, config.IDTenant, idZone, bbox, geometry, indices, config.MaxCloudPercent, ct);
+                        await BackfillZoneAsync(source, config.IDTenant, config.Collection, config.CommercialCollectionId, idZone, bbox, geometry, indices, config.MaxCloudPercent, ct);
                     }
                     else
                     {
-                        await IngestNewScenesAsync(source, config.IDTenant, idZone, bbox, geometry, indices, config.MaxCloudPercent, config.MinValidPixelPercent, ct);
+                        await IngestNewScenesAsync(source, config.IDTenant, config.Collection, config.CommercialCollectionId, idZone, bbox, geometry, indices, config.MaxCloudPercent, config.MinValidPixelPercent, ct);
                     }
                 }
                 catch (Exception ex)
@@ -103,11 +104,19 @@ namespace Agrumy.Api.BackgroundWorkers
             }
         }
 
-        private async Task BackfillZoneAsync(ISatelliteImagerySource source, int tenantId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, CancellationToken ct)
+        private static IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> EvalscriptDefinitionsFor(SatelliteCollection collection) => collection switch
         {
-            foreach (SatelliteIndex index in indices.Where(i => Evalscripts.All[i].HasStatistics))
+            SatelliteCollection.Sentinel2 => Evalscripts.All,
+            SatelliteCollection.PlanetScope => Evalscripts.PlanetScope,
+            _ => new Dictionary<SatelliteIndex, Evalscripts.Definition>(), // Pleiades - no evalscripts wired up yet (capabilities-only, see CdseSentinelHubSource's own doc comment); an empty map means the indices.Where(...) filters below simply skip every index for it.
+        };
+
+        private async Task BackfillZoneAsync(ISatelliteImagerySource source, int tenantId, SatelliteCollection collection, string? commercialCollectionId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, CancellationToken ct)
+        {
+            IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> evalscripts = EvalscriptDefinitionsFor(collection);
+            foreach (SatelliteIndex index in indices.Where(i => evalscripts.TryGetValue(i, out var d) && d.HasStatistics))
             {
-                IReadOnlyList<SceneStatEntry> entries = await source.BackfillStatisticsAsync(tenantId, bbox, geometry, ArchiveStartDate, DateOnly.FromDateTime(DateTime.UtcNow), index, maxCloudPercent, ct);
+                IReadOnlyList<SceneStatEntry> entries = await source.BackfillStatisticsAsync(tenantId, collection, commercialCollectionId, bbox, geometry, ArchiveStartDate, DateOnly.FromDateTime(DateTime.UtcNow), index, maxCloudPercent, ct);
                 foreach (SceneStatEntry entry in entries)
                 {
                     FarmParcelZoneSatelliteScene? scene = await sceneRepo.SceneGetBySourceIdAsync(zoneId, entry.SourceSceneId)
@@ -134,7 +143,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 $"The full historical archive (since {ArchiveStartDate:yyyy-MM-dd}) has been ingested for one of your zones - statistics are now available on its Satellite tab.", ct);
         }
 
-        private async Task IngestNewScenesAsync(ISatelliteImagerySource source, int tenantId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, int minValidPixelPercent, CancellationToken ct)
+        private async Task IngestNewScenesAsync(ISatelliteImagerySource source, int tenantId, SatelliteCollection collection, string? commercialCollectionId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, int minValidPixelPercent, CancellationToken ct)
         {
             FarmParcelZoneSatelliteScene? latest = await sceneRepo.LatestSceneGetAsync(zoneId);
             DateOnly fromDate = latest?.SceneDateUtc.AddDays(1) ?? ArchiveStartDate;
@@ -143,8 +152,9 @@ namespace Agrumy.Api.BackgroundWorkers
             {
                 return;
             }
+            IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> evalscripts = EvalscriptDefinitionsFor(collection);
 
-            IReadOnlyList<SceneCandidate> candidates = await source.FindScenesAsync(tenantId, bbox, fromDate, toDate, maxCloudPercent, ct);
+            IReadOnlyList<SceneCandidate> candidates = await source.FindScenesAsync(tenantId, collection, commercialCollectionId, bbox, fromDate, toDate, maxCloudPercent, ct);
             foreach (SceneCandidate candidate in candidates)
             {
                 if (await sceneRepo.SceneGetBySourceIdAsync(zoneId, candidate.SourceSceneId) != null)
@@ -154,10 +164,10 @@ namespace Agrumy.Api.BackgroundWorkers
 
                 double worstValidPercent = 100;
                 var renders = new List<(SatelliteIndex Index, IndexRender Render)>();
-                foreach (SatelliteIndex index in indices)
+                foreach (SatelliteIndex index in indices.Where(evalscripts.ContainsKey))
                 {
                     // PNG is never generated at ingest time (D10) - only the raw grid for scalar indices; composites store nothing here and render on first view instead, same lazy path.
-                    IndexRender render = await source.RenderIndexAsync(tenantId, candidate, geometry, index, renderPng: false, renderGrid: Evalscripts.All[index].HasStatistics, ct);
+                    IndexRender render = await source.RenderIndexAsync(tenantId, collection, commercialCollectionId, candidate, geometry, index, renderPng: false, renderGrid: evalscripts[index].HasStatistics, ct);
                     renders.Add((index, render));
                     worstValidPercent = Math.Min(worstValidPercent, render.ValidPixelPercent);
                 }

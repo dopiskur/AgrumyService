@@ -29,15 +29,16 @@ namespace Agrumy.Api.Satellite
     /// Provider abstraction (Detaljni dizajn S, D3) - capabilities carry what a provider CAN do (indices, resolution, revisit, stats support) so the caller never branches on provider identity.
     public interface ISatelliteImagerySource
     {
-        SatelliteCapabilities Capabilities { get; }
+        /// S-B2 - capabilities depend on which collection the call targets (PlanetScope has no SWIR-derived indices, Pleiades has only visual composites + NDVI), so this takes the collection rather than being a fixed property.
+        SatelliteCapabilities GetCapabilities(SatelliteCollection collection);
 
-        Task<IReadOnlyList<SceneCandidate>> FindScenesAsync(int tenantId, BoundingBox bbox, DateOnly fromUtc, DateOnly toUtc, int maxCloudPercent, CancellationToken ct);
+        Task<IReadOnlyList<SceneCandidate>> FindScenesAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, BoundingBox bbox, DateOnly fromUtc, DateOnly toUtc, int maxCloudPercent, CancellationToken ct);
 
         /// Renders one index for one already-found scene, clipped to the given polygon (not just bbox) - PngBytes/GridRaw depend on renderPng/renderGrid.
-        Task<IndexRender> RenderIndexAsync(int tenantId, SceneCandidate scene, string geoJsonPolygon, SatelliteIndex index, bool renderPng, bool renderGrid, CancellationToken ct);
+        Task<IndexRender> RenderIndexAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, SceneCandidate scene, string geoJsonPolygon, SatelliteIndex index, bool renderPng, bool renderGrid, CancellationToken ct);
 
         /// Statistical API archive backfill (D9) - one call per index across the whole date range, no raster; only meaningful for indices where Capabilities marks SupportsStatistics (visual-only composites don't have a scalar "mean/min/max").
-        Task<IReadOnlyList<SceneStatEntry>> BackfillStatisticsAsync(int tenantId, BoundingBox bbox, string geoJsonPolygon, DateOnly fromUtc, DateOnly toUtc, SatelliteIndex index, int maxCloudPercent, CancellationToken ct);
+        Task<IReadOnlyList<SceneStatEntry>> BackfillStatisticsAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, BoundingBox bbox, string geoJsonPolygon, DateOnly fromUtc, DateOnly toUtc, SatelliteIndex index, int maxCloudPercent, CancellationToken ct);
 
         Task<QuotaSnapshot> QuotaStatusAsync(int tenantId, CancellationToken ct);
     }

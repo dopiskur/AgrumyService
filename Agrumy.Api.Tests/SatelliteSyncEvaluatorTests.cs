@@ -76,7 +76,7 @@ public class SatelliteSyncEvaluatorTests
         _sourceFactory.Setup(f => f.ForAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(_source.Object);
         _source.Setup(s => s.QuotaStatusAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(new QuotaSnapshot(45.0, "{}"));
         _configRepo.Setup(r => r.SatelliteConfigQuotaSnapshotSetAsync(1, It.IsAny<string>(), null)).Returns(Task.CompletedTask);
-        _source.Setup(s => s.Capabilities).Returns(new SatelliteCapabilities([SatelliteIndex.Ndvi], 10, 5, 300, true));
+        _source.Setup(s => s.GetCapabilities(SatelliteCollection.Sentinel2)).Returns(new SatelliteCapabilities([SatelliteIndex.Ndvi], 10, 5, 300, true));
         _farmParcelRepo.Setup(r => r.FarmParcelZonesWithGeometryGetAsync(1)).ReturnsAsync(new List<FarmParcelZone>());
 
         await NewEvaluator().RunOnceAsync();
@@ -108,7 +108,7 @@ public class SatelliteSyncEvaluatorTests
         _sourceFactory.Setup(f => f.ForAsync(2, It.IsAny<CancellationToken>())).ReturnsAsync(_source.Object);
         _source.Setup(s => s.QuotaStatusAsync(2, It.IsAny<CancellationToken>())).ReturnsAsync(new QuotaSnapshot(10.0, "{}"));
         _configRepo.Setup(r => r.SatelliteConfigQuotaSnapshotSetAsync(2, It.IsAny<string>(), null)).Returns(Task.CompletedTask);
-        _source.Setup(s => s.Capabilities).Returns(new SatelliteCapabilities([SatelliteIndex.Ndvi], 10, 5, 300, true));
+        _source.Setup(s => s.GetCapabilities(SatelliteCollection.Sentinel2)).Returns(new SatelliteCapabilities([SatelliteIndex.Ndvi], 10, 5, 300, true));
         _farmParcelRepo.Setup(r => r.FarmParcelZonesWithGeometryGetAsync(2)).ReturnsAsync(new List<FarmParcelZone>());
 
         await NewEvaluator().RunOnceAsync();

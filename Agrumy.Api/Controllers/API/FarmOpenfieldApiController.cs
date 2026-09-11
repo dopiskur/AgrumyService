@@ -14,7 +14,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage, Agrumy.Api.BackgroundWorkers.BackgroundJobQueue jobQueue) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage, Agrumy.Api.BackgroundWorkers.BackgroundJobQueue jobQueue, ISatelliteConfigRepository satelliteConfigRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         #region Farm-with-extension creation
 
@@ -866,7 +866,8 @@ namespace Agrumy.Api.Controllers.API
                 {
                     return StatusCode(503, "Satellite provider not configured, or this zone has no boundary.");
                 }
-                IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: isScalar, HttpContext.RequestAborted);
+                TenantSatelliteConfig? satConfig = await satelliteConfigRepo.SatelliteConfigGetAsync(zone.TenantID ?? 0);
+                IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, satConfig?.Collection ?? SatelliteCollection.Sentinel2, satConfig?.CommercialCollectionId, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: isScalar, HttpContext.RequestAborted);
                 if (isScalar && rendered.GridRaw != null)
                 {
                     await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = rendered.StatsJson });

@@ -8,6 +8,8 @@ namespace Agrumy.Dal.Entities
         public string? ClientId { get; set; }
         public string? ClientSecretEncrypted { get; set; }
         public int PlanTier { get; set; }
+        public int Collection { get; set; }
+        public string? CommercialCollectionId { get; set; }
         public string? DefaultIndicesJson { get; set; }
         public int MaxCloudPercent { get; set; }
         public int MinValidPixelPercent { get; set; }

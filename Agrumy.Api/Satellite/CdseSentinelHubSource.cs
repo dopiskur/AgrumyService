@@ -14,24 +14,59 @@ namespace Agrumy.Api.Satellite
         private const string ProcessUrl = "https://sh.dataspace.copernicus.eu/process/v1";
         private const string StatisticsUrl = "https://sh.dataspace.copernicus.eu/statistics/v1";
 
-        public SatelliteCapabilities Capabilities { get; } = new(
-            Indices: Enum.GetValues<SatelliteIndex>(),
-            ResolutionMeters: 10,
-            RevisitDays: 5,
-            MaxParcelsPerDay: 300, // conservative cap for a CDSE free-tier client credential (D12's SyncEvaluator enforces this as an upper bound, not a promise every free account actually has this much headroom)
-            SupportsStatistics: true);
+        public SatelliteCapabilities GetCapabilities(SatelliteCollection collection) => collection switch
+        {
+            SatelliteCollection.Sentinel2 => new SatelliteCapabilities(
+                Indices: Enum.GetValues<SatelliteIndex>(),
+                ResolutionMeters: 10,
+                RevisitDays: 5,
+                MaxParcelsPerDay: 300, // conservative cap for a CDSE free-tier client credential (D12's SyncEvaluator enforces this as an upper bound, not a promise every free account actually has this much headroom)
+                SupportsStatistics: true),
+            // S-B2, D3 - no SWIR band, so no NDMI/NDSI/SwirComposite; daily revisit, 3m. MaxParcelsPerDay lower - commercial PU cost per call is higher (roadmap step 3).
+            SatelliteCollection.PlanetScope => new SatelliteCapabilities(
+                Indices: [SatelliteIndex.Ndvi, SatelliteIndex.Ndwi, SatelliteIndex.NaturalColor],
+                ResolutionMeters: 3,
+                RevisitDays: 1,
+                MaxParcelsPerDay: 50,
+                SupportsStatistics: true),
+            // Pleiades/SPOT - tasked (on-order), not a fixed revisit; capabilities-only in this session, see the class doc comment.
+            SatelliteCollection.PleiadesSpot => new SatelliteCapabilities(
+                Indices: [SatelliteIndex.Ndvi, SatelliteIndex.NaturalColor],
+                ResolutionMeters: 0.5,
+                RevisitDays: 0,
+                MaxParcelsPerDay: 10,
+                SupportsStatistics: false),
+            _ => throw new ArgumentOutOfRangeException(nameof(collection)),
+        };
 
-        public async Task<IReadOnlyList<SceneCandidate>> FindScenesAsync(int tenantId, BoundingBox bbox, DateOnly fromUtc, DateOnly toUtc, int maxCloudPercent, CancellationToken ct)
+        /// The Process/Catalog/Statistical "type" value for a collection - Sentinel-2 uses CDSE's universal type string; commercial collections are each tenant's own Sentinel Hub BYOC subscription, referenced by the "byoc-" prefix convention documented for third-party collections (not live-verified - no commercial CDSE subscription exists to test against in this session).
+        private static string ResolveCollectionType(SatelliteCollection collection, string? commercialCollectionId) => collection switch
+        {
+            SatelliteCollection.Sentinel2 => "sentinel-2-l2a",
+            _ => string.IsNullOrWhiteSpace(commercialCollectionId)
+                ? throw new InvalidOperationException($"{collection} requires a CommercialCollectionId (the tenant's own Sentinel Hub BYOC subscription) before it can be queried.")
+                : $"byoc-{commercialCollectionId}",
+        };
+
+        private static IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> EvalscriptsFor(SatelliteCollection collection) => collection switch
+        {
+            SatelliteCollection.Sentinel2 => Evalscripts.All,
+            SatelliteCollection.PlanetScope => Evalscripts.PlanetScope,
+            _ => throw new NotSupportedException($"{collection} has no evalscripts wired up yet - capabilities-only in this session."),
+        };
+
+        public async Task<IReadOnlyList<SceneCandidate>> FindScenesAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, BoundingBox bbox, DateOnly fromUtc, DateOnly toUtc, int maxCloudPercent, CancellationToken ct)
         {
             string? token = await tokenProvider.GetAccessTokenAsync(tenantId, ct);
             if (token == null)
             {
                 return [];
             }
+            string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
             var body = new JsonObject
             {
-                ["collections"] = new JsonArray("sentinel-2-l2a"),
+                ["collections"] = new JsonArray(collectionType),
                 ["datetime"] = $"{fromUtc:yyyy-MM-dd}T00:00:00Z/{toUtc:yyyy-MM-dd}T23:59:59Z",
                 ["bbox"] = new JsonArray(bbox.MinLon, bbox.MinLat, bbox.MaxLon, bbox.MaxLat),
                 ["limit"] = 100,
@@ -60,15 +95,16 @@ namespace Agrumy.Api.Satellite
             return results;
         }
 
-        public async Task<IndexRender> RenderIndexAsync(int tenantId, SceneCandidate scene, string geoJsonPolygon, SatelliteIndex index, bool renderPng, bool renderGrid, CancellationToken ct)
+        public async Task<IndexRender> RenderIndexAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, SceneCandidate scene, string geoJsonPolygon, SatelliteIndex index, bool renderPng, bool renderGrid, CancellationToken ct)
         {
             string? token = await tokenProvider.GetAccessTokenAsync(tenantId, ct);
             if (token == null)
             {
                 throw new InvalidOperationException($"No CDSE token available for tenant {tenantId}.");
             }
+            string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
-            Evalscripts.Definition def = Evalscripts.All[index];
+            Evalscripts.Definition def = EvalscriptsFor(collection)[index];
             var body = new JsonObject
             {
                 ["input"] = new JsonObject
@@ -80,7 +116,7 @@ namespace Agrumy.Api.Satellite
                     },
                     ["data"] = new JsonArray(new JsonObject
                     {
-                        ["type"] = "sentinel-2-l2a",
+                        ["type"] = collectionType,
                         ["dataFilter"] = new JsonObject
                         {
                             ["timeRange"] = new JsonObject { ["from"] = $"{scene.SceneDateUtc:yyyy-MM-dd}T00:00:00Z", ["to"] = $"{scene.SceneDateUtc:yyyy-MM-dd}T23:59:59Z" },
@@ -123,9 +159,10 @@ namespace Agrumy.Api.Satellite
             return new IndexRender(renderPng ? defaultPng : null, boundsJson, statsJson, validPercent, grid);
         }
 
-        public async Task<IReadOnlyList<SceneStatEntry>> BackfillStatisticsAsync(int tenantId, BoundingBox bbox, string geoJsonPolygon, DateOnly fromUtc, DateOnly toUtc, SatelliteIndex index, int maxCloudPercent, CancellationToken ct)
+        public async Task<IReadOnlyList<SceneStatEntry>> BackfillStatisticsAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, BoundingBox bbox, string geoJsonPolygon, DateOnly fromUtc, DateOnly toUtc, SatelliteIndex index, int maxCloudPercent, CancellationToken ct)
         {
-            if (!Evalscripts.All[index].HasStatistics)
+            IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> evalscripts = EvalscriptsFor(collection);
+            if (!evalscripts[index].HasStatistics)
             {
                 throw new ArgumentException($"{index} is a visual composite with no scalar statistics.", nameof(index));
             }
@@ -134,6 +171,7 @@ namespace Agrumy.Api.Satellite
             {
                 return [];
             }
+            string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
             var body = new JsonObject
             {
@@ -146,7 +184,7 @@ namespace Agrumy.Api.Satellite
                     },
                     ["data"] = new JsonArray(new JsonObject
                     {
-                        ["type"] = "sentinel-2-l2a",
+                        ["type"] = collectionType,
                         ["dataFilter"] = new JsonObject { ["maxCloudCoverage"] = maxCloudPercent },
                     }),
                 },
@@ -156,7 +194,7 @@ namespace Agrumy.Api.Satellite
                     ["aggregationInterval"] = new JsonObject { ["of"] = "P1D" },
                     ["resx"] = 10,
                     ["resy"] = 10,
-                    ["evalscript"] = Evalscripts.All[index].Script,
+                    ["evalscript"] = evalscripts[index].Script,
                 },
                 ["calculations"] = new JsonObject { ["default"] = new JsonObject() },
             };

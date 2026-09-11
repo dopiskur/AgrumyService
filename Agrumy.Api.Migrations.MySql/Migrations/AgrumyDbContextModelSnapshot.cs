@@ -3094,6 +3094,13 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
 
+                    b.Property<int>("Collection")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CommercialCollectionId")
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
                     b.Property<string>("DefaultIndicesJson")
                         .HasColumnType("longtext");
 

@@ -328,6 +328,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.ClientId).HasMaxLength(120);
                 // Same 512 ciphertext-column reasoning as TenantWifiConfigRow.Password above.
                 e.Property(x => x.ClientSecretEncrypted).HasMaxLength(512);
+                e.Property(x => x.CommercialCollectionId).HasMaxLength(80);
             });
 
             modelBuilder.Entity<FarmParcelZoneSatelliteSceneRow>(e =>
