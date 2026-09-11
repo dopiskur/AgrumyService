@@ -3,178 +3,189 @@
 @{
     ViewData["Title"] = "Build Dashboard";
     bool hasAny = Model.Zones.Any() || Model.Parcels.Any();
+    string initialStep = Model.Selected != null ? "branch" : "target";
 }
 
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">Pick which zone or parcel's dashboard page to edit</h3>
-    </div>
-    <div class="card-body">
-        <p class="text-secondary small">
-            Only picks which page you're building - each widget you add below chooses its own
-            data source (a Farm-wide average, a Unit-specific average, or one specific zone) independently.
-            For the live status overview instead, see <a asp-action="Farms">Farm</a>.
-        </p>
-        @if (!hasAny)
-        {
-            <p class="text-secondary fst-italic">No zones or parcels yet - add a unit or crop on the <a asp-action="Farms">Farm</a> page first.</p>
-        }
-        else
-        {
-            <form asp-action="Index" method="get" class="d-flex gap-2">
-                <select id="wizardTargetSelect" name="@(Model.SelectedParcelId != null ? "idFarmParcelZone" : "idDeviceFarmUnitZone")" class="form-select" style="max-width:24rem" onchange="this.form.requestSubmit()">
-                    <option value="">-- select a zone or parcel --</option>
-                    @if (Model.Zones.Any())
-                    {
-                        @foreach (var group in Model.Zones.GroupBy(z => z.GroupLabel))
+@if (!hasAny)
+{
+    <p class="text-secondary fst-italic">No zones or parcels yet - add a unit or crop on the <a asp-action="Farms">Farm</a> page first.</p>
+}
+else
+{
+    @if (Model.CanManage)
+    {
+        <details class="mb-3" open>
+            <summary class="btn btn-outline-primary" style="cursor:pointer;display:inline-block;">Dashboard wizard</summary>
+            <form id="dashWizardForm" method="post" class="mt-2 p-2 border rounded"
+                  data-zone-action="@Url.Action("WidgetWizardAdd")" data-parcel-action="@Url.Action("ParcelWidgetWizardAdd")"
+                  data-initial-step="@initialStep" data-initial-kind="@(Model.SelectedParcelId != null ? "parcel" : "zone")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="wizTargetIdField"
+                       name="@(Model.SelectedParcelId != null ? "idFarmParcelZone" : "idDeviceFarmUnitZone")"
+                       value="@(Model.SelectedParcelId ?? Model.SelectedZoneId)" />
+
+                <div class="dash-wizard-step" data-step="target">
+                    <label class="form-label d-block">Which zone or parcel's dashboard are you adding to?</label>
+                    <p class="text-secondary small">
+                        Each widget you add chooses its own data source (a Farm-wide average, a Unit-specific
+                        average, or one specific zone) independently - this only picks which page it lands on.
+                    </p>
+                    <select id="wizTargetSelect" class="form-select mb-2" style="max-width:24rem">
+                        <option value="">-- select a zone or parcel --</option>
+                        @if (Model.Zones.Any())
                         {
-                            <optgroup label="@group.Key">
-                                @foreach (var z in group)
-                                {
-                                    <option value="@z.IDDeviceFarmUnitZone" data-kind="zone" selected="@(z.IDDeviceFarmUnitZone == Model.SelectedZoneId ? "selected" : null)">@z.ZoneName</option>
-                                }
-                            </optgroup>
+                            @foreach (var group in Model.Zones.GroupBy(z => z.GroupLabel))
+                            {
+                                <optgroup label="@group.Key">
+                                    @foreach (var z in group)
+                                    {
+                                        <option value="@z.IDDeviceFarmUnitZone" data-kind="zone" selected="@(z.IDDeviceFarmUnitZone == Model.SelectedZoneId ? "selected" : null)">@z.ZoneName</option>
+                                    }
+                                </optgroup>
+                            }
                         }
-                    }
-                    @if (Model.Parcels.Any())
-                    {
-                        @foreach (var group in Model.Parcels.GroupBy(p => p.GroupLabel))
+                        @if (Model.Parcels.Any())
                         {
-                            <optgroup label="@group.Key">
-                                @foreach (var p in group)
-                                {
-                                    <option value="@p.IDFarmParcelZone" data-kind="parcel" selected="@(p.IDFarmParcelZone == Model.SelectedParcelId ? "selected" : null)">@p.ParcelName</option>
-                                }
-                            </optgroup>
+                            @foreach (var group in Model.Parcels.GroupBy(p => p.GroupLabel))
+                            {
+                                <optgroup label="@group.Key">
+                                    @foreach (var p in group)
+                                    {
+                                        <option value="@p.IDFarmParcelZone" data-kind="parcel" selected="@(p.IDFarmParcelZone == Model.SelectedParcelId ? "selected" : null)">@p.ParcelName</option>
+                                    }
+                                </optgroup>
+                            }
                         }
-                    }
-                </select>
-                <noscript><button type="submit" class="btn btn-outline-secondary">Go</button></noscript>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="dashWizardTargetNext" disabled="@(Model.Selected == null ? "disabled" : null)">Next</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="branch" hidden>
+                    <label class="form-label d-block">What do you want to add?</label>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" name="branch" value="statistics" id="branchStats" checked />
+                        <label class="form-check-label" for="branchStats">Statistics - sensor metric tiles/trends across a scope</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="radio" class="form-check-input" name="branch" value="alerting" id="branchAlert" />
+                        <label class="form-check-label" for="branchAlert">Alerting - current alert status boxes</label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="target">Back</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="dashWizardBranchNext">Next</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="stat-metrics" hidden>
+                    <label class="form-label d-block">1. Sensor metrics (pick one or more)</label>
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
+                        {
+                            <input type="checkbox" class="btn-check" name="metrics" id="wizMetric_@((int)m)" value="@((int)m)" />
+                            <label class="btn btn-outline-primary btn-sm" for="wizMetric_@((int)m)">@SensorMetricAccessor.Label(m)</label>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
+                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="stat-metrics" data-scope-mode="stat">Next</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="alert-types" hidden>
+                    <label class="form-label d-block">1. Alert types (pick one or more)</label>
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertOffline" value="@((int)NotificationEventType.Offline)" />
+                        <label class="btn btn-outline-primary btn-sm" for="wizAlertOffline">Offline</label>
+                        <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertLowBattery" value="@((int)NotificationEventType.LowBattery)" />
+                        <label class="btn btn-outline-primary btn-sm" for="wizAlertLowBattery">Low battery</label>
+                        <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertTankRefill" value="@((int)NotificationEventType.TankRefill)" />
+                        <label class="btn btn-outline-primary btn-sm" for="wizAlertTankRefill">Tank refill</label>
+                        <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertFrost" value="@((int)NotificationEventType.Frost)" />
+                        <label class="btn btn-outline-primary btn-sm" for="wizAlertFrost">Frost</label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
+                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="alert-types" data-scope-mode="alert">Next</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="scope" hidden>
+                    <partial name="_DashboardWizardScopePicker" model="Model" />
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" id="dashWizardScopeBack">Back</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="dashWizardScopeNext" data-next="stat-chart">Next</button>
+                    <button type="submit" class="btn btn-sm btn-primary" id="dashWizardScopeSubmit" hidden>Add alert boxes</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="stat-chart" hidden>
+                    <label class="form-label d-block">3. Chart type (applies to every tile generated)</label>
+                    <div class="btn-group mb-2" role="group">
+                        <input type="radio" class="btn-check" name="chartType" id="wizChartValue" value="@((int)DashboardWidgetType.SensorValue)" checked />
+                        <label class="btn btn-outline-secondary btn-sm" for="wizChartValue">Value</label>
+                        <input type="radio" class="btn-check" name="chartType" id="wizChartTrend" value="@((int)DashboardWidgetType.SensorTrend)" />
+                        <label class="btn btn-outline-secondary btn-sm" for="wizChartTrend">Trend (24h)</label>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="scope">Back</button>
+                        <button type="submit" class="btn btn-sm btn-primary">Add tiles</button>
+                    </div>
+                </div>
             </form>
             <script nonce="@Context.CspNonce()">
-                document.getElementById('wizardTargetSelect').addEventListener('change', function () {
-                    var kind = this.options[this.selectedIndex]?.dataset.kind;
-                    this.name = kind === 'parcel' ? 'idFarmParcelZone' : 'idDeviceFarmUnitZone';
-                });
+                (function () {
+                    var form = document.getElementById('dashWizardForm');
+                    if (!form) { return; }
+                    var steps = Array.from(form.querySelectorAll('.dash-wizard-step'));
+                    var scopeBackTarget = 'stat-metrics';
+
+                    function showStep(name) {
+                        steps.forEach(function (s) { s.hidden = s.dataset.step !== name; });
+                    }
+
+                    var targetSelect = document.getElementById('wizTargetSelect');
+                    var targetNext = document.getElementById('dashWizardTargetNext');
+                    targetSelect.addEventListener('change', function () {
+                        targetNext.disabled = !this.value;
+                    });
+                    targetNext.addEventListener('click', function () {
+                        var opt = targetSelect.options[targetSelect.selectedIndex];
+                        var kind = opt?.dataset.kind;
+                        var hidden = document.getElementById('wizTargetIdField');
+                        hidden.name = kind === 'parcel' ? 'idFarmParcelZone' : 'idDeviceFarmUnitZone';
+                        hidden.value = targetSelect.value;
+                        form.action = kind === 'parcel' ? form.dataset.parcelAction : form.dataset.zoneAction;
+                        showStep('branch');
+                    });
+
+                    document.getElementById('dashWizardBranchNext').addEventListener('click', function () {
+                        var branch = form.querySelector('input[name="branch"]:checked').value;
+                        showStep(branch === 'alerting' ? 'alert-types' : 'stat-metrics');
+                    });
+
+                    form.querySelectorAll('.dash-wizard-next[data-scope-mode]').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            scopeBackTarget = btn.dataset.scopeBack;
+                            var isAlert = btn.dataset.scopeMode === 'alert';
+                            document.getElementById('dashWizardScopeNext').hidden = isAlert;
+                            document.getElementById('dashWizardScopeSubmit').hidden = !isAlert;
+                            showStep('scope');
+                        });
+                    });
+
+                    document.getElementById('dashWizardScopeBack').addEventListener('click', function () { showStep(scopeBackTarget); });
+                    document.getElementById('dashWizardScopeNext').addEventListener('click', function () { showStep('stat-chart'); });
+
+                    form.querySelectorAll('.dash-wizard-back[data-prev]').forEach(function (btn) {
+                        btn.addEventListener('click', function () { showStep(btn.dataset.prev); });
+                    });
+
+                    if (form.dataset.initialStep === 'branch') {
+                        form.action = form.dataset.initialKind === 'parcel' ? form.dataset.parcelAction : form.dataset.zoneAction;
+                        showStep('branch');
+                    }
+                })();
             </script>
-        }
-    </div>
-</div>
+        </details>
+    }
 
-@if (Model.Selected != null)
-{
-    <div class="mt-3">
-        <h6 class="fw-semibold mb-2">Widgets on @Model.Selected.Leaf.Name's dashboard page</h6>
-        @if (Model.Selected.CanManage)
-        {
-            <details class="mb-3">
-                <summary class="btn btn-outline-primary btn-sm" style="cursor:pointer;display:inline-block;">Dashboard wizard</summary>
-                <form id="dashWizardForm" asp-action="@(Model.Selected.IsParcelLeaf ? "ParcelWidgetWizardAdd" : "WidgetWizardAdd")" method="post" class="mt-2 p-2 border rounded">
-                    <input type="hidden" name="@(Model.Selected.IsParcelLeaf ? "idFarmParcelZone" : "idDeviceFarmUnitZone")" value="@Model.Selected.Leaf.Id" />
-
-                    <div class="dash-wizard-step" data-step="branch">
-                        <label class="form-label d-block">What do you want to add?</label>
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" name="branch" value="statistics" id="branchStats" checked />
-                            <label class="form-check-label" for="branchStats">Statistics - sensor metric tiles/trends across a scope</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input type="radio" class="form-check-input" name="branch" value="alerting" id="branchAlert" />
-                            <label class="form-check-label" for="branchAlert">Alerting - current alert status boxes</label>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-primary" id="dashWizardBranchNext">Next</button>
-                    </div>
-
-                    <div class="dash-wizard-step" data-step="stat-metrics" hidden>
-                        <label class="form-label d-block">1. Sensor metrics (pick one or more)</label>
-                        <div class="d-flex flex-wrap gap-1 mb-2">
-                            @foreach (SensorMetric m in Enum.GetValues<SensorMetric>())
-                            {
-                                <input type="checkbox" class="btn-check" name="metrics" id="wizMetric_@((int)m)" value="@((int)m)" />
-                                <label class="btn btn-outline-primary btn-sm" for="wizMetric_@((int)m)">@SensorMetricAccessor.Label(m)</label>
-                            }
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
-                        <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="stat-metrics" data-scope-mode="stat">Next</button>
-                    </div>
-
-                    <div class="dash-wizard-step" data-step="alert-types" hidden>
-                        <label class="form-label d-block">1. Alert types (pick one or more)</label>
-                        <div class="d-flex flex-wrap gap-1 mb-2">
-                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertOffline" value="@((int)NotificationEventType.Offline)" />
-                            <label class="btn btn-outline-primary btn-sm" for="wizAlertOffline">Offline</label>
-                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertLowBattery" value="@((int)NotificationEventType.LowBattery)" />
-                            <label class="btn btn-outline-primary btn-sm" for="wizAlertLowBattery">Low battery</label>
-                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertTankRefill" value="@((int)NotificationEventType.TankRefill)" />
-                            <label class="btn btn-outline-primary btn-sm" for="wizAlertTankRefill">Tank refill</label>
-                            <input type="checkbox" class="btn-check" name="alertTypes" id="wizAlertFrost" value="@((int)NotificationEventType.Frost)" />
-                            <label class="btn btn-outline-primary btn-sm" for="wizAlertFrost">Frost</label>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
-                        <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="alert-types" data-scope-mode="alert">Next</button>
-                    </div>
-
-                    <div class="dash-wizard-step" data-step="scope" hidden>
-                        <partial name="_DashboardWizardScopePicker" model="Model.Selected" />
-                        <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" id="dashWizardScopeBack">Back</button>
-                        <button type="button" class="btn btn-sm btn-primary" id="dashWizardScopeNext" data-next="stat-chart">Next</button>
-                        <button type="submit" class="btn btn-sm btn-primary" id="dashWizardScopeSubmit" hidden>Add alert boxes</button>
-                    </div>
-
-                    <div class="dash-wizard-step" data-step="stat-chart" hidden>
-                        <label class="form-label d-block">3. Chart type (applies to every tile generated)</label>
-                        <div class="btn-group mb-2" role="group">
-                            <input type="radio" class="btn-check" name="chartType" id="wizChartValue" value="@((int)DashboardWidgetType.SensorValue)" checked />
-                            <label class="btn btn-outline-secondary btn-sm" for="wizChartValue">Value</label>
-                            <input type="radio" class="btn-check" name="chartType" id="wizChartTrend" value="@((int)DashboardWidgetType.SensorTrend)" />
-                            <label class="btn btn-outline-secondary btn-sm" for="wizChartTrend">Trend (24h)</label>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="scope">Back</button>
-                            <button type="submit" class="btn btn-sm btn-primary">Add tiles</button>
-                        </div>
-                    </div>
-                </form>
-                <script nonce="@Context.CspNonce()">
-                    (function () {
-                        var form = document.getElementById('dashWizardForm');
-                        if (!form) { return; }
-                        var steps = Array.from(form.querySelectorAll('.dash-wizard-step'));
-                        var scopeBackTarget = 'stat-metrics';
-
-                        function showStep(name) {
-                            steps.forEach(function (s) { s.hidden = s.dataset.step !== name; });
-                        }
-
-                        document.getElementById('dashWizardBranchNext').addEventListener('click', function () {
-                            var branch = form.querySelector('input[name="branch"]:checked').value;
-                            showStep(branch === 'alerting' ? 'alert-types' : 'stat-metrics');
-                        });
-
-                        form.querySelectorAll('.dash-wizard-next[data-scope-mode]').forEach(function (btn) {
-                            btn.addEventListener('click', function () {
-                                scopeBackTarget = btn.dataset.scopeBack;
-                                var isAlert = btn.dataset.scopeMode === 'alert';
-                                document.getElementById('dashWizardScopeNext').hidden = isAlert;
-                                document.getElementById('dashWizardScopeSubmit').hidden = !isAlert;
-                                showStep('scope');
-                            });
-                        });
-
-                        document.getElementById('dashWizardScopeBack').addEventListener('click', function () { showStep(scopeBackTarget); });
-                        document.getElementById('dashWizardScopeNext').addEventListener('click', function () { showStep('stat-chart'); });
-
-                        form.querySelectorAll('.dash-wizard-back[data-prev]').forEach(function (btn) {
-                            btn.addEventListener('click', function () { showStep(btn.dataset.prev); });
-                        });
-                    })();
-                </script>
-            </details>
-        }
-        <partial name="_DashboardWidgets" model="Model.Selected" />
-    </div>
-}
-else if (hasAny)
-{
-    <p class="text-secondary fst-italic mt-3">Pick a zone or parcel above to start building its dashboard.</p>
+    @if (Model.Selected != null)
+    {
+        <div class="mt-3">
+            <h6 class="fw-semibold mb-2">Widgets on @Model.Selected.Leaf.Name's dashboard page</h6>
+            <partial name="_DashboardWidgets" model="Model.Selected" />
+        </div>
+    }
 }

@@ -20,23 +20,35 @@ namespace Agrumy.Web.Controllers.View
         {
             IList<ZoneOption> zones = await BuildZoneOptionsAsync();
             IList<ParcelOption> parcels = await BuildParcelOptionsAsync();
+            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
             DashboardWidgetsViewModel? selected = null;
             if (idDeviceFarmUnitZone is int zoneId && zones.Any(z => z.IDDeviceFarmUnitZone == zoneId))
             {
-                selected = await BuildDashboardWidgetsViewModelAsync(zoneId, zones);
+                selected = await BuildDashboardWidgetsViewModelAsync(zoneId, zones, farms, units);
             }
             else if (idFarmParcelZone is int parcelId && parcels.Any(p => p.IDFarmParcelZone == parcelId))
             {
-                selected = await BuildParcelDashboardWidgetsViewModelAsync(parcelId, zones);
+                selected = await BuildParcelDashboardWidgetsViewModelAsync(parcelId, zones, farms, units);
             }
-            return View(new DashboardWizardViewModel { Zones = zones, Parcels = parcels, SelectedZoneId = idDeviceFarmUnitZone, SelectedParcelId = idFarmParcelZone, Selected = selected });
+            return View(new DashboardWizardViewModel
+            {
+                Zones = zones,
+                Parcels = parcels,
+                Farms = farms,
+                Units = units,
+                CanManage = hasAnyRole(RoleNames.DeviceManagers),
+                SelectedZoneId = idDeviceFarmUnitZone,
+                SelectedParcelId = idFarmParcelZone,
+                Selected = selected,
+            });
         }
 
-        private async Task<DashboardWidgetsViewModel> BuildDashboardWidgetsViewModelAsync(int zoneId, IList<ZoneOption> zones)
+        private async Task<DashboardWidgetsViewModel> BuildDashboardWidgetsViewModelAsync(int zoneId, IList<ZoneOption> zones, IList<DeviceFarm> farms, IList<DeviceFarmUnit> units)
         {
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(zoneId);
             DeviceFarmUnitZoneDashboard dashboard = await api.DeviceFarmUnitZoneDashboardGet(zoneId);
-            var ctx = await BuildWidgetContextAsync(zone.DashboardWidgets, zones);
+            var ctx = await BuildWidgetContextAsync(zone.DashboardWidgets, zones, farms, units);
 
             return new DashboardWidgetsViewModel
             {
@@ -53,10 +65,10 @@ namespace Agrumy.Web.Controllers.View
         }
 
         /// Parcel's equivalent of BuildDashboardWidgetsViewModelAsync - Dashboard has no Parcel-shaped equivalent consumer (see DashboardWidgetsViewModel.Dashboard's own remarks: unused by _DashboardWidgets.cshtml), so a placeholder is enough.
-        private async Task<DashboardWidgetsViewModel> BuildParcelDashboardWidgetsViewModelAsync(int parcelId, IList<ZoneOption> zones)
+        private async Task<DashboardWidgetsViewModel> BuildParcelDashboardWidgetsViewModelAsync(int parcelId, IList<ZoneOption> zones, IList<DeviceFarm> farms, IList<DeviceFarmUnit> units)
         {
             FarmParcelZone parcel = await api.ParcelGetById(parcelId);
-            var ctx = await BuildWidgetContextAsync(parcel.DashboardWidgets, zones);
+            var ctx = await BuildWidgetContextAsync(parcel.DashboardWidgets, zones, farms, units);
 
             return new DashboardWidgetsViewModel
             {
@@ -77,11 +89,11 @@ namespace Agrumy.Web.Controllers.View
         private async Task<(IList<DeviceFarm> Farms, IList<DeviceFarmUnit> Units, IList<ZoneOption> Zones, IList<DeviceFleetStatus> Fleet,
             IReadOnlyDictionary<(HierarchyNodeKind, int), DashboardAggregate> WidgetData,
             IReadOnlyDictionary<(NotificationEventType, HierarchyNodeKind, int), bool> AlertStatusData)>
-            BuildWidgetContextAsync(IList<DashboardWidget> widgets, IList<ZoneOption>? zones = null)
+            BuildWidgetContextAsync(IList<DashboardWidget> widgets, IList<ZoneOption>? zones = null, IList<DeviceFarm>? farms = null, IList<DeviceFarmUnit>? units = null)
         {
             zones ??= await BuildZoneOptionsAsync();
-            IList<DeviceFarm> farms = await api.DeviceFarmsGet();
-            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            farms ??= await api.DeviceFarmsGet();
+            units ??= await api.DeviceFarmUnitsGet();
             IList<DeviceFleetStatus> fleet = await api.DeviceFleetGet();
 
             var widgetData = new Dictionary<(HierarchyNodeKind, int), DashboardAggregate>();
