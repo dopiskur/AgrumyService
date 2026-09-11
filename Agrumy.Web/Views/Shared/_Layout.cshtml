@@ -168,9 +168,9 @@
                     <ul class="nav sidebar-menu flex-column" id="navigation">
                         @* D1 (Detaljni dizajn R) - two separate root items instead of one mixed Farms page; Greenhouse keeps its own page, Open-Field farming gets its own. *@
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                <i class="nav-icon bi bi-house-door"></i>
-                                <p>@Localizer["Greenhouse"]</p>
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
+                                <i class="nav-icon bi bi-sliders"></i>
+                                <p>@Localizer["Dashboard"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -180,9 +180,9 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
-                                <i class="nav-icon bi bi-sliders"></i>
-                                <p>@Localizer["Build Dashboard"]</p>
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                <i class="nav-icon bi bi-house-door"></i>
+                                <p>@Localizer["Greenhouse"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -191,18 +191,21 @@
                                 <p>@Localizer["Fleet"]</p>
                             </a>
                         </li>
+                        @if (hasCatalogOrAlertsAccess)
+                        {
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
+                                    <i class="nav-icon bi bi-bell"></i>
+                                    <p>@Localizer["Alerts"]</p>
+                                </a>
+                            </li>
+                        }
                         @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="GlobalRules" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "GlobalRules", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                                     <i class="nav-icon bi bi-diagram-3"></i>
                                     <p>@Localizer["Global Rules"]</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="WifiConfig" asp-action="Index" class="nav-link @navActive("WifiConfig")">
-                                    <i class="nav-icon bi bi-wifi"></i>
-                                    <p>@Localizer["WiFi Networks"]</p>
                                 </a>
                             </li>
                         }
@@ -212,15 +215,6 @@
                                 <a asp-area="" asp-controller="User" asp-action="Index" class="nav-link @navActive("User")">
                                     <i class="nav-icon bi bi-people"></i>
                                     <p>@Localizer["Users"]</p>
-                                </a>
-                            </li>
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.Admins))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="AuditLog" asp-action="Index" class="nav-link @navActive("AuditLog")">
-                                    <i class="nav-icon bi bi-clock-history"></i>
-                                    <p>@Localizer["Audit Log"]</p>
                                 </a>
                             </li>
                         }
@@ -251,12 +245,6 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
-                                    <i class="nav-icon bi bi-bell"></i>
-                                    <p>@Localizer["Alerts"]</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
                                 <a asp-area="" asp-controller="Satellite" asp-action="Index" class="nav-link @navActive("Satellite")">
                                     <i class="nav-icon bi bi-globe"></i>
                                     <p>@Localizer["Satellite"]</p>
@@ -271,6 +259,27 @@
                                     <p>@Localizer["Firmware"]</p>
                                 </a>
                             </li>
+                        }
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+                        {
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="WifiConfig" asp-action="Index" class="nav-link @navActive("WifiConfig")">
+                                    <i class="nav-icon bi bi-wifi"></i>
+                                    <p>@Localizer["WiFi Networks"]</p>
+                                </a>
+                            </li>
+                        }
+                        @if (hasAnyRoleOrReads(RoleNames.Admins))
+                        {
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="AuditLog" asp-action="Index" class="nav-link @navActive("AuditLog")">
+                                    <i class="nav-icon bi bi-clock-history"></i>
+                                    <p>@Localizer["Audit Log"]</p>
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+                        {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="ServerConfig" asp-action="Index" class="nav-link @navActive("ServerConfig")">
                                     <i class="nav-icon bi bi-sliders"></i>
