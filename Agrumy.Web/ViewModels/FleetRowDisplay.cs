@@ -12,5 +12,14 @@ namespace Agrumy.Web.ViewModels
         public static string DisabledStripeColor(DeviceFleetStatus item) => item.IsVirtual
             ? "var(--bs-primary)"
             : item.Online ? "var(--bs-success)" : "var(--bs-danger)";
+
+        public static string BatteryBadgeCss(int battery) => battery switch
+        {
+            >= 85 => "bg-battery-full",
+            >= 60 => "bg-battery-good",
+            >= 40 => "bg-battery-medium",
+            >= 25 => "bg-battery-low",
+            _ => "bg-battery-critical",
+        };
     }
 }

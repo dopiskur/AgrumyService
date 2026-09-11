@@ -1023,6 +1023,7 @@ namespace Agrumy.Api.Dal
                     FirmwareUpdatePending = r.Device.FirmwareUpdate == true,
                     FirmwareTargetVersion = r.Device.FirmwareTargetVersion,
                     Battery = r.Battery,
+                    BatteryEnabled = r.Device.BatteryEnabled,
                     Online = DeviceFleetStatus.ComputeOnline(r.Diag?.LastSeenAt, r.Device.SleepSeconds, utcNow),
                     IsVirtual = virtualDeviceIds.Contains(r.Device.IDDevice),
                     DeviceFarmUnitID = r.Device.DeviceFarmUnitID,

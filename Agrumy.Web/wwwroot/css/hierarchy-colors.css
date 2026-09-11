@@ -24,3 +24,28 @@
     min-width: 5.5rem;
     text-align: center;
 }
+
+.bg-battery-full {
+    background-color: #198754;
+    color: #fff;
+}
+
+.bg-battery-good {
+    background-color: #6fbf3f;
+    color: #fff;
+}
+
+.bg-battery-medium {
+    background-color: #ffc107;
+    color: #1b1b1b;
+}
+
+.bg-battery-low {
+    background-color: #fd7e14;
+    color: #fff;
+}
+
+.bg-battery-critical {
+    background-color: #dc3545;
+    color: #fff;
+}

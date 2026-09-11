@@ -63,7 +63,6 @@
             }
         </td>
         <td class="d-none d-md-table-cell">@(item.Enabled == true ? "Yes" : "No")</td>
-        <td class="d-none d-md-table-cell">@(item.LastSeenAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
         <td class="d-none d-md-table-cell">
             @if (FleetRowDisplay.IsOffline(item))
             {
@@ -94,14 +93,14 @@
                 </form>
             }
         </td>
-        <td class="d-none d-md-table-cell">@(item.Battery?.ToString() ?? "-")</td>
         <td class="d-none d-md-table-cell">
-            @if (item.RelayStates is { Count: > 0 } relays)
+            @if (item.BatteryEnabled != true)
             {
-                foreach (var relay in relays.OrderBy(r => r.RelayFunction))
-                {
-                    <span class="badge @(relay.IsOn ? "text-bg-success" : "text-bg-light border") me-1" title="@relay.RelayFunction @(relay.IsOn ? "on" : "off")">@relay.RelayFunction</span>
-                }
+                <span class="badge border text-dark fleet-status-badge" style="background: linear-gradient(to right, var(--bs-secondary) 0 5%, #fff 5% 100%);" title="Battery disabled">Disabled</span>
+            }
+            else if (item.Battery is int battery)
+            {
+                <span class="badge fleet-status-badge @FleetRowDisplay.BatteryBadgeCss(battery)">@battery%</span>
             }
             else
             {

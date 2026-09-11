@@ -29,4 +29,18 @@ public class FleetRowDisplayTests
     [Fact]
     public void DisabledStripeColor_RealOffline_IsRed() =>
         Assert.Equal("var(--bs-danger)", FleetRowDisplay.DisabledStripeColor(new DeviceFleetStatus { IsVirtual = false, Online = false }));
+
+    [Theory]
+    [InlineData(100, "bg-battery-full")]
+    [InlineData(85, "bg-battery-full")]
+    [InlineData(84, "bg-battery-good")]
+    [InlineData(60, "bg-battery-good")]
+    [InlineData(59, "bg-battery-medium")]
+    [InlineData(40, "bg-battery-medium")]
+    [InlineData(39, "bg-battery-low")]
+    [InlineData(25, "bg-battery-low")]
+    [InlineData(24, "bg-battery-critical")]
+    [InlineData(0, "bg-battery-critical")]
+    public void BatteryBadgeCss_TierBoundaries(int battery, string expectedCss) =>
+        Assert.Equal(expectedCss, FleetRowDisplay.BatteryBadgeCss(battery));
 }

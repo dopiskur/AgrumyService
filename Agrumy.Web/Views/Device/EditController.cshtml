@@ -7,7 +7,7 @@
 
     var relayEnabledToggle = new EnabledToggleFieldViewModel { Name = ControllerField(nameof(cfg.RelayEnabled)), Label = "Relay", Value = cfg.RelayEnabled };
 
-    // Always renders exactly RelaySlotLimits.MaxSlots rows - cfg.Relays only carries assigned slots, so an unassigned slot just shows "Disabled" here.
+    // One entry per physical slot 1..MaxSlots, but only assigned ones render a row - see "+ Add function" below for how a free slot gets filled in.
     var relaySlots = new (int Slot, int Selected, Agrumy.Shared.Models.DeviceRelaySlot? Existing)[RelaySlotLimits.MaxSlots];
     for (int i = 0; i < relaySlots.Length; i++)
     {
@@ -40,31 +40,38 @@
 
             <partial name="_EnabledToggleField" model="relayEnabledToggle" />
 
+            <button type="button" id="add-function-btn" class="btn btn-outline-primary btn-sm mb-2" hidden="@(relaySlots.All(s => s.Selected != 0))">+ Add function</button>
+
+            @{ int assignedSeq = 0; }
             @for (int i = 0; i < relaySlots.Length; i++)
             {
                 var slot = relaySlots[i];
                 var existing = slot.Existing;
                 bool assigned = slot.Selected != 0;
-                <div class="border rounded p-2 mb-2 relay-slot-row" data-assigned="@assigned.ToString().ToLowerInvariant()">
+                var initialOutputKind = existing?.OutputKind ?? Agrumy.Shared.Models.OutputKind.Relay;
+                if (assigned) { assignedSeq++; }
+                <div class="border rounded p-2 mb-2 relay-slot-row" hidden="@(!assigned)">
                     @Html.Hidden(ControllerField($"Relays[{i}].Slot"), slot.Slot)
-                    <button type="button" class="btn btn-outline-primary btn-sm add-function-btn" hidden="@assigned">+ Add function to slot @slot.Slot</button>
-                    <div class="slot-body" hidden="@(!assigned)">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold function-row-title">@initialOutputKind #@assignedSeq</span>
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-function-btn">Remove</button>
+                    </div>
+                    <div class="slot-body">
                         <div class="row g-2 align-items-end">
                             <div class="col-auto" style="min-width:12rem">
-                                @{
-                                    var selectModel = new SelectFieldViewModel
+                                <label class="form-label small mb-0">Step 1: Function</label>
+                                <select class="form-select function-select" name="@ControllerField($"Relays[{i}].RelayFunction")">
+                                    <option value="0" hidden></option>
+                                    @foreach (SelectListItem item in new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected))
                                     {
-                                        Name = ControllerField($"Relays[{i}].RelayFunction"),
-                                        Label = "Step 1: Function (slot " + slot.Slot + ")",
-                                        Items = new SelectList(Model.DeviceTypeRelay, nameof(DeviceTypeRelay.IDDeviceTypeRelay), nameof(DeviceTypeRelay.RelayName), slot.Selected),
-                                    };
-                                }
-                                <partial name="_SelectField" model="selectModel" />
+                                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                    }
+                                </select>
                             </div>
                             <div class="col-auto" style="min-width:12rem">
                                 @{
                                     var outputKindItems = new SelectList(Enum.GetValues<Agrumy.Shared.Models.OutputKind>()
-                                        .Select(k => new { Value = (int)k, Text = k.ToString() }), "Value", "Text", (int)(existing?.OutputKind ?? Agrumy.Shared.Models.OutputKind.Relay));
+                                        .Select(k => new { Value = (int)k, Text = k.ToString() }), "Value", "Text", (int)initialOutputKind);
                                 }
                                 <label class="form-label small mb-0">Step 2: Output type</label>
                                 <select class="form-select output-kind-select" name="@ControllerField($"Relays[{i}].OutputKind")">
@@ -213,16 +220,41 @@
 
 @section Scripts {
     <script>
-        // Add Function wizard - an unassigned slot starts collapsed behind a button; clicking it
-        // reveals Step 1 (function)/Step 2 (output type)/Step 3 (output-kind-specific fields), Step 4 being the
-        // page's own shared Save button.
-        document.querySelectorAll('.add-function-btn').forEach(btn => {
+        // Add Function wizard - one button reveals the next free physical slot as a titled, removable
+        // row (Step 1 function/Step 2 output type/Step 3 output-kind-specific fields), Step 4 being the
+        // page's own shared Save button. The row title is "OutputType #N" by add order, not by slot number.
+        const addFunctionBtn = document.getElementById('add-function-btn');
+        const allSlotRows = document.querySelectorAll('.relay-slot-row');
+
+        function renumberFunctionRows() {
+            Array.from(allSlotRows).filter(row => !row.hidden).forEach((row, index) => {
+                const kindSelect = row.querySelector('.output-kind-select');
+                row.querySelector('.function-row-title').textContent = kindSelect.options[kindSelect.selectedIndex].text + ' #' + (index + 1);
+            });
+        }
+
+        function updateAddFunctionButton() {
+            addFunctionBtn.hidden = !Array.from(allSlotRows).some(row => row.hidden);
+        }
+
+        addFunctionBtn.addEventListener('click', () => {
+            const nextRow = document.querySelector('.relay-slot-row[hidden]');
+            nextRow.hidden = false;
+            renumberFunctionRows();
+            updateAddFunctionButton();
+        });
+
+        document.querySelectorAll('.remove-function-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const row = btn.closest('.relay-slot-row');
-                btn.hidden = true;
-                row.querySelector('.slot-body').hidden = false;
+                row.hidden = true;
+                row.querySelector('.function-select').value = '0';
+                renumberFunctionRows();
+                updateAddFunctionButton();
             });
         });
+
+        document.querySelectorAll('.output-kind-select').forEach(select => select.addEventListener('change', renumberFunctionRows));
 
         // Step 3's fields are filtered to only the ones the currently-selected output type actually uses.
         function applyOutputKindFilter(select) {

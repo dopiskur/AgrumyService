@@ -415,6 +415,7 @@ namespace Agrumy.Shared.Models
         public bool FirmwareUpdatePending { get; set; }
         public string? FirmwareTargetVersion { get; set; }
         public int? Battery { get; set; }
+        public bool? BatteryEnabled { get; set; }
         public bool Online { get; set; }
         // A virtual (simulated) device has no real WiFi/poll cycle for Online to mean anything; the Web UI shows a distinct "Virtual" badge instead of Online/Offline for these.
         public bool IsVirtual { get; set; }
