@@ -77,97 +77,104 @@
         </div>
     </div>
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.MacAddress)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.MacAddress)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.ServicePoint)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.ServicePoint)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.ServicePublicKey)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.ServicePublicKey)
-            </dd>
-            @if (ViewBag.Kit is string { Length: > 0 } kit)
-            {
-                <dt class="col-sm-3">Kit</dt>
-                <dd class="col-sm-9">@kit</dd>
-            }
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.ConfigVersion)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.ConfigVersion)
-            </dd>
-            <dt class="col-sm-3">
-                Free heap
-            </dt>
-            <dd class="col-sm-9">
-                @(ViewBag.FreeHeapBytes is long heap ? $"{heap / 1024} KB" : "-")
-                @(ViewBag.MinFreeHeapBytes is long minHeap ? $"(min {minHeap / 1024} KB)" : "")
-            </dd>
-            <dt class="col-sm-3">
-                Max allocatable block
-            </dt>
-            <dd class="col-sm-9">
-                @(ViewBag.MaxAllocHeapBytes is long maxAlloc ? $"{maxAlloc / 1024} KB" : "-")
-            </dd>
-            <dt class="col-sm-3">
-                Stack margin
-            </dt>
-            <dd class="col-sm-9">
-                @(ViewBag.StackHighWaterMarkBytes is long stackMargin ? $"{stackMargin} bytes" : "-")
-            </dd>
-            <dt class="col-sm-3">
-                Network task stack margin
-            </dt>
-            <dd class="col-sm-9">
-                @(ViewBag.NetworkStackHighWaterMarkBytes is long netStackMargin ? $"{netStackMargin} bytes" : "-")
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DateCreated)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DateCreated)
-            </dd>
-            <dt class="col-sm-3">
-                @Html.DisplayNameFor(model => model.DateModified)
-            </dt>
-            <dd class="col-sm-9">
-                @Html.DisplayFor(model => model.DateModified)
-            </dd>
-        </dl>
-
-        <hr />
-
-        <form asp-action="QuickSettings" method="post">
-            <fieldset disabled="@isReadOnly">
-                <input type="hidden" name="idDevice" value="@Model.IDDevice" />
-                <partial name="_EnabledToggleField" model="sensorToggle" />
-                <partial name="_EnabledToggleField" model="controllerToggle" />
-                <partial name="_EnabledToggleField" model="sleepDeepToggle" />
-                <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
-                    <label class="form-label">Sleep seconds</label>
-                    <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <form asp-action="QuickSettings" method="post">
+                        <fieldset disabled="@isReadOnly">
+                            <input type="hidden" name="idDevice" value="@Model.IDDevice" />
+                            <partial name="_EnabledToggleField" model="sensorToggle" />
+                            <partial name="_EnabledToggleField" model="controllerToggle" />
+                            <partial name="_EnabledToggleField" model="sleepDeepToggle" />
+                            <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
+                                <label class="form-label">Sleep seconds</label>
+                                <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
+                            </div>
+                            <partial name="_EnabledToggleField" model="loRaGatewayToggle" />
+                            <partial name="_EnabledToggleField" model="batteryToggle" />
+                            <partial name="_EnabledToggleField" model="debugToggle" />
+                            <partial name="_EnabledToggleField" model="enabledToggle" />
+                            @if (!isReadOnly)
+                            {
+                                <input type="submit" value="Save" class="btn btn-primary" />
+                            }
+                        </fieldset>
+                    </form>
                 </div>
-                <partial name="_EnabledToggleField" model="loRaGatewayToggle" />
-                <partial name="_EnabledToggleField" model="batteryToggle" />
-                <partial name="_EnabledToggleField" model="debugToggle" />
-                <partial name="_EnabledToggleField" model="enabledToggle" />
-                @if (!isReadOnly)
-                {
-                    <input type="submit" value="Save" class="btn btn-primary" />
-                }
-            </fieldset>
-        </form>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.MacAddress)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.MacAddress)
+                        </dd>
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.ServicePoint)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.ServicePoint)
+                        </dd>
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.ServicePublicKey)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.ServicePublicKey)
+                        </dd>
+                        @if (ViewBag.Kit is string { Length: > 0 } kit)
+                        {
+                            <dt class="col-sm-3">Kit</dt>
+                            <dd class="col-sm-9">@kit</dd>
+                        }
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.ConfigVersion)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.ConfigVersion)
+                        </dd>
+                        <dt class="col-sm-3">
+                            Free heap
+                        </dt>
+                        <dd class="col-sm-9">
+                            @(ViewBag.FreeHeapBytes is long heap ? $"{heap / 1024} KB" : "-")
+                            @(ViewBag.MinFreeHeapBytes is long minHeap ? $"(min {minHeap / 1024} KB)" : "")
+                        </dd>
+                        <dt class="col-sm-3">
+                            Max allocatable block
+                        </dt>
+                        <dd class="col-sm-9">
+                            @(ViewBag.MaxAllocHeapBytes is long maxAlloc ? $"{maxAlloc / 1024} KB" : "-")
+                        </dd>
+                        <dt class="col-sm-3">
+                            Stack margin
+                        </dt>
+                        <dd class="col-sm-9">
+                            @(ViewBag.StackHighWaterMarkBytes is long stackMargin ? $"{stackMargin} bytes" : "-")
+                        </dd>
+                        <dt class="col-sm-3">
+                            Network task stack margin
+                        </dt>
+                        <dd class="col-sm-9">
+                            @(ViewBag.NetworkStackHighWaterMarkBytes is long netStackMargin ? $"{netStackMargin} bytes" : "-")
+                        </dd>
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.DateCreated)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.DateCreated)
+                        </dd>
+                        <dt class="col-sm-3">
+                            @Html.DisplayNameFor(model => model.DateModified)
+                        </dt>
+                        <dd class="col-sm-9">
+                            @Html.DisplayFor(model => model.DateModified)
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -181,9 +188,9 @@
 @section Scripts {
     <script>
         // SleepSeconds only makes sense once SleepDeep is on - mirror the radio toggle's state instead of a full page round-trip.
-        document.querySelectorAll('input[name="sleepDeepEnabled"]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                document.getElementById('sleep-seconds-field').hidden = document.querySelector('input[name="sleepDeepEnabled"][value="True"]').checked === false;
+        document.querySelectorAll('input[name="sleepDeepEnabled"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                document.getElementById('sleep-seconds-field').hidden = document.querySelector('input[name="sleepDeepEnabled"]:checked') === null;
             });
         });
     </script>

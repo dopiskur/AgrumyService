@@ -33,6 +33,10 @@
                 {
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
                 }
+                else if (item.DeviceFarmUnitName == "Default")
+                {
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Reassign</button>
+                }
                 else
                 {
                     @item.DeviceFarmUnitName
@@ -43,19 +47,19 @@
         <td>
             @if (item.Enabled != true)
             {
-                <span class="badge border text-dark" style="background: linear-gradient(to right, @FleetRowDisplay.DisabledStripeColor(item) 0 10%, #fff 10% 100%);" title="Disabled (@(item.IsVirtual ? "virtual" : item.Online ? "online" : "offline"))">Disabled</span>
+                <span class="badge border text-dark fleet-status-badge" style="background: linear-gradient(to right, @FleetRowDisplay.DisabledStripeColor(item) 0 5%, #fff 5% 100%);" title="Disabled (@(item.IsVirtual ? "virtual" : item.Online ? "online" : "offline"))">Disabled</span>
             }
             else if (item.IsVirtual)
             {
-                <span class="badge text-bg-primary" title="Simulated device - no real WiFi/poll cycle, always considered running">Virtual</span>
+                <span class="badge text-bg-primary fleet-status-badge" title="Simulated device - no real WiFi/poll cycle, always considered running">Virtual</span>
             }
             else if (item.Online)
             {
-                <span class="badge text-bg-success">Online</span>
+                <span class="badge text-bg-success fleet-status-badge">Online</span>
             }
             else
             {
-                <span class="badge text-bg-danger">Offline</span>
+                <span class="badge text-bg-danger fleet-status-badge">Offline</span>
             }
         </td>
         <td class="d-none d-md-table-cell">@(item.Enabled == true ? "Yes" : "No")</td>
