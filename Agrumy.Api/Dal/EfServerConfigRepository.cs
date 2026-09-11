@@ -119,6 +119,8 @@ namespace Agrumy.Api.Dal
             row.FrostCloudinessMaxPercent = config.FrostCloudinessMaxPercent;
             row.FrostWindMaxMetersPerSecond = config.FrostWindMaxMetersPerSecond;
             row.ODataEnabled = config.ODataEnabled;
+            row.ArkodGeoPackageSyncEnabled = config.ArkodGeoPackageSyncEnabled;
+            // ArkodGeoPackageSyncedAtUtc deliberately NOT written here - ArkodGeoPackageSyncService owns it, same reasoning as WeatherCheckedAtUtc/FirmwareLastRefreshedAtUtc.
             row.GatewayEnabled = config.GatewayEnabled;
             row.GatewayMode = (int)config.GatewayMode;
             row.GatewayWaitWindowSeconds = config.GatewayWaitWindowSeconds;
@@ -268,6 +270,18 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        /// The only writer of ArkodGeoPackageSyncedAtUtc, called exclusively by ArkodGeoPackageSyncService - same isolation reasoning as ServerConfigWeatherStateSetAsync.
+        public async Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig = 1)
+        {
+            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
+            if (row == null)
+            {
+                return;
+            }
+            row.ArkodGeoPackageSyncedAtUtc = syncedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
         /// add_retention_policy's interval can only change by remove-then-add, so this runs unconditionally on every save; also called once at startup by ISystemRepository.EnsureSchemaAsync via EnsureTimescaleHypertableAsync.
         public async Task ApplyRetentionPolicyAsync(int? retentionDays)
         {
@@ -342,6 +356,8 @@ namespace Agrumy.Api.Dal
             FrostPredictedHoursAhead = r.FrostPredictedHoursAhead,
             FrostCheckedAtUtc = r.FrostCheckedAtUtc,
             ODataEnabled = r.ODataEnabled,
+            ArkodGeoPackageSyncEnabled = r.ArkodGeoPackageSyncEnabled,
+            ArkodGeoPackageSyncedAtUtc = r.ArkodGeoPackageSyncedAtUtc,
             GatewayEnabled = r.GatewayEnabled,
             GatewayMode = (GatewayMode)r.GatewayMode,
             // An older row has 0 here, which already equals the sane default (a 10-300 clamp keeps 0 unreachable otherwise) - no settings.* fallback needed.

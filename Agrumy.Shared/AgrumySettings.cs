@@ -61,6 +61,9 @@ namespace Agrumy.Shared
 
         // Relative to content root, null = SatelliteStorage.DefaultRelativePath - same convention as FirmwareLocalPath. This is a regenerable PNG cache, not backed up like the others (D10 - the grid in the DB is the source of truth).
         public string? SatelliteLocalPath { get; set; }
+
+        // Relative to content root, null = ArkodGeoPackageStorage.DefaultRelativePath - same convention as SatelliteLocalPath. The local mirror is a regenerable weekly download too, no backup needed (a fresh sync or manual upload replaces it).
+        public string? ArkodLocalPath { get; set; }
         public string FirmwareGitHubRepository { get; set; } = "dopiskur/AgrumyFirmware";
         public string? FirmwareGitHubToken { get; set; }
 
@@ -112,6 +115,7 @@ namespace Agrumy.Shared
             FirmwareLocalPath = configuration.GetSection("Firmware:LocalPath").Value,
             FieldLogAttachmentLocalPath = configuration.GetSection("FieldLog:AttachmentLocalPath").Value,
             SatelliteLocalPath = configuration.GetSection("Satellite:LocalPath").Value,
+            ArkodLocalPath = configuration.GetSection("Arkod:LocalPath").Value,
             FirmwareGitHubRepository = configuration.GetSection("Firmware:GitHubRepository").Value is { Length: > 0 } repo ? repo : "dopiskur/AgrumyFirmware",
             FirmwareGitHubToken = configuration.GetSection("Firmware:GitHubToken").Value,
             FirmwareRefreshIntervalHours = ParseIntOrNull(configuration, "ServerConfig:FirmwareRefreshIntervalHours") ?? 24,

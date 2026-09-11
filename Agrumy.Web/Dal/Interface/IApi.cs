@@ -398,6 +398,15 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/MoistureSeries")]
         Task<IList<FarmParcelZoneMoistureSeriesPoint>> MoistureSeriesGet(int idFarmParcelZone, DateOnly from, DateOnly to);
 
+        // ---- Arkod -------------------------------------------------------------
+
+        [Get("/api/Arkod/Lookup")]
+        Task<ArkodParcelLookupResult> ArkodLookup(string jpaid);
+
+        [Multipart]
+        [Post("/api/Arkod/GeoPackage/Upload")]
+        Task ArkodGeoPackageUpload([AliasAs("file")] StreamPart file);
+
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();
 

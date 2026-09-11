@@ -77,6 +77,9 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-odata" type="button" role="tab">Power BI</button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arkod" type="button" role="tab">ARKOD</button>
+                </li>
             </ul>
             <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3">
                 <div class="tab-pane fade show active" id="tab-health" role="tabpanel">
@@ -742,6 +745,39 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="tab-pane fade" id="tab-arkod" role="tabpanel">
+                    <p class="text-secondary">
+                        The Open-Field parcel boundary editor's primary ARKOD lookup
+                        ("Find ARKOD parcel by click") queries APPRRR's public WMS directly from the
+                        browser and needs nothing configured here. This section is the offline/secondary
+                        path: a local mirror of APPRRR's whole-Croatia ARKOD parcel GeoPackage (weekly
+                        refreshed upstream, roughly 900&nbsp;MB) that keeps "Look up this ID" working with
+                        no outbound internet at request time.
+                    </p>
+                    <div class="form-check mb-3">
+                        <input asp-for="ArkodGeoPackageSyncEnabled" class="form-check-input" />
+                        <label asp-for="ArkodGeoPackageSyncEnabled" class="form-check-label"></label>
+                        <div class="form-text">Off by default - a weekly ~900 MB download is a real resource commitment, not something a fresh install should opt into silently.</div>
+                    </div>
+                    <p class="text-secondary small mb-3">
+                        Last synced:
+                        @(Model.ArkodGeoPackageSyncedAtUtc is DateTimeOffset syncedAt ? syncedAt.ToString("u") : "never")
+                    </p>
+                    <div class="mb-0">
+                        <label class="form-label">Manual upload (offline deployments)</label>
+                        <div class="input-group" style="max-width:40rem">
+                            <input type="file" id="arkodGeoPackageFile" class="form-control" accept=".gpkg" />
+                            <button type="button" id="arkodGeoPackageUploadBtn" class="btn btn-outline-primary">Upload</button>
+                        </div>
+                        <div class="form-text">
+                            For a server with no outbound internet: download the GeoPackage yourself from
+                            APPRRR's public download page on another machine, then upload it here - same
+                            end result as the automatic sync above.
+                        </div>
+                        <p class="text-secondary small fst-italic mt-2" id="arkodGeoPackageUploadStatus" hidden></p>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-0">
@@ -754,6 +790,41 @@
         </form>
     </div>
 </div>
+
+<script nonce="@Context.CspNonce()">
+    document.addEventListener('DOMContentLoaded', function () {
+        const uploadBtn = document.getElementById('arkodGeoPackageUploadBtn');
+        const fileInput = document.getElementById('arkodGeoPackageFile');
+        const status = document.getElementById('arkodGeoPackageUploadStatus');
+        if (!uploadBtn) {
+            return;
+        }
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                return;
+            }
+            status.hidden = false;
+            status.textContent = `Uploading ${file.name} (${(file.size / 1e6).toFixed(0)} MB) - this can take a while...`;
+            uploadBtn.disabled = true;
+            const formData = new FormData();
+            formData.append('file', file);
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+            try {
+                const response = await fetch('/ServerConfig/ArkodGeoPackageUpload', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token },
+                    body: formData,
+                });
+                status.textContent = response.ok ? 'Uploaded - reload the page to see the updated "Last synced" time.' : 'Upload failed.';
+            } catch (err) {
+                status.textContent = 'Upload failed (network error).';
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+    });
+</script>
 
 <div class="modal fade" id="purgeConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">

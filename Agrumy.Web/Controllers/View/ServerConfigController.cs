@@ -4,6 +4,7 @@ using Agrumy.Shared.Security;
 using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StreamPart = Refit.StreamPart; // not `using Refit;` - its AuthorizeAttribute clashes with ASP.NET's
 
 namespace Agrumy.Web.Controllers.View
 {
@@ -186,6 +187,30 @@ namespace Agrumy.Web.Controllers.View
             catch (ApiException ex)
             {
                 return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        /// Offline/manual fallback for the ARKOD GeoPackage sync toggle above: an admin who downloaded the file some other way (no outbound internet on this server) uploads it here instead of waiting on ArkodGeoPackageSyncBackgroundService. AJAX (inline script in Index.cshtml), not a form post - this tab-pane lives inside the page's one big non-multipart Server Settings &lt;form&gt;, same "can't nest a form" reasoning as WebhookSsrfAllowlistAdd.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(1_200_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 1_200_000_000)]
+        public async Task<ActionResult> ArkodGeoPackageUpload(IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Choose a .gpkg file first.");
+            }
+            try
+            {
+                await using Stream stream = file.OpenReadStream();
+                await api.ArkodGeoPackageUpload(new StreamPart(stream, file.FileName, "application/geopackage+sqlite3"));
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode == 0 ? 500 : ex.StatusCode, ex.Body);
             }
         }
 

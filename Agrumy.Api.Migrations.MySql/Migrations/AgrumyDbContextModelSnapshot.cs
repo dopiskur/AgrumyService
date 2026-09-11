@@ -2540,6 +2540,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<bool>("ArkodGeoPackageSyncEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTimeOffset?>("ArkodGeoPackageSyncedAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<double?>("BatteryLowHysteresis")
                         .HasColumnType("double");
 

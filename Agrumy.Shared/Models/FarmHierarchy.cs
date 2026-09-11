@@ -303,6 +303,15 @@ namespace Agrumy.Shared.Models
         public string? ArkodParcelId { get; set; }
     }
 
+    /// One ARKOD parcel resolved from either the WMS GetFeatureInfo click-lookup (browser-direct, see parcel-geometry-map.js) or GET /api/Arkod/Lookup (the local GeoPackage mirror, offline fallback). GeometryGeoJson is a bare GeoJSON Polygon geometry, not a Feature wrapper - same shape parcel-geometry-map.js already draws from a manually-edited layer.
+    public class ArkodParcelLookupResult
+    {
+        public required string ArkodParcelId { get; set; }
+        public string? HomeName { get; set; }
+        public double? AreaM2 { get; set; }
+        public required string GeometryGeoJson { get; set; }
+    }
+
     /// Body of the greenhouse "Start planting" action (D8) - crop name is resolved against the same catalog Sowing uses (D12).
     public class ZonePlantingStartRequest
     {

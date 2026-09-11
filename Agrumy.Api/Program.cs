@@ -230,6 +230,12 @@ builder.Services.AddHostedService<SatelliteSyncBackgroundService>();
 builder.Services.AddScoped<SatelliteRasterRetentionEvaluator>();
 builder.Services.AddHostedService<SatelliteRasterRetentionBackgroundService>();
 
+// ARKOD GeoPackage local mirror (secondary/offline path alongside the browser-side WMS click-lookup).
+builder.Services.AddSingleton<Agrumy.Api.Storage.ArkodGeoPackageStorage>();
+builder.Services.AddScoped<Agrumy.Api.Arkod.ArkodGeoPackageLookup>();
+builder.Services.AddHttpClient<Agrumy.Api.Arkod.ArkodGeoPackageSyncEvaluator>(client => client.Timeout = TimeSpan.FromMinutes(60));
+builder.Services.AddHostedService<Agrumy.Api.BackgroundWorkers.ArkodGeoPackageSyncBackgroundService>();
+
 // Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
 builder.Services.AddSingleton<Agrumy.Api.Commands.IMqttConnectionManager, Agrumy.Api.Commands.MqttConnectionManager>();

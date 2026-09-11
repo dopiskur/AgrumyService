@@ -248,6 +248,14 @@ namespace Agrumy.Shared.Models
         // Written only by SensorDataArchiveEvaluator, read-only on Server Settings - same isolation reasoning as WeatherCheckedAtUtc/FirmwareLastRefreshedAtUtc.
         [Display(Name = "Archive last ran")]
         public DateTimeOffset? ArchiveLastRunAtUtc { get; set; }
+
+        // Secondary/offline path alongside the primary WMS click-lookup (parcel-geometry-map.js): a whole-Croatia ARKOD parcel GeoPackage, weekly-refreshed by APPRRR at a stable public URL, mirrored locally by ArkodGeoPackageSyncService so an ARKOD ID lookup still works with no outbound internet at request time. Off by default - an 862 MB weekly download is a real resource commitment, not something a fresh install should opt into silently.
+        [Display(Name = "Enable ARKOD GeoPackage sync")]
+        public bool ArkodGeoPackageSyncEnabled { get; set; }
+
+        // Written only by ArkodGeoPackageSyncService, read-only on Server Settings - same isolation reasoning as WeatherCheckedAtUtc/FirmwareLastRefreshedAtUtc.
+        [Display(Name = "ARKOD GeoPackage last synced")]
+        public DateTimeOffset? ArkodGeoPackageSyncedAtUtc { get; set; }
     }
 
     /// ServerConfig.ArchiveCutoffMode - which rows SensorDataArchiveEvaluator moves out of the active database on its next run.

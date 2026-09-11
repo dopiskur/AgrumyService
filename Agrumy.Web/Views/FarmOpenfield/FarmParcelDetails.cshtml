@@ -42,6 +42,10 @@
         }
     </div>
     <div class="card-body">
+        <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="arkodWmsToggle" checked>
+            <label class="form-check-label small" for="arkodWmsToggle">Show ARKOD parcel boundaries (APPRRR/NIPP WMS overlay)</label>
+        </div>
         @if (canManage)
         {
             <div class="row g-2 mb-2 align-items-end">
@@ -59,11 +63,18 @@
                     <button type="button" id="geometrySaveBtn" class="btn btn-sm btn-primary"><i class="bi bi-save"></i> Save boundary</button>
                 </div>
                 <div class="col-auto">
+                    <button type="button" id="arkodLookupBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-crosshair"></i> Find ARKOD parcel by click</button>
+                </div>
+                <div class="col-auto">
                     <label class="form-label small mb-0">ARKOD ID</label>
-                    <input type="text" id="arkodParcelIdInput" class="form-control form-control-sm" value="@Model.Parcel.ArkodParcelId" maxlength="40" placeholder="manual entry - no public lookup available" />
+                    <input type="text" id="arkodParcelIdInput" class="form-control form-control-sm" value="@Model.Parcel.ArkodParcelId" maxlength="40" placeholder="manual entry, or use Find ARKOD parcel" />
+                </div>
+                <div class="col-auto">
+                    <button type="button" id="arkodLookupByIdBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i> Look up this ID</button>
                 </div>
             </div>
-            <p class="text-secondary small">Draw or edit the selected boundary with the polygon tool in the map's top-left corner, then Save. Zone boundaries subdivide the parcel's own outer boundary and render with their own separations.</p>
+            <p class="text-secondary small">Draw or edit the selected boundary with the polygon tool in the map's top-left corner, then Save. Zone boundaries subdivide the parcel's own outer boundary and render with their own separations. "Find ARKOD parcel by click" queries the official APPRRR boundary at the point you click; "Look up this ID" instead resolves the ARKOD ID typed above against this server's own local GeoPackage mirror (Server Settings &rarr; ARKOD) - useful with no outbound internet. Either way you get a starting shape for the layer currently selected in "Editing", still yours to adjust before Save.</p>
+            <p class="text-secondary small fst-italic" id="arkodLookupStatus" hidden></p>
         }
         <div id="parcelGeometryMap" data-map="@System.Text.Json.JsonSerializer.Serialize(mapData)" style="height:520px;"></div>
     </div>

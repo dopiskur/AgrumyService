@@ -31,6 +31,7 @@ public class ServerHealthTests
         public Task ServerConfigFrostStateSetAsync(bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigFirmwareRefreshStateSetAsync(DateTimeOffset checkedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ServerConfigArchiveRunStateSetAsync(DateTimeOffset ranAtUtc, int idServerConfig) => Task.CompletedTask;
+        public Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig) => Task.CompletedTask;
         public Task ApplyRetentionPolicyAsync(int? retentionDays) => Task.CompletedTask;
     }
 

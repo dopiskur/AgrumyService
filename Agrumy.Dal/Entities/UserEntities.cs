@@ -236,5 +236,9 @@ namespace Agrumy.Dal.Entities
         public string? ArchiveUsername { get; set; }
         public string? ArchivePassword { get; set; }
         public DateTimeOffset? ArchiveLastRunAtUtc { get; set; }
+
+        // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
+        public bool ArkodGeoPackageSyncEnabled { get; set; }
+        public DateTimeOffset? ArkodGeoPackageSyncedAtUtc { get; set; }
     }
 }
