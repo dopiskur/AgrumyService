@@ -236,6 +236,16 @@ builder.Services.AddScoped<Agrumy.Api.Arkod.ArkodGeoPackageLookup>();
 builder.Services.AddHttpClient<Agrumy.Api.Arkod.ArkodGeoPackageSyncEvaluator>(client => client.Timeout = TimeSpan.FromMinutes(60));
 builder.Services.AddHostedService<Agrumy.Api.BackgroundWorkers.ArkodGeoPackageSyncBackgroundService>();
 
+// OSM tile proxy - OsmTileRateLimiter is a singleton on purpose (see its own remarks), one gate shared by every request regardless of DI scope.
+builder.Services.AddSingleton<Agrumy.Api.Map.TileStorage>();
+builder.Services.AddSingleton<Agrumy.Api.Map.OsmTileRateLimiter>();
+// OSMF's Tile Usage Policy requires an identifying User-Agent, not a generic HttpClient default.
+builder.Services.AddHttpClient(Agrumy.Api.Map.TileProxy.ClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Agrumy-TileProxy/1.0 (+https://github.com/dopiskur/AgrumyService)");
+});
+
 // Singleton, one persistent connection reused across every publish - see MqttConnectionManager's own remarks.
 builder.Services.AddSingleton<MQTTnet.Client.IMqttClient>(_ => new MQTTnet.MqttFactory().CreateMqttClient());
 builder.Services.AddSingleton<Agrumy.Api.Commands.IMqttConnectionManager, Agrumy.Api.Commands.MqttConnectionManager>();
