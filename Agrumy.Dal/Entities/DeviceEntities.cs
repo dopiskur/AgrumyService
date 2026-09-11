@@ -361,7 +361,6 @@ namespace Agrumy.Dal.Entities
         public bool? BatteryEnabled { get; set; }
         public bool? Enabled { get; set; }
         public bool? Debug { get; set; }
-        public bool? Reset { get; set; }
         public bool? FirmwareUpdate { get; set; }
         public string? FirmwareTargetVersion { get; set; } // See Agrumy.Shared.Models.Device.FirmwareTargetVersion.
         public int? ConfigVersion { get; set; }

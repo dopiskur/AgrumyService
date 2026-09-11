@@ -105,6 +105,28 @@ conn_value() {
   echo "$2" | tr ';' '\n' | grep -i "^$1=" | head -1 | cut -d= -f2-
 }
 
+# $1 = connection string -> sorted "MacAddress<TAB>DeviceName" lines, one per device that has ever
+# reported a diagnostic (a real, previously-seen device, not just a freshly-registered row). Used by
+# do_restore to diff what existed right before the restore against what the restored dump actually
+# has, so a device dropped by restoring an older dump gets flagged instead of silently 401-looping.
+list_diagnosed_devices() {
+  local conn="$1" host db user pwd port
+  if echo "$conn" | grep -qi "Uid="; then
+    host="$(conn_value Server "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Uid "$conn")"; pwd="$(conn_value Pwd "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-3306}"
+    MYSQL_PWD="$pwd" mysql -N -B -h "$host" -P "$port" -u "$user" "$db" \
+      -e "SELECT d.MacAddress, COALESCE(d.DeviceName, '') FROM device d JOIN deviceDiagnostic dd ON dd.DeviceID = d.IDDevice" 2>/dev/null | sort
+  else
+    host="$(conn_value Host "$conn")"; db="$(conn_value Database "$conn")"
+    user="$(conn_value Username "$conn")"; pwd="$(conn_value Password "$conn")"
+    port="$(conn_value Port "$conn")"; port="${port:-5432}"
+    # Table/column names quoted - Npgsql migrations create them case-sensitive (same reasoning as do_backup's own Npgsql remarks).
+    PGPASSWORD="$pwd" psql -h "$host" -p "$port" -U "$user" -d "$db" -At -F $'\t' \
+      -c 'SELECT d."MacAddress", COALESCE(d."DeviceName", '"'"''"'"') FROM device d JOIN "deviceDiagnostic" dd ON dd."DeviceID" = d."IDDevice"' 2>/dev/null | sort
+  fi
+}
+
 do_backup() {
   local out_path="$1"
   local api_dir="/opt/agrumy/api" keys_dir="/opt/agrumy/dataprotection-keys"
@@ -162,6 +184,11 @@ do_restore() {
 
   as_root systemctl stop agrumy-api.service agrumy-web.service 2>/dev/null || true
 
+  # Snapshotted BEFORE the overwrite below - the only moment the about-to-be-replaced device list is
+  # still readable, so it can be diffed against what the restored dump actually contains.
+  local devices_before
+  devices_before="$(list_diagnosed_devices "$conn")"
+
   log "Restoring database"
   local host db user pwd port
   if echo "$conn" | grep -qi "Uid="; then
@@ -193,6 +220,20 @@ do_restore() {
 
   log "Restore complete."
   echo "Expected next: every real device gets ONE 401 on its next poll (its cached session token predates this restore point) and silently re-authenticates - this is normal, not a fault, no manual action needed. A device registered AFTER this backup's timestamp does not exist in the restored DB at all and needs re-provisioning from scratch."
+
+  # Devices this dump is older than: still known BEFORE the overwrite (they'd reported at least one
+  # diagnostic) but gone from the just-restored data - a genuinely broken apiKey, not the ordinary
+  # single-401-then-reauth case above (#460's HardReset removed the old auto-wipe-on-401 behavior, so
+  # these just loop 401 forever until someone re-provisions them by hand).
+  local devices_after missing missing_count
+  devices_after="$(list_diagnosed_devices "$conn")"
+  missing="$(comm -23 <(echo "$devices_before") <(echo "$devices_after") 2>/dev/null)"
+  if [ -n "$missing" ]; then
+    missing_count="$(echo "$missing" | grep -c .)"
+    echo ""
+    echo "WARNING: ${missing_count} device(s) known to this server before the restore are NOT in the restored database and will 401-loop until re-provisioned from scratch (MacAddress, DeviceName):"
+    echo "$missing"
+  fi
 }
 
 if [ "${1:-}" = "--backup" ]; then

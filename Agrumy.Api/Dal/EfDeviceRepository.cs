@@ -142,7 +142,7 @@ namespace Agrumy.Api.Dal
         public async Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
         {
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-            var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant, t => t.RecycleBinRetentionDays, ct);
+            var tenantRetentionDays = await db.Tenants.AsNoTracking().ToDictionaryAsync(t => t.IDTenant!.Value, t => t.RecycleBinRetentionDays, ct);
             var tenantQuotaRetentionDays = await db.TenantQuotas.AsNoTracking().ToDictionaryAsync(q => q.IDTenant, q => q.RecycleBinRetentionDays, ct);
 
             var candidates = await db.Devices.IgnoreQueryFilters().AsNoTracking()

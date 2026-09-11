@@ -4,7 +4,8 @@ namespace Agrumy.Dal.Entities
 
     public class TenantRow
     {
-        public int IDTenant { get; set; }
+        // Nullable, not int - EF Core's ValueGeneratedOnAdd only sends an explicit value in the INSERT when the property differs from its CLR type's default; for `int` that default is 0, exactly the literal value SeedDefaultTenantAsync needs to insert for the default tenant. Nullable flips the "not set yet" sentinel to null instead, so IDTenant=0 is treated as a real, explicit value and actually reaches the INSERT statement.
+        public int? IDTenant { get; set; }
         public string TenantName { get; set; } = "";
         public string? ScheduleTimeZone { get; set; } // See Agrumy.Shared.Models.Tenant.ScheduleTimeZone.
         public double? Latitude { get; set; } // See Agrumy.Shared.Models.Tenant.Latitude.

@@ -32,7 +32,7 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        /// TenantID=0 is the shared default tenant every bootstrap admin relies on - since tenant.IDTenant stays auto-increment, inserting IDTenant=0 needs raw SQL, and MySQL additionally needs NO_AUTO_VALUE_ON_ZERO or it silently reassigns a literal 0 (confirmed empirically).
+        /// TenantID=0 is the shared default tenant every bootstrap admin relies on - TenantRow.IDTenant is nullable specifically so a normal EF Add can carry the explicit literal 0 through (see that property's own remarks); MySQL separately needs NO_AUTO_VALUE_ON_ZERO for the INSERT it still generates, or it silently reassigns a literal 0 to the next auto-increment value (confirmed empirically) - a server-level AUTO_INCREMENT behavior, not an EF quirk, so switching off raw SQL doesn't remove the need for it.
         private static async Task SeedDefaultTenantAsync(AgrumyDbContext db)
         {
             if (await db.Tenants.AsNoTracking().AnyAsync(t => t.IDTenant == 0))
@@ -40,18 +40,14 @@ namespace Agrumy.Api.Dal
                 return;
             }
 
-            // Both statements MUST run on the same physical connection (hence the transaction) - otherwise SET SESSION never reaches the connection the INSERT runs on, and MySQL silently reassigns the literal-0 insert to the next auto-increment value.
+            // MySQL's SET SESSION and the INSERT below must run on the same physical connection (hence the transaction) - otherwise the pragma never reaches the connection EF's SaveChangesAsync uses.
             await using var tx = await db.Database.BeginTransactionAsync();
             if (db.Database.IsMySql())
             {
                 await db.Database.ExecuteSqlRawAsync("SET SESSION sql_mode=(SELECT CONCAT(@@sql_mode, ',NO_AUTO_VALUE_ON_ZERO'))");
-                await db.Database.ExecuteSqlRawAsync("INSERT INTO tenant (IDTenant, TenantName, EmergencyStopActive) VALUES (0, 'Default', 0)");
             }
-            else
-            {
-                // Npgsql created columns as case-sensitive quoted identifiers - unquoted here would fold to lowercase and miss the real column.
-                await db.Database.ExecuteSqlRawAsync("INSERT INTO tenant (\"IDTenant\", \"TenantName\", \"EmergencyStopActive\") VALUES (0, 'Default', false)");
-            }
+            db.Tenants.Add(new TenantRow { IDTenant = 0, TenantName = "Default", EmergencyStopActive = false });
+            await db.SaveChangesAsync();
             await tx.CommitAsync();
         }
 

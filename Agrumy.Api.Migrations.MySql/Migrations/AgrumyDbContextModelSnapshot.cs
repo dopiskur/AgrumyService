@@ -1169,9 +1169,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<DateTimeOffset?>("PurgedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<bool?>("Reset")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("ServicePoint")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");

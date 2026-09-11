@@ -28,7 +28,7 @@ namespace Agrumy.Api.Dal
             var row = new TenantRow { TenantName = tenantName };
             db.Tenants.Add(row);
             await db.SaveChangesAsync();
-            return row.IDTenant;
+            return row.IDTenant!.Value; // always populated post-save - either DB-generated or, for the default tenant, explicitly 0
         }
 
         public async Task<IList<Tenant>> TenantsGetAllAsync()
