@@ -46,6 +46,7 @@ GET,api/Firmware/Fetch,Global admin;Global Device;Tenant admin;Tenant Device;Glo
 GET,api/Firmware/Manifest,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Gateway/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Gateway/DeviceMapping/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
+GET,api/odata/SensorData,Global admin;Global reader;Global User;Tenant admin;Tenant reader;Tenant User;Global Data Reader;Tenant Data Reader;Simulation administrator
 GET,api/RecycleBin/Device,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device;Global reader

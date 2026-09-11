@@ -63,5 +63,8 @@ namespace Agrumy.Shared.Security
 
         /// GET-only widening of UserManagers to Global reader - write actions on the same controller keep using UserManagers directly.
         public const string UserManagersOrGlobalReader = UserManagers + "," + GlobalReader;
+
+        /// Every role except the device-scoped grants (GlobalDevice/TenantDevice) - a service account holding one of those exists to manage devices, not to bulk-read sensor data, so it must not pass the OData/Power BI feed.
+        public const string SensorDataReaders = GlobalAdmin + "," + GlobalReader + "," + GlobalUser + "," + TenantAdmin + "," + TenantReader + "," + TenantUser + "," + GlobalDataReader + "," + TenantDataReader + "," + SimulationAdministrator;
     }
 }
