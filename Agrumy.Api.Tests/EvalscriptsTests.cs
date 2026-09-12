@@ -104,5 +104,6 @@ public class EvalscriptsTests(ITestOutputHelper output)
         Assert.Equal(expected, actual);
     }
 
-    private static string Sha256(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+    // Line endings follow the checkout (autocrlf), so hash the LF form - the reviewed value must not depend on which machine ran the test.
+    private static string Sha256(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.Replace("\r\n", "\n"))));
 }
