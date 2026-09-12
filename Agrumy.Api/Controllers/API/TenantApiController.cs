@@ -324,7 +324,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(saved);
         }
 
-        /// D1 - one token request + one lightweight Catalog query, same "test before/after save" shape as ServerConfigApiController.TestArchiveDatabase; blank ClientSecret in the request falls back to whatever's already saved for this tenant.
+        /// D1 - one token request + one lightweight Catalog query, same "test before/after save" shape as ServerConfigApiController.TestArchiveDatabase; blank ClientSecret in the request falls back to whatever's already saved for this tenant. On success the tested credentials are saved immediately (this endpoint doubles as "test and save") and LastTokenIssuedUtc refreshes so the settings page's health indicator reflects this test too.
         [Authorize(Roles = RoleNames.Admins)]
         [HttpPost("Satellite/Test")]
         public async Task<ActionResult<SatelliteConfigTestResult>> SatelliteConfigTest([FromBody] SatelliteConfigTestRequest request, int? idTenant = null)
@@ -348,7 +348,16 @@ namespace Agrumy.Api.Controllers.API
             }
 
             (bool ok, string? error) = await cdseTokenProvider.TryGetAccessTokenForCredentialsAsync(clientId, clientSecret, HttpContext.RequestAborted);
-            await WriteAuditAsync("Tenant.SatelliteTest", targetTenantId, "Tenant", targetTenantId.ToString(), ok ? "ok" : error);
+            if (ok)
+            {
+                await satelliteConfigRepo.SatelliteConfigTokenIssuedAsync(targetTenantId, DateTimeOffset.UtcNow);
+                TenantSatelliteConfig config = await satelliteConfigRepo.SatelliteConfigGetAsync(targetTenantId) ?? new TenantSatelliteConfig { IDTenant = targetTenantId };
+                config.IDTenant = targetTenantId;
+                config.ClientId = clientId;
+                config.ClientSecret = clientSecret;
+                await satelliteConfigRepo.SatelliteConfigUpsertAsync(config);
+            }
+            await WriteAuditAsync("Tenant.SatelliteTest", targetTenantId, "Tenant", targetTenantId.ToString(), ok ? "ok, credentials saved" : error);
             return Ok(new SatelliteConfigTestResult { Ok = ok, Error = error });
         }
 

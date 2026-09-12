@@ -4,9 +4,15 @@
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.Admins);
     int? idTenant = ViewBag.IdTenant;
+    bool credentialsHealthy = Model.LastTokenIssuedUtc.HasValue && Model.LastTokenIssuedUtc.Value > DateTimeOffset.UtcNow.AddHours(-24);
 }
 
-<h1 class="h3 mb-3">Satellite settings</h1>
+<h1 class="h3 mb-3">
+    Satellite settings
+    <span class="badge @(credentialsHealthy ? "bg-success" : "bg-danger") align-middle" title="@(Model.LastTokenIssuedUtc.HasValue ? $"Last successful token: {Model.LastTokenIssuedUtc.Value:yyyy-MM-dd HH:mm} UTC" : "No successful token in the last 24h")">
+        @(credentialsHealthy ? "Credentials OK (24h)" : "Credentials not working (24h)")
+    </span>
+</h1>
 
 @if (TempData["Message"] is string message)
 {
@@ -99,12 +105,12 @@
         {
             <form asp-action="Test" method="post" class="mt-3 border-top pt-3">
                 <input type="hidden" name="idTenant" value="@idTenant" />
-                <p class="text-secondary small">Tests the saved credentials (or type new ones below to test before saving).</p>
+                <p class="text-secondary small">Tests the saved credentials (or type new ones below) - if the test succeeds, they're saved immediately.</p>
                 <div class="row g-2" style="max-width:40rem">
                     <div class="col-6"><input type="text" name="clientId" class="form-control form-control-sm" placeholder="Client ID (optional - blank uses saved)" /></div>
                     <div class="col-6"><input type="password" name="clientSecret" class="form-control form-control-sm" placeholder="Client secret (optional - blank uses saved)" /></div>
                 </div>
-                <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Test connection</button>
+                <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Test and save credentials</button>
             </form>
         }
     </div>

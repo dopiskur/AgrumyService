@@ -43,7 +43,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Test(string? clientId, string? clientSecret, int? idTenant)
         {
             SatelliteConfigTestResult result = await api.TenantSatelliteConfigTest(new SatelliteConfigTestRequest { ClientId = clientId, ClientSecret = clientSecret }, idTenant);
-            TempData[result.Ok ? "Message" : "Error"] = result.Ok ? "Connection test succeeded." : result.Error;
+            TempData[result.Ok ? "Message" : "Error"] = result.Ok ? "Connection test succeeded - credentials saved." : result.Error;
             return RedirectToAction(nameof(Index), new { idTenant });
         }
     }
