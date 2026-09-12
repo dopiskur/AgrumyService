@@ -33,6 +33,7 @@ document.addEventListener('closed', function (ev) {
     text.textContent = 'Flash session ended at ' + new Date().toLocaleTimeString() +
         ' - reconnect the device and check its reported firmware version to confirm the install succeeded.';
     banner.hidden = false;
+    banner.classList.add('d-flex');
 });
 
 // This page's CSP has no 'unsafe-inline' for script-src, which also governs inline event handler
@@ -43,7 +44,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var closeButton = document.getElementById('flashResultBannerClose');
     if (closeButton) {
         closeButton.addEventListener('click', function () {
-            document.getElementById('flashResultBanner').hidden = true;
+            var banner = document.getElementById('flashResultBanner');
+            banner.hidden = true;
+            banner.classList.remove('d-flex');
         });
     }
 });

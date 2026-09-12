@@ -79,7 +79,8 @@
                                     </esp-web-install-button>
                                 </div>
                                 @* Populated by firmware-install-picker.js when the flasher's popup closes - esp-web-tools' own confirmation only lives inside that transient popup, so without this the page looks identical to before flashing the moment it's closed. *@
-                                <div id="flashResultBanner" class="alert alert-info d-flex align-items-center gap-2 mt-2" role="status" hidden>
+                                @* d-flex is toggled by JS (firmware-install-picker.js), not set here - "d-flex{display:flex!important}" would otherwise beat "[hidden]{display:none}" and the banner could never actually hide. *@
+                                <div id="flashResultBanner" class="alert alert-info align-items-center gap-2 mt-2" role="status" hidden>
                                     <i class="bi bi-info-circle"></i>
                                     <span id="flashResultText"></span>
                                     <button type="button" class="btn-close ms-auto" aria-label="Dismiss" id="flashResultBannerClose"></button>
