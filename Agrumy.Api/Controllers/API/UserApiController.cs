@@ -85,6 +85,7 @@ namespace Agrumy.Api.Controllers.API
                 LastName = value.LastName,
                 Phone = value.Phone,
                 EmailVerified = false, // proven only via GET /api/User/Activate below
+                UIMode = UIMode.Advanced,
             };
 
             var userSecret = new UserSecret { PwdSalt = AuthenticationProvider.GetSalt() };
@@ -619,6 +620,7 @@ namespace Agrumy.Api.Controllers.API
                 Phone = value.Phone,
                 Enabled = value.Enabled,
                 EmailVerified = true, // an admin vouches for the address directly, bypassing the normal email-proof step
+                UIMode = UIMode.Advanced,
             };
 
             var userSecret = new UserSecret { PwdSalt = AuthenticationProvider.GetSalt() };
