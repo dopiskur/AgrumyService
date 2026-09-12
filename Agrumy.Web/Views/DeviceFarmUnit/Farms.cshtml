@@ -15,33 +15,35 @@
     <div class="alert alert-warning">@scanError</div>
 }
 
-@* Manual actuate/Automation rules/Scan for the sole greenhouse - immediately visible above everything else, applies to every unit/zone assigned to it. Multi-greenhouse case gets the same buttons once you open an individual card instead. *@
-@if (Model.Farms.Count == 1)
+@* Manual actuate/Automation rules/Scan (sole greenhouse only) and "Add Greenhouse" share one row so they line up instead of stacking as two separately-aligned rows - "Add Greenhouse" stays immediately visible above the cards regardless (roadmap correction - it used to sit below them, which meant scrolling past every existing greenhouse/unit cube just to find where to add a new one). Open-Field farms are added on their own page (D1), not here. *@
+@if (Model.Farms.Count == 1 || canManage)
 {
-    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-        <a asp-action="DeviceFarmAlertRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
-            <i class="bi bi-bell"></i> Alert rules
-        </a>
-        <a asp-action="DeviceFarmManualActuate" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
-            <i class="bi bi-hand-index-thumb"></i> Manual actuate
-        </a>
-        <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
-            <i class="bi bi-diagram-3"></i> Automation rules
-        </a>
-        <form asp-action="ScanFarm" method="post" class="d-inline">
-            <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
-            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-broadcast"></i> Scan for new devices</button>
-        </form>
-    </div>
-}
-@* "Add Greenhouse" stays immediately visible above the greenhouse cards (roadmap correction - it used to sit below them, which meant scrolling past every existing greenhouse/unit cube just to find where to add a new one). Open-Field farms are added on their own page (D1), not here. *@
-@if (canManage)
-{
-    <div class="mb-3 d-flex justify-content-end">
-        <form asp-action="FarmAdd" method="post" class="d-flex gap-2">
-            <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New greenhouse name" required maxlength="100" />
-            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Greenhouse</button>
-        </form>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            @if (Model.Farms.Count == 1)
+            {
+                <a asp-action="DeviceFarmAlertRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="bi bi-bell"></i> Alert rules
+                </a>
+                <a asp-action="DeviceFarmManualActuate" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="bi bi-hand-index-thumb"></i> Manual actuate
+                </a>
+                <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@Model.Farms[0].IDDeviceFarm" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="bi bi-diagram-3"></i> Automation rules
+                </a>
+                <form asp-action="ScanFarm" method="post" class="d-inline">
+                    <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                </form>
+            }
+        </div>
+        @if (canManage)
+        {
+            <form asp-action="FarmAdd" method="post" class="d-flex gap-2">
+                <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New greenhouse name" required maxlength="100" />
+                <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Greenhouse</button>
+            </form>
+        }
     </div>
 }
 
