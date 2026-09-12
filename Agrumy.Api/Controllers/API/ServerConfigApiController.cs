@@ -295,13 +295,13 @@ namespace Agrumy.Api.Controllers.API
             return Task.FromResult<string?>(null);
         }
 
-        /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new organization" field - this exposes only that one flag.
+        /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new organization" field; a Tenant-tier admin can't call it either (GlobalAdminOrReader-only) but still needs TenantManagementEnabled for its own UI - this exposes only those two flags.
         [HttpGet("Public")]
         [AllowAnonymous]
         public async Task<ActionResult<PublicServerConfig>> GetPublic()
         {
             ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
-            return Ok(new PublicServerConfig { AllowSelfServiceTenantCreation = config.AllowSelfServiceTenantCreation });
+            return Ok(new PublicServerConfig { AllowSelfServiceTenantCreation = config.AllowSelfServiceTenantCreation, TenantManagementEnabled = config.TenantManagementEnabled });
         }
     }
 }

@@ -16,7 +16,15 @@ namespace Agrumy.Web.Controllers.View
         {
             IEnumerable<User> users = await api.UsersGet();
             ViewBag.TenantNames = await ResolveTenantNamesAsync(users.Select(u => u.TenantID));
+            ViewBag.TenantManagementEnabled = await IsTenantManagementEnabledAsync();
             return View(users);
+        }
+
+        /// GET-only, AllowAnonymous on the API side - safe for a Tenant-tier admin too, unlike the Global-only ServerConfigGet the Layout itself uses. Defaults to false (organization-scoped UI hidden) on a transient Api failure, same fail-safe direction as _Layout.cshtml's own tenantManagementEnabled.
+        private async Task<bool> IsTenantManagementEnabledAsync()
+        {
+            try { return (await api.ServerConfigGetPublic()).TenantManagementEnabled; }
+            catch (ApiException) { return false; }
         }
 
         [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
@@ -55,7 +63,11 @@ namespace Agrumy.Web.Controllers.View
         }
 
         [Authorize(Roles = RoleNames.UserManagers)]
-        public ActionResult Create() => View(new UserView());
+        public async Task<ActionResult> Create()
+        {
+            ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+            return View(new UserView());
+        }
 
         [Authorize(Roles = RoleNames.UserManagers)]
         [HttpPost]
@@ -64,6 +76,7 @@ namespace Agrumy.Web.Controllers.View
         {
             if (!ModelState.IsValid)
             {
+                ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
                 return View(userView);
             }
 
@@ -78,6 +91,7 @@ namespace Agrumy.Web.Controllers.View
             var assignedRoles = await api.UserRolesGet(idUser!.Value);
             ViewBag.TenantName = await ResolveTenantNameAsync(user.TenantID);
             ViewBag.CanMigrateTenant = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalUser);
+            ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
             return View(new UserView
             {
                 UserUpdate = new UserUpdate
@@ -105,6 +119,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 ViewBag.TenantName = await ResolveTenantNameAsync(userView.UserUpdate!.TenantID);
                 ViewBag.CanMigrateTenant = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalUser);
+                ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
                 return View(userView);
             }
 
@@ -174,7 +189,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 IDUser = idUser.Value,
                 Email = user.Email,
-                AllRoles = RoleNames.All,
+                AllRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync()),
                 AssignedRoles = assigned,
             });
         }
@@ -191,7 +206,7 @@ namespace Agrumy.Web.Controllers.View
             catch (ApiException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Body);
-                value.AllRoles = RoleNames.All;
+                value.AllRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
                 return View(value);
             }
             return RedirectToAction(nameof(Details), new { idUser = value.IDUser });

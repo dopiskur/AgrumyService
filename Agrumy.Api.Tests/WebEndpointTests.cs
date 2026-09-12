@@ -52,6 +52,7 @@ public sealed class WebWebApplicationFactory : WebApplicationFactory<Agrumy.Web.
         ApiMock.Setup(a => a.EmergencyStopStatus(It.IsAny<int?>())).ReturnsAsync(false);
 
         ApiMock.Setup(a => a.ServerConfigGet()).ReturnsAsync(new ServerConfig());
+        ApiMock.Setup(a => a.ServerConfigGetPublic()).ReturnsAsync(new PublicServerConfig());
         ApiMock.Setup(a => a.ServerConfigGetHealth()).ReturnsAsync(new List<ServerHealthEntry>());
         ApiMock.Setup(a => a.TenantWeatherStateGet(It.IsAny<int?>())).ReturnsAsync(new TenantWeatherState());
         ApiMock.Setup(a => a.WebhookSsrfAllowlistGet()).ReturnsAsync(new List<SsrfAllowlistEntry>());

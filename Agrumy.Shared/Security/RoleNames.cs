@@ -29,6 +29,10 @@ namespace Agrumy.Shared.Security
             GlobalDataReader, TenantDataReader, SimulationAdministrator,
         };
 
+        /// The role picker's checkbox list - minus the five Tenant-scoped roles when TenantManagementEnabled is off, since a single-organization deployment has no use for a role that only matters across multiple organizations.
+        public static IReadOnlyList<string> Selectable(bool tenantManagementEnabled) =>
+            tenantManagementEnabled ? All : All.Where(r => !r.StartsWith("Tenant", StringComparison.Ordinal)).ToList();
+
         // Comma-separated lists for [Authorize(Roles = ...)] - any listed role passes the attribute (the coarse gate); the precise per-organization decision happens inline via ApiControllerBase's capability helpers.
 
         /// May manage user accounts (create/edit/delete) - organization scoping still applies inline.

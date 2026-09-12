@@ -255,10 +255,11 @@ namespace Agrumy.Shared.Models
         CustomRollingDays = 2,
     }
 
-    /// The only ServerConfig field a pre-login, unauthenticated page may see - Register uses it to decide whether to show "create a new organization" without needing the admin-only /api/ServerConfig.
+    /// ServerConfig fields any authenticated (or, for AllowSelfServiceTenantCreation, even pre-login) page may see - Register uses AllowSelfServiceTenantCreation to decide whether to show "create a new organization", and a Tenant-tier admin (who can't call the Global-only /api/ServerConfig) uses TenantManagementEnabled to decide whether organization-scoped UI (the Users list' Tenant column, the Tenant-scoped role checkboxes) is worth showing at all.
     public class PublicServerConfig
     {
         public bool AllowSelfServiceTenantCreation { get; set; }
+        public bool TenantManagementEnabled { get; set; }
     }
 
     /// Body of POST /api/ServerConfig/TestArchiveDatabase - tests connectivity BEFORE Update ever saves these as the real archive credentials. Password blank means "use whatever's already saved" (the "Change archive database" flow editing host/port/etc without re-entering an unchanged password), same convention ServerConfigApiController.Update itself uses.
