@@ -21,41 +21,54 @@
 
 <div class="card mb-3">
     <div class="card-header">
-        <h3 class="card-title">All rules</h3>
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#allRulesPane" type="button" role="tab">All rules</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ruleEditorCard" type="button" role="tab">Automation rules</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#notificationRuleEditorCard" type="button" role="tab">Notification rules</button>
+            </li>
+        </ul>
     </div>
-    <div class="card-body table-responsive p-0">
-        <table id="allRulesTable" class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Scope</th>
-                    <th>Type</th>
-                    <th>Function / Name</th>
-                    <th>Safety</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (RuleOverviewRow row in Model.AllRules)
-                {
-                    <tr>
-                        <td>@row.ScopeLabel</td>
-                        <td>@row.Rule.ActionType</td>
-                        <td>@(row.Rule.ActionType == ActionType.Relay ? row.Rule.RelayFunction!.Value.ToString() : row.Rule.Name)</td>
-                        <td>@(row.Rule.IsSafetyRule ? "Yes" : "")</td>
-                        <td><a href="@row.DetailUrl" class="btn btn-sm btn-outline-primary">View</a></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="card-body tab-content">
+        <div class="tab-pane fade show active" id="allRulesPane" role="tabpanel">
+            <div class="table-responsive p-0">
+                <table id="allRulesTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Scope</th>
+                            <th>Type</th>
+                            <th>Function / Name</th>
+                            <th>Safety</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (RuleOverviewRow row in Model.AllRules)
+                        {
+                            <tr>
+                                <td>@row.ScopeLabel</td>
+                                <td>@row.Rule.ActionType</td>
+                                <td>@(row.Rule.ActionType == ActionType.Relay ? row.Rule.RelayFunction!.Value.ToString() : row.Rule.Name)</td>
+                                <td>@(row.Rule.IsSafetyRule ? "Yes" : "")</td>
+                                <td><a href="@row.DetailUrl" class="btn btn-sm btn-outline-primary">View</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-secondary mt-3 mb-0">
+                Applies to every unit/zone you own that doesn't define its own rule for the same
+                function/metric - the least specific level of the Zone &gt; Unit &gt; Farm &gt; Global precedence.
+            </p>
+        </div>
+        @{ ViewData["RenderRulesAsTabs"] = true; }
+        <partial name="_RuleEditor" model="Model.Editor" />
     </div>
 </div>
-
-<p class="text-secondary">
-    Applies to every unit/zone you own that doesn't define its own rule for the same
-    function/metric - the least specific level of the Zone &gt; Unit &gt; Farm &gt; Global precedence.
-</p>
-
-<partial name="_RuleEditor" model="Model.Editor" />
 
 @section Scripts {
     <partial name="_DataTableScripts" model="@("allRulesTable")" />

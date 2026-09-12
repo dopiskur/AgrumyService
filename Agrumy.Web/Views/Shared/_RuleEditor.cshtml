@@ -34,6 +34,8 @@
     // Live weather data, not a device reading - only valid on a Notification-action rule (DeviceFarmUnitZoneRule.Validate() rejects it on Relay), hidden from the Relay tree's metric picker (see rule-builder.js's metrics filter).
     HashSet<Agrumy.Shared.Models.SensorMetric> outdoorMetrics = [Agrumy.Shared.Models.SensorMetric.OutdoorTemperature, Agrumy.Shared.Models.SensorMetric.OutdoorHumidity, Agrumy.Shared.Models.SensorMetric.OutdoorWind];
     bool isReadOnly = ViewBag.IsReadOnly is true;
+    // Global Rules presents these two cards as tabs alongside its own "All rules" pane instead of stacking them - every other host page keeps the plain stacked cards.
+    bool asTabs = ViewData["RenderRulesAsTabs"] is true;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     string SummarizeTree(Agrumy.Shared.Models.ConditionNode? node)
@@ -83,10 +85,13 @@
 
 @if (Model.ShowRelayCard)
 {
-<div class="card mb-3" id="ruleEditorCard">
-    <div class="card-header">
-        <h3 class="card-title">Automation rules</h3>
-    </div>
+<div class="@(asTabs ? "tab-pane fade" : "card mb-3")" id="ruleEditorCard" role="@(asTabs ? "tabpanel" : null)">
+    @if (!asTabs)
+    {
+        <div class="card-header">
+            <h3 class="card-title">Automation rules</h3>
+        </div>
+    }
     <div class="card-body">
         <p class="text-secondary small">
             A function may have several rules - any rule that evaluates "on" wins (OR). Screen is
@@ -205,10 +210,13 @@
 </div>
 }
 
-<div class="card mb-3" id="notificationRuleEditorCard">
-    <div class="card-header">
-        <h3 class="card-title">Notification automation</h3>
-    </div>
+<div class="@(asTabs ? "tab-pane fade" : "card mb-3")" id="notificationRuleEditorCard" role="@(asTabs ? "tabpanel" : null)">
+    @if (!asTabs)
+    {
+        <div class="card-header">
+            <h3 class="card-title">Notification automation</h3>
+        </div>
+    }
     <div class="card-body">
         <p class="text-secondary small">
             Sent via the same email/webhook/push channels as other alerts, once per false-&gt;true
