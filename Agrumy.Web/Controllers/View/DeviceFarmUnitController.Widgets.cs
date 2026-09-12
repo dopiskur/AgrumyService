@@ -1,0 +1,271 @@
+using Agrumy.Web.Security;
+using Agrumy.Web.Dal.Interface;
+using Agrumy.Shared.Models;
+using Agrumy.Shared.Security;
+using Agrumy.Shared.Utils;
+using Agrumy.Web.Utils;
+using Agrumy.Web.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Agrumy.Web.Controllers.View
+{
+    public partial class DeviceFarmUnitController
+    {
+        // ---- Dashboard widgets (roadmap #238) - fetch-then-patch the whole list, same pattern as ZoneRename above. ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetAdd(int idDeviceFarmUnitZone, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, HierarchyNodeKind? aggregationLevel, int? levelId, string? label)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            // RelayStatus's target is always a zone - the form's own "which zone" picker feeds levelId the same as a sensor widget's Zone-level target does.
+            zone.DashboardWidgets.Add(new DashboardWidget
+            {
+                Type = type,
+                Metric = metric,
+                RelayFunction = relayFunction,
+                AggregationLevel = type == DashboardWidgetType.RelayStatus ? HierarchyNodeKind.Zone : aggregationLevel,
+                LevelID = levelId,
+                Label = label,
+            });
+            try
+            {
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetRemove(int idDeviceFarmUnitZone, int index)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            if (index >= 0 && index < zone.DashboardWidgets.Count)
+            {
+                zone.DashboardWidgets.RemoveAt(index);
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetMove(int idDeviceFarmUnitZone, int index, bool up)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            int target = up ? index - 1 : index + 1;
+            if (index >= 0 && index < zone.DashboardWidgets.Count && target >= 0 && target < zone.DashboardWidgets.Count)
+            {
+                (zone.DashboardWidgets[index], zone.DashboardWidgets[target]) = (zone.DashboardWidgets[target], zone.DashboardWidgets[index]);
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        /// Drag-and-drop reorder, same "POST the whole new order" idiom as farms-reorder.js, but the order carries OLD LIST INDICES (widgets have no id of their own) rather than entity ids.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetsReorder(int idDeviceFarmUnitZone, [FromBody] List<int> order)
+        {
+            try
+            {
+                DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+                if (!IsValidReorder(order, zone.DashboardWidgets.Count))
+                {
+                    return BadRequest();
+                }
+                zone.DashboardWidgets = order.Select(i => zone.DashboardWidgets[i]).ToList();
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetGridColumnsSet(int idDeviceFarmUnitZone, int columns)
+        {
+            await api.DeviceFarmUnitZoneGridColumnsSet(idDeviceFarmUnitZone, columns);
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        /// Statistics branch: one tile per (metric x scope) combination. Alerting branch: one status box per (alert type x scope) combination. Same fetch-then-patch pattern as WidgetAdd, just adding several widgets in one round trip instead of one.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> WidgetWizardAdd(int idDeviceFarmUnitZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
+            zone.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
+            try
+            {
+                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+        }
+
+        // ---- Dashboard widgets, Open-Field's equivalent - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetAdd(int idFarmParcelZone, DashboardWidgetType type, SensorMetric? metric, RelayFunction? relayFunction, HierarchyNodeKind? aggregationLevel, int? levelId, string? label)
+        {
+            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+            parcel.DashboardWidgets.Add(new DashboardWidget
+            {
+                Type = type,
+                Metric = metric,
+                RelayFunction = relayFunction,
+                AggregationLevel = type == DashboardWidgetType.RelayStatus ? HierarchyNodeKind.Zone : aggregationLevel,
+                LevelID = levelId,
+                Label = label,
+            });
+            try
+            {
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetRemove(int idFarmParcelZone, int index)
+        {
+            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+            if (index >= 0 && index < parcel.DashboardWidgets.Count)
+            {
+                parcel.DashboardWidgets.RemoveAt(index);
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetMove(int idFarmParcelZone, int index, bool up)
+        {
+            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+            int target = up ? index - 1 : index + 1;
+            if (index >= 0 && index < parcel.DashboardWidgets.Count && target >= 0 && target < parcel.DashboardWidgets.Count)
+            {
+                (parcel.DashboardWidgets[index], parcel.DashboardWidgets[target]) = (parcel.DashboardWidgets[target], parcel.DashboardWidgets[index]);
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+            }
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetsReorder(int idFarmParcelZone, [FromBody] List<int> order)
+        {
+            try
+            {
+                FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+                if (!IsValidReorder(order, parcel.DashboardWidgets.Count))
+                {
+                    return BadRequest();
+                }
+                parcel.DashboardWidgets = order.Select(i => parcel.DashboardWidgets[i]).ToList();
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGridColumnsSet(int idFarmParcelZone, int columns)
+        {
+            await api.ParcelGridColumnsSet(idFarmParcelZone, columns);
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelWidgetWizardAdd(int idFarmParcelZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
+            parcel.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
+            try
+            {
+                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
+        }
+
+        /// True only for an order that is exactly a permutation of 0..count-1 - anything else (stale client state, tampered payload) is dropped rather than partially applied.
+        private static bool IsValidReorder(List<int>? order, int count) =>
+            order != null && order.Count == count && order.Distinct().Count() == count && order.All(i => i >= 0 && i < count);
+
+        /// Statistics branch: metric x scope cross product - one widget per combination, not one multi-series widget, so this reuses the existing single-metric DashboardWidget model unchanged. Alerting branch: alert type x scope cross product. "scopes" entries are "level:id" pairs from _DashboardWizardScopePicker.
+        private static List<DashboardWidget> BuildWizardWidgets(string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        {
+            var parsedScopes = new List<(HierarchyNodeKind Level, int Id)>();
+            foreach (string s in scopes ?? [])
+            {
+                string[] parts = s.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[0], out int levelInt) && int.TryParse(parts[1], out int id))
+                {
+                    parsedScopes.Add(((HierarchyNodeKind)levelInt, id));
+                }
+            }
+
+            var widgets = new List<DashboardWidget>();
+            if (string.Equals(branch, "alerting", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (int alertType in alertTypes ?? [])
+                {
+                    foreach (var scope in parsedScopes)
+                    {
+                        widgets.Add(new DashboardWidget { Type = DashboardWidgetType.AlertStatus, AlertEventType = (NotificationEventType)alertType, AggregationLevel = scope.Level, LevelID = scope.Id });
+                    }
+                }
+            }
+            else
+            {
+                foreach (int metric in metrics ?? [])
+                {
+                    foreach (var scope in parsedScopes)
+                    {
+                        widgets.Add(new DashboardWidget { Type = chartType, Metric = (SensorMetric)metric, AggregationLevel = scope.Level, LevelID = scope.Id });
+                    }
+                }
+            }
+            return widgets;
+        }
+    }
+}
