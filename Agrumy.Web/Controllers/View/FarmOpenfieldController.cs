@@ -324,13 +324,9 @@ namespace Agrumy.Web.Controllers.View
             var availableParcels = new List<FarmParcelWithZonesViewModel>();
             if (crop.Status == GrowingCycleStatus.Planned)
             {
-                IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
-                if (openfields.FirstOrDefault(o => o.FarmID == crop.FarmID)?.IDFarmOpenfield is int idFarmOpenfield)
+                foreach (FarmParcel parcel in await api.FarmParcelsGet(crop.FarmID))
                 {
-                    foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
-                    {
-                        availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
-                    }
+                    availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
                 }
             }
 
@@ -351,17 +347,13 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> ParcelsRegistry()
         {
             IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
-            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
             var rows = new List<ParcelRegistryRowViewModel>();
             var farmOptions = new List<ParcelRegistryFarmOptionViewModel>();
             foreach (DeviceFarm farm in farms)
             {
-                if (openfields.FirstOrDefault(o => o.FarmID == farm.IDDeviceFarm)?.IDFarmOpenfield is not int idFarmOpenfield)
-                {
-                    continue;
-                }
-                farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarmOpenfield = idFarmOpenfield });
-                foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
+                int idFarm = farm.IDDeviceFarm!.Value;
+                farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarm = idFarm });
+                foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarm))
                 {
                     foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
                     {
@@ -394,9 +386,9 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> FarmParcelAdd(int idFarmOpenfield, string farmParcelName)
+        public async Task<ActionResult> FarmParcelAdd(int idFarm, string farmParcelName)
         {
-            await api.FarmParcelAdd(idFarmOpenfield, farmParcelName);
+            await api.FarmParcelAdd(idFarm, farmParcelName);
             return RedirectToAction(nameof(ParcelsRegistry));
         }
 

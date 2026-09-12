@@ -1,15 +1,5 @@
 namespace Agrumy.Dal.Entities
 {
-    /// 1:1 type-extension row for a Farm whose FarmType is OpenField - see Agrumy.Shared.Models.FarmOpenfield.
-    public class FarmOpenfieldRow
-    {
-        public int IDFarmOpenfield { get; set; }
-        public int? TenantID { get; set; }
-        public int FarmID { get; set; }
-        public bool Deleted { get; set; }
-        public DateTimeOffset? DeletedAtUtc { get; set; }
-    }
-
     /// See Agrumy.Shared.Models.Crop - TenantID null means the global, Global-admin-maintained catalog row (D12).
     public class CropRow
     {
@@ -25,7 +15,7 @@ namespace Agrumy.Dal.Entities
     {
         public int IDFarmParcel { get; set; }
         public int? TenantID { get; set; }
-        public int FarmOpenfieldID { get; set; }
+        public int FarmID { get; set; }
         public string? FarmParcelName { get; set; }
         public string? GeometryGeoJson { get; set; }
         public double? AreaHectares { get; set; }

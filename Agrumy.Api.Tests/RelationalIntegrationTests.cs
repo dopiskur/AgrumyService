@@ -126,7 +126,6 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var deviceRepository = new EfDeviceRepository(db, settingsOptions, new NullCache(), serverConfigRepository, outboxRepository);
         var tenantRepository = new EfTenantRepository(db, secretProtector);
         var refreshTokenRepository = new EfRefreshTokenRepository(db);
-        var farmOpenfieldRepository = new EfFarmOpenfieldRepository(db);
         var farmParcelRepository = new EfFarmParcelRepository(db, deviceRepository, outboxRepository);
         var sowingRepository = new EfSowingRepository(db, deviceRepository, outboxRepository);
         var deviceFarmUnitRepository = new EfDeviceFarmUnitRepository(db, settingsOptions, serverConfigRepository, deviceRepository, sowingRepository, farmParcelRepository, outboxRepository);
@@ -139,7 +138,6 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             new EfUserRepository(db, tenantRepository, deviceFarmUnitRepository, refreshTokenRepository, new NullCache()), deviceRepository,
             new EfSimulationRepository(db, deviceRepository),
             deviceFarmUnitRepository,
-            farmOpenfieldRepository,
             new EfSensorDataRepository(db, experimentRepository),
             experimentRepository,
             new EfHorticultureCatalogRepository(db),
@@ -1412,8 +1410,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm farm = openfield;
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
 
         await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, DeviceFarmID = farm.IDDeviceFarm!.Value, RelayFunction = RelayFunction.Heating, Name = "FarmRule", Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 } });
         await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule { TenantID = tenantId, RelayFunction = RelayFunction.WaterPump, Name = "GlobalRule", Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.Humidity, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 } });
@@ -3700,9 +3699,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     /// Farm + FarmParcel (with its auto-created whole-parcel zone) + a catalog Crop + a Sowing started on that zone - D2/D3/D5's full chain in one call.
     private async Task<(Sowing Sowing, FarmParcelZone Zone, DeviceFarm Farm)> MakeSowingAndZone(int? tenantId)
     {
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm farm = openfield;
         Assert.Equal(FarmType.OpenField, farm.FarmType);
-        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
         var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
         await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
@@ -3710,27 +3710,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task FarmOpenfieldCreateAsync_CreatesFarmAndOpenfieldTogether(DbProviderKind provider)
-    {
-        var t = Use(provider);
-        var (tenantId, _, _) = await MakeUser(t);
-
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("MyOpenfield", tenantId);
-
-        Assert.Equal(FarmType.OpenField, farm.FarmType);
-        Assert.Equal(farm.IDDeviceFarm, openfield.FarmID);
-        var farms = await _repo.DeviceFarmsGetAsync(tenantId);
-        Assert.Contains(farms, f => f.IDDeviceFarm == farm.IDDeviceFarm && f.FarmType == FarmType.OpenField);
-    }
-
-    [SkippableTheory, MemberData(nameof(Providers))]
     public async Task FarmParcelAddAsync_CreatesOneWholeParcelZoneAutomatically(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
 
-        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
 
         Assert.True(zone.IsWholeParcel);
         Assert.Equal(parcel.IDFarmParcel, zone.FarmParcelID);
@@ -3766,8 +3752,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm farm = openfield;
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         var crop1 = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Wheat_" + U() });
         var sowing1 = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop1.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
         await _repo.SowingStartAsync(sowing1.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
@@ -3869,7 +3856,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 1, MaxFarmParcelZones = 1, MaxSowingsActive = 5 });
-        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo);
 
         Assert.Null(await enforcer.CheckCanAddCropAsync(tenantId));
         await MakeSowingAndZone(tenantId);
@@ -3885,10 +3872,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxFarmParcelZones = 2 });
-        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo);
 
         // 1 existing zone + 2 new - 1 removed (the source) = net 2 total, exactly at the cap - allowed.
         var created = await _repo.FarmParcelZoneSplitAsync(zone.IDFarmParcelZone!.Value, ["A", "B"], () => enforcer.CheckCanAddFarmParcelZoneAsync(tenantId, 1));
@@ -3907,11 +3894,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
         await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 5, MaxFarmParcelZones = 5, MaxSowingsActive = 1 });
-        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo);
         await MakeSowingAndZone(tenantId); // one Active sowing already occupies the single MaxSowingsActive slot
 
-        var (farm2, openfield2) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield2.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield2 = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm farm2 = openfield2;
+        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield2.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         var crop2 = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
         var sowing2 = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm2.IDDeviceFarm!.Value, CropID = crop2.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
 
@@ -3931,15 +3919,15 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
 
         await _repo.FarmParcelZoneReadyForSeasonSetAsync(zone.IDFarmParcelZone!.Value, true);
         Assert.True((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
 
         var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
-        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = openfield.FarmID, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
         await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
 
         Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
@@ -3972,7 +3960,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         });
         await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = sourceTenantId, ZonePlantingID = planting.IDZonePlanting, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "Looks healthy" });
 
-        var exportService = new Agrumy.Api.Migration.TenantExportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        var exportService = new Agrumy.Api.Migration.TenantExportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
         TenantExport export = await exportService.ExportAsync(sourceTenantId, includeSensorData: false, sensorDataSinceUtc: null);
 
         Assert.Single(export.Sowings);
@@ -3982,7 +3970,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Single(export.HarvestResults);
         Assert.Single(export.FieldLogEntries.Single(e => e.Entry.SowingID != null).Attachments);
 
-        var importService = new Agrumy.Api.Migration.TenantImportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        var importService = new Agrumy.Api.Migration.TenantImportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
         TenantImportResult result = await importService.ImportByNameAsync(export, "T_imported_" + U());
 
         Assert.Equal(1, result.SowingsImported);
@@ -4157,10 +4145,10 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantA, _, _) = await MakeUser(t);
         var (tenantB, _, _) = await MakeUser(t);
-        var (_, openfieldA) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantA);
-        var (_, openfieldB) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantB);
-        var (parcelA, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmOpenfieldID = openfieldA.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
-        var (parcelB, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmOpenfieldID = openfieldB.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfieldA = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantA, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm openfieldB = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantB, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        var (parcelA, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmID = openfieldA.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
+        var (parcelB, _) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmID = openfieldB.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
 
         await _repo.FarmParcelGeometrySetAsync(parcelA.IDFarmParcel!.Value, "{\"type\":\"Polygon\"}", 1.23, 45.8, 15.9, 45.81, 15.91, "ARKOD-A");
 
@@ -4180,8 +4168,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        var (parcel, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
 
         await _repo.FarmParcelGeometrySetAsync(parcel.IDFarmParcel!.Value, "{\"type\":\"Polygon\",\"outer\":true}", 5.0, 45.0, 15.0, 45.1, 15.1, null);
         await _repo.FarmParcelZoneGeometrySetAsync(zone.IDFarmParcelZone!.Value, "{\"type\":\"Polygon\",\"outer\":false}", 2.5, 45.02, 15.02, 45.05, 15.05);
@@ -4292,9 +4280,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (parcelWithGeom, zoneWithGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
-        var (_, zoneWithoutGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        var (parcelWithGeom, zoneWithGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
+        var (_, zoneWithoutGeom) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "Parcel_" + U() });
         await _repo.FarmParcelZoneGeometrySetAsync(zoneWithGeom.IDFarmParcelZone!.Value, "{\"type\":\"Polygon\"}", 1.0, 45.0, 15.0, 45.1, 15.1);
         _ = parcelWithGeom;
 
@@ -4311,11 +4299,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
-        var (_, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P1_" + U() });
-        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P2_" + U() });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm farm = openfield;
+        var (_, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "P1_" + U() });
+        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "P2_" + U() });
         // A third, untouched zone in the same farm - must never leak into the sowing-scoped result even though it shares the farm/organization.
-        var (_, siblingZone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P3_" + U() });
+        var (_, siblingZone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = openfield.IDDeviceFarm!.Value, FarmParcelName = "P3_" + U() });
         var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
         var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
         await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone1.IDFarmParcelZone!.Value, zone2.IDFarmParcelZone!.Value]);
@@ -4337,12 +4326,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var t = Use(provider);
         var (tenantA, _, _) = await MakeUser(t);
         var (tenantB, _, _) = await MakeUser(t);
-        var (_, openfieldA) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantA);
-        var (_, openfieldB) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantB);
-        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmOpenfieldID = openfieldA.IDFarmOpenfield!.Value, FarmParcelName = "A_" + U() });
-        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmOpenfieldID = openfieldB.IDFarmOpenfield!.Value, FarmParcelName = "B_" + U() });
+        DeviceFarm openfieldA = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantA, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        DeviceFarm openfieldB = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantB, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantA, FarmID = openfieldA.IDDeviceFarm!.Value, FarmParcelName = "A_" + U() });
+        await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantB, FarmID = openfieldB.IDDeviceFarm!.Value, FarmParcelName = "B_" + U() });
 
-        IList<FarmParcel> parcelsForA = await _repo.FarmParcelsGetAsync(openfieldA.IDFarmOpenfield!.Value);
+        IList<FarmParcel> parcelsForA = await _repo.FarmParcelsGetAsync(openfieldA.IDDeviceFarm!.Value);
 
         Assert.Single(parcelsForA);
         Assert.All(parcelsForA, p => Assert.Equal(tenantA, p.TenantID));

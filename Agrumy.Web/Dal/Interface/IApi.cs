@@ -367,11 +367,8 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/FarmOpenfield")]
         Task<DeviceFarm> FarmOpenfieldCreate([Body(BodySerializationMethod.Serialized)] string? farmName);
 
-        [Get("/api/FarmOpenfield/All")]
-        Task<IList<FarmOpenfield>> FarmOpenfieldsGet();
-
         [Get("/api/FarmOpenfield/FarmParcel/All")]
-        Task<IList<FarmParcel>> FarmParcelsGet(int idFarmOpenfield);
+        Task<IList<FarmParcel>> FarmParcelsGet(int idFarm);
 
         [Get("/api/FarmOpenfield/FarmParcel/{idFarmParcel}/Zones")]
         Task<IList<FarmParcelZone>> FarmParcelZonesGet(int idFarmParcel);
@@ -495,7 +492,7 @@ namespace Agrumy.Web.Dal.Interface
 
         /// Creates a FarmParcel and its first zone in one call (D3) - replaces the pre-restructure "add a parcel under a crop" endpoint.
         [Post("/api/FarmOpenfield/FarmParcel")]
-        Task<FarmParcelZone> FarmParcelAdd(int idFarmOpenfield, string farmParcelName);
+        Task<FarmParcelZone> FarmParcelAdd(int idFarm, string farmParcelName);
 
         [Put("/api/FarmOpenfield/Parcel")]
         Task ParcelUpdate([Body] FarmParcelZone parcel);

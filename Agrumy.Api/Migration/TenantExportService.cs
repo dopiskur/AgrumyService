@@ -8,7 +8,7 @@ namespace Agrumy.Api.Migration
     /// Builds the full portable snapshot of one organization - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
     public class TenantExportService(
         ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo,
-        IFarmOpenfieldRepository farmOpenfieldRepo, IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
+        IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
         IFieldLogRepository fieldLogRepo, IZonePlantingRepository zonePlantingRepo)
     {
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.
@@ -89,9 +89,9 @@ namespace Agrumy.Api.Migration
             }
 
             var exportParcels = new List<TenantExportFarmParcel>();
-            foreach (FarmOpenfield openfield in await farmOpenfieldRepo.FarmOpenfieldsGetAsync(tenantId))
+            foreach (DeviceFarm farm in (await deviceFarmUnitRepo.DeviceFarmsGetAsync(tenantId)).Where(f => f.FarmType == FarmType.OpenField))
             {
-                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(openfield.IDFarmOpenfield!.Value))
+                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(farm.IDDeviceFarm!.Value))
                 {
                     exportParcels.Add(new TenantExportFarmParcel
                     {

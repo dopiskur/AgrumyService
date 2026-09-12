@@ -4,7 +4,7 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Quota
 {
     /// Hard-block guard for TenantQuota - every check returns null when allowed, else the exact message the caller surfaces; ingest-volume limits only, never a feature gate (rule engine/notifications/dashboard/sensor catalog stay fully open regardless of quota). A count-based check here is only race-free if the caller runs it inside the SAME Serializable transaction as the resource's own insert - see QuotaGuard for that shared, reusable shape, used by every repository Add method a TenantQuota check gates.
-    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IUserRepository userRepo, ISimulationRepository simulationRepo, IDeviceRepository deviceRepo)
+    public sealed class TenantQuotaEnforcer(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IUserRepository userRepo, ISimulationRepository simulationRepo, IDeviceRepository deviceRepo)
     {
         public const string LimitMessage = "Limit for the current tier reached, please contact support.";
 
@@ -74,7 +74,7 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxCrops ? LimitMessage : null;
         }
 
-        /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed FarmOpenfield/FarmParcel counts. additionalZones lets one call cover an operation that creates more than one zone at once (ParcelSplit replacing 1 zone with N nets N-1 new zones) - a plain "current >= limit" would let a single oversized split through since it never re-checks between the N inserts.
+        /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed Farm/FarmParcel counts. additionalZones lets one call cover an operation that creates more than one zone at once (ParcelSplit replacing 1 zone with N nets N-1 new zones) - a plain "current >= limit" would let a single oversized split through since it never re-checks between the N inserts.
         public async Task<string?> CheckCanAddFarmParcelZoneAsync(int? tenantId, int additionalZones = 1)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
@@ -83,9 +83,9 @@ namespace Agrumy.Api.Quota
                 return null;
             }
             int current = 0;
-            foreach (FarmOpenfield openfield in await farmOpenfieldRepo.FarmOpenfieldsGetAsync(tenantId))
+            foreach (DeviceFarm farm in (await deviceFarmUnitRepo.DeviceFarmsGetAsync(tenantId)).Where(f => f.FarmType == FarmType.OpenField))
             {
-                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(openfield.IDFarmOpenfield!.Value))
+                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(farm.IDDeviceFarm!.Value))
                 {
                     current += (await farmParcelRepo.FarmParcelZonesGetAsync(parcel.IDFarmParcel!.Value)).Count;
                 }

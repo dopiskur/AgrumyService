@@ -33,16 +33,16 @@
         <form asp-action="FarmParcelAdd" method="post" class="d-flex gap-2 mb-3 flex-wrap">
             @if (Model.Farms.Count > 1)
             {
-                <select name="idFarmOpenfield" class="form-select form-select-sm" style="max-width:16rem" required>
+                <select name="idFarm" class="form-select form-select-sm" style="max-width:16rem" required>
                     @foreach (var farm in Model.Farms)
                     {
-                        <option value="@farm.IdFarmOpenfield">@farm.FarmName</option>
+                        <option value="@farm.IdFarm">@farm.FarmName</option>
                     }
                 </select>
             }
             else
             {
-                <input type="hidden" name="idFarmOpenfield" value="@Model.Farms[0].IdFarmOpenfield" />
+                <input type="hidden" name="idFarm" value="@Model.Farms[0].IdFarm" />
             }
             <input type="text" name="farmParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
             <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>

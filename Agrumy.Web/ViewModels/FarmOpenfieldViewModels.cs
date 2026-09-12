@@ -23,11 +23,11 @@ namespace Agrumy.Web.ViewModels
         public required FarmParcelZone Zone { get; init; }
     }
 
-    /// One Open-Field farm's own Openfield extension id - the "Add Parcel" form's farm picker on ParcelsRegistry.cshtml needs FarmParcelAdd's idFarmOpenfield, not the farm's own id.
+    /// One Open-Field farm option for the "Add Parcel" form's farm picker on ParcelsRegistry.cshtml.
     public class ParcelRegistryFarmOptionViewModel
     {
         public required string FarmName { get; init; }
-        public required int IdFarmOpenfield { get; init; }
+        public required int IdFarm { get; init; }
     }
 
     /// Drives FarmOpenfield/ParcelsRegistry.cshtml - the Fleet-style overview of every parcel/zone across every Open-Field farm, separated from the farm register (Index) and Crop Seasons.

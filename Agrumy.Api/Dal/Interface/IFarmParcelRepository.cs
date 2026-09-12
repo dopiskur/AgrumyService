@@ -5,7 +5,7 @@ namespace Agrumy.Api.Dal.Interface
     /// FarmParcel (container) and FarmParcelZone (unit of work) CRUD, split/merge, device assignment (Detaljni dizajn R, D2/D3). Devices/rules/dnevnik attach to the zone, never the parcel directly.
     public interface IFarmParcelRepository
     {
-        Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarmOpenfield);
+        Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarm);
 
         Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel);
 

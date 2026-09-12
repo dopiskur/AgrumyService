@@ -12,45 +12,40 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD, device assignment, and Farm-with-extension creation (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches); this controller only owns what's genuinely new.
+    /// Open-Field's Sowing/FarmParcel/FarmParcelZone CRUD and device assignment (restructure R) - the Open-Field mirror of DeviceFarmUnitApiController's Unit/Zone CRUD. Farm-level CRUD/reorder/delete/recycle-bin stays on DeviceFarmUnitApiController (shared by both branches, including Open-Field farm creation via DeviceFarmAdd with FarmType=OpenField); this controller only owns what's genuinely new.
     [Route("/api/FarmOpenfield")]
-    public class FarmOpenfieldApiController(IFarmOpenfieldRepository farmOpenfieldRepo, ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage, Agrumy.Api.BackgroundWorkers.BackgroundJobQueue jobQueue, ISatelliteConfigRepository satelliteConfigRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class FarmOpenfieldApiController(ISowingRepository sowingRepo, IFarmParcelRepository farmParcelRepo, IFieldLogRepository fieldLogRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, Agrumy.Api.Commands.ManualActuateService manualActuate, ISatelliteSceneRepository satelliteSceneRepo, ISatelliteImagerySourceFactory satelliteSourceFactory, SatelliteStorage satelliteStorage, Agrumy.Api.BackgroundWorkers.BackgroundJobQueue jobQueue, ISatelliteConfigRepository satelliteConfigRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
-        #region Farm-with-extension creation
+        #region Farm creation
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         public async Task<ActionResult<DeviceFarm>> FarmOpenfieldCreate([FromBody] string? farmName)
         {
-            (DeviceFarm farm, FarmOpenfield openfield) result;
+            DeviceFarm farm;
             try
             {
-                result = await farmOpenfieldRepo.FarmOpenfieldCreateAsync(farmName, CallerTenantId, () => quotaEnforcer.CheckCanAddFarmAsync(CallerTenantId));
+                farm = await deviceFarmUnitRepo.DeviceFarmAddAsync(new DeviceFarm { TenantID = CallerTenantId, DeviceFarmName = farmName, FarmType = FarmType.OpenField }, () => quotaEnforcer.CheckCanAddFarmAsync(CallerTenantId));
             }
             catch (QuotaLimitExceededException ex)
             {
                 return ForbidWith(ex.Message);
             }
-            await WriteAuditAsync("DeviceFarm.Created", result.farm.TenantID, "DeviceFarm", result.farm.IDDeviceFarm.ToString()!, $"{result.farm.DeviceFarmName} (Open-Field)");
-            return Ok(result.farm);
+            await WriteAuditAsync("DeviceFarm.Created", farm.TenantID, "DeviceFarm", farm.IDDeviceFarm.ToString()!, $"{farm.DeviceFarmName} (Open-Field)");
+            return Ok(farm);
         }
 
-        [Authorize]
-        [HttpGet("All")]
-        public async Task<ActionResult<IList<FarmOpenfield>>> FarmOpenfieldsGet() =>
-            Ok(await farmOpenfieldRepo.FarmOpenfieldsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
-
-        /// Every FarmParcel under a farm's Open-Field extension (D2) - the Open-Field page's own parcel list. Zone details come via FarmParcelZonesGet below, one call per parcel, same N+1-is-fine-for-a-small-admin-managed-set reasoning as BuildParcelOptionsAsync elsewhere.
+        /// Every FarmParcel on a Farm (D2) - the Open-Field page's own parcel list. Zone details come via FarmParcelZonesGet below, one call per parcel, same N+1-is-fine-for-a-small-admin-managed-set reasoning as BuildParcelOptionsAsync elsewhere.
         [Authorize]
         [HttpGet("FarmParcel/All")]
-        public async Task<ActionResult<IList<FarmParcel>>> FarmParcelsGet(int idFarmOpenfield)
+        public async Task<ActionResult<IList<FarmParcel>>> FarmParcelsGet(int idFarm)
         {
-            var (openfield, farm, error) = await EnsureOwnedOpenfieldByIdAsync(idFarmOpenfield, forWrite: false);
+            var (_, error) = await EnsureOwnedFarmAsync(idFarm, forWrite: false);
             if (error != null)
             {
                 return error;
             }
-            return Ok(await farmParcelRepo.FarmParcelsGetAsync(idFarmOpenfield));
+            return Ok(await farmParcelRepo.FarmParcelsGetAsync(idFarm));
         }
 
         [Authorize]
@@ -92,7 +87,7 @@ namespace Agrumy.Api.Controllers.API
         [HttpPost("Crop")]
         public async Task<ActionResult<Sowing>> CropAdd([FromBody] Sowing crop)
         {
-            var (openfield, farm, error) = await EnsureOwnedOpenfieldAsync(crop.FarmID, forWrite: true);
+            var (farm, error) = await EnsureOwnedFarmAsync(crop.FarmID, forWrite: true);
             if (error != null)
             {
                 return error;
@@ -464,9 +459,9 @@ namespace Agrumy.Api.Controllers.API
         /// Creates a FarmParcel (container) under an Open-Field farm - and its first zone, IsWholeParcel=true (D3). Replaces the pre-restructure "add a parcel under a crop" endpoint, which no longer has a matching concept.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("FarmParcel")]
-        public async Task<ActionResult<FarmParcelZone>> FarmParcelAdd(int idFarmOpenfield, string farmParcelName)
+        public async Task<ActionResult<FarmParcelZone>> FarmParcelAdd(int idFarm, string farmParcelName)
         {
-            var (openfield, farm, error) = await EnsureOwnedOpenfieldByIdAsync(idFarmOpenfield, forWrite: true);
+            var (farm, error) = await EnsureOwnedFarmAsync(idFarm, forWrite: true);
             if (error != null)
             {
                 return error;
@@ -476,7 +471,7 @@ namespace Agrumy.Api.Controllers.API
             try
             {
                 (parcel, zone) = await farmParcelRepo.FarmParcelAddAsync(
-                    new FarmParcel { TenantID = farm!.TenantID, FarmOpenfieldID = idFarmOpenfield, FarmParcelName = farmParcelName },
+                    new FarmParcel { TenantID = farm!.TenantID, FarmID = idFarm, FarmParcelName = farmParcelName },
                     () => quotaEnforcer.CheckCanAddFarmParcelZoneAsync(farm.TenantID));
             }
             catch (QuotaLimitExceededException ex)
@@ -1077,17 +1072,16 @@ namespace Agrumy.Api.Controllers.API
             {
                 case SatelliteMapScope.Farm:
                 {
-                    var (_, error) = await EnsureOwnedFarmAsync(id, forWrite);
+                    var (farm, error) = await EnsureOwnedFarmAsync(id, forWrite);
                     if (error != null)
                     {
                         return ([], [], error);
                     }
-                    FarmOpenfield? openfield = await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(id);
-                    if (openfield?.IDFarmOpenfield is not int idOpenfield)
+                    if (farm!.FarmType != FarmType.OpenField)
                     {
                         return ([], [], NotFound());
                     }
-                    IList<FarmParcel> parcels = await farmParcelRepo.FarmParcelsGetAsync(idOpenfield);
+                    IList<FarmParcel> parcels = await farmParcelRepo.FarmParcelsGetAsync(id);
                     var zones = new List<FarmParcelZone>();
                     foreach (FarmParcel p in parcels)
                     {
@@ -1149,30 +1143,5 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);
-
-        /// Resolves the owning Farm (for its TenantID) from a FarmID - CropAdd's ownership check is really "does the caller own the Farm this sowing belongs to".
-        private async Task<(FarmOpenfield? Openfield, DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedOpenfieldAsync(int idFarm, bool forWrite)
-        {
-            var (farm, error) = await EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idFarm), f => f.TenantID, "Farm", forWrite);
-            if (error != null)
-            {
-                return (null, null, error);
-            }
-            FarmOpenfield? openfield = await farmOpenfieldRepo.FarmOpenfieldGetByFarmIdAsync(idFarm);
-            return (openfield, farm, null);
-        }
-
-        /// Resolves the owning Farm (for its TenantID) from a FarmOpenfieldID - FarmParcelAdd's ownership check is really "does the caller own the Farm this Open-Field extension belongs to". No direct "get FarmOpenfield by its own id" repository lookup exists (FarmOpenfieldGetByFarmIdAsync is keyed by FarmID), so this scans FarmOpenfieldsGetAsync's small admin-managed set instead of adding a second lookup shape for one caller.
-        private async Task<(FarmOpenfield? Openfield, DeviceFarm? Farm, ActionResult? Error)> EnsureOwnedOpenfieldByIdAsync(int idFarmOpenfield, bool forWrite)
-        {
-            IList<FarmOpenfield> openfields = await farmOpenfieldRepo.FarmOpenfieldsGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId);
-            FarmOpenfield? openfield = openfields.FirstOrDefault(o => o.IDFarmOpenfield == idFarmOpenfield);
-            if (openfield == null)
-            {
-                return (null, null, NotFound());
-            }
-            var (farm, error) = await EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(openfield.FarmID), f => f.TenantID, "Farm", forWrite);
-            return (openfield, farm, error);
-        }
     }
 }

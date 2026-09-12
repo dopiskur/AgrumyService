@@ -1502,35 +1502,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("experiment", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldRow", b =>
-                {
-                    b.Property<int>("IDFarmOpenfield")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmOpenfield"));
-
-                    b.Property<bool>("Deleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint(1)")
-                        .HasDefaultValue(false);
-
-                    b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("FarmID")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TenantID")
-                        .HasColumnType("int");
-
-                    b.HasKey("IDFarmOpenfield");
-
-                    b.HasIndex("FarmID");
-
-                    b.ToTable("farmOpenfield", (string)null);
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
                 {
                     b.Property<int>("IDFarmParcel")
@@ -1566,7 +1537,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<DateTimeOffset?>("DeletedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("FarmOpenfieldID")
+                    b.Property<int>("FarmID")
                         .HasColumnType("int");
 
                     b.Property<string>("FarmParcelName")
@@ -1581,7 +1552,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     b.HasKey("IDFarmParcel");
 
-                    b.HasIndex("FarmOpenfieldID");
+                    b.HasIndex("FarmID");
 
                     b.ToTable("farmParcel", (string)null);
                 });
@@ -3883,20 +3854,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmOpenfieldRow", b =>
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceFarmRow", null)
                         .WithMany()
                         .HasForeignKey("FarmID")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.FarmOpenfieldRow", null)
-                        .WithMany()
-                        .HasForeignKey("FarmOpenfieldID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

@@ -39,7 +39,7 @@ public class ApiControllerTests
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     // DeviceOutboxService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
-    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
+    private Agrumy.Api.Quota.TenantQuotaEnforcer NewQuotaEnforcer() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object);
 
     private DeviceApiController NewDeviceController()
     {
@@ -70,8 +70,8 @@ public class ApiControllerTests
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-        new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
-        new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+        new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+        new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that organization (Global admin for organization 0, Organization admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
@@ -3080,8 +3080,8 @@ public class ApiControllerTests
         _repo.Setup(r => r.UsersGetAsync(idTenant)).ReturnsAsync(new List<User>());
         _repo.Setup(r => r.DeviceFarmUnitsGetAsync(idTenant)).ReturnsAsync(new List<DeviceFarmUnit>());
         _repo.Setup(r => r.DevicesGetAsync(idTenant)).ReturnsAsync(new List<Device>());
-        // #585 - FarmOpenfields/Sowings are always queried even when empty (they gate the Open-Field export loops); Crop/FieldLog/ZonePlanting/Harvest reads only happen once those loops have rows, never reached here.
-        _repo.Setup(r => r.FarmOpenfieldsGetAsync(idTenant)).ReturnsAsync(new List<FarmOpenfield>());
+        // Farms/Sowings are always queried even when empty (they gate the Open-Field export loops); Crop/FieldLog/ZonePlanting/Harvest reads only happen once those loops have rows, never reached here.
+        _repo.Setup(r => r.DeviceFarmsGetAsync(idTenant)).ReturnsAsync(new List<DeviceFarm>());
         _repo.Setup(r => r.SowingsGetAsync(idTenant)).ReturnsAsync(new List<Sowing>());
     }
 

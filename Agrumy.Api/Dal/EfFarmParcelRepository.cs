@@ -10,9 +10,9 @@ namespace Agrumy.Api.Dal
     /// IFarmParcelRepository - see its own doc comment.
     internal sealed class EfFarmParcelRepository(AgrumyDbContext db, IDeviceRepository deviceRepository, IDeviceOutboxRepository outboxRepository) : IFarmParcelRepository
     {
-        public async Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarmOpenfield)
+        public async Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarm)
         {
-            var rows = await db.FarmParcels.AsNoTracking().Where(p => p.FarmOpenfieldID == idFarmOpenfield).OrderBy(p => p.FarmParcelName).ToListAsync();
+            var rows = await db.FarmParcels.AsNoTracking().Where(p => p.FarmID == idFarm).OrderBy(p => p.FarmParcelName).ToListAsync();
             return rows.Select(ToDtoParcel).ToList();
         }
 
@@ -25,7 +25,7 @@ namespace Agrumy.Api.Dal
         public Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel, Func<Task<string?>>? quotaCheckAsync = null) =>
             QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                var row = new FarmParcelRow { TenantID = parcel.TenantID, FarmOpenfieldID = parcel.FarmOpenfieldID, FarmParcelName = parcel.FarmParcelName };
+                var row = new FarmParcelRow { TenantID = parcel.TenantID, FarmID = parcel.FarmID, FarmParcelName = parcel.FarmParcelName };
                 db.FarmParcels.Add(row);
                 await db.SaveChangesAsync();
 
@@ -330,7 +330,7 @@ namespace Agrumy.Api.Dal
         {
             IDFarmParcel = p.IDFarmParcel,
             TenantID = p.TenantID,
-            FarmOpenfieldID = p.FarmOpenfieldID,
+            FarmID = p.FarmID,
             FarmParcelName = p.FarmParcelName,
             GeometryGeoJson = p.GeometryGeoJson,
             AreaHectares = p.AreaHectares,

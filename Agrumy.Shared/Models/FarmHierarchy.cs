@@ -85,16 +85,6 @@ namespace Agrumy.Shared.Models
         int DashboardGridColumns { get; }
     }
 
-    /// The Open-Field type-extension row for a Farm whose FarmType is OpenField - 1:1 with its Farm, same "extension row" pattern the HorticultureCatalog subtypes use. Deleted/DeletedAtUtc cascade from the owning Farm's own Deleted, never set independently (same rule as DeviceFarmUnit's Deleted).
-    public class FarmOpenfield
-    {
-        [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]
-        public int? IDFarmOpenfield { get; set; }
-        public int? TenantID { get; set; }
-        public int FarmID { get; set; }
-        public DateTimeOffset? DeletedAtUtc { get; set; }
-    }
-
     /// Global (TenantID null, Global-admin maintained) or organization-added cultivar/species catalog a Sowing or ZonePlanting references - Detaljni dizajn R, D12: an organization sees the union of both, edits only its own rows, same shared-plus-own pattern as the existing Horticulture Catalog.
     public class Crop
     {
@@ -113,7 +103,7 @@ namespace Agrumy.Shared.Models
         [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]
         public int? IDFarmParcel { get; set; }
         public int? TenantID { get; set; }
-        public int FarmOpenfieldID { get; set; }
+        public int FarmID { get; set; }
         public string? FarmParcelName { get; set; }
         /// Outer boundary polygon (S-A, D4) - WGS84 GeoJSON Polygon text, validated/normalized by ParcelGeometryValidator before storage.
         public string? GeometryGeoJson { get; set; }

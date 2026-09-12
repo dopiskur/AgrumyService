@@ -175,14 +175,11 @@ namespace Agrumy.Web.Controllers.View
                                 zoneIds.Add(z.IDDeviceFarmUnitZone!.Value);
                             }
                         }
-                        foreach (FarmOpenfield openfield in (await api.FarmOpenfieldsGet()).Where(o => o.FarmID == id))
+                        foreach (FarmParcel parcel in await api.FarmParcelsGet(id))
                         {
-                            foreach (FarmParcel parcel in await api.FarmParcelsGet(openfield.IDFarmOpenfield!.Value))
+                            foreach (FarmParcelZone z in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
                             {
-                                foreach (FarmParcelZone z in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
-                                {
-                                    parcelIds.Add(z.IDFarmParcelZone!.Value);
-                                }
+                                parcelIds.Add(z.IDFarmParcelZone!.Value);
                             }
                         }
                         break;

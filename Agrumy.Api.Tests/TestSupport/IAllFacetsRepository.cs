@@ -11,7 +11,6 @@ namespace Agrumy.Api.Tests.TestSupport
         IRefreshTokenRepository,
         IDeviceRepository,
         IDeviceFarmUnitRepository,
-        IFarmOpenfieldRepository,
         IDeviceOutboxRepository,
         IFirmwareRepository,
         ISensorDataRepository,

@@ -72,7 +72,7 @@ namespace Agrumy.Api.Dal
             return unit?.DeviceFarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
-        /// Open-Field's FarmParcelZone>Sowing>Farm equivalent of ActiveExperimentIdForZoneAsync's Zone>Unit>Farm cascade (restructure R, D5) - queries FarmParcel/FarmOpenfield*Row directly, same "no repo dependency, just db" shape the Zone version already uses. The Sowing tier is skipped (not treated as "no experiment") when the zone currently has no active sowing - CurrentSowingID null.
+        /// Open-Field's FarmParcelZone>Sowing>Farm equivalent of ActiveExperimentIdForZoneAsync's Zone>Unit>Farm cascade (restructure R, D5) - queries FarmParcel/FarmParcelZoneRow directly, same "no repo dependency, just db" shape the Zone version already uses. The Sowing tier is skipped (not treated as "no experiment") when the zone currently has no active sowing - CurrentSowingID null.
         public async Task<int?> ActiveExperimentIdForFarmParcelZoneAsync(int idFarmParcelZone)
         {
             if (await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.FarmParcelZone, idFarmParcelZone) is int zoneExperimentId)
@@ -89,8 +89,7 @@ namespace Agrumy.Api.Dal
                 return sowingExperimentId;
             }
             FarmParcelRow? parcel = await db.FarmParcels.AsNoTracking().FirstOrDefaultAsync(p => p.IDFarmParcel == zone.FarmParcelID);
-            FarmOpenfieldRow? openfield = parcel == null ? null : await db.FarmOpenfields.AsNoTracking().FirstOrDefaultAsync(o => o.IDFarmOpenfield == parcel.FarmOpenfieldID);
-            return openfield?.FarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
+            return parcel?.FarmID is int idFarm ? await ActiveExperimentIdForScopeAsync(HierarchyNodeKind.Farm, idFarm) : null;
         }
 
         private async Task<int?> ActiveExperimentIdForScopeAsync(HierarchyNodeKind scope, int scopeId)
@@ -143,8 +142,7 @@ namespace Agrumy.Api.Dal
             // Open-Field's own FarmParcelZone>Sowing>Farm cascade (restructure R, D5), same resolution order as Zone>Unit>Farm above. The Sowing tier is skipped for a zone with no active sowing (CurrentSowingID null), same as ActiveExperimentIdForFarmParcelZoneAsync.
             List<FarmParcelZoneRow> zonesOpenfield = await db.FarmParcelZones.AsNoTracking().Where(z => z.TenantID == tenantID).ToListAsync();
             Dictionary<int, int> farmParcelZoneFarmId = await db.FarmParcels.AsNoTracking().Where(p => p.TenantID == tenantID)
-                .Join(db.FarmOpenfields.AsNoTracking(), p => p.FarmOpenfieldID, o => o.IDFarmOpenfield, (p, o) => new { p.IDFarmParcel, o.FarmID })
-                .ToDictionaryAsync(x => x.IDFarmParcel, x => x.FarmID);
+                .ToDictionaryAsync(p => p.IDFarmParcel, p => p.FarmID);
 
             foreach (FarmParcelZoneRow zone in zonesOpenfield)
             {

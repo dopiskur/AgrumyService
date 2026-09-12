@@ -3,16 +3,9 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests.TestSupport
 {
-    /// IFarmOpenfieldRepository/ISowingRepository/IFarmParcelRepository/ICropCatalogRepository/IFieldLogRepository/IZonePlantingRepository members - forwarded to the standalone Ef*Repository instances so IAllFacetsRepository's broad consumers keep working unchanged (restructure R split the old single IFarmOpenfieldRepository into these five facets).
+    /// ISowingRepository/IFarmParcelRepository/ICropCatalogRepository/IFieldLogRepository/IZonePlantingRepository members - forwarded to the standalone Ef*Repository instances so IAllFacetsRepository's broad consumers keep working unchanged (restructure R split the old single IFarmOpenfieldRepository into these facets; the FarmOpenfield extension row itself was later removed entirely, folded into plain DeviceFarm+FarmType).
     internal sealed partial class AllFacetsRepository
     {
-        public Task<(DeviceFarm Farm, FarmOpenfield Openfield)> FarmOpenfieldCreateAsync(string? farmName, int? tenantID, Func<Task<string?>>? quotaCheckAsync = null) =>
-            farmOpenfieldRepository.FarmOpenfieldCreateAsync(farmName, tenantID, quotaCheckAsync);
-
-        public Task<FarmOpenfield?> FarmOpenfieldGetByFarmIdAsync(int idFarm) => farmOpenfieldRepository.FarmOpenfieldGetByFarmIdAsync(idFarm);
-
-        public Task<IList<FarmOpenfield>> FarmOpenfieldsGetAsync(int? tenantID) => farmOpenfieldRepository.FarmOpenfieldsGetAsync(tenantID);
-
         // ---- ISowingRepository ----
 
         public Task<IList<Sowing>> SowingsGetAsync(int? tenantID) => sowingRepository.SowingsGetAsync(tenantID);
@@ -39,7 +32,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         // ---- IFarmParcelRepository ----
 
-        public Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarmOpenfield) => farmParcelRepository.FarmParcelsGetAsync(idFarmOpenfield);
+        public Task<IList<FarmParcel>> FarmParcelsGetAsync(int idFarm) => farmParcelRepository.FarmParcelsGetAsync(idFarm);
 
         public Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel) => farmParcelRepository.FarmParcelGetByIdAsync(idFarmParcel);
 

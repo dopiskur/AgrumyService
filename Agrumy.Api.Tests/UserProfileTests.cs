@@ -152,7 +152,7 @@ public class UserProfileTests
     private UserApiController NewController(string? email)
     {
         var controller = new UserApiController(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new Agrumy.Api.BackgroundWorkers.BackgroundJobQueue(), TestSettings,
-            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
+            new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object));
         var claims = new List<Claim> { new("TenantID", "1") };
         if (email != null)
         {

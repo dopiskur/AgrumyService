@@ -6,7 +6,7 @@ namespace Agrumy.Api.Migration
     /// Applies a TenantExport to this server (see Agrumy.Shared.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
     public class TenantImportService(
         ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo,
-        IFarmOpenfieldRepository farmOpenfieldRepo, IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
+        IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
         IFieldLogRepository fieldLogRepo, IZonePlantingRepository zonePlantingRepo)
     {
         /// ByName: ties to an existing organization with this exact name, or creates one; GlobalAdmin-only at the controller layer.
@@ -188,13 +188,13 @@ namespace Agrumy.Api.Migration
             {
                 return (zoneMap, null);
             }
-            (DeviceFarm farm, FarmOpenfield openfield) = await farmOpenfieldRepo.FarmOpenfieldCreateAsync("Imported", tenantId);
+            DeviceFarm farm = await deviceFarmUnitRepo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Imported", FarmType = FarmType.OpenField });
             foreach (TenantExportFarmParcel ep in export.FarmParcels)
             {
                 (FarmParcel parcel, FarmParcelZone defaultZone) = await farmParcelRepo.FarmParcelAddAsync(new FarmParcel
                 {
                     TenantID = tenantId,
-                    FarmOpenfieldID = openfield.IDFarmOpenfield!.Value,
+                    FarmID = farm.IDDeviceFarm!.Value,
                     FarmParcelName = ep.Parcel.FarmParcelName,
                 });
                 if (ep.Parcel.GeometryGeoJson != null && ep.Parcel.AreaHectares is double parcelArea)

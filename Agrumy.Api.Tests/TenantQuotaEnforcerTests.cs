@@ -9,7 +9,6 @@ public class TenantQuotaEnforcerTests
 {
     private readonly Mock<ITenantRepository> _tenantRepo = new(MockBehavior.Strict);
     private readonly Mock<IDeviceFarmUnitRepository> _deviceFarmUnitRepo = new(MockBehavior.Strict);
-    private readonly Mock<IFarmOpenfieldRepository> _farmOpenfieldRepo = new(MockBehavior.Strict);
     private readonly Mock<ISowingRepository> _sowingRepo = new(MockBehavior.Strict);
     private readonly Mock<IFarmParcelRepository> _farmParcelRepo = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepo = new(MockBehavior.Strict);
@@ -17,7 +16,7 @@ public class TenantQuotaEnforcerTests
     private readonly Mock<IDeviceRepository> _deviceRepo = new(MockBehavior.Strict);
 
     private TenantQuotaEnforcer NewEnforcer() =>
-        new(_tenantRepo.Object, _deviceFarmUnitRepo.Object, _farmOpenfieldRepo.Object, _sowingRepo.Object, _farmParcelRepo.Object, _userRepo.Object, _simulationRepo.Object, _deviceRepo.Object);
+        new(_tenantRepo.Object, _deviceFarmUnitRepo.Object, _sowingRepo.Object, _farmParcelRepo.Object, _userRepo.Object, _simulationRepo.Object, _deviceRepo.Object);
 
     [Fact]
     public async Task DefaultTenant_NeverConsultsQuota()

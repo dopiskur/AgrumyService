@@ -31,7 +31,6 @@ namespace Agrumy.Dal
         public DbSet<DeviceFarmRow> DeviceFarms => Set<DeviceFarmRow>();
         public DbSet<DeviceFarmUnitRow> DeviceFarmUnits => Set<DeviceFarmUnitRow>();
         public DbSet<DeviceFarmUnitZoneRow> DeviceFarmUnitZones => Set<DeviceFarmUnitZoneRow>();
-        public DbSet<FarmOpenfieldRow> FarmOpenfields => Set<FarmOpenfieldRow>();
         public DbSet<CropRow> Crops => Set<CropRow>();
         public DbSet<FarmParcelRow> FarmParcels => Set<FarmParcelRow>();
         public DbSet<FarmParcelZoneRow> FarmParcelZones => Set<FarmParcelZoneRow>();
@@ -291,16 +290,7 @@ namespace Agrumy.Dal
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
-            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): farmOpenfield is Farm's 1:1 type-extension row; crop is a global-or-organization catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone); farmSowing is the mid-level rule scope, FK straight to deviceFarm (not routed through farmOpenfield, same "skip the 1:1 extension row" naming as farmParcel itself) since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
-            modelBuilder.Entity<FarmOpenfieldRow>(e =>
-            {
-                e.ToTable("farmOpenfield");
-                e.HasKey(x => x.IDFarmOpenfield);
-                e.Property(x => x.IDFarmOpenfield).ValueGeneratedOnAdd();
-                e.Property(x => x.Deleted).HasDefaultValue(false);
-                e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.FarmID).OnDelete(DeleteBehavior.NoAction);
-                e.HasQueryFilter(x => !x.Deleted);
-            });
+            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): crop is a global-or-organization catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone), FK straight to deviceFarm; farmSowing is the mid-level rule scope, also FK straight to deviceFarm, since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
 
             // TenantID null = global, Global-admin-maintained catalog row (D12) - an organization's own additions set TenantID to themselves; the app layer unions both, never the DB.
             modelBuilder.Entity<CropRow>(e =>
@@ -320,7 +310,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.FarmParcelName).HasMaxLength(120);
                 e.Property(x => x.ArkodParcelId).HasMaxLength(40);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
-                e.HasOne<FarmOpenfieldRow>().WithMany().HasForeignKey(x => x.FarmOpenfieldID).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.FarmID).OnDelete(DeleteBehavior.NoAction);
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
