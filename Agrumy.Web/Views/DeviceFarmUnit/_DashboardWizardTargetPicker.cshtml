@@ -1,0 +1,50 @@
+@using Agrumy.Shared.Models
+@model Agrumy.Web.ViewModels.DashboardWizardViewModel
+<label class="form-label d-block">Which dashboard(s) are you adding this to? (pick one or more)</label>
+<p class="text-secondary small">Picking a Farm or Unit adds these widgets to every Zone/Parcel dashboard underneath it.</p>
+<div class="mb-2 p-2 border rounded" style="max-height:12rem;overflow-y:auto">
+    @if (Model.Farms.Any())
+    {
+        <div class="fw-semibold small text-secondary">Farms</div>
+        @foreach (var f in Model.Farms)
+        {
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" name="targets" value="@($"{(int)HierarchyNodeKind.Farm}:{f.IDDeviceFarm}")" id="wizTargetFarm_@f.IDDeviceFarm" />
+                <label class="form-check-label small" for="wizTargetFarm_@f.IDDeviceFarm">@f.DeviceFarmName</label>
+            </div>
+        }
+    }
+    @if (Model.Units.Any())
+    {
+        <div class="fw-semibold small text-secondary mt-1">Units</div>
+        @foreach (var u in Model.Units)
+        {
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" name="targets" value="@($"{(int)HierarchyNodeKind.Unit}:{u.IDDeviceFarmUnit}")" id="wizTargetUnit_@u.IDDeviceFarmUnit" />
+                <label class="form-check-label small" for="wizTargetUnit_@u.IDDeviceFarmUnit">@u.DeviceFarmUnitName</label>
+            </div>
+        }
+    }
+    @if (Model.Zones.Any())
+    {
+        <div class="fw-semibold small text-secondary mt-1">Zones</div>
+        @foreach (var z in Model.Zones)
+        {
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" name="targets" value="@($"{(int)HierarchyNodeKind.Zone}:{z.IDDeviceFarmUnitZone}")" id="wizTargetZone_@z.IDDeviceFarmUnitZone" />
+                <label class="form-check-label small" for="wizTargetZone_@z.IDDeviceFarmUnitZone">@z.GroupLabel / @z.ZoneName</label>
+            </div>
+        }
+    }
+    @if (Model.Parcels.Any())
+    {
+        <div class="fw-semibold small text-secondary mt-1">Parcels</div>
+        @foreach (var p in Model.Parcels)
+        {
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" name="targets" value="@($"{(int)HierarchyNodeKind.FarmParcelZone}:{p.IDFarmParcelZone}")" id="wizTargetParcel_@p.IDFarmParcelZone" />
+                <label class="form-check-label small" for="wizTargetParcel_@p.IDFarmParcelZone">@p.GroupLabel / @p.ParcelName</label>
+            </div>
+        }
+    }
+</div>

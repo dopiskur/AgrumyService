@@ -3,7 +3,6 @@
 @{
     ViewData["Title"] = "Build Dashboard";
     bool hasAny = Model.Zones.Any() || Model.Parcels.Any();
-    string initialStep = Model.Selected != null ? "branch" : "target";
 }
 
 @if (!hasAny)
@@ -16,51 +15,10 @@ else
     {
         <details class="mb-3" open>
             <summary class="btn btn-outline-primary" style="cursor:pointer;display:inline-block;">Dashboard wizard</summary>
-            <form id="dashWizardForm" method="post" class="mt-2 p-2 border rounded"
-                  data-zone-action="@Url.Action("WidgetWizardAdd")" data-parcel-action="@Url.Action("ParcelWidgetWizardAdd")"
-                  data-initial-step="@initialStep" data-initial-kind="@(Model.SelectedParcelId != null ? "parcel" : "zone")">
+            <form id="dashWizardForm" method="post" class="mt-2 p-2 border rounded" action="@Url.Action("WidgetWizardAddMulti")">
                 @Html.AntiForgeryToken()
-                <input type="hidden" id="wizTargetIdField"
-                       name="@(Model.SelectedParcelId != null ? "idFarmParcelZone" : "idDeviceFarmUnitZone")"
-                       value="@(Model.SelectedParcelId ?? Model.SelectedZoneId)" />
 
-                <div class="dash-wizard-step" data-step="target">
-                    <label class="form-label d-block">Which zone or parcel's dashboard are you adding to?</label>
-                    <p class="text-secondary small">
-                        Each widget you add chooses its own data source (a Farm-wide average, a Unit-specific
-                        average, or one specific zone) independently - this only picks which page it lands on.
-                    </p>
-                    <select id="wizTargetSelect" class="form-select mb-2" style="max-width:24rem">
-                        <option value="">-- select a zone or parcel --</option>
-                        @if (Model.Zones.Any())
-                        {
-                            @foreach (var group in Model.Zones.GroupBy(z => z.GroupLabel))
-                            {
-                                <optgroup label="@group.Key">
-                                    @foreach (var z in group)
-                                    {
-                                        <option value="@z.IDDeviceFarmUnitZone" data-kind="zone" selected="@(z.IDDeviceFarmUnitZone == Model.SelectedZoneId ? "selected" : null)">@z.ZoneName</option>
-                                    }
-                                </optgroup>
-                            }
-                        }
-                        @if (Model.Parcels.Any())
-                        {
-                            @foreach (var group in Model.Parcels.GroupBy(p => p.GroupLabel))
-                            {
-                                <optgroup label="@group.Key">
-                                    @foreach (var p in group)
-                                    {
-                                        <option value="@p.IDFarmParcelZone" data-kind="parcel" selected="@(p.IDFarmParcelZone == Model.SelectedParcelId ? "selected" : null)">@p.ParcelName</option>
-                                    }
-                                </optgroup>
-                            }
-                        }
-                    </select>
-                    <button type="button" class="btn btn-sm btn-primary" id="dashWizardTargetNext" disabled="@(Model.Selected == null ? "disabled" : null)">Next</button>
-                </div>
-
-                <div class="dash-wizard-step" data-step="branch" hidden>
+                <div class="dash-wizard-step" data-step="branch">
                     <label class="form-label d-block">What do you want to add?</label>
                     <div class="form-check">
                         <input type="radio" class="form-check-input" name="branch" value="statistics" id="branchStats" checked />
@@ -70,7 +28,6 @@ else
                         <input type="radio" class="form-check-input" name="branch" value="alerting" id="branchAlert" />
                         <label class="form-check-label" for="branchAlert">Alerting - current alert status boxes</label>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="target">Back</button>
                     <button type="button" class="btn btn-sm btn-primary" id="dashWizardBranchNext">Next</button>
                 </div>
 
@@ -84,7 +41,7 @@ else
                         }
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
-                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="stat-metrics" data-scope-mode="stat">Next</button>
+                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="target" data-target-back="stat-metrics">Next</button>
                 </div>
 
                 <div class="dash-wizard-step" data-step="alert-types" hidden>
@@ -100,12 +57,18 @@ else
                         <label class="btn btn-outline-primary btn-sm" for="wizAlertFrost">Frost</label>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="branch">Back</button>
-                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="scope" data-scope-back="alert-types" data-scope-mode="alert">Next</button>
+                    <button type="button" class="btn btn-sm btn-primary dash-wizard-next" data-next="target" data-target-back="alert-types">Next</button>
+                </div>
+
+                <div class="dash-wizard-step" data-step="target" hidden>
+                    <partial name="_DashboardWizardTargetPicker" model="Model" />
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" id="dashWizardTargetBack">Back</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="dashWizardTargetNext" data-next="scope" disabled>Next</button>
                 </div>
 
                 <div class="dash-wizard-step" data-step="scope" hidden>
                     <partial name="_DashboardWizardScopePicker" model="Model" />
-                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" id="dashWizardScopeBack">Back</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary dash-wizard-back" data-prev="target">Back</button>
                     <button type="button" class="btn btn-sm btn-primary" id="dashWizardScopeNext" data-next="stat-chart">Next</button>
                     <button type="submit" class="btn btn-sm btn-primary" id="dashWizardScopeSubmit" hidden>Add alert boxes</button>
                 </div>
@@ -129,53 +92,46 @@ else
                     var form = document.getElementById('dashWizardForm');
                     if (!form) { return; }
                     var steps = Array.from(form.querySelectorAll('.dash-wizard-step'));
-                    var scopeBackTarget = 'stat-metrics';
+                    var targetBackTarget = 'stat-metrics';
 
                     function showStep(name) {
                         steps.forEach(function (s) { s.hidden = s.dataset.step !== name; });
                     }
 
-                    var targetSelect = document.getElementById('wizTargetSelect');
-                    var targetNext = document.getElementById('dashWizardTargetNext');
-                    targetSelect.addEventListener('change', function () {
-                        targetNext.disabled = !this.value;
-                    });
-                    targetNext.addEventListener('click', function () {
-                        var opt = targetSelect.options[targetSelect.selectedIndex];
-                        var kind = opt?.dataset.kind;
-                        var hidden = document.getElementById('wizTargetIdField');
-                        hidden.name = kind === 'parcel' ? 'idFarmParcelZone' : 'idDeviceFarmUnitZone';
-                        hidden.value = targetSelect.value;
-                        form.action = kind === 'parcel' ? form.dataset.parcelAction : form.dataset.zoneAction;
-                        showStep('branch');
-                    });
+                    function isAlertBranch() {
+                        return form.querySelector('input[name="branch"]:checked').value === 'alerting';
+                    }
 
                     document.getElementById('dashWizardBranchNext').addEventListener('click', function () {
-                        var branch = form.querySelector('input[name="branch"]:checked').value;
-                        showStep(branch === 'alerting' ? 'alert-types' : 'stat-metrics');
+                        showStep(isAlertBranch() ? 'alert-types' : 'stat-metrics');
                     });
 
-                    form.querySelectorAll('.dash-wizard-next[data-scope-mode]').forEach(function (btn) {
+                    form.querySelectorAll('.dash-wizard-next[data-target-back]').forEach(function (btn) {
                         btn.addEventListener('click', function () {
-                            scopeBackTarget = btn.dataset.scopeBack;
-                            var isAlert = btn.dataset.scopeMode === 'alert';
-                            document.getElementById('dashWizardScopeNext').hidden = isAlert;
-                            document.getElementById('dashWizardScopeSubmit').hidden = !isAlert;
-                            showStep('scope');
+                            targetBackTarget = btn.dataset.targetBack;
+                            showStep('target');
                         });
                     });
 
-                    document.getElementById('dashWizardScopeBack').addEventListener('click', function () { showStep(scopeBackTarget); });
+                    var targetNext = document.getElementById('dashWizardTargetNext');
+                    form.querySelectorAll('input[name="targets"]').forEach(function (cb) {
+                        cb.addEventListener('change', function () {
+                            targetNext.disabled = form.querySelectorAll('input[name="targets"]:checked').length === 0;
+                        });
+                    });
+                    document.getElementById('dashWizardTargetBack').addEventListener('click', function () { showStep(targetBackTarget); });
+                    targetNext.addEventListener('click', function () {
+                        var isAlert = isAlertBranch();
+                        document.getElementById('dashWizardScopeNext').hidden = isAlert;
+                        document.getElementById('dashWizardScopeSubmit').hidden = !isAlert;
+                        showStep('scope');
+                    });
+
                     document.getElementById('dashWizardScopeNext').addEventListener('click', function () { showStep('stat-chart'); });
 
                     form.querySelectorAll('.dash-wizard-back[data-prev]').forEach(function (btn) {
                         btn.addEventListener('click', function () { showStep(btn.dataset.prev); });
                     });
-
-                    if (form.dataset.initialStep === 'branch') {
-                        form.action = form.dataset.initialKind === 'parcel' ? form.dataset.parcelAction : form.dataset.zoneAction;
-                        showStep('branch');
-                    }
                 })();
             </script>
         </details>

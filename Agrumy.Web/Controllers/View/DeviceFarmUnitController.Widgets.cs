@@ -102,23 +102,93 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
         }
 
-        /// Statistics branch: one tile per (metric x scope) combination. Alerting branch: one status box per (alert type x scope) combination. Same fetch-then-patch pattern as WidgetAdd, just adding several widgets in one round trip instead of one.
+        /// Statistics branch: one tile per (metric x scope) combination. Alerting branch: one status box per (alert type x scope) combination. Targets can be Farms/Units/Zones/Parcels mixed - ResolveWizardTargetsAsync fans a Farm/Unit out to every Zone/Parcel dashboard underneath it, then the same widget set is fetch-then-patched onto each one independently (one failure doesn't block the rest).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> WidgetWizardAdd(int idDeviceFarmUnitZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
+        public async Task<ActionResult> WidgetWizardAddMulti(List<string>? targets, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
         {
-            DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
-            zone.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
-            try
+            (List<int> zoneIds, List<int> parcelIds) = await ResolveWizardTargetsAsync(targets);
+            List<DashboardWidget> widgets = BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType);
+
+            int failures = 0;
+            foreach (int zoneId in zoneIds)
             {
-                await api.DeviceFarmUnitZoneWidgetsSet(idDeviceFarmUnitZone, zone.DashboardWidgets);
+                try
+                {
+                    DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(zoneId);
+                    zone.DashboardWidgets.AddRange(widgets);
+                    await api.DeviceFarmUnitZoneWidgetsSet(zoneId, zone.DashboardWidgets);
+                }
+                catch (ApiException) { failures++; }
             }
-            catch (ApiException ex)
+            foreach (int parcelId in parcelIds)
             {
-                TempData["Error"] = ex.Body;
+                try
+                {
+                    FarmParcelZone parcel = await api.ParcelGetById(parcelId);
+                    parcel.DashboardWidgets.AddRange(widgets);
+                    await api.ParcelWidgetsSet(parcelId, parcel.DashboardWidgets);
+                }
+                catch (ApiException) { failures++; }
             }
-            return RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone });
+            if (failures > 0)
+            {
+                TempData["Error"] = $"Added to {zoneIds.Count + parcelIds.Count - failures} of {zoneIds.Count + parcelIds.Count} dashboard(s) - {failures} failed.";
+            }
+            return zoneIds.Count > 0
+                ? RedirectToAction(nameof(Index), new { idDeviceFarmUnitZone = zoneIds[0] })
+                : RedirectToAction(nameof(Index), new { idFarmParcelZone = parcelIds.Count > 0 ? parcelIds[0] : (int?)null });
+        }
+
+        /// Expands the wizard's target picker ("targets" - Farm/Unit/Zone/FarmParcelZone kind:id pairs, same encoding as _DashboardWizardScopePicker's "scopes") into the concrete Zone/Parcel dashboards those widgets actually land on - a Unit fans out to its Zones, a Farm to every Unit's Zones plus (Open-Field) every Parcel under its FarmOpenfield.
+        private async Task<(List<int> ZoneIds, List<int> ParcelIds)> ResolveWizardTargetsAsync(List<string>? targets)
+        {
+            var zoneIds = new HashSet<int>();
+            var parcelIds = new HashSet<int>();
+            foreach (string t in targets ?? [])
+            {
+                string[] parts = t.Split(':');
+                if (parts.Length != 2 || !int.TryParse(parts[0], out int kindInt) || !int.TryParse(parts[1], out int id))
+                {
+                    continue;
+                }
+                switch ((HierarchyNodeKind)kindInt)
+                {
+                    case HierarchyNodeKind.Zone:
+                        zoneIds.Add(id);
+                        break;
+                    case HierarchyNodeKind.FarmParcelZone:
+                        parcelIds.Add(id);
+                        break;
+                    case HierarchyNodeKind.Unit:
+                        foreach (DeviceFarmUnitZone z in await api.DeviceFarmUnitZonesGet(id))
+                        {
+                            zoneIds.Add(z.IDDeviceFarmUnitZone!.Value);
+                        }
+                        break;
+                    case HierarchyNodeKind.Farm:
+                        foreach (DeviceFarmUnit unit in (await api.DeviceFarmUnitsGet()).Where(u => u.DeviceFarmID == id))
+                        {
+                            foreach (DeviceFarmUnitZone z in await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit))
+                            {
+                                zoneIds.Add(z.IDDeviceFarmUnitZone!.Value);
+                            }
+                        }
+                        foreach (FarmOpenfield openfield in (await api.FarmOpenfieldsGet()).Where(o => o.FarmID == id))
+                        {
+                            foreach (FarmParcel parcel in await api.FarmParcelsGet(openfield.IDFarmOpenfield!.Value))
+                            {
+                                foreach (FarmParcelZone z in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
+                                {
+                                    parcelIds.Add(z.IDFarmParcelZone!.Value);
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+            return (zoneIds.ToList(), parcelIds.ToList());
         }
 
         // ---- Dashboard widgets, Open-Field's equivalent - same fetch-then-patch pattern as WidgetAdd/Remove/Move above. ----
@@ -206,24 +276,6 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> ParcelGridColumnsSet(int idFarmParcelZone, int columns)
         {
             await api.ParcelGridColumnsSet(idFarmParcelZone, columns);
-            return RedirectToAction(nameof(Index), new { idFarmParcelZone });
-        }
-
-        [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelWidgetWizardAdd(int idFarmParcelZone, string branch, List<int>? metrics, List<int>? alertTypes, List<string>? scopes, DashboardWidgetType chartType)
-        {
-            FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
-            parcel.DashboardWidgets.AddRange(BuildWizardWidgets(branch, metrics, alertTypes, scopes, chartType));
-            try
-            {
-                await api.ParcelWidgetsSet(idFarmParcelZone, parcel.DashboardWidgets);
-            }
-            catch (ApiException ex)
-            {
-                TempData["Error"] = ex.Body;
-            }
             return RedirectToAction(nameof(Index), new { idFarmParcelZone });
         }
 
