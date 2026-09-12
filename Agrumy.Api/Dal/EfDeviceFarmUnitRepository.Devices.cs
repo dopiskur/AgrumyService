@@ -96,13 +96,22 @@ namespace Agrumy.Api.Dal
             return rows.Select(EfDeviceRepository.ToDto).ToList();
         }
 
-        public async Task DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone)
+        // Same retry count/reasoning as EfUserRepository.RegisterUserAsync's own Serializable-transaction-plus-Contention-retry shape.
+        private const int MaxContentionRetries = 3;
+
+        /// enforceOneControllerPerZone is opt-in: other callers (device registration's own zone provisioning, test setups, simulation grouping) have never cared about the zone's one-controller cap and freely put more than one controller-enabled device in a zone - only the interactive Assign endpoint claims that cap, so only it pays for the Serializable transaction below.
+        public Task<bool> DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone, bool enforceOneControllerPerZone = false) =>
+            enforceOneControllerPerZone
+                ? AssignToZoneEnforcingControllerCapAsync(idDevice, idDeviceFarmUnitZone)
+                : AssignToZoneAsync(idDevice, idDeviceFarmUnitZone);
+
+        private async Task<bool> AssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone)
         {
             var zone = await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
             var device = await db.Devices.FirstOrDefaultAsync(d => d.IDDevice == idDevice);
             if (zone == null || device == null)
             {
-                return;
+                return false;
             }
 
             device.DeviceFarmUnitID = zone.DeviceFarmUnitID;
@@ -115,6 +124,48 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
             await outboxRepository.AddOutboxItemAsync(idDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
             await deviceRepository.InvalidateFleetCacheAsync(device.TenantID);
+            return true;
+        }
+
+        private async Task<bool> AssignToZoneEnforcingControllerCapAsync(int idDevice, int idDeviceFarmUnitZone)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    var zone = await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);
+                    var device = await db.Devices.FirstOrDefaultAsync(d => d.IDDevice == idDevice);
+                    if (zone == null || device == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    // Re-checked inside this same transaction, not just by the caller beforehand - a plain pre-check would let two concurrent assigns of two different controllers into the same zone both read "zone is free" and both take it.
+                    if (device.DeviceControllerEnabled == true && await db.Devices.AsNoTracking()
+                            .AnyAsync(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone && d.DeviceControllerEnabled == true && d.IDDevice != idDevice))
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    device.DeviceFarmUnitID = zone.DeviceFarmUnitID;
+                    device.DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone;
+                    device.SowingID = null;
+                    device.FarmParcelZoneID = null;
+                    device.ConfigVersion = (device.ConfigVersion ?? 0) + 1;
+                    await db.SaveChangesAsync();
+                    await outboxRepository.AddOutboxItemAsync(idDevice, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+                    await transaction.CommitAsync();
+                    await deviceRepository.InvalidateFleetCacheAsync(device.TenantID);
+                    return true;
+                }
+                catch (Exception ex) when (DbExceptionClassifier.Classify(ex) == DbFailureKind.Contention && attempt < MaxContentionRetries)
+                {
+                    await transaction.RollbackAsync();
+                }
+            }
         }
 
         public async Task DeviceUnassignFromZoneAsync(int idDevice)

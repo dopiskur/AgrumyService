@@ -138,8 +138,8 @@ namespace Agrumy.Api.Dal.Interface
         /// The "Add Controller"/"Add Sensor" picker list: every unassigned device in the organization, filtered by DeviceControllerEnabled or DeviceSensorEnabled per controllerCapable.
         Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable);
 
-        /// Assigns one device to one zone (sets DeviceFarmUnitID from the zone's own, plus DeviceFarmUnitZoneID) and bumps ConfigVersion so the device picks it up on its next poll.
-        Task DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone);
+        /// Assigns one device to one zone (sets DeviceFarmUnitID from the zone's own, plus DeviceFarmUnitZoneID) and bumps ConfigVersion so the device picks it up on its next poll. False (no-op) if the device or zone doesn't exist. enforceOneControllerPerZone (opt-in, only the interactive Assign endpoint sets it) additionally fails atomically - re-checked inside this call's own transaction, not just by the caller beforehand - if the device is a controller and the zone already has one.
+        Task<bool> DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone, bool enforceOneControllerPerZone = false);
 
         /// Resets DeviceFarmUnitID/DeviceFarmUnitZoneID to NULL ("unassigned") - deliberately does NOT bump ConfigVersion or otherwise notify the device.
         Task DeviceUnassignFromZoneAsync(int idDevice);

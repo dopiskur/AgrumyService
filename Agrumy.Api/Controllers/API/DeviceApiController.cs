@@ -76,6 +76,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             await deviceRepo.DeviceUpdateAsync(internalDevice);
+            await deviceRepo.InvalidateFleetCacheAsync(internalDevice.TenantID);
             await WriteAuditAsync("Device.Updated", existing.TenantID, "Device", existing.IDDevice.ToString()!, existing.DeviceName);
             return true;
         }
@@ -93,6 +94,7 @@ namespace Agrumy.Api.Controllers.API
 
             // The device's OWN organization, not the caller's - a Global admin/Device deleting a foreign organization's device would otherwise silently match zero rows.
             await deviceRepo.DeviceDeleteAsync(idDevice, device!.TenantID);
+            await deviceRepo.InvalidateFleetCacheAsync(device.TenantID);
             await WriteAuditAsync("Device.Deleted", device.TenantID, "Device", idDevice.ToString()!, device.DeviceName);
             return true;
         }

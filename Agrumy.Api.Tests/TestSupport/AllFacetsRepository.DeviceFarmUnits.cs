@@ -124,7 +124,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable) => deviceFarmUnitRepository.DeviceUnassignedGetAsync(tenantID, controllerCapable);
 
-        public Task DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone) => deviceFarmUnitRepository.DeviceAssignToZoneAsync(idDevice, idDeviceFarmUnitZone);
+        public Task<bool> DeviceAssignToZoneAsync(int idDevice, int idDeviceFarmUnitZone, bool enforceOneControllerPerZone = false) => deviceFarmUnitRepository.DeviceAssignToZoneAsync(idDevice, idDeviceFarmUnitZone, enforceOneControllerPerZone);
 
         public Task DeviceUnassignFromZoneAsync(int idDevice) => deviceFarmUnitRepository.DeviceUnassignFromZoneAsync(idDevice);
 

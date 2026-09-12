@@ -273,13 +273,16 @@ namespace Agrumy.Api.Controllers.API
                 return ForbidWith("Device and zone belong to different tenants.");
             }
 
-            // A zone has at most one controller (not required, but capped at one).
+            // A zone has at most one controller (not required, but capped at one). This is only a fast-path rejection for the common case - DeviceAssignToZoneAsync re-checks it inside its own transaction, which is what actually closes the race between two concurrent assigns.
             if (device!.DeviceControllerEnabled == true && await deviceFarmUnitRepo.DeviceFarmUnitZoneHasControllerAsync(body.IDDeviceFarmUnitZone))
             {
                 return Conflict("This zone already has a controller assigned.");
             }
 
-            await deviceFarmUnitRepo.DeviceAssignToZoneAsync(body.IDDevice, body.IDDeviceFarmUnitZone);
+            if (!await deviceFarmUnitRepo.DeviceAssignToZoneAsync(body.IDDevice, body.IDDeviceFarmUnitZone, enforceOneControllerPerZone: true))
+            {
+                return Conflict("This zone already has a controller assigned.");
+            }
             await WriteAuditAsync("Device.AssignedToZone", device.TenantID, "Device", body.IDDevice.ToString(), $"zone {body.IDDeviceFarmUnitZone}");
             return true;
         }

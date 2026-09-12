@@ -252,7 +252,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 1, DeviceControllerEnabled = false });
         _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(5)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 5, TenantID = 1 });
-        _repo.Setup(r => r.DeviceAssignToZoneAsync(8, 5)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.DeviceAssignToZoneAsync(8, 5, true)).ReturnsAsync(true);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceFarmUnitController();
@@ -260,7 +260,7 @@ public class ApiControllerTests
         var result = await controller.DeviceAssign(new DeviceZoneAssignment { IDDevice = 8, IDDeviceFarmUnitZone = 5 });
 
         Assert.True(result.Value);
-        _repo.Verify(r => r.DeviceAssignToZoneAsync(8, 5), Times.Once);
+        _repo.Verify(r => r.DeviceAssignToZoneAsync(8, 5, true), Times.Once);
     }
 
     [Fact]
@@ -1832,6 +1832,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 1 });
         _repo.Setup(r => r.DeviceUpdateAsync(It.IsAny<Device>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.InvalidateFleetCacheAsync(It.IsAny<int?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
@@ -1848,6 +1849,7 @@ public class ApiControllerTests
         // TenantID=0 is a real default organization, not a "no organization" sentinel - its own admin must be able to manage devices there.
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 0 });
         _repo.Setup(r => r.DeviceUpdateAsync(It.IsAny<Device>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.InvalidateFleetCacheAsync(It.IsAny<int?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
@@ -1877,6 +1879,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 99 });
         _repo.Setup(r => r.DeviceUpdateAsync(It.IsAny<Device>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.InvalidateFleetCacheAsync(It.IsAny<int?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
@@ -2642,6 +2645,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.DeviceGetByIdAsync(7)).ReturnsAsync(new Device { IDDevice = 7, TenantID = 99 });
         _repo.Setup(r => r.DeviceDeleteAsync(7, 99)).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.InvalidateFleetCacheAsync(It.IsAny<int?>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewDeviceController();
