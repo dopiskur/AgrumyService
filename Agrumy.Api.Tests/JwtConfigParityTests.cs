@@ -39,7 +39,7 @@ public class JwtConfigParityTests
         Assert.Equal(apiJwt.GetProperty("Audience").GetString(), webJwt.GetProperty("Audience").GetString());
     }
 
-    /// #218's actual bug was two hand-written TokenValidationParameters (Program.cs's AddJwtBearer and JwtTokenProvider.ValidateToken) drifting apart in a field appsettings.json never covers (ClockSkew). Both now build from JwtTokenProvider.BuildValidationParameters, so this locks in that single factory's contract rather than comparing two copies.
+    /// #218's actual bug was two hand-written TokenValidationParameters (AuthServiceExtensions' AddJwtBearer and JwtTokenProvider.ValidateToken) drifting apart in a field appsettings.json never covers (ClockSkew). Both now build from JwtTokenProvider.BuildValidationParameters, so this locks in that single factory's contract rather than comparing two copies.
     [Fact]
     public void BuildValidationParameters_HasTheExpectedValidationFlags()
     {
@@ -53,13 +53,13 @@ public class JwtConfigParityTests
         Assert.Equal(TimeSpan.Zero, parameters.ClockSkew);
     }
 
-    /// Guards against a future edit reintroducing a second, independent TokenValidationParameters construction in Program.cs instead of going through the shared factory above.
+    /// Guards against a future edit reintroducing a second, independent TokenValidationParameters construction in the API host wiring instead of going through the shared factory above.
     [Fact]
-    public void Program_AddJwtBearer_UsesTheSharedValidationParametersFactory()
+    public void AddJwtBearer_UsesTheSharedValidationParametersFactory()
     {
         string? root = FindRepoRoot();
         if (root is null) return;
-        string programPath = Path.Combine(root, "Agrumy.Api", "Program.cs");
+        string programPath = Path.Combine(root, "Agrumy.Api", "Startup", "AuthServiceExtensions.cs");
         if (!File.Exists(programPath)) return;
 
         Assert.Contains("JwtTokenProvider.BuildValidationParameters(", File.ReadAllText(programPath));
