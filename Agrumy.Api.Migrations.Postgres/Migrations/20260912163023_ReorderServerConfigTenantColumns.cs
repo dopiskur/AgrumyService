@@ -46,6 +46,8 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("ALTER TABLE \"serverConfig\" RENAME TO \"serverConfig_old\";");
+            // RENAME TABLE does not rename its PK constraint/index - still named "PK_serverConfig" on the renamed table, which would collide with the new table's own PK of the same name below.
+            migrationBuilder.Sql("ALTER TABLE \"serverConfig_old\" RENAME CONSTRAINT \"PK_serverConfig\" TO \"PK_serverConfig_old\";");
             migrationBuilder.Sql("""
                 CREATE TABLE "serverConfig" (
                     "IDServerConfig" integer NOT NULL,
@@ -134,6 +136,7 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("ALTER TABLE \"serverConfig\" RENAME TO \"serverConfig_old\";");
+            migrationBuilder.Sql("ALTER TABLE \"serverConfig_old\" RENAME CONSTRAINT \"PK_serverConfig\" TO \"PK_serverConfig_old\";");
             migrationBuilder.Sql("""
                 CREATE TABLE "serverConfig" (
                     "IDServerConfig" integer NOT NULL,

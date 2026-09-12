@@ -70,8 +70,8 @@ public class ApiControllerTests
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
     private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
-        new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
-        new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+        new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
+        new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);
 
     /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that organization (Global admin for organization 0, Organization admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.

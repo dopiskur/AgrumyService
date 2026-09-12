@@ -19,15 +19,17 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<Sowing?> SowingGetByIdAsync(int idSowing) => sowingRepository.SowingGetByIdAsync(idSowing);
 
-        public Task<Sowing> SowingAddAsync(Sowing sowing) => sowingRepository.SowingAddAsync(sowing);
+        public Task<Sowing> SowingAddAsync(Sowing sowing, Func<Task<string?>>? quotaCheckAsync = null) => sowingRepository.SowingAddAsync(sowing, quotaCheckAsync);
 
         public Task SowingUpdateAsync(Sowing sowing) => sowingRepository.SowingUpdateAsync(sowing);
 
-        public Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds) => sowingRepository.SowingStartAsync(idSowing, farmParcelZoneIds);
+        public Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds, Func<Task<string?>>? quotaCheckAsync = null) => sowingRepository.SowingStartAsync(idSowing, farmParcelZoneIds, quotaCheckAsync);
 
         public Task SowingCloseAsync(int idSowing, int? closedByUserID) => sowingRepository.SowingCloseAsync(idSowing, closedByUserID);
 
         public Task SowingDeleteAsync(int idSowing) => sowingRepository.SowingDeleteAsync(idSowing);
+
+        public Task<Sowing> SowingRestoreAsync(Sowing sowing, IReadOnlyList<int> occupiedFarmParcelZoneIds) => sowingRepository.SowingRestoreAsync(sowing, occupiedFarmParcelZoneIds);
 
         public Task<IList<FarmParcelZone>> SowingOccupiedZonesGetAsync(int idSowing) => sowingRepository.SowingOccupiedZonesGetAsync(idSowing);
 
@@ -41,7 +43,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel) => farmParcelRepository.FarmParcelGetByIdAsync(idFarmParcel);
 
-        public Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel) => farmParcelRepository.FarmParcelAddAsync(parcel);
+        public Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel, Func<Task<string?>>? quotaCheckAsync = null) => farmParcelRepository.FarmParcelAddAsync(parcel, quotaCheckAsync);
 
         public Task FarmParcelUpdateAsync(FarmParcel parcel) => farmParcelRepository.FarmParcelUpdateAsync(parcel);
 
@@ -61,7 +63,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneConfigVersionBumpAsync(idFarmParcelZone);
 
-        public Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames) => farmParcelRepository.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames);
+        public Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames, Func<Task<string?>>? quotaCheckAsync = null) => farmParcelRepository.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames, quotaCheckAsync);
 
         public Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName) => farmParcelRepository.FarmParcelZoneMergeAsync(farmParcelZoneIds, mergedName);
 
@@ -141,5 +143,7 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task<ZonePlanting> ZonePlantingStartAsync(ZonePlanting planting) => zonePlantingRepository.ZonePlantingStartAsync(planting);
 
         public Task ZonePlantingCloseAsync(int idZonePlanting) => zonePlantingRepository.ZonePlantingCloseAsync(idZonePlanting);
+
+        public Task<ZonePlanting> ZonePlantingRestoreAsync(ZonePlanting planting) => zonePlantingRepository.ZonePlantingRestoreAsync(planting);
     }
 }

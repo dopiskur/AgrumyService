@@ -2976,16 +2976,19 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int>("MaxDevices")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxFarms")
+                    b.Property<int>("MaxFarmParcelZones")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxParcels")
+                    b.Property<int>("MaxFarms")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxSensorsPerDevice")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxSimulations")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxSowingsActive")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxUnits")

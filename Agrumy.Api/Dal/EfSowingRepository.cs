@@ -1,6 +1,7 @@
 using Agrumy.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,27 +27,28 @@ namespace Agrumy.Api.Dal
             return row == null ? null : (await ToDtosAsync([row])).Single();
         }
 
-        public async Task<Sowing> SowingAddAsync(Sowing sowing)
-        {
-            int cropID = sowing.CropID != 0
-                ? sowing.CropID
-                : await FindOrCreateCropAsync(sowing.TenantID, sowing.SowingName ?? "Sowing");
-            var row = new SowingRow
+        public Task<Sowing> SowingAddAsync(Sowing sowing, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                TenantID = sowing.TenantID,
-                FarmID = sowing.FarmID,
-                CropID = cropID,
-                Variety = sowing.Variety,
-                SeedRateKgPerHa = sowing.SeedRateKgPerHa,
-                StartDate = sowing.StartDate == default ? DateOnly.FromDateTime(DateTime.UtcNow) : sowing.StartDate,
-                ExpectedDurationDays = sowing.ExpectedDurationDays > 0 ? sowing.ExpectedDurationDays : 90,
-                Status = (int)GrowingCycleStatus.Planned,
-                Notes = sowing.Notes,
-            };
-            db.Sowings.Add(row);
-            await db.SaveChangesAsync();
-            return (await ToDtosAsync([row])).Single();
-        }
+                int cropID = sowing.CropID != 0
+                    ? sowing.CropID
+                    : await FindOrCreateCropAsync(sowing.TenantID, sowing.SowingName ?? "Sowing");
+                var row = new SowingRow
+                {
+                    TenantID = sowing.TenantID,
+                    FarmID = sowing.FarmID,
+                    CropID = cropID,
+                    Variety = sowing.Variety,
+                    SeedRateKgPerHa = sowing.SeedRateKgPerHa,
+                    StartDate = sowing.StartDate == default ? DateOnly.FromDateTime(DateTime.UtcNow) : sowing.StartDate,
+                    ExpectedDurationDays = sowing.ExpectedDurationDays > 0 ? sowing.ExpectedDurationDays : 90,
+                    Status = (int)GrowingCycleStatus.Planned,
+                    Notes = sowing.Notes,
+                };
+                db.Sowings.Add(row);
+                await db.SaveChangesAsync();
+                return (await ToDtosAsync([row])).Single();
+            });
 
         public async Task SowingUpdateAsync(Sowing sowing)
         {
@@ -62,25 +64,29 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        public async Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds)
+        public async Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds, Func<Task<string?>>? quotaCheckAsync = null)
         {
             if (farmParcelZoneIds.Count == 0)
             {
                 return;
             }
-            var zones = await db.FarmParcelZones.Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
-            if (zones.Any(z => z.CurrentSowingID != null))
+            await QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                throw new InvalidOperationException("One or more zones already have an active sowing.");
-            }
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-            foreach (FarmParcelZoneRow zone in zones)
-            {
-                zone.CurrentSowingID = idSowing;
-                db.SowingFarmParcelZones.Add(new SowingFarmParcelZoneRow { SowingID = idSowing, FarmParcelZoneID = zone.IDFarmParcelZone, AssignedUtc = now });
-            }
-            await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteUpdateAsync(set => set.SetProperty(s => s.Status, (int)GrowingCycleStatus.Active));
-            await db.SaveChangesAsync();
+                var zones = await db.FarmParcelZones.Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
+                if (zones.Any(z => z.CurrentSowingID != null))
+                {
+                    throw new InvalidOperationException("One or more zones already have an active sowing.");
+                }
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                foreach (FarmParcelZoneRow zone in zones)
+                {
+                    zone.CurrentSowingID = idSowing;
+                    db.SowingFarmParcelZones.Add(new SowingFarmParcelZoneRow { SowingID = idSowing, FarmParcelZoneID = zone.IDFarmParcelZone, AssignedUtc = now });
+                }
+                await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteUpdateAsync(set => set.SetProperty(s => s.Status, (int)GrowingCycleStatus.Active));
+                await db.SaveChangesAsync();
+                return true;
+            });
             await SyncDevicesAsync(farmParcelZoneIds, idSowing);
         }
 
@@ -108,6 +114,38 @@ namespace Agrumy.Api.Dal
 
         public async Task SowingDeleteAsync(int idSowing) =>
             await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteDeleteAsync();
+
+        public async Task<Sowing> SowingRestoreAsync(Sowing sowing, IReadOnlyList<int> occupiedFarmParcelZoneIds)
+        {
+            var row = new SowingRow
+            {
+                TenantID = sowing.TenantID,
+                FarmID = sowing.FarmID,
+                CropID = sowing.CropID,
+                Variety = sowing.Variety,
+                SeedRateKgPerHa = sowing.SeedRateKgPerHa,
+                StartDate = sowing.StartDate,
+                ExpectedDurationDays = sowing.ExpectedDurationDays,
+                Status = (int)sowing.Status,
+                HarvestDate = sowing.HarvestDate,
+                ClosedUtc = sowing.ClosedUtc,
+                Notes = sowing.Notes,
+            };
+            db.Sowings.Add(row);
+            await db.SaveChangesAsync();
+            if (occupiedFarmParcelZoneIds.Count > 0)
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                await db.FarmParcelZones.Where(z => occupiedFarmParcelZoneIds.Contains(z.IDFarmParcelZone))
+                    .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, row.IDSowing));
+                foreach (int zoneId in occupiedFarmParcelZoneIds)
+                {
+                    db.SowingFarmParcelZones.Add(new SowingFarmParcelZoneRow { SowingID = row.IDSowing, FarmParcelZoneID = zoneId, AssignedUtc = now });
+                }
+                await db.SaveChangesAsync();
+            }
+            return (await ToDtosAsync([row])).Single();
+        }
 
         public async Task<IList<FarmParcelZone>> SowingOccupiedZonesGetAsync(int idSowing)
         {

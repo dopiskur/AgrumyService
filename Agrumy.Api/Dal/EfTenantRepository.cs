@@ -121,6 +121,9 @@ namespace Agrumy.Api.Dal
             row.MaxFarms = quota.MaxFarms;
             row.MaxUnits = quota.MaxUnits;
             row.MaxZones = quota.MaxZones;
+            row.MaxCrops = quota.MaxCrops;
+            row.MaxFarmParcelZones = quota.MaxFarmParcelZones;
+            row.MaxSowingsActive = quota.MaxSowingsActive;
             row.MaxControllersPerDevice = quota.MaxControllersPerDevice;
             row.MaxSensorsPerDevice = quota.MaxSensorsPerDevice;
             row.MqttEnabled = quota.MqttEnabled;
@@ -141,6 +144,9 @@ namespace Agrumy.Api.Dal
             MaxFarms = row.MaxFarms,
             MaxUnits = row.MaxUnits,
             MaxZones = row.MaxZones,
+            MaxCrops = row.MaxCrops,
+            MaxFarmParcelZones = row.MaxFarmParcelZones,
+            MaxSowingsActive = row.MaxSowingsActive,
             MaxControllersPerDevice = row.MaxControllersPerDevice,
             MaxSensorsPerDevice = row.MaxSensorsPerDevice,
             MqttEnabled = row.MqttEnabled,

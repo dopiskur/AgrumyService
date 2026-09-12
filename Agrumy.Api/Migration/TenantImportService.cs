@@ -4,7 +4,10 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Migration
 {
     /// Applies a TenantExport to this server (see Agrumy.Shared.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
-    public class TenantImportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
+    public class TenantImportService(
+        ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo,
+        IFarmOpenfieldRepository farmOpenfieldRepo, IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
+        IFieldLogRepository fieldLogRepo, IZonePlantingRepository zonePlantingRepo)
     {
         /// ByName: ties to an existing organization with this exact name, or creates one; GlobalAdmin-only at the controller layer.
         public async Task<TenantImportResult> ImportByNameAsync(TenantExport export, string targetTenantName)
@@ -34,7 +37,14 @@ namespace Agrumy.Api.Migration
             await deviceFarmUnitRepo.EnsureFirstFarmAsync(tenantId);
             Dictionary<int, int> zoneIdMap = await ImportZonesAsync(export, tenantId, unitIdMap, result);
             await ImportZoneRulesAsync(export, tenantId, zoneIdMap, result);
-            Dictionary<int, int> deviceIdMap = await ImportDevicesAsync(export, tenantId, unitIdMap, zoneIdMap, result);
+
+            (Dictionary<int, int> farmParcelZoneIdMap, int? openFieldFarmId) = await ImportFarmParcelsAsync(export, tenantId, result);
+            Dictionary<int, int> sowingIdMap = await ImportSowingsAsync(export, tenantId, openFieldFarmId, farmParcelZoneIdMap, result);
+            Dictionary<int, int> zonePlantingIdMap = await ImportZonePlantingsAsync(export, tenantId, zoneIdMap, result);
+            await ImportFieldLogEntriesAsync(export, tenantId, sowingIdMap, farmParcelZoneIdMap, zonePlantingIdMap, zoneIdMap, result);
+            await ImportHarvestResultsAsync(export, sowingIdMap, zonePlantingIdMap, farmParcelZoneIdMap, result);
+
+            Dictionary<int, int> deviceIdMap = await ImportDevicesAsync(export, tenantId, unitIdMap, zoneIdMap, farmParcelZoneIdMap, sowingIdMap, result);
             await ImportSensorDataAsync(export, tenantId, deviceIdMap, unitIdMap, zoneIdMap, result);
 
             return result;
@@ -170,7 +180,228 @@ namespace Agrumy.Api.Migration
             }
         }
 
-        private async Task<Dictionary<int, int>> ImportDevicesAsync(TenantExport export, int tenantId, Dictionary<int, int> unitIdMap, Dictionary<int, int> zoneIdMap, TenantImportResult result)
+        /// #585 - every source-tenant Open-Field farm collapses into ONE new one here, same "sweep into first farm" simplification EnsureFirstFarmAsync already applies to Greenhouse Units (TenantExportFarmParcel's own doc comment). Returns the new farm's id (null if the export had no parcels at all) alongside the zone id map, since ImportSowingsAsync needs Sowing.FarmID too.
+        private async Task<(Dictionary<int, int> ZoneIdMap, int? OpenFieldFarmId)> ImportFarmParcelsAsync(TenantExport export, int tenantId, TenantImportResult result)
+        {
+            var zoneMap = new Dictionary<int, int>();
+            if (export.FarmParcels.Count == 0)
+            {
+                return (zoneMap, null);
+            }
+            (DeviceFarm farm, FarmOpenfield openfield) = await farmOpenfieldRepo.FarmOpenfieldCreateAsync("Imported", tenantId);
+            foreach (TenantExportFarmParcel ep in export.FarmParcels)
+            {
+                (FarmParcel parcel, FarmParcelZone defaultZone) = await farmParcelRepo.FarmParcelAddAsync(new FarmParcel
+                {
+                    TenantID = tenantId,
+                    FarmOpenfieldID = openfield.IDFarmOpenfield!.Value,
+                    FarmParcelName = ep.Parcel.FarmParcelName,
+                });
+                if (ep.Parcel.GeometryGeoJson != null && ep.Parcel.AreaHectares is double parcelArea)
+                {
+                    await farmParcelRepo.FarmParcelGeometrySetAsync(parcel.IDFarmParcel!.Value, ep.Parcel.GeometryGeoJson, parcelArea,
+                        ep.Parcel.BboxMinLat ?? 0, ep.Parcel.BboxMinLon ?? 0, ep.Parcel.BboxMaxLat ?? 0, ep.Parcel.BboxMaxLon ?? 0, ep.Parcel.ArkodParcelId);
+                }
+                result.FarmParcelsImported++;
+
+                // FarmParcelAddAsync's own default zone stands in for the source's first zone; a source parcel already split into more than one gets the rest via the same Split operation the live UI uses.
+                List<FarmParcelZone> newZones = [defaultZone];
+                if (ep.Zones.Count > 1)
+                {
+                    IList<FarmParcelZone> split = await farmParcelRepo.FarmParcelZoneSplitAsync(defaultZone.IDFarmParcelZone!.Value, ep.Zones.Select(z => z.FarmParcelZoneName ?? "Zone").ToList());
+                    newZones = split.ToList();
+                }
+                for (int i = 0; i < ep.Zones.Count && i < newZones.Count; i++)
+                {
+                    FarmParcelZone src = ep.Zones[i];
+                    FarmParcelZone created = newZones[i];
+                    await farmParcelRepo.FarmParcelZoneUpdateAsync(new FarmParcelZone
+                    {
+                        IDFarmParcelZone = created.IDFarmParcelZone,
+                        FarmParcelZoneName = src.FarmParcelZoneName,
+                        WaterPumpMaxRunSeconds = src.WaterPumpMaxRunSeconds,
+                        WaterPumpCooldownSeconds = src.WaterPumpCooldownSeconds,
+                        SkipWaterPumpWhenRainPredicted = src.SkipWaterPumpWhenRainPredicted,
+                        TankCapacityLiters = src.TankCapacityLiters,
+                        WaterLevelRawEmpty = src.WaterLevelRawEmpty,
+                        WaterLevelRawFull = src.WaterLevelRawFull,
+                        WaterPumpMinLevel = src.WaterPumpMinLevel,
+                        HeatingMaxRunSeconds = src.HeatingMaxRunSeconds,
+                        VentilationMaxRunSeconds = src.VentilationMaxRunSeconds,
+                        HeatingFailSafePolicy = src.HeatingFailSafePolicy,
+                    });
+                    if (src.GeometryGeoJson != null && src.AreaHectares is double zoneArea)
+                    {
+                        await farmParcelRepo.FarmParcelZoneGeometrySetAsync(created.IDFarmParcelZone!.Value, src.GeometryGeoJson, zoneArea,
+                            src.BboxMinLat ?? 0, src.BboxMinLon ?? 0, src.BboxMaxLat ?? 0, src.BboxMaxLon ?? 0);
+                    }
+                    if (src.IDFarmParcelZone is int oldZoneId && created.IDFarmParcelZone is int newZoneId)
+                    {
+                        zoneMap[oldZoneId] = newZoneId;
+                    }
+                    result.FarmParcelZonesImported++;
+                }
+            }
+            return (zoneMap, farm.IDDeviceFarm);
+        }
+
+        private async Task<Dictionary<int, int>> ImportSowingsAsync(TenantExport export, int tenantId, int? openFieldFarmId, Dictionary<int, int> farmParcelZoneIdMap, TenantImportResult result)
+        {
+            var map = new Dictionary<int, int>();
+            if (openFieldFarmId is not int farmId)
+            {
+                return map;
+            }
+            foreach (TenantExportSowing es in export.Sowings)
+            {
+                int cropId = await cropCatalogRepo.CropFindOrCreateByNameAsync(tenantId, es.CropName ?? es.Sowing.SowingName ?? "Crop");
+
+                // A Closed sowing's historical zone assignments aren't reconstructed (TenantExportSowing's own doc comment) - only a currently-Active sowing occupies any zone here.
+                var occupiedZoneIds = new List<int>();
+                if (es.Sowing.Status == GrowingCycleStatus.Active && es.Sowing.IDSowing is int idSowing)
+                {
+                    foreach (TenantExportFarmParcel ep in export.FarmParcels)
+                    {
+                        foreach (FarmParcelZone z in ep.Zones)
+                        {
+                            if (z.CurrentSowingID == idSowing && z.IDFarmParcelZone is int oldZoneId && farmParcelZoneIdMap.TryGetValue(oldZoneId, out int newZoneId))
+                            {
+                                occupiedZoneIds.Add(newZoneId);
+                            }
+                        }
+                    }
+                }
+
+                Sowing created = await sowingRepo.SowingRestoreAsync(new Sowing
+                {
+                    TenantID = tenantId,
+                    FarmID = farmId,
+                    CropID = cropId,
+                    Variety = es.Sowing.Variety,
+                    SeedRateKgPerHa = es.Sowing.SeedRateKgPerHa,
+                    StartDate = es.Sowing.StartDate,
+                    ExpectedDurationDays = es.Sowing.ExpectedDurationDays,
+                    Status = es.Sowing.Status,
+                    HarvestDate = es.Sowing.HarvestDate,
+                    ClosedUtc = es.Sowing.ClosedUtc,
+                    // ClosedByUserID intentionally dropped - a source-tenant user id that may not exist (or may map to someone else entirely) on the target.
+                    Notes = es.Sowing.Notes,
+                }, occupiedZoneIds);
+                if (es.Sowing.IDSowing is int oldId && created.IDSowing is int newId)
+                {
+                    map[oldId] = newId;
+                }
+                result.SowingsImported++;
+            }
+            return map;
+        }
+
+        private async Task<Dictionary<int, int>> ImportZonePlantingsAsync(TenantExport export, int tenantId, Dictionary<int, int> zoneIdMap, TenantImportResult result)
+        {
+            var map = new Dictionary<int, int>();
+            foreach (ZonePlanting zp in export.ZonePlantings)
+            {
+                if (!zoneIdMap.TryGetValue(zp.DeviceFarmUnitZoneID, out int newZoneId))
+                {
+                    continue; // the Greenhouse zone it belonged to failed to import
+                }
+                int cropId = await cropCatalogRepo.CropFindOrCreateByNameAsync(tenantId, zp.CropName ?? "Crop");
+                ZonePlanting created = await zonePlantingRepo.ZonePlantingRestoreAsync(new ZonePlanting
+                {
+                    TenantID = tenantId,
+                    DeviceFarmUnitZoneID = newZoneId,
+                    CropID = cropId,
+                    PlantedDate = zp.PlantedDate,
+                    ExpectedDurationDays = zp.ExpectedDurationDays,
+                    Status = zp.Status,
+                    HarvestDate = zp.HarvestDate,
+                    ClosedUtc = zp.ClosedUtc,
+                    Notes = zp.Notes,
+                });
+                if (zp.IDZonePlanting is int oldId && created.IDZonePlanting is int newId)
+                {
+                    map[oldId] = newId;
+                }
+                result.ZonePlantingsImported++;
+            }
+            return map;
+        }
+
+        /// Exactly one of the four scope FKs must survive remapping (matching FieldLogEntry's own "scoped to exactly one" invariant) - an entry whose scope failed to import entirely is dropped rather than orphaned, same reasoning as ImportZoneRulesAsync.
+        private async Task ImportFieldLogEntriesAsync(TenantExport export, int tenantId, Dictionary<int, int> sowingIdMap, Dictionary<int, int> farmParcelZoneIdMap, Dictionary<int, int> zonePlantingIdMap, Dictionary<int, int> zoneIdMap, TenantImportResult result)
+        {
+            foreach (TenantExportFieldLogEntry efl in export.FieldLogEntries)
+            {
+                FieldLogEntry e = efl.Entry;
+                int? newSowingId = RemapOrNull(e.SowingID, sowingIdMap);
+                int? newFarmParcelZoneId = RemapOrNull(e.FarmParcelZoneID, farmParcelZoneIdMap);
+                int? newZonePlantingId = RemapOrNull(e.ZonePlantingID, zonePlantingIdMap);
+                int? newDeviceFarmUnitZoneId = RemapOrNull(e.DeviceFarmUnitZoneID, zoneIdMap);
+                if (newSowingId == null && newFarmParcelZoneId == null && newZonePlantingId == null && newDeviceFarmUnitZoneId == null)
+                {
+                    continue;
+                }
+                FieldLogEntry created = await fieldLogRepo.FieldLogEntryAddAsync(new FieldLogEntry
+                {
+                    TenantID = tenantId,
+                    SowingID = newSowingId,
+                    FarmParcelZoneID = newFarmParcelZoneId,
+                    ZonePlantingID = newZonePlantingId,
+                    DeviceFarmUnitZoneID = newDeviceFarmUnitZoneId,
+                    EntryType = e.EntryType,
+                    DateUtc = e.DateUtc,
+                    // CreatedByUserID intentionally dropped - same reasoning as Sowing.ClosedByUserID above.
+                    Note = e.Note,
+                    PayloadJson = e.PayloadJson,
+                    IsClosingEntry = e.IsClosingEntry,
+                });
+                result.FieldLogEntriesImported++;
+
+                // Metadata only - the physical file under fieldlog-store on the SOURCE server does not travel with the export (TenantExportFieldLogEntry's own doc comment).
+                foreach (FieldLogAttachment att in efl.Attachments)
+                {
+                    await fieldLogRepo.FieldLogAttachmentAddAsync(new FieldLogAttachment
+                    {
+                        FieldLogEntryID = created.IDFieldLogEntry!.Value,
+                        FileName = att.FileName,
+                        ContentType = att.ContentType,
+                        StoragePath = att.StoragePath,
+                        SizeBytes = att.SizeBytes,
+                    });
+                    result.FieldLogAttachmentsImported++;
+                }
+            }
+        }
+
+        /// SowingID/ZonePlantingID are the two scopes HarvestResult supports - a result whose scope failed to import entirely is dropped, same reasoning as ImportFieldLogEntriesAsync.
+        private async Task ImportHarvestResultsAsync(TenantExport export, Dictionary<int, int> sowingIdMap, Dictionary<int, int> zonePlantingIdMap, Dictionary<int, int> farmParcelZoneIdMap, TenantImportResult result)
+        {
+            foreach (HarvestResult h in export.HarvestResults)
+            {
+                int? newSowingId = RemapOrNull(h.SowingID, sowingIdMap);
+                int? newZonePlantingId = RemapOrNull(h.ZonePlantingID, zonePlantingIdMap);
+                if (newSowingId == null && newZonePlantingId == null)
+                {
+                    continue;
+                }
+                await fieldLogRepo.HarvestResultAddAsync(new HarvestResult
+                {
+                    SowingID = newSowingId,
+                    ZonePlantingID = newZonePlantingId,
+                    FarmParcelZoneID = RemapOrNull(h.FarmParcelZoneID, farmParcelZoneIdMap),
+                    DateUtc = h.DateUtc,
+                    YieldKg = h.YieldKg,
+                    MoisturePercent = h.MoisturePercent,
+                    QualityGrade = h.QualityGrade,
+                    LossesKg = h.LossesKg,
+                    MetricsJson = h.MetricsJson,
+                    Note = h.Note,
+                });
+                result.HarvestResultsImported++;
+            }
+        }
+
+        private async Task<Dictionary<int, int>> ImportDevicesAsync(TenantExport export, int tenantId, Dictionary<int, int> unitIdMap, Dictionary<int, int> zoneIdMap, Dictionary<int, int> farmParcelZoneIdMap, Dictionary<int, int> sowingIdMap, TenantImportResult result)
         {
             var map = new Dictionary<int, int>();
             foreach (TenantExportDevice ed in export.Devices)
@@ -190,6 +421,9 @@ namespace Agrumy.Api.Migration
                     DeviceRoleID = ed.Device.DeviceRoleID,
                     DeviceFarmUnitID = RemapOrNull(ed.Device.DeviceFarmUnitID, unitIdMap),
                     DeviceFarmUnitZoneID = RemapOrNull(ed.Device.DeviceFarmUnitZoneID, zoneIdMap),
+                    // Mutually exclusive with the Greenhouse pair above on the source already (DeviceAssignToFarmParcelZoneAsync's own invariant) - remapping both pairs unconditionally is safe, only the branch the device was actually on ever has a non-null id to remap.
+                    FarmParcelZoneID = RemapOrNull(ed.Device.FarmParcelZoneID, farmParcelZoneIdMap),
+                    SowingID = RemapOrNull(ed.Device.SowingID, sowingIdMap),
                     DeviceName = ed.Device.DeviceName,
                     MacAddress = ed.Device.MacAddress,
                     ApiId = ed.ApiId,

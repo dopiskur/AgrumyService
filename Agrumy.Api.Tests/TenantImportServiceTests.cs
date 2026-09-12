@@ -15,7 +15,10 @@ public class TenantImportServiceTests
     private IDeviceFarmUnitRepository FarmUnitRepo => _repo.As<IDeviceFarmUnitRepository>().Object;
 
     private TenantImportService NewService() => new(_repo.Object, UserRepo, FarmUnitRepo,
-        new Mock<IDeviceRepository>(MockBehavior.Strict).Object, new Mock<ISensorDataRepository>(MockBehavior.Strict).Object);
+        new Mock<IDeviceRepository>(MockBehavior.Strict).Object, new Mock<ISensorDataRepository>(MockBehavior.Strict).Object,
+        new Mock<IFarmOpenfieldRepository>(MockBehavior.Strict).Object, new Mock<IFarmParcelRepository>(MockBehavior.Strict).Object,
+        new Mock<ISowingRepository>(MockBehavior.Strict).Object, new Mock<ICropCatalogRepository>(MockBehavior.Strict).Object,
+        new Mock<IFieldLogRepository>(MockBehavior.Strict).Object, new Mock<IZonePlantingRepository>(MockBehavior.Strict).Object);
 
     private static TenantExport Export(params TenantExportUser[] users) => new()
     {

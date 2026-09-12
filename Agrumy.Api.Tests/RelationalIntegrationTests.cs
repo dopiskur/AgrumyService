@@ -3819,19 +3819,119 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task TenantQuota_CheckCanAddCropAndParcel_RespectSeparateCaps(DbProviderKind provider)
+    public async Task TenantQuota_CheckCanAddCropAndFarmParcelZone_RespectSeparateCaps(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 1, MaxParcels = 1 });
+        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 1, MaxFarmParcelZones = 1, MaxSowingsActive = 5 });
         var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
 
         Assert.Null(await enforcer.CheckCanAddCropAsync(tenantId));
         await MakeSowingAndZone(tenantId);
         Assert.NotNull(await enforcer.CheckCanAddCropAsync(tenantId));
 
-        // Parcel cap is independent of the Crop cap above - the one Sowing we already have is well under MaxCrops' sibling MaxParcels check target (its own single zone from MakeSowingAndZone already consumed it).
-        Assert.NotNull(await enforcer.CheckCanAddParcelAsync(tenantId));
+        // Zone cap is independent of the Crop cap above - the one Sowing we already have is well under MaxCrops' sibling MaxFarmParcelZones check target (its own single zone from MakeSowingAndZone already consumed it).
+        Assert.NotNull(await enforcer.CheckCanAddFarmParcelZoneAsync(tenantId));
+    }
+
+    /// #584 - a tenant used to be able to create one parcel, then split its single zone into unlimited zones with no check at all (CheckCanAddParcelAsync only ever ran at FarmParcelAdd, and even there via a call pattern that never threw). A split that nets more zones than the cap allows must now block and leave the source zone intact.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelZoneSplitAsync_QuotaBlocksASplitThatWouldExceedMaxFarmParcelZones(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxFarmParcelZones = 2 });
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+
+        // 1 existing zone + 2 new - 1 removed (the source) = net 2 total, exactly at the cap - allowed.
+        var created = await _repo.FarmParcelZoneSplitAsync(zone.IDFarmParcelZone!.Value, ["A", "B"], () => enforcer.CheckCanAddFarmParcelZoneAsync(tenantId, 1));
+        Assert.Equal(2, created.Count);
+
+        // Splitting one of those into 3 nets 2 more (net +2 over the existing 2 = 4 total) - over the cap of 2, blocked; the zone being split must survive untouched.
+        await Assert.ThrowsAsync<Agrumy.Api.Quota.QuotaLimitExceededException>(() =>
+            _repo.FarmParcelZoneSplitAsync(created[0].IDFarmParcelZone!.Value, ["C", "D", "E"], () => enforcer.CheckCanAddFarmParcelZoneAsync(tenantId, 2)));
+        Assert.NotNull(await _repo.FarmParcelZoneGetByIdAsync(created[0].IDFarmParcelZone!.Value));
+    }
+
+    /// #584 - SowingStartAsync (the Planned->Active transition, D9) is where MaxSowingsActive must gate, not sowing creation - a Planned sowing doesn't yet hold a "concurrently open" slot.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task SowingStartAsync_QuotaBlocksStartingBeyondMaxSowingsActive(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 5, MaxFarmParcelZones = 5, MaxSowingsActive = 1 });
+        var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        await MakeSowingAndZone(tenantId); // one Active sowing already occupies the single MaxSowingsActive slot
+
+        var (farm2, openfield2) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield2.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        var crop2 = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
+        var sowing2 = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm2.IDDeviceFarm!.Value, CropID = crop2.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+
+        await Assert.ThrowsAsync<Agrumy.Api.Quota.QuotaLimitExceededException>(() =>
+            _repo.SowingStartAsync(sowing2.IDSowing!.Value, [zone2.IDFarmParcelZone!.Value], () => enforcer.CheckCanStartSowingAsync(tenantId)));
+
+        // Blocked start must not have flipped Status or occupied the zone.
+        Sowing? refetched = await _repo.SowingGetByIdAsync(sowing2.IDSowing!.Value);
+        Assert.Equal(GrowingCycleStatus.Planned, refetched!.Status);
+        FarmParcelZone? refetchedZone = await _repo.FarmParcelZoneGetByIdAsync(zone2.IDFarmParcelZone!.Value);
+        Assert.Null(refetchedZone!.CurrentSowingID);
+    }
+
+    /// #585 - TenantExportService/TenantImportService used to have zero references to sowing/farmParcel/farmParcelZone/fieldLogEntry/fieldLogAttachment/harvestResult/zonePlanting, silently dropping the whole R-restructure layer on export.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task TenantExportImport_RoundTrip_PreservesSowingDnevnikAndHarvestRows(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (sourceTenantId, _, _) = await MakeUser(t);
+
+        // Open-Field: Active sowing occupying its zone, with a dnevnik entry + attachment + a harvest result.
+        var (sowing, _, _) = await MakeSowingAndZone(sourceTenantId);
+        FieldLogEntry sowingEntry = await _repo.FieldLogEntryAddAsync(new FieldLogEntry
+        {
+            TenantID = sourceTenantId, SowingID = sowing.IDSowing, EntryType = EntryType.Fertilization, DateUtc = DateTimeOffset.UtcNow, Note = "N-P-K",
+        });
+        await _repo.FieldLogAttachmentAddAsync(new FieldLogAttachment { FieldLogEntryID = sowingEntry.IDFieldLogEntry!.Value, FileName = "invoice.pdf", ContentType = "application/pdf", StoragePath = "fieldlog-store/x.pdf", SizeBytes = 123 });
+        await _repo.HarvestResultAddAsync(new HarvestResult { SowingID = sowing.IDSowing, DateUtc = DateTimeOffset.UtcNow, YieldKg = 500 });
+
+        // Greenhouse: a zonePlanting cycle (D8) with its own dnevnik entry.
+        var unit = await _repo.DeviceFarmUnitAddAsync(new DeviceFarmUnit { TenantID = sourceTenantId, DeviceFarmUnitName = "Unit_" + U() });
+        var greenhouseZone = await _repo.DeviceFarmUnitZoneAddAsync(new DeviceFarmUnitZone { TenantID = sourceTenantId, DeviceFarmUnitID = unit.IDDeviceFarmUnit!.Value, DeviceFarmUnitZoneName = "Zone_" + U() });
+        var crop = await _repo.CropAddAsync(new Crop { TenantID = sourceTenantId, Name = "Tomato_" + U() });
+        ZonePlanting planting = await _repo.ZonePlantingStartAsync(new ZonePlanting
+        {
+            TenantID = sourceTenantId, DeviceFarmUnitZoneID = greenhouseZone.IDDeviceFarmUnitZone!.Value, CropID = crop.IDCrop!.Value,
+            PlantedDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 60,
+        });
+        await _repo.FieldLogEntryAddAsync(new FieldLogEntry { TenantID = sourceTenantId, ZonePlantingID = planting.IDZonePlanting, EntryType = EntryType.Observation, DateUtc = DateTimeOffset.UtcNow, Note = "Looks healthy" });
+
+        var exportService = new Agrumy.Api.Migration.TenantExportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        TenantExport export = await exportService.ExportAsync(sourceTenantId, includeSensorData: false, sensorDataSinceUtc: null);
+
+        Assert.Single(export.Sowings);
+        Assert.Single(export.FarmParcels);
+        Assert.Single(export.ZonePlantings);
+        Assert.Equal(2, export.FieldLogEntries.Count);
+        Assert.Single(export.HarvestResults);
+        Assert.Single(export.FieldLogEntries.Single(e => e.Entry.SowingID != null).Attachments);
+
+        var importService = new Agrumy.Api.Migration.TenantImportService(_repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo, _repo);
+        TenantImportResult result = await importService.ImportByNameAsync(export, "T_imported_" + U());
+
+        Assert.Equal(1, result.SowingsImported);
+        Assert.Equal(1, result.FarmParcelsImported);
+        Assert.Equal(1, result.FarmParcelZonesImported);
+        Assert.Equal(1, result.ZonePlantingsImported);
+        Assert.Equal(2, result.FieldLogEntriesImported);
+        Assert.Equal(1, result.FieldLogAttachmentsImported);
+        Assert.Equal(1, result.HarvestResultsImported);
+
+        // The imported sowing must still be Active AND still occupy exactly one zone - not just a bare, disconnected row.
+        Sowing importedSowing = Assert.Single(await _repo.SowingsGetAsync(result.TargetTenantId));
+        Assert.Equal(GrowingCycleStatus.Active, importedSowing.Status);
+        Assert.Single(await _repo.SowingOccupiedZonesGetAsync(importedSowing.IDSowing!.Value));
     }
 
     // ---- Dnevnik (D6/D7/D13) ----------------------------------

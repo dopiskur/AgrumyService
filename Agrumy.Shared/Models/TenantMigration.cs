@@ -26,6 +26,27 @@ namespace Agrumy.Shared.Models
         public DeviceConfigController? Controller { get; set; }
     }
 
+    /// One exported Open-Field parcel with its zones (Detaljni dizajn R, D2/D3) - every source-tenant FarmParcel lands under ONE freshly-created Open-Field farm on import (see TenantImportService), the same "collapse into one farm" simplification EnsureFirstFarmAsync already applies to Greenhouse Units.
+    public class TenantExportFarmParcel
+    {
+        public FarmParcel Parcel { get; set; } = new();
+        public IList<FarmParcelZone> Zones { get; set; } = [];
+    }
+
+    /// One exported Sowing (Detaljni dizajn R, D9/D11) - CropName is resolved at export time so import can find-or-create the equivalent Crop by name on the target (same approach the live "New sowing" form already uses), no Crop id remapping needed.
+    public class TenantExportSowing
+    {
+        public Sowing Sowing { get; set; } = new();
+        public string? CropName { get; set; }
+    }
+
+    /// One exported dnevnik entry with its attachments (Detaljni dizajn R, D6/D7) - FieldLogAttachment.StoragePath is exported as metadata only; the physical file under fieldlog-store on the SOURCE server does not travel with the export (no export in this codebase moves binary files - firmware/satellite rasters don't either).
+    public class TenantExportFieldLogEntry
+    {
+        public FieldLogEntry Entry { get; set; } = new();
+        public IList<FieldLogAttachment> Attachments { get; set; } = [];
+    }
+
     /// The full portable snapshot of one organization (excludes install-wide ServerConfig/firmware catalog, includes SensorData only when opt-in) - SENSITIVE (password hashes, device ApiKeys), never persisted server-side, streamed directly to the admin's browser.
     public class TenantExport
     {
@@ -41,6 +62,14 @@ namespace Agrumy.Shared.Models
         public IList<DeviceFarmUnitZone> Zones { get; set; } = [];
         public IList<DeviceFarmUnitZoneRule> ZoneRules { get; set; } = [];
         public IList<TenantExportDevice> Devices { get; set; } = [];
+
+        // ---- Open-Field / Greenhouse growing-cycle layer (Detaljni dizajn R) - #585 ----
+        public IList<TenantExportFarmParcel> FarmParcels { get; set; } = [];
+        public IList<TenantExportSowing> Sowings { get; set; } = [];
+        /// Greenhouse's equivalent of Sowing (D8) - DeviceFarmUnitZoneID is an OLD/source id, remapped on import through the same map Zones/ZoneRules already use.
+        public IList<ZonePlanting> ZonePlantings { get; set; } = [];
+        public IList<TenantExportFieldLogEntry> FieldLogEntries { get; set; } = [];
+        public IList<HarvestResult> HarvestResults { get; set; } = [];
 
         public bool IncludesSensorData { get; set; }
         public IList<SensorData>? SensorData { get; set; }
@@ -69,5 +98,12 @@ namespace Agrumy.Shared.Models
         public int ZonesImported { get; set; }
         public int ZoneRulesImported { get; set; }
         public int SensorDataRowsImported { get; set; }
+        public int FarmParcelsImported { get; set; }
+        public int FarmParcelZonesImported { get; set; }
+        public int SowingsImported { get; set; }
+        public int ZonePlantingsImported { get; set; }
+        public int FieldLogEntriesImported { get; set; }
+        public int FieldLogAttachmentsImported { get; set; }
+        public int HarvestResultsImported { get; set; }
     }
 }

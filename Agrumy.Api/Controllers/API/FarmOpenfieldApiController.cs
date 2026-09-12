@@ -99,15 +99,15 @@ namespace Agrumy.Api.Controllers.API
             }
             crop.TenantID = farm!.TenantID;
             crop.FarmID = farm.IDDeviceFarm!.Value;
+            Sowing added;
             try
             {
-                await quotaEnforcer.CheckCanAddCropAsync(crop.TenantID);
+                added = await sowingRepo.SowingAddAsync(crop, () => quotaEnforcer.CheckCanAddCropAsync(crop.TenantID));
             }
             catch (QuotaLimitExceededException ex)
             {
                 return ForbidWith(ex.Message);
             }
-            Sowing added = await sowingRepo.SowingAddAsync(crop);
             await WriteAuditAsync("Sowing.Created", added.TenantID, "Sowing", added.IDSowing.ToString()!, added.SowingName);
             return Ok(added);
         }
@@ -169,11 +169,15 @@ namespace Agrumy.Api.Controllers.API
             }
             try
             {
-                await sowingRepo.SowingStartAsync(request.IDSowing, request.FarmParcelZoneIds);
+                await sowingRepo.SowingStartAsync(request.IDSowing, request.FarmParcelZoneIds, () => quotaEnforcer.CheckCanStartSowingAsync(sowing!.TenantID));
             }
             catch (InvalidOperationException ex)
             {
                 return Conflict(ex.Message);
+            }
+            catch (QuotaLimitExceededException ex)
+            {
+                return ForbidWith(ex.Message);
             }
             await fieldLogRepo.FieldLogEntryAddAsync(new FieldLogEntry
             {
@@ -467,15 +471,18 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
+            FarmParcel parcel;
+            FarmParcelZone zone;
             try
             {
-                await quotaEnforcer.CheckCanAddParcelAsync(farm!.TenantID);
+                (parcel, zone) = await farmParcelRepo.FarmParcelAddAsync(
+                    new FarmParcel { TenantID = farm!.TenantID, FarmOpenfieldID = idFarmOpenfield, FarmParcelName = farmParcelName },
+                    () => quotaEnforcer.CheckCanAddFarmParcelZoneAsync(farm.TenantID));
             }
             catch (QuotaLimitExceededException ex)
             {
                 return ForbidWith(ex.Message);
             }
-            (FarmParcel parcel, FarmParcelZone zone) = await farmParcelRepo.FarmParcelAddAsync(new FarmParcel { TenantID = farm.TenantID, FarmOpenfieldID = idFarmOpenfield, FarmParcelName = farmParcelName });
             await WriteAuditAsync("FarmParcel.Created", parcel.TenantID, "FarmParcel", parcel.IDFarmParcel.ToString()!, parcel.FarmParcelName);
             return Ok(zone);
         }
@@ -603,7 +610,16 @@ namespace Agrumy.Api.Controllers.API
                 Sowing? holder = await sowingRepo.SowingGetByIdAsync(idSowing);
                 return Conflict($"Zone is held by an active sowing ({holder?.SowingName ?? $"#{idSowing}"}) - close it before splitting.");
             }
-            IList<FarmParcelZone> created = await farmParcelRepo.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames);
+            IList<FarmParcelZone> created;
+            try
+            {
+                // A split nets newZoneNames.Count - 1 new zones (source zone is deleted after) - see CheckCanAddFarmParcelZoneAsync's own doc comment.
+                created = await farmParcelRepo.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames, () => quotaEnforcer.CheckCanAddFarmParcelZoneAsync(zone.TenantID, newZoneNames.Count - 1));
+            }
+            catch (QuotaLimitExceededException ex)
+            {
+                return ForbidWith(ex.Message);
+            }
             await WriteAuditAsync("FarmParcelZone.Split", zone.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), string.Join(", ", newZoneNames));
             return Ok(created);
         }

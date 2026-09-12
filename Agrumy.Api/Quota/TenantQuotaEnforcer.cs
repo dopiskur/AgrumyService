@@ -74,8 +74,8 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxCrops ? LimitMessage : null;
         }
 
-        /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed FarmOpenfield/FarmParcel counts.
-        public async Task<string?> CheckCanAddParcelAsync(int? tenantId)
+        /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed FarmOpenfield/FarmParcel counts. additionalZones lets one call cover an operation that creates more than one zone at once (ParcelSplit replacing 1 zone with N nets N-1 new zones) - a plain "current >= limit" would let a single oversized split through since it never re-checks between the N inserts.
+        public async Task<string?> CheckCanAddFarmParcelZoneAsync(int? tenantId, int additionalZones = 1)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
             if (quota == null)
@@ -90,7 +90,19 @@ namespace Agrumy.Api.Quota
                     current += (await farmParcelRepo.FarmParcelZonesGetAsync(parcel.IDFarmParcel!.Value)).Count;
                 }
             }
-            return current >= quota.MaxParcels ? LimitMessage : null;
+            return current + additionalZones > quota.MaxFarmParcelZones ? LimitMessage : null;
+        }
+
+        /// D9 - counts only Status==Active sowings, separate from CheckCanAddCropAsync's all-time MaxCrops cap; checked at SowingStartAsync (the Planned->Active transition), not at creation, since a Planned sowing does not yet occupy the "concurrently open" slot.
+        public async Task<string?> CheckCanStartSowingAsync(int? tenantId)
+        {
+            TenantQuota? quota = await GetQuotaAsync(tenantId);
+            if (quota == null)
+            {
+                return null;
+            }
+            int current = (await sowingRepo.SowingsGetAsync(tenantId)).Count(s => s.Status == GrowingCycleStatus.Active);
+            return current >= quota.MaxSowingsActive ? LimitMessage : null;
         }
 
         public async Task<string?> CheckControllerRelayCountAsync(int? tenantId, int relayCount)

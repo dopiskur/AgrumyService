@@ -6,7 +6,10 @@ using Agrumy.Shared.Models;
 namespace Agrumy.Api.Migration
 {
     /// Builds the full portable snapshot of one organization - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
-    public class TenantExportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
+    public class TenantExportService(
+        ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo,
+        IFarmOpenfieldRepository farmOpenfieldRepo, IFarmParcelRepository farmParcelRepo, ISowingRepository sowingRepo, ICropCatalogRepository cropCatalogRepo,
+        IFieldLogRepository fieldLogRepo, IZonePlantingRepository zonePlantingRepo)
     {
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.
         private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -85,6 +88,95 @@ namespace Agrumy.Api.Migration
                 });
             }
 
+            var exportParcels = new List<TenantExportFarmParcel>();
+            foreach (FarmOpenfield openfield in await farmOpenfieldRepo.FarmOpenfieldsGetAsync(tenantId))
+            {
+                foreach (FarmParcel parcel in await farmParcelRepo.FarmParcelsGetAsync(openfield.IDFarmOpenfield!.Value))
+                {
+                    exportParcels.Add(new TenantExportFarmParcel
+                    {
+                        Parcel = parcel,
+                        Zones = await farmParcelRepo.FarmParcelZonesGetAsync(parcel.IDFarmParcel!.Value),
+                    });
+                }
+            }
+
+            var exportSowings = new List<TenantExportSowing>();
+            foreach (Sowing sowing in await sowingRepo.SowingsGetAsync(tenantId))
+            {
+                Crop? crop = await cropCatalogRepo.CropGetByIdAsync(sowing.CropID);
+                exportSowings.Add(new TenantExportSowing { Sowing = sowing, CropName = crop?.Name });
+            }
+
+            // Greenhouse's equivalent of Sowing (D8) - one lookup per already-exported zone.
+            var exportZonePlantings = new List<ZonePlanting>();
+            foreach (DeviceFarmUnitZone zone in zones)
+            {
+                if (zone.IDDeviceFarmUnitZone is int idZone)
+                {
+                    exportZonePlantings.AddRange(await zonePlantingRepo.ZonePlantingsGetAsync(idZone));
+                }
+            }
+
+            // Dnevnik (D6/D7) - one lookup per Sowing/FarmParcelZone/ZonePlanting/DeviceFarmUnitZone, the four mutually-exclusive scopes FieldLogEntriesGetAsync supports.
+            var exportFieldLogEntries = new List<TenantExportFieldLogEntry>();
+            async Task CollectFieldLogAsync(int? sowingID, int? farmParcelZoneID, int? zonePlantingID, int? deviceFarmUnitZoneID)
+            {
+                foreach (FieldLogEntry entry in await fieldLogRepo.FieldLogEntriesGetAsync(sowingID, farmParcelZoneID, zonePlantingID, deviceFarmUnitZoneID))
+                {
+                    IList<FieldLogAttachment> attachments = entry.IDFieldLogEntry is int idEntry ? await fieldLogRepo.FieldLogAttachmentsGetAsync(idEntry) : [];
+                    exportFieldLogEntries.Add(new TenantExportFieldLogEntry { Entry = entry, Attachments = attachments });
+                }
+            }
+            foreach (TenantExportSowing es in exportSowings)
+            {
+                if (es.Sowing.IDSowing is int idSowing)
+                {
+                    await CollectFieldLogAsync(idSowing, null, null, null);
+                }
+            }
+            foreach (TenantExportFarmParcel ep in exportParcels)
+            {
+                foreach (FarmParcelZone zone in ep.Zones)
+                {
+                    if (zone.IDFarmParcelZone is int idZone)
+                    {
+                        await CollectFieldLogAsync(null, idZone, null, null);
+                    }
+                }
+            }
+            foreach (ZonePlanting zp in exportZonePlantings)
+            {
+                if (zp.IDZonePlanting is int idZonePlanting)
+                {
+                    await CollectFieldLogAsync(null, null, idZonePlanting, null);
+                }
+            }
+            foreach (DeviceFarmUnitZone zone in zones)
+            {
+                if (zone.IDDeviceFarmUnitZone is int idZone)
+                {
+                    await CollectFieldLogAsync(null, null, null, idZone);
+                }
+            }
+
+            // Urod (D14) - one lookup per Sowing/ZonePlanting, the two scopes HarvestResultsGetAsync supports.
+            var exportHarvestResults = new List<HarvestResult>();
+            foreach (TenantExportSowing es in exportSowings)
+            {
+                if (es.Sowing.IDSowing is int idSowing)
+                {
+                    exportHarvestResults.AddRange(await fieldLogRepo.HarvestResultsGetAsync(idSowing, null));
+                }
+            }
+            foreach (ZonePlanting zp in exportZonePlantings)
+            {
+                if (zp.IDZonePlanting is int idZonePlanting)
+                {
+                    exportHarvestResults.AddRange(await fieldLogRepo.HarvestResultsGetAsync(null, idZonePlanting));
+                }
+            }
+
             return new TenantExport
             {
                 ExportedAtUtc = DateTime.UtcNow,
@@ -94,6 +186,11 @@ namespace Agrumy.Api.Migration
                 Zones = zones,
                 ZoneRules = rules,
                 Devices = exportDevices,
+                FarmParcels = exportParcels,
+                Sowings = exportSowings,
+                ZonePlantings = exportZonePlantings,
+                FieldLogEntries = exportFieldLogEntries,
+                HarvestResults = exportHarvestResults,
                 IncludesSensorData = includeSensorData,
                 SensorData = includeSensorData ? await sensorDataRepo.SensorDataExportGetAsync(tenantId, sensorDataSinceUtc) : null,
             };

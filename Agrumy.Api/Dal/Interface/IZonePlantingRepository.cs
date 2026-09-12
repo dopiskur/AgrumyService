@@ -12,5 +12,8 @@ namespace Agrumy.Api.Dal.Interface
         Task<ZonePlanting> ZonePlantingStartAsync(ZonePlanting planting);
 
         Task ZonePlantingCloseAsync(int idZonePlanting);
+
+        /// Agrumy.Api.Migration.TenantImportService only - writes Status/HarvestDate/ClosedUtc verbatim from a source export instead of always creating Active like ZonePlantingStartAsync does, and skips its "one active cycle per zone" guard since the source data already satisfied that invariant (at most one of a given zone's exported cycles has Status==Active).
+        Task<ZonePlanting> ZonePlantingRestoreAsync(ZonePlanting planting);
     }
 }

@@ -1,6 +1,7 @@
 using Agrumy.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
+using Agrumy.Api.Quota;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,18 +22,19 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoParcel(row);
         }
 
-        public async Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel)
-        {
-            var row = new FarmParcelRow { TenantID = parcel.TenantID, FarmOpenfieldID = parcel.FarmOpenfieldID, FarmParcelName = parcel.FarmParcelName };
-            db.FarmParcels.Add(row);
-            await db.SaveChangesAsync();
+        public Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel, Func<Task<string?>>? quotaCheckAsync = null) =>
+            QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
+            {
+                var row = new FarmParcelRow { TenantID = parcel.TenantID, FarmOpenfieldID = parcel.FarmOpenfieldID, FarmParcelName = parcel.FarmParcelName };
+                db.FarmParcels.Add(row);
+                await db.SaveChangesAsync();
 
-            var zoneRow = new FarmParcelZoneRow { TenantID = parcel.TenantID, FarmParcelID = row.IDFarmParcel, FarmParcelZoneName = parcel.FarmParcelName, IsWholeParcel = true };
-            db.FarmParcelZones.Add(zoneRow);
-            await db.SaveChangesAsync();
+                var zoneRow = new FarmParcelZoneRow { TenantID = parcel.TenantID, FarmParcelID = row.IDFarmParcel, FarmParcelZoneName = parcel.FarmParcelName, IsWholeParcel = true };
+                db.FarmParcelZones.Add(zoneRow);
+                await db.SaveChangesAsync();
 
-            return (ToDtoParcel(row), ToDtoZone(zoneRow));
-        }
+                return (ToDtoParcel(row), ToDtoZone(zoneRow));
+            });
 
         public async Task FarmParcelUpdateAsync(FarmParcel parcel)
         {
@@ -118,25 +120,29 @@ namespace Agrumy.Api.Dal
                 .SetProperty(z => z.BboxMaxLat, bboxMaxLat)
                 .SetProperty(z => z.BboxMaxLon, bboxMaxLon));
 
-        public async Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames)
+        public async Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames, Func<Task<string?>>? quotaCheckAsync = null)
         {
-            var source = await db.FarmParcelZones.FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
-            if (source == null)
+            List<FarmParcelZoneRow> created = await QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                throw new InvalidOperationException("Zone not found.");
-            }
-            if (source.CurrentSowingID != null)
-            {
-                throw new InvalidOperationException("Cannot split a zone with an active sowing.");
-            }
-            var created = new List<FarmParcelZoneRow>();
-            foreach (string name in newZoneNames)
-            {
-                var row = new FarmParcelZoneRow { TenantID = source.TenantID, FarmParcelID = source.FarmParcelID, FarmParcelZoneName = name, IsWholeParcel = false };
-                db.FarmParcelZones.Add(row);
-                created.Add(row);
-            }
-            await db.SaveChangesAsync();
+                var source = await db.FarmParcelZones.FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
+                if (source == null)
+                {
+                    throw new InvalidOperationException("Zone not found.");
+                }
+                if (source.CurrentSowingID != null)
+                {
+                    throw new InvalidOperationException("Cannot split a zone with an active sowing.");
+                }
+                var rows = new List<FarmParcelZoneRow>();
+                foreach (string name in newZoneNames)
+                {
+                    var row = new FarmParcelZoneRow { TenantID = source.TenantID, FarmParcelID = source.FarmParcelID, FarmParcelZoneName = name, IsWholeParcel = false };
+                    db.FarmParcelZones.Add(row);
+                    rows.Add(row);
+                }
+                await db.SaveChangesAsync();
+                return rows;
+            });
             await FarmParcelZoneDeleteAsync(idFarmParcelZone);
             return created.Select(ToDtoZone).ToList();
         }

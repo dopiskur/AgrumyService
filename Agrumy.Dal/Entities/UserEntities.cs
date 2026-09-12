@@ -35,7 +35,8 @@ namespace Agrumy.Dal.Entities
         public int MaxUnits { get; set; }
         public int MaxZones { get; set; }
         public int MaxCrops { get; set; }
-        public int MaxParcels { get; set; }
+        public int MaxFarmParcelZones { get; set; }
+        public int MaxSowingsActive { get; set; }
         public int MaxControllersPerDevice { get; set; }
         public int MaxSensorsPerDevice { get; set; }
         public bool MqttEnabled { get; set; }

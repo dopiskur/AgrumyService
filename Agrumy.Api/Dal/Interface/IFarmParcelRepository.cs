@@ -9,8 +9,8 @@ namespace Agrumy.Api.Dal.Interface
 
         Task<FarmParcel?> FarmParcelGetByIdAsync(int idFarmParcel);
 
-        /// Creates the parcel AND its first zone (IsWholeParcel=true) in one call - D3, every parcel has at least one zone from the moment it exists.
-        Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel);
+        /// Creates the parcel AND its first zone (IsWholeParcel=true) in one call - D3, every parcel has at least one zone from the moment it exists. quotaCheckAsync (TenantQuotaEnforcer.CheckCanAddFarmParcelZoneAsync) runs inside the same transaction as the insert.
+        Task<(FarmParcel Parcel, FarmParcelZone Zone)> FarmParcelAddAsync(FarmParcel parcel, Func<Task<string?>>? quotaCheckAsync = null);
 
         Task FarmParcelUpdateAsync(FarmParcel parcel);
 
@@ -31,8 +31,8 @@ namespace Agrumy.Api.Dal.Interface
         /// Bumps ConfigVersion for every device in the zone - mirrors DeviceFarmUnitZoneConfigVersionBumpAsync.
         Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone);
 
-        /// D3/D4 - replaces one zone with N named zones; blocked (throws) while the source zone has an active sowing (CurrentSowingID != null).
-        Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames);
+        /// D3/D4 - replaces one zone with N named zones; blocked (throws) while the source zone has an active sowing (CurrentSowingID != null). quotaCheckAsync (TenantQuotaEnforcer.CheckCanAddFarmParcelZoneAsync, additionalZones = N-1) runs inside the same transaction as the insert - a split is a net add of N-1 zones, not N.
+        Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames, Func<Task<string?>>? quotaCheckAsync = null);
 
         /// D3/D4 - merges N zones of the same parcel back into one; blocked while any source zone has an active sowing.
         Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName);

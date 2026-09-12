@@ -55,6 +55,25 @@ namespace Agrumy.Api.Dal
             await db.ZonePlantings.Where(z => z.IDZonePlanting == idZonePlanting)
                 .ExecuteUpdateAsync(set => set.SetProperty(z => z.Status, (int)GrowingCycleStatus.Closed).SetProperty(z => z.ClosedUtc, DateTimeOffset.UtcNow));
 
+        public async Task<ZonePlanting> ZonePlantingRestoreAsync(ZonePlanting planting)
+        {
+            var row = new ZonePlantingRow
+            {
+                TenantID = planting.TenantID,
+                DeviceFarmUnitZoneID = planting.DeviceFarmUnitZoneID,
+                CropID = planting.CropID,
+                PlantedDate = planting.PlantedDate,
+                ExpectedDurationDays = planting.ExpectedDurationDays,
+                Status = (int)planting.Status,
+                HarvestDate = planting.HarvestDate,
+                ClosedUtc = planting.ClosedUtc,
+                Notes = planting.Notes,
+            };
+            db.ZonePlantings.Add(row);
+            await db.SaveChangesAsync();
+            return await ToDtoAsync(row);
+        }
+
         private async Task<ZonePlanting> ToDtoAsync(ZonePlantingRow z)
         {
             string? cropName = await db.Crops.AsNoTracking().Where(c => c.IDCrop == z.CropID).Select(c => c.Name).FirstOrDefaultAsync();
