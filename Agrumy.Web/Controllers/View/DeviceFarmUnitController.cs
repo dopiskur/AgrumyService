@@ -158,18 +158,14 @@ namespace Agrumy.Web.Controllers.View
         private async Task<GroupedUnitCubesViewModel> BuildGroupedUnitCubesAsync() => new()
         {
             Units = await api.DeviceFarmUnitDashboardGet(),
-            Farms = await api.DeviceFarmsGet(),
-            Crops = await api.CropDashboardGet(),
-            Openfields = await api.FarmOpenfieldsGet(),
+            Farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.Greenhouse).ToList(),
         };
 
         // The Unit/Zone cube overview moved here from the old Dashboard (the wizard took that route over).
         public async Task<ActionResult> Farms() => View(new FarmListViewModel
         {
-            Farms = await api.DeviceFarmsGet(),
+            Farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.Greenhouse).ToList(),
             Units = await api.DeviceFarmUnitDashboardGet(),
-            Crops = await api.CropDashboardGet(),
-            Openfields = await api.FarmOpenfieldsGet(),
         });
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
