@@ -38,6 +38,7 @@
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Class</th>
                     <th>Air Temp (°C)</th>
                     <th>Air Humidity (%)</th>
                     <th>Soil Moisture (%)</th>
@@ -49,13 +50,15 @@
                 @foreach (var entry in Model)
                 {
                     <tr>
-                        <td>@entry.Name</td>
+                        <td><a asp-action="Details" asp-route-type="@type" asp-route-id="@entry.ID">@entry.Name</a></td>
+                        <td>@entry.ClassCode</td>
                         <td>@entry.AirTempMin - @entry.AirTempMax</td>
                         <td>@entry.AirHumidityMin - @entry.AirHumidityMax</td>
                         <td>@entry.SoilMoistureMin - @entry.SoilMoistureMax</td>
                         <td>@entry.LightMin - @entry.LightMax</td>
                         <td>
                             <div class="btn-group btn-group-sm">
+                                <a asp-action="Details" asp-route-type="@type" asp-route-id="@entry.ID" class="btn btn-outline-secondary" title="View"><i class="bi bi-eye"></i></a>
                                 <a asp-action="Edit" asp-route-type="@type" asp-route-id="@entry.ID" class="btn btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
                                 @if (!isReadOnly)
                                 {

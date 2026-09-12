@@ -23,6 +23,10 @@ namespace Agrumy.Web.Controllers.View
             View("Edit", new HorticultureCatalogEditViewModel { CatalogType = type });
 
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
+        public async Task<ActionResult> Details(HorticultureCatalogType type, int id) =>
+            View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
+
+        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> Edit(HorticultureCatalogType type, int id) =>
             View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
 

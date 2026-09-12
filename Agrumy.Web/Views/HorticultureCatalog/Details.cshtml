@@ -1,0 +1,91 @@
+@model Agrumy.Web.ViewModels.HorticultureCatalogEditViewModel
+@using System.Text.Json
+@using System.Text.RegularExpressions
+@{
+    ViewData["Title"] = Model.Entry.Name;
+    Dictionary<string, string>? phaseDescriptions = null;
+    if (!string.IsNullOrEmpty(Model.Entry.PhaseDescriptionsJson))
+    {
+        try { phaseDescriptions = JsonSerializer.Deserialize<Dictionary<string, string>>(Model.Entry.PhaseDescriptionsJson); }
+        catch (JsonException) { }
+    }
+    Func<BbchGrowthStage, string> stageName = s => Regex.Replace(s.ToString(), "(\\B[A-Z])", " $1");
+    string Range(double? min, double? max) => min == null && max == null ? "-" : $"{min?.ToString() ?? "?"} - {max?.ToString() ?? "?"}";
+    string RangeInt(int? min, int? max) => min == null && max == null ? "-" : $"{min?.ToString() ?? "?"} - {max?.ToString() ?? "?"}";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            @Model.Entry.Name
+            @if (!string.IsNullOrEmpty(Model.Entry.ClassCode))
+            {
+                <span class="badge text-bg-secondary ms-2">@Model.Entry.ClassCode</span>
+            }
+        </h3>
+        <div class="card-tools">
+            <a asp-action="Edit" asp-route-type="@Model.CatalogType" asp-route-id="@Model.Entry.ID" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> Edit</a>
+            <a asp-action="Index" asp-route-type="@Model.CatalogType" class="btn btn-sm btn-outline-secondary">Back to List</a>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(Model.Entry.Description))
+        {
+            <p class="text-secondary">@Model.Entry.Description</p>
+        }
+
+        <h5>Base parameter ranges</h5>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm table-bordered" style="max-width:48rem">
+                <tbody>
+                    <tr><th>Air Temp (°C)</th><td>@Range(Model.Entry.AirTempMin, Model.Entry.AirTempMax)</td><th>Soil Temp (°C)</th><td>@Range(Model.Entry.SoilTempMin, Model.Entry.SoilTempMax)</td></tr>
+                    <tr><th>Air Humidity (%)</th><td>@Range(Model.Entry.AirHumidityMin, Model.Entry.AirHumidityMax)</td><th>Soil Moisture (%)</th><td>@Range(Model.Entry.SoilMoistureMin, Model.Entry.SoilMoistureMax)</td></tr>
+                    <tr><th>Light (lx)</th><td>@Range(Model.Entry.LightMin, Model.Entry.LightMax)</td><th>Soil pH <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilPHMin, Model.Entry.SoilPHMax)</td></tr>
+                    <tr><th>Soil EC <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilECMin, Model.Entry.SoilECMax)</td><th>CO2 (ppm) <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.Co2Min, Model.Entry.Co2Max)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.Entry.GrowthStages.Count > 0)
+        {
+            <h5>BBCH growth stages</h5>
+            <p class="text-secondary small">
+                Official BBCH principal growth stage scale (0-9) - not every stage applies to every
+                species (e.g. maize's own BBCH monograph never defines Tillering or Booting, so those
+                rows are simply absent below).
+            </p>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>BBCH</th>
+                            <th>Stage</th>
+                            <th style="min-width:20rem">Description</th>
+                            <th>Air Temp (°C)</th>
+                            <th>Soil Temp (°C)</th>
+                            <th>Air Humidity (%)</th>
+                            <th>Soil Moisture (%)</th>
+                            <th>Duration (days)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var stage in Model.Entry.GrowthStages)
+                        {
+                            string? description = phaseDescriptions != null && phaseDescriptions.TryGetValue(((int)stage.StageNumber).ToString(), out var d) ? d : null;
+                            <tr>
+                                <td>@((int)stage.StageNumber)</td>
+                                <td>@stageName(stage.StageNumber)</td>
+                                <td>@(description ?? "-")</td>
+                                <td>@Range(stage.AirTempMin, stage.AirTempMax)</td>
+                                <td>@Range(stage.SoilTempMin, stage.SoilTempMax)</td>
+                                <td>@Range(stage.AirHumidityMin, stage.AirHumidityMax)</td>
+                                <td>@Range(stage.SoilMoistureMin, stage.SoilMoistureMax)</td>
+                                <td>@RangeInt(stage.DurationDaysMin, stage.DurationDaysMax)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
