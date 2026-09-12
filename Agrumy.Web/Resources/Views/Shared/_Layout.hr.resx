@@ -7,7 +7,7 @@
   <data name="Home" xml:space="preserve"><value>Početna</value></data>
   <data name="Dashboard" xml:space="preserve"><value>Nadzorna ploča</value></data>
   <data name="Farms" xml:space="preserve"><value>Farme</value></data>
-  <data name="Fleet" xml:space="preserve"><value>Uređaji</value></data>
+  <data name="Device fleet" xml:space="preserve"><value>Uređaji</value></data>
   <data name="WiFi Networks" xml:space="preserve"><value>WiFi mreže</value></data>
   <data name="Users" xml:space="preserve"><value>Korisnici</value></data>
   <data name="Audit Log" xml:space="preserve"><value>Zapisnik promjena</value></data>
