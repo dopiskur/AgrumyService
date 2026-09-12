@@ -55,7 +55,7 @@ public class RecycleBinApiControllerTests
         var result = await controller.DeviceRestore(8);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: DeviceRestoreAsync has no setup, proving a foreign-tenant device was never restored.
+        // MockBehavior.Strict: DeviceRestoreAsync has no setup, proving a foreign-organization device was never restored.
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class RecycleBinApiControllerTests
         var result = await controller.FarmRestore(5);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: DeviceFarmRestoreAsync has no setup, proving a foreign-tenant farm was never restored.
+        // MockBehavior.Strict: DeviceFarmRestoreAsync has no setup, proving a foreign-organization farm was never restored.
     }
 
     [Fact]

@@ -2,12 +2,12 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Dal.Interface
 {
-    /// Per-tenant satellite module config CRUD (Detaljni dizajn S, D1/D8/D11/D12) - narrow facet, mirrors ITenantRepository's TenantWifiConfig* shape.
+    /// Per-organization satellite module config CRUD (Detaljni dizajn S, D1/D8/D11/D12) - narrow facet, mirrors ITenantRepository's TenantWifiConfig* shape.
     public interface ISatelliteConfigRepository
     {
         Task<TenantSatelliteConfig?> SatelliteConfigGetAsync(int tenantId);
 
-        /// Every tenant with Enabled=true and a config row - the daily job's own per-tenant loop.
+        /// Every organization with Enabled=true and a config row - the daily job's own per-organization loop.
         Task<IList<TenantSatelliteConfig>> SatelliteConfigsGetEnabledAsync();
 
         /// Insert-or-update by TenantID; blank ClientSecret keeps whatever is already stored (same convention as TenantWifiConfigUpdateAsync).

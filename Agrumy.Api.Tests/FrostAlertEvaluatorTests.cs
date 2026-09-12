@@ -10,7 +10,7 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// Exercises FrostAlertEvaluator directly, no database or real HTTP call. Strict mocks double as the assertion that an early-return path makes NO further calls. Single-tenant scenarios use tenant 5 throughout, matching TenantsGetAllAsync's own mock.
+/// Exercises FrostAlertEvaluator directly, no database or real HTTP call. Strict mocks double as the assertion that an early-return path makes NO further calls. Single-organization scenarios use organization 5 throughout, matching TenantsGetAllAsync's own mock.
 public class FrostAlertEvaluatorTests
 {
     private readonly Mock<IServerConfigRepository> _serverConfig = new(MockBehavior.Strict);

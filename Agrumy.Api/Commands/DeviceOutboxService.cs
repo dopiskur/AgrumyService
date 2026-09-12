@@ -58,7 +58,7 @@ namespace Agrumy.Api.Commands
             return await IssueToTargetsAsync(targets, actionType);
         }
 
-        /// Fans one actionType to every device in the tenant - used by tenant-wide events (e.g. emergency stop) that have no single Zone/Unit/Device target, same dedup/fan-out tail via IssueToTargetsAsync.
+        /// Fans one actionType to every device in the organization - used by organization-wide events (e.g. emergency stop) that have no single Zone/Unit/Device target, same dedup/fan-out tail via IssueToTargetsAsync.
         public async Task<IssueCommandResult> IssueTenantWideCommandAsync(int tenantId, CommandActionType actionType)
         {
             IList<Device> targets = await deviceRepo.DevicesGetAsync(tenantId);
@@ -69,7 +69,7 @@ namespace Agrumy.Api.Commands
             return await IssueToTargetsAsync(targets, actionType);
         }
 
-        /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else farm, else tenant-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
+        /// Fans ScanForDevices to every sensor-only device in scope (zone, else unit, else farm, else organization-wide) - a different target-resolution rule than IssueCommandAsync's, same dedup/fan-out tail via IssueToTargetsAsync.
         public async Task<IssueCommandResult> IssueScanCommandAsync(int? tenantId, int? unitId, int? zoneId, int? farmId = null, int? parcelId = null)
         {
             IList<Device> targets;

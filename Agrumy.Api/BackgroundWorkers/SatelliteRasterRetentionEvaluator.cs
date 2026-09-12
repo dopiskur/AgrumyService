@@ -3,7 +3,7 @@ using Agrumy.Api.Storage;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Deletes cached PNGs past retention (Detaljni dizajn S, D11) - never touches the DB grid/stats, so anything reaped here just re-renders from GridBase64 on next view. Runs per-tenant since RasterRetentionDaysOverride can differ per tenant.
+    /// Deletes cached PNGs past retention (Detaljni dizajn S, D11) - never touches the DB grid/stats, so anything reaped here just re-renders from GridBase64 on next view. Runs per-organization since RasterRetentionDaysOverride can differ per organization.
     public sealed class SatelliteRasterRetentionEvaluator(ISatelliteConfigRepository configRepo, ISatelliteSceneRepository sceneRepo, IServerConfigRepository serverConfigRepo, SatelliteStorage storage, ILogger<SatelliteRasterRetentionEvaluator> logger)
     {
         public async Task RunOnceAsync(CancellationToken ct = default)
@@ -18,12 +18,12 @@ namespace Agrumy.Api.BackgroundWorkers
                 int days = config.RasterRetentionDaysOverride ?? defaultDays;
                 if (days <= 0)
                 {
-                    continue; // 0/negative disables the retention cutoff for this tenant, same "0 = disabled" convention as SensorDataRetentionDays
+                    continue; // 0/negative disables the retention cutoff for this organization, same "0 = disabled" convention as SensorDataRetentionDays
                 }
                 DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-days);
                 try
                 {
-                    // Clears the DB's ImagePath pointer; actual file deletion under the tenant's own satellite-store subtree is a directory sweep, safe to run unconditionally since paths are entirely server-built (tenant/zone/date/index), never user text.
+                    // Clears the DB's ImagePath pointer; actual file deletion under the organization's own satellite-store subtree is a directory sweep, safe to run unconditionally since paths are entirely server-built (organization/zone/date/index), never user text.
                     int cleared = await sceneRepo.ImagePathsClearOlderThanAsync(cutoff);
                     if (cleared > 0 && logger.IsEnabled(LogLevel.Information))
                     {

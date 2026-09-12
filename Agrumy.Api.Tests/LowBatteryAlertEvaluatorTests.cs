@@ -22,7 +22,7 @@ public class LowBatteryAlertEvaluatorTests
         int? battery = null, DateTime? lowBatteryNotifiedAt = null) =>
         new(id, tenantId, name, battery, lowBatteryNotifiedAt);
 
-    // No tenant override in any of these tests - every candidate's tenant falls back to ServerConfig's own threshold/hysteresis.
+    // No organization override in any of these tests - every candidate's organization falls back to ServerConfig's own threshold/hysteresis.
     private void SetupCandidates(params LowBatteryAlertCandidate[] candidates)
     {
         _devices.Setup(d => d.LowBatteryAlertCandidatesGetAsync()).ReturnsAsync(candidates);

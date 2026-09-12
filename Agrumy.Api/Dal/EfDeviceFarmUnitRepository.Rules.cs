@@ -109,7 +109,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoRule).ToList();
         }
 
-        /// Every Notification-action rule for the tenant across all three real scopes - RuleNotificationEvaluator resolves Zone>Unit>Global itself per zone, so this deliberately returns the flat, unresolved set. Simulation/experiment-scoped ones excluded, same reasoning as RulesGetForTenantGlobalAsync above - fetched separately per zone via RulesGetForSimulationAsync/RulesGetForExperimentAsync instead.
+        /// Every Notification-action rule for the organization across all three real scopes - RuleNotificationEvaluator resolves Zone>Unit>Global itself per zone, so this deliberately returns the flat, unresolved set. Simulation/experiment-scoped ones excluded, same reasoning as RulesGetForTenantGlobalAsync above - fetched separately per zone via RulesGetForSimulationAsync/RulesGetForExperimentAsync instead.
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
@@ -163,13 +163,13 @@ namespace Agrumy.Api.Dal
             }
             else if (rule.SimulationSessionID is int idSession)
             {
-                // Only the session's own member devices, not the whole tenant - a simulation rule change must not force every other device in the tenant to re-fetch a config that didn't actually change for them.
+                // Only the session's own member devices, not the whole organization - a simulation rule change must not force every other device in the organization to re-fetch a config that didn't actually change for them.
                 var memberIds = db.SimulationSessionDevices.AsNoTracking().Where(m => m.IDSimulationSession == idSession).Select(m => m.DeviceID);
                 await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => memberIds.Contains(d.IDDevice)));
             }
             else if (rule.ExperimentID != null)
             {
-                // An experiment's rule membership is dynamic (Scope+ScopeID, not a snapshotted device list) - bumping every device in the tenant is broader than strictly needed, but resolving the exact current membership here would duplicate ActiveExperimentIdForZoneAsync's own cascade for a rare admin action.
+                // An experiment's rule membership is dynamic (Scope+ScopeID, not a snapshotted device list) - bumping every device in the organization is broader than strictly needed, but resolving the exact current membership here would duplicate ActiveExperimentIdForZoneAsync's own cascade for a rare admin action.
                 await BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.TenantID == rule.TenantID));
             }
             else
@@ -179,7 +179,7 @@ namespace Agrumy.Api.Dal
             return row.IDDeviceFarmUnitZoneRule;
         }
 
-        /// Every RuleTriggered condition anywhere in the tenant's rules that references ruleId - callers use this to block deleting a still-referenced rule, and RuleNotificationEvaluator uses it to find dependents of a just-fired rule.
+        /// Every RuleTriggered condition anywhere in the organization's rules that references ruleId - callers use this to block deleting a still-referenced rule, and RuleNotificationEvaluator uses it to find dependents of a just-fired rule.
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesReferencingAsync(int ruleId, int tenantId)
         {
             var candidates = await db.DeviceFarmUnitZoneRules.AsNoTracking()

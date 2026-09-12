@@ -91,14 +91,14 @@ namespace Agrumy.Api.Controllers.API
             var userSecret = new UserSecret { PwdSalt = AuthenticationProvider.GetSalt() };
             userSecret.PwdHash = AuthenticationProvider.GetHash(value.Password!, userSecret.PwdSalt); // [Required], guaranteed by ModelState.IsValid above
 
-            // Always starts disabled - Activate() enables it once email ownership is proven and (for anyone but a tenant's own creator) an admin approves it.
+            // Always starts disabled - Activate() enables it once email ownership is proven and (for anyone but an organization's own creator) an admin approves it.
             user.Enabled = false;
 
             var (plaintext, hash) = GenerateOpaqueToken();
-            // A new tenant's creator starts as its admin; everyone else starts as a read-only Tenant reader until granted more via PUT /api/User/UserRoles.
+            // A new organization's creator starts as its admin; everyone else starts as a read-only Organization reader until granted more via PUT /api/User/UserRoles.
             string startingRole = isNewTenant ? RoleNames.TenantAdmin : RoleNames.TenantReader;
 
-            // One Serializable transaction (tenant create + quota check + user add + activation token + starting role) so a crash partway never leaves a user row with no role, and a concurrent registration into the same near-full tenant can't slip past a stale count - sets user.TenantID on the same object this method returns.
+            // One Serializable transaction (organization create + quota check + user add + activation token + starting role) so a crash partway never leaves a user row with no role, and a concurrent registration into the same near-full organization can't slip past a stale count - sets user.TenantID on the same object this method returns.
             try
             {
                 await userRepository.RegisterUserAsync(user, userSecret,
@@ -107,7 +107,7 @@ namespace Agrumy.Api.Controllers.API
                     activationTokenHash: hash,
                     activationTokenExpiresAtUtc: DateTime.UtcNow.AddHours(ActivationTokenValidHours),
                     startingRoles: new[] { startingRole },
-                    // A brand-new tenant's own first/creating user is always allowed (that IS the "max users = 1" default's one seat) - only joining an already-provisioned tenant can hit the cap.
+                    // A brand-new organization's own first/creating user is always allowed (that IS the "max users = 1" default's one seat) - only joining an already-provisioned organization can hit the cap.
                     quotaCheckAsync: isNewTenant ? null : quotaEnforcer.CheckCanAddUserAsync);
             }
             catch (QuotaLimitExceededException ex)
@@ -136,7 +136,7 @@ namespace Agrumy.Api.Controllers.API
                 return StatusCode(400, "Activation link is invalid or has expired.");
             }
 
-            // TenantID==0 has no owning admin to approve joiners, and a new tenant's own creator already holds TenantAdmin from registration - either way, proven email ownership alone is enough here.
+            // TenantID==0 has no owning admin to approve joiners, and a new organization's own creator already holds TenantAdmin from registration - either way, proven email ownership alone is enough here.
             if (user.TenantID != 0 && !(await userRepository.UserRoleNamesGetAsync(user.IDUser!.Value)).Contains(RoleNames.TenantAdmin))
             {
                 NotifyTenantAdminsOfPendingApproval(user);
@@ -188,7 +188,7 @@ namespace Agrumy.Api.Controllers.API
             jobQueue.Enqueue((services, ct) => services.GetRequiredService<INotificationDispatcher>().DispatchAsync(notification, ct));
         }
 
-        /// Tells every admin of the given tenant that a newly-verified user is waiting for approval - never a silent no-op, since a tenant can never have zero admins. Enqueued as one job (own repo/dispatcher resolved from the job's scope, not the request's) so N admins never sequentially block the Activate response on N SMTP round-trips.
+        /// Tells every admin of the given organization that a newly-verified user is waiting for approval - never a silent no-op, since an organization can never have zero admins. Enqueued as one job (own repo/dispatcher resolved from the job's scope, not the request's) so N admins never sequentially block the Activate response on N SMTP round-trips.
         private void NotifyTenantAdminsOfPendingApproval(User user)
         {
             int tenantId = user.TenantID!.Value;
@@ -238,7 +238,7 @@ namespace Agrumy.Api.Controllers.API
             return error != null ? error : Ok(loginResult);
         }
 
-        /// Tenant-import counterpart to Login: proves identity with the OLD imported password (login is blocked by MustChangePassword), sets a new one, then logs in - same as ChangePassword requiring the old password, just reachable before this account's first login here.
+        /// Organization-import counterpart to Login: proves identity with the OLD imported password (login is blocked by MustChangePassword), sets a new one, then logs in - same as ChangePassword requiring the old password, just reachable before this account's first login here.
         [HttpPost("ForceChangePassword")]
         [AllowAnonymous]
         [EnableRateLimiting("login")]
@@ -422,7 +422,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- read ----------------------------------------------------------------
 
-        /// Open to every authenticated caller - a Tenant reader's whole point is being able to SEE their tenant's resources without touching them.
+        /// Open to every authenticated caller - an Organization reader's whole point is being able to SEE their organization's resources without touching them.
         [HttpGet("All")]
         [Authorize]
         public async Task<ActionResult<IList<User>>> UsersGet()
@@ -612,7 +612,7 @@ namespace Agrumy.Api.Controllers.API
 
             var user = new User
             {
-                TenantID = CallerTenantId, // payload's TenantID is ignored - admins only create in their own tenant
+                TenantID = CallerTenantId, // payload's TenantID is ignored - admins only create in their own organization
                 Email = value.Email,
                 Username = value.Username,
                 FirstName = value.FirstName,
@@ -708,9 +708,9 @@ namespace Agrumy.Api.Controllers.API
             if (value.Phone != null) { user.Phone = value.Phone; }
             if (value.PhoneEnabled != null) { user.PhoneEnabled = value.PhoneEnabled; }
             if (value.Enabled != null) { user.Enabled = value.Enabled; }
-            if (value.TenantID != null && value.TenantID != user.TenantID && CallerManagesUsersGlobally) // cross-tenant reassignment stays a Global-admin-only power
+            if (value.TenantID != null && value.TenantID != user.TenantID && CallerManagesUsersGlobally) // cross-organization reassignment stays a Global-admin-only power
             {
-                // A tenant can never be left with zero users via migration - deleting the whole tenant (TenantApiController.TenantDelete) is the only way to empty one out.
+                // An organization can never be left with zero users via migration - deleting the whole organization (TenantApiController.TenantDelete) is the only way to empty one out.
                 if (user.TenantID != null && (await userRepository.UsersGetAsync(user.TenantID)).Count <= 1)
                 {
                     return ForbidWith("Cannot migrate the last user of a tenant - delete the tenant instead.");
@@ -770,7 +770,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return ForbidWith("Not allowed to manage a user with equal or higher privilege.");
             }
-            // The last user of a tenant can't just be deleted, leaving the tenant a dangling shell - delete the tenant itself instead (optionally cascading, TenantApiController.TenantDelete).
+            // The last user of an organization can't just be deleted, leaving the organization a dangling shell - delete the organization itself instead (optionally cascading, TenantApiController.TenantDelete).
             if (targetUser.TenantID != null && (await userRepository.UsersGetAsync(targetUser.TenantID)).Count <= 1)
             {
                 return ForbidWith("Cannot delete the last user of a tenant - delete the tenant instead.");
@@ -791,7 +791,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- composable roles -------------------------------------
 
-        /// Every role name a Tenant admin may grant - Global-* roles are a Global-admin-only power.
+        /// Every role name an Organization admin may grant - Global-* roles are a Global-admin-only power.
         private static readonly string[] TenantScopedGrantableRoles =
         {
             RoleNames.TenantAdmin, RoleNames.TenantReader, RoleNames.TenantUser, RoleNames.TenantDevice,
@@ -813,7 +813,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await userRepository.UserRoleNamesGetAsync(idUser));
         }
 
-        // Role GRANTING deliberately stays admin-only (RoleNames.Admins, not UserManagers) - a Tenant User could otherwise hand themselves Tenant admin, since managing users must not imply managing privileges.
+        // Role GRANTING deliberately stays admin-only (RoleNames.Admins, not UserManagers) - an Organization User could otherwise hand themselves Organization admin, since managing users must not imply managing privileges.
         [HttpPut("UserRoles")]
         [Authorize(Roles = RoleNames.Admins)]
         public async Task<ActionResult> UserRolesSet([FromBody] UserRolesUpdate value)

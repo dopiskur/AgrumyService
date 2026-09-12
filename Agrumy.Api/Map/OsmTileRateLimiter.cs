@@ -1,6 +1,6 @@
 namespace Agrumy.Api.Map
 {
-    /// Server-wide outbound throttle toward tile.openstreetmap.org - OSMF's Tile Usage Policy caps a single source at ~2 req/s, and this server (not each browser) is now that one source. Singleton, so every concurrent request across every tenant/tab/device shares the same gate - unlike Program.cs's AddRateLimiter, which throttles INCOMING requests per client, this throttles the one OUTGOING path to OSM regardless of how many callers are waiting on it.
+    /// Server-wide outbound throttle toward tile.openstreetmap.org - OSMF's Tile Usage Policy caps a single source at ~2 req/s, and this server (not each browser) is now that one source. Singleton, so every concurrent request across every organization/tab/device shares the same gate - unlike Program.cs's AddRateLimiter, which throttles INCOMING requests per client, this throttles the one OUTGOING path to OSM regardless of how many callers are waiting on it.
     public sealed class OsmTileRateLimiter
     {
         private readonly SemaphoreSlim gate = new(1, 1);

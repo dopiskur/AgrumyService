@@ -164,7 +164,7 @@ namespace Agrumy.Api.Dal
         private async Task<(SensorAverages Averages, SensorTrend Trend)> BuildUnitAggregateAsync(int idDeviceFarmUnit)
         {
             IQueryable<DeviceRow> scopedDevices = db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitID == idDeviceFarmUnit);
-            // Averages-only caller (see BuildZoneAggregateAsync's sibling for the Status-carrying path) - HasRecentProblemEvent goes unused here, so the server-wide default is fine regardless of tenant.
+            // Averages-only caller (see BuildZoneAggregateAsync's sibling for the Status-carrying path) - HasRecentProblemEvent goes unused here, so the server-wide default is fine regardless of organization.
             (int expiryHours, bool alertsEnabled) = await ProblemEventSettingsAsync(null);
             var snapshots = await GetDeviceSnapshotsAsync(scopedDevices, expiryHours, alertsEnabled);
             var zoneIds = await db.DeviceFarmUnitZones.AsNoTracking()
@@ -193,7 +193,7 @@ namespace Agrumy.Api.Dal
             return (Average(snapshots), await BuildTrendAsync(zoneIds));
         }
 
-        /// Shared by every dashboard aggregation call this request needs it in - tenantID's own TenantAlertConfig override wins over the ServerConfig default; null (a cross-tenant combined view, or a call site where Status/ProblemAlerts is never read) falls back to the server-wide default.
+        /// Shared by every dashboard aggregation call this request needs it in - tenantID's own TenantAlertConfig override wins over the ServerConfig default; null (a cross-organization combined view, or a call site where Status/ProblemAlerts is never read) falls back to the server-wide default.
         private async Task<(int ExpiryHours, bool AlertsEnabled)> ProblemEventSettingsAsync(int? tenantID)
         {
             ServerConfig config = await serverConfigRepository.ServerConfigGetAsync(1);

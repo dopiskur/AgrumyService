@@ -95,7 +95,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
-    /// Global (TenantID null, Global-admin maintained) or tenant-added cultivar/species catalog a Sowing or ZonePlanting references - Detaljni dizajn R, D12: a tenant sees the union of both, edits only its own rows, same shared-plus-own pattern as the existing Horticulture Catalog.
+    /// Global (TenantID null, Global-admin maintained) or organization-added cultivar/species catalog a Sowing or ZonePlanting references - Detaljni dizajn R, D12: an organization sees the union of both, edits only its own rows, same shared-plus-own pattern as the existing Horticulture Catalog.
     public class Crop
     {
         [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]

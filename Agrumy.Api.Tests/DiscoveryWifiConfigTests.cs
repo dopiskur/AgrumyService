@@ -14,7 +14,7 @@ using Agrumy.Api.Tests.TestSupport;
 namespace Agrumy.Api.Tests;
 
 /// Covers the WiFi-network management endpoints - password visibility by role, and
-/// ownership checks on cross-tenant Update/Delete.
+/// ownership checks on cross-organization Update/Delete.
 public class DiscoveryWifiConfigTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
@@ -86,7 +86,7 @@ public class DiscoveryWifiConfigTests
 
         var status = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, status.StatusCode);
-        // Strict mock: TenantWifiConfigUpdateAsync was never set up - a cross-tenant edit must not reach it.
+        // Strict mock: TenantWifiConfigUpdateAsync was never set up - a cross-organization edit must not reach it.
     }
 
     [Fact]

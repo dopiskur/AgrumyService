@@ -349,7 +349,7 @@ namespace Agrumy.Api.Dal
                 .Join(db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID != null),
                     ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.DeviceFarmUnitZoneID!.Value, ms.IDSimulationSession })
                 .ToListAsync();
-            // Open-Field's Parcel is Zone's own equivalent leaf - same dictionary, same "last write wins on overlap" convention, so RuleNotificationEvaluator's single per-tenant lookup covers both branches.
+            // Open-Field's Parcel is Zone's own equivalent leaf - same dictionary, same "last write wins on overlap" convention, so RuleNotificationEvaluator's single per-organization lookup covers both branches.
             var parcelRows = await activeMembers
                 .Join(db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID != null),
                     ms => ms.DeviceID, d => d.IDDevice, (ms, d) => new { LeafID = d.FarmParcelZoneID!.Value, ms.IDSimulationSession })

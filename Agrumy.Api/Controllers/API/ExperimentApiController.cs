@@ -80,7 +80,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(created);
         }
 
-        /// Tenant-scoped for everyone including Global admin, same deliberate deviation SimulationApiController's own session routes use - an experiment belongs to the tenant it was created for.
+        /// Organization-scoped for everyone including Global admin, same deliberate deviation SimulationApiController's own session routes use - an experiment belongs to the organization it was created for.
         [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet]
         public async Task<ActionResult<IList<Experiment>>> List() => Ok(await experimentRepo.ExperimentsGetAsync(CallerTenantId));

@@ -29,7 +29,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset DateReported { get; set; }
     }
 
-    /// Body of POST /api/Discovery/Register - WifiConfigId/Ssid/WifiPassword/SaveWifiForLater are needed depending on how many TenantWifiConfig rows the tenant already has, per DiscoveryApiController.Register's branching (see DiscoveryRegisterOutcome for how the caller learns which one applies).
+    /// Body of POST /api/Discovery/Register - WifiConfigId/Ssid/WifiPassword/SaveWifiForLater are needed depending on how many TenantWifiConfig rows the organization already has, per DiscoveryApiController.Register's branching (see DiscoveryRegisterOutcome for how the caller learns which one applies).
     public class DiscoveryRegisterRequest
     {
         public string DiscoveredApMac { get; set; } = "";

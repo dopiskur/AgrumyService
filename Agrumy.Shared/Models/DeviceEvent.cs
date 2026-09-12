@@ -33,7 +33,7 @@ namespace Agrumy.Shared.Models
         SensorMissing = 19,
     }
 
-    /// Body of POST /api/Device/Event; deliberately has no device/tenant identity field — the caller's apiId (see Agrumy.Api.Security.DeviceAuth) is the only trusted source for that.
+    /// Body of POST /api/Device/Event; deliberately has no device/organization identity field — the caller's apiId (see Agrumy.Api.Security.DeviceAuth) is the only trusted source for that.
     public class DeviceEventPush
     {
         public string? EventType { get; set; }

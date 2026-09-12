@@ -5,7 +5,7 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A calibrated zone's fill percent (Agrumy.Shared.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold (or its tenant's own TenantAlertConfig override) fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
+    /// A calibrated zone's fill percent (Agrumy.Shared.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold (or its organization's own TenantAlertConfig override) fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
     public sealed class TankRefillAlertEvaluator(
         IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, ITenantRepository tenantRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {
@@ -14,7 +14,7 @@ namespace Agrumy.Api.BackgroundWorkers
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
             var candidates = await deviceFarmUnitRepo.TankRefillAlertCandidatesGetAsync();
 
-            // One TenantAlertConfig lookup per distinct tenant in this batch, not per zone.
+            // One TenantAlertConfig lookup per distinct organization in this batch, not per zone.
             var tenantConfigs = new Dictionary<int, TenantAlertConfig>();
             foreach (int tenantId in candidates.Select(z => z.TenantID).Distinct())
             {

@@ -40,7 +40,7 @@ namespace Agrumy.Api.Satellite
             _ => throw new ArgumentOutOfRangeException(nameof(collection)),
         };
 
-        /// The Process/Catalog/Statistical "type" value for a collection - Sentinel-2 uses CDSE's universal type string; commercial collections are each tenant's own Sentinel Hub BYOC subscription, referenced by the "byoc-" prefix convention documented for third-party collections (not live-verified - no commercial CDSE subscription exists to test against in this session).
+        /// The Process/Catalog/Statistical "type" value for a collection - Sentinel-2 uses CDSE's universal type string; commercial collections are each organization's own Sentinel Hub BYOC subscription, referenced by the "byoc-" prefix convention documented for third-party collections (not live-verified - no commercial CDSE subscription exists to test against in this session).
         private static string ResolveCollectionType(SatelliteCollection collection, string? commercialCollectionId) => collection switch
         {
             SatelliteCollection.Sentinel2 => "sentinel-2-l2a",
@@ -288,7 +288,7 @@ namespace Agrumy.Api.Satellite
             {
                 Content = JsonContent.Create(body),
             };
-            // Per-request header, never httpClient.DefaultRequestHeaders - this HttpClient is shared/pooled across every tenant's calls.
+            // Per-request header, never httpClient.DefaultRequestHeaders - this HttpClient is shared/pooled across every organization's calls.
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             return request;
         }

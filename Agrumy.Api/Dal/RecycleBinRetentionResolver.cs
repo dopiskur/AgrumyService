@@ -1,6 +1,6 @@
 namespace Agrumy.Api.Dal
 {
-    /// Shared between EfDeviceRepository and EfDeviceFarmUnitRepository's own retention-marking passes - a governing TenantQuota's RecycleBinRetentionDays replaces the tenant's own self-configured override entirely, not merely caps it.
+    /// Shared between EfDeviceRepository and EfDeviceFarmUnitRepository's own retention-marking passes - a governing TenantQuota's RecycleBinRetentionDays replaces the organization's own self-configured override entirely, not merely caps it.
     internal static class RecycleBinRetentionResolver
     {
         public static int EffectiveRecycleBinRetentionDays(

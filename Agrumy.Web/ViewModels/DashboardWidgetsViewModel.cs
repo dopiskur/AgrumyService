@@ -10,7 +10,7 @@ namespace Agrumy.Web.ViewModels
         public bool IsParcelLeaf { get; init; }
         /// This zone's own dashboard - still used as the RelayStatus/target-picker default, no longer the sole data source every widget reads from.
         public required DeviceFarmUnitZoneDashboard Dashboard { get; init; }
-        /// Whole-tenant fleet (not pre-filtered to Zone) - a RelayStatus widget can now target a different zone than the page it's shown on.
+        /// Whole-organization fleet (not pre-filtered to Zone) - a RelayStatus widget can now target a different zone than the page it's shown on.
         public IList<DeviceFleetStatus> Fleet { get; init; } = [];
         public bool CanManage { get; init; }
         public IList<DeviceFarm> Farms { get; init; } = [];

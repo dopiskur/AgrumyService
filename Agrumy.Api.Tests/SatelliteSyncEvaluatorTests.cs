@@ -122,9 +122,9 @@ public class SatelliteSyncEvaluatorTests
 
         await NewEvaluator().RunOnceAsync();
 
-        // Tenant 2 still ran to completion despite tenant 1's exception.
+        // Organization 2 still ran to completion despite organization 1's exception.
         _source.Verify(s => s.QuotaStatusAsync(2, It.IsAny<CancellationToken>()), Times.Once);
-        // LastAutoSyncUtc still advances for a tenant whose tick threw - the daily budget was spent attempting it, so a broken tenant doesn't retry every single tick forever.
+        // LastAutoSyncUtc still advances for an organization whose tick threw - the daily budget was spent attempting it, so a broken organization doesn't retry every single tick forever.
         _configRepo.Verify(r => r.SatelliteConfigLastAutoSyncSetAsync(1, It.IsAny<DateTimeOffset>()), Times.Once);
     }
 
@@ -136,7 +136,7 @@ public class SatelliteSyncEvaluatorTests
 
         await NewEvaluator().RunOnceAsync();
 
-        // Strict mocks: SourceFactory/LastAutoSyncSetAsync would throw if called - a tenant not yet due gets no work at all, not even a timestamp bump.
+        // Strict mocks: SourceFactory/LastAutoSyncSetAsync would throw if called - an organization not yet due gets no work at all, not even a timestamp bump.
         _sourceFactory.VerifyNoOtherCalls();
     }
 

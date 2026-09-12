@@ -38,7 +38,7 @@ namespace Agrumy.Api.Controllers.API
         [HttpPost("Farm")]
         public async Task<ActionResult<DeviceFarm>> DeviceFarmAdd([FromBody] DeviceFarm farm)
         {
-            farm.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
+            farm.TenantID = CallerTenantId; // payload cannot pick another organization - same rule as every other Add
             DeviceFarm added;
             try
             {
@@ -61,13 +61,13 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
-            farm.TenantID = existing!.TenantID; // payload cannot move a farm to another tenant
+            farm.TenantID = existing!.TenantID; // payload cannot move a farm to another organization
             await deviceFarmUnitRepo.DeviceFarmUpdateAsync(farm);
             await WriteAuditAsync("DeviceFarm.Updated", existing.TenantID, "DeviceFarm", existing.IDDeviceFarm.ToString()!, farm.DeviceFarmName);
             return true;
         }
 
-        /// The Farms page's drag-and-drop card order - full replacement of every listed farm's DisplayOrder by index, not a partial patch. Every id must resolve to an owned farm AND belong to the same tenant, or the whole request is rejected.
+        /// The Farms page's drag-and-drop card order - full replacement of every listed farm's DisplayOrder by index, not a partial patch. Every id must resolve to an owned farm AND belong to the same organization, or the whole request is rejected.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Farm/Reorder")]
         public async Task<ActionResult<bool>> DeviceFarmsReorder([FromBody] List<int> orderedFarmIds)
@@ -128,7 +128,7 @@ namespace Agrumy.Api.Controllers.API
         [HttpPost]
         public async Task<ActionResult<DeviceFarmUnit>> DeviceFarmUnitAdd([FromBody] DeviceFarmUnit unit)
         {
-            unit.TenantID = CallerTenantId; // payload cannot pick another tenant - same rule as every other Add
+            unit.TenantID = CallerTenantId; // payload cannot pick another organization - same rule as every other Add
             DeviceFarmUnit added;
             try
             {
@@ -151,7 +151,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
-            unit.TenantID = existing!.TenantID; // payload cannot move a unit to another tenant
+            unit.TenantID = existing!.TenantID; // payload cannot move a unit to another organization
             await deviceFarmUnitRepo.DeviceFarmUnitUpdateAsync(unit);
             await WriteAuditAsync("DeviceFarmUnit.Updated", existing.TenantID, "DeviceFarmUnit", existing.IDDeviceFarmUnit.ToString()!, unit.DeviceFarmUnitName);
             return true;
@@ -171,7 +171,7 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
-        /// The Farms page's drag-and-drop unit cube order, same convention as DeviceFarmsReorder - full replacement of every listed unit's DisplayOrder by index. Every id must resolve to an owned unit AND belong to the same tenant, or the whole request is rejected.
+        /// The Farms page's drag-and-drop unit cube order, same convention as DeviceFarmsReorder - full replacement of every listed unit's DisplayOrder by index. Every id must resolve to an owned unit AND belong to the same organization, or the whole request is rejected.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Reorder")]
         public async Task<ActionResult<bool>> DeviceFarmUnitsReorder([FromBody] List<int> orderedUnitIds)

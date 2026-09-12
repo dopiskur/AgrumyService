@@ -18,56 +18,56 @@ namespace Agrumy.Api.Dal.Interface
     {
         // ---- Farm CRUD -----------------------------------
 
-        /// Every real Farm in the tenant, or every tenant when tenantID is null (caller must check CallerReadsDevicesGlobally).
+        /// Every real Farm in the organization, or every organization when tenantID is null (caller must check CallerReadsDevicesGlobally).
         Task<IList<DeviceFarm>> DeviceFarmsGetAsync(int? tenantID);
 
-        /// The Farm with this id (no tenant filter), for ownership checks before an authorized write - or null if none.
+        /// The Farm with this id (no organization filter), for ownership checks before an authorized write - or null if none.
         Task<DeviceFarm?> DeviceFarmGetByIdAsync(int? idDeviceFarm);
 
         /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
         Task<DeviceFarm> DeviceFarmAddAsync(DeviceFarm farm, Func<Task<string?>>? quotaCheckAsync = null);
 
-        /// No-op if the tenant already has any farm.
+        /// No-op if the organization already has any farm.
         Task EnsureFirstFarmAsync(int tenantId);
 
         Task DeviceFarmUpdateAsync(DeviceFarm farm);
 
-        /// Sets DisplayOrder to each id's index in orderedFarmIds - only touches farms actually owned by tenantID, an id for another tenant (or a stale/unknown id) is silently ignored.
+        /// Sets DisplayOrder to each id's index in orderedFarmIds - only touches farms actually owned by tenantID, an id for another organization (or a stale/unknown id) is silently ignored.
         Task DeviceFarmsReorderAsync(int tenantId, IReadOnlyList<int> orderedFarmIds);
 
         /// Soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
         Task DeviceFarmDeleteAsync(int idDeviceFarm);
 
-        /// Every soft-deleted, not-yet-Purged Farm (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
+        /// Every soft-deleted, not-yet-Purged Farm (tenantID null = every organization) - still visible/restorable in the Recycle Bin listing.
         Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID);
 
-        /// Ownership-check lookup for a soft-deleted farm (no tenant filter, Purged or not) - null if the farm doesn't exist or isn't deleted.
+        /// Ownership-check lookup for a soft-deleted farm (no organization filter, Purged or not) - null if the farm doesn't exist or isn't deleted.
         Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm);
 
-        /// Every Deleted AND Purged Farm (tenantID null = every tenant) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
+        /// Every Deleted AND Purged Farm (tenantID null = every organization) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
         Task<IList<DeviceFarm>> DeviceFarmPendingPurgeGetAsync(int? tenantID);
 
-        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged on the farm AND its cascade Units/Zones/Devices; false if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged on the farm AND its cascade Units/Zones/Devices; false if the farm doesn't exist, isn't deleted, or belongs to a different organization.
         Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID);
 
-        /// Marks an already soft-deleted Farm (and its exact DeviceFarmDeleteAsync cascade of Units/Zones/Devices, matched by DeletedAtUtc) for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceFarmRestoreAsync until the purge cycle actually runs. False if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Marks an already soft-deleted Farm (and its exact DeviceFarmDeleteAsync cascade of Units/Zones/Devices, matched by DeletedAtUtc) for permanent removal without waiting out its organization's RecycleBinRetentionDays; still fully restorable via DeviceFarmRestoreAsync until the purge cycle actually runs. False if the farm doesn't exist, isn't deleted, or belongs to a different organization.
         Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID);
 
-        /// The automatic half of marking - every Deleted, not-yet-Purged Farm whose OWNING TENANT's effective retention has elapsed. Returns how many were marked.
+        /// The automatic half of marking - every Deleted, not-yet-Purged Farm whose OWNING ORGANIZATION's effective retention has elapsed. Returns how many were marked.
         Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct);
 
-        /// Every farm currently marked Purged, with its owning tenant - the reap step's worklist (DeviceFarmRecycleBinPurgeAsync needs the tenant for its own ownership check).
+        /// Every farm currently marked Purged, with its owning organization - the reap step's worklist (DeviceFarmRecycleBinPurgeAsync needs the organization for its own ownership check).
         Task<IList<(int IDDeviceFarm, int? TenantID)>> DeviceFarmPurgedIdsGetAsync();
 
-        /// The actual, irreversible removal of the farm and its exact cascade (Units/Zones/Devices, matched by DeletedAtUtc) - each device purged the same SensorData-included way as a standalone DeviceRecycleBinPurgeAsync. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        /// The actual, irreversible removal of the farm and its exact cascade (Units/Zones/Devices, matched by DeletedAtUtc) - each device purged the same SensorData-included way as a standalone DeviceRecycleBinPurgeAsync. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different organization.
         Task<bool> DeviceFarmRecycleBinPurgeAsync(int idDeviceFarm, int? tenantID);
 
         // ---- Unit CRUD -------------------------------------------------
 
-        /// Every Unit in the tenant, or every tenant when tenantID is null (caller must check CallerReadsDevicesGlobally).
+        /// Every Unit in the organization, or every organization when tenantID is null (caller must check CallerReadsDevicesGlobally).
         Task<IList<DeviceFarmUnit>> DeviceFarmUnitsGetAsync(int? tenantID);
 
-        /// The Unit with this id (no tenant filter), for ownership checks before an authorized write - same pattern as IDeviceRepository.DeviceGetByIdAsync - or null if none.
+        /// The Unit with this id (no organization filter), for ownership checks before an authorized write - same pattern as IDeviceRepository.DeviceGetByIdAsync - or null if none.
         Task<DeviceFarmUnit?> DeviceFarmUnitGetByIdAsync(int? idDeviceFarmUnit);
 
         /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
@@ -86,7 +86,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Every Zone belonging to this Unit.
         Task<IList<DeviceFarmUnitZone>> DeviceFarmUnitZonesGetAsync(int idDeviceFarmUnit);
 
-        /// The Zone with this id (no tenant filter) - for ownership checks - or null if none.
+        /// The Zone with this id (no organization filter) - for ownership checks - or null if none.
         Task<DeviceFarmUnitZone?> DeviceFarmUnitZoneGetByIdAsync(int? idDeviceFarmUnitZone);
 
         /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.
@@ -135,7 +135,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // ---- Device assignment -----------------------------------------
 
-        /// The "Add Controller"/"Add Sensor" picker list: every unassigned device in the tenant, filtered by DeviceControllerEnabled or DeviceSensorEnabled per controllerCapable.
+        /// The "Add Controller"/"Add Sensor" picker list: every unassigned device in the organization, filtered by DeviceControllerEnabled or DeviceSensorEnabled per controllerCapable.
         Task<IList<Device>> DeviceUnassignedGetAsync(int? tenantID, bool controllerCapable);
 
         /// Assigns one device to one zone (sets DeviceFarmUnitID from the zone's own, plus DeviceFarmUnitZoneID) and bumps ConfigVersion so the device picks it up on its next poll.
@@ -146,7 +146,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // ---- Dashboard aggregation -------------------------------------
 
-        /// One cube per real Unit in scope (tenantID null = every tenant): name, zone/device counts, and the per-sensor-type average across the unit.
+        /// One cube per real Unit in scope (tenantID null = every organization): name, zone/device counts, and the per-sensor-type average across the unit.
         Task<IList<DeviceFarmUnitDashboard>> DeviceFarmUnitDashboardGetAsync(int? tenantID);
 
         /// One cube per Zone within one Unit, same shape narrowed in scope - Devices list stays empty, populated only by the single-zone detail below.
@@ -172,7 +172,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule scoped to exactly this farm (Farm scope, not the union of its units'/zones' own rules).
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForFarmAsync(int idDeviceFarm);
 
-        /// Every rule at Global (per-tenant) scope - applies to every farm/unit/zone/crop/parcel the tenant owns unless a more specific scope overrides it for that function/metric.
+        /// Every rule at Global (per-organization) scope - applies to every farm/unit/zone/crop/parcel the organization owns unless a more specific scope overrides it for that function/metric.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId);
 
         /// Open-Field's mid-level equivalent of RulesGetForUnitAsync.
@@ -190,15 +190,15 @@ namespace Agrumy.Api.Dal.Interface
         /// One query in place of up to 6 sequential calls to the methods just above - DeviceConfigBuilder resolves every id first, then partitions the flat result back out by each row's own scope FK. A null id means that scope contributes nothing, same as not calling the individual method at all.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForHierarchyAsync(int tenantId, int? idSimulationSession, int? idExperiment, int? idZone, int? idFarmParcelZone, int? idUnit, int? idSowing, int? idFarm, bool includeGlobal);
 
-        /// Every Notification-action rule for the tenant across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation/experiment-scoped rules excluded, fetched separately per session/experiment.
+        /// Every Notification-action rule for the organization across all three real scopes, unresolved (RuleNotificationEvaluator does its own per-zone Zone>Unit>Global resolution) - simulation/experiment-scoped rules excluded, fetched separately per session/experiment.
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetNotificationRulesForTenantAsync(int tenantId);
 
-        /// Single rule by id (no tenant filter) - for ownership checks, resolve its scope then check that scope's tenant - or null if none.
+        /// Single rule by id (no organization filter) - for ownership checks, resolve its scope then check that scope's organization - or null if none.
         Task<DeviceFarmUnitZoneRule?> RuleGetByIdAsync(int? idRule);
 
         Task<int> RuleAddAsync(DeviceFarmUnitZoneRule rule);
 
-        /// Every Notification-action rule in the tenant with a RuleTriggered condition referencing ruleId.
+        /// Every Notification-action rule in the organization with a RuleTriggered condition referencing ruleId.
         Task<IList<DeviceFarmUnitZoneRule>> RulesReferencingAsync(int ruleId, int tenantId);
 
         /// A no-op if the id does not exist. Callers must check RulesReferencingAsync first and refuse to delete a still-referenced rule - this method itself does not guard that.
@@ -216,7 +216,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // ---- Tank refill alert --------------------------
 
-        /// Every real, tank-calibrated zone (TankCapacityLiters + both raw calibration points set) across every tenant, with its latest averaged WaterLevel reading.
+        /// Every real, tank-calibrated zone (TankCapacityLiters + both raw calibration points set) across every organization, with its latest averaged WaterLevel reading.
         Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync();
 
         Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt);

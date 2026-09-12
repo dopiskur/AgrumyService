@@ -69,7 +69,7 @@ public class DeviceFarmUnitZoneRuleValidationTests
     [Fact]
     public void RuleTriggeredOnRelayRule_IsInvalid_WithNoRepository()
     {
-        // The cross-reference existence check (does the referenced rule exist/match tenant) needs a DB
+        // The cross-reference existence check (does the referenced rule exist/match organization) needs a DB
         // lookup and stays in RuleValidationService - but "RuleTriggered only valid on a Notification
         // rule" needs no DB access at all, so it's caught right here, standalone.
         var rule = new DeviceFarmUnitZoneRule

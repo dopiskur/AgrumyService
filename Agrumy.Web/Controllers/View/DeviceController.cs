@@ -164,7 +164,7 @@ namespace Agrumy.Web.Controllers.View
             // "MQTT credentials pending sync" banner - agrumy-mqtt-sync.timer only re-runs every 5 minutes, so a
             // just-registered device's ApiId/ApiKey may not be in the broker's ACL yet even though MQTT is on.
             // GET ServerConfig is GlobalAdminOrReader-only, same gate as every other MQTT-broker-config surface -
-            // a tenant DeviceManager can't act on this anyway, so it just stays hidden for them.
+            // an organization DeviceManager can't act on this anyway, so it just stays hidden for them.
             if (User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalReader))
             {
                 ServerConfig serverConfig = await api.ServerConfigGet();

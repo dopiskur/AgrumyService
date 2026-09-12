@@ -35,7 +35,7 @@ namespace Agrumy.Api.Startup
             });
 
             services.AddSingleton<Agrumy.Api.Storage.SatelliteStorage>();
-            // Shared/pooled HttpClient for both CDSE calls - CdseTokenProvider and CdseSentinelHubSource each attach Authorization per-request, never as a default header, so pooling never leaks one tenant's token onto another's request.
+            // Shared/pooled HttpClient for both CDSE calls - CdseTokenProvider and CdseSentinelHubSource each attach Authorization per-request, never as a default header, so pooling never leaks one organization's token onto another's request.
             services.AddHttpClient<Agrumy.Api.Satellite.ICdseTokenProvider, Agrumy.Api.Satellite.CdseTokenProvider>(client => client.Timeout = TimeSpan.FromSeconds(20));
             services.AddHttpClient<Agrumy.Api.Satellite.CdseSentinelHubSource>(client => client.Timeout = TimeSpan.FromSeconds(60));
             services.AddScoped<Agrumy.Api.Satellite.ISatelliteImagerySourceFactory, Agrumy.Api.Satellite.SatelliteImagerySourceFactory>();

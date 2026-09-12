@@ -26,7 +26,7 @@ namespace Agrumy.Web.Controllers.View
             return View("Index", config);
         }
 
-        /// Weather/frost state is per-tenant - tenant 0 stands in for "the default install location" on this server-wide page, same convention TenantAdminsGetAsync already uses for tenantId 0 = GlobalAdmin.
+        /// Weather/frost state is per-organization - organization 0 stands in for "the default install location" on this server-wide page, same convention TenantAdminsGetAsync already uses for tenantId 0 = GlobalAdmin.
         private async Task PopulateWeatherStateAsync() => ViewBag.WeatherState = await api.TenantWeatherStateGet(0);
 
         private async Task PopulateHealthAsync()

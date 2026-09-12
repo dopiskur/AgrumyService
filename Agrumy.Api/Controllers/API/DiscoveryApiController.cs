@@ -40,7 +40,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// Fans ScanForDevices out to every sensor-only device in scope (see DeviceOutboxService.IssueScanCommandAsync for Zone/Unit/Fleet-wide resolution) - Zone/Unit ownership is checked like DeviceCommandApiController's targets, Fleet-wide scopes by the caller's own tenant instead (null only for a global device manager).
+        /// Fans ScanForDevices out to every sensor-only device in scope (see DeviceOutboxService.IssueScanCommandAsync for Zone/Unit/Fleet-wide resolution) - Zone/Unit ownership is checked like DeviceCommandApiController's targets, Fleet-wide scopes by the caller's own organization instead (null only for a global device manager).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Scan")]
         public async Task<ActionResult<IReadOnlyList<int>>> Scan([FromBody] DiscoveryScanRequest request)
@@ -132,7 +132,7 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest("Ssid is required.");
             }
             config.IDTenantWifiConfig = idTenantWifiConfig;
-            config.TenantID = existing!.TenantID; // payload cannot move it to another tenant
+            config.TenantID = existing!.TenantID; // payload cannot move it to another organization
             await tenantRepo.TenantWifiConfigUpdateAsync(config);
             return Ok();
         }
@@ -234,7 +234,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound($"No scan report found for {request.DiscoveredApMac}.");
             }
-            // The scanning device's own tenant is where a saved WiFi config would live; a genuinely tenant-less scanner has nowhere to save one and can't register a new device into a tenant it doesn't have.
+            // The scanning device's own organization is where a saved WiFi config would live; a genuinely organization-less scanner has nowhere to save one and can't register a new device into an organization it doesn't have.
             if (winner.TenantID is not int winnerTenantId)
             {
                 return BadRequest("The scanning device has no tenant.");

@@ -35,7 +35,7 @@ public class ApiControllerTests
     // Same appsettings.json binding TestConfig exposes elsewhere, so a token signed here and JwtTokenProvider.ValidateToken use the same key/issuer/audience.
     private static readonly IOptions<AgrumySettings> TestSettings = Options.Create(TestConfig.Settings);
 
-    // None of these tests are about quota behavior (that's TenantQuotaEnforcerTests) - every tenant is unlimited by default here.
+    // None of these tests are about quota behavior (that's TenantQuotaEnforcerTests) - every organization is unlimited by default here.
     public ApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     // DeviceOutboxService is a plain sealed class (not mocked); IAllFacetsRepository already implements all three interfaces it needs, so one mock backs all three constructor params.
@@ -74,7 +74,7 @@ public class ApiControllerTests
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);
 
-    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that tenant (Global admin for tenant 0, Tenant admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
+    /// Gives a bare (non-DI-constructed) controller the JWT claims an [Authorize] action reads via HttpContext.User. role="admin" resolves to whichever real role a login token would hold for that organization (Global admin for organization 0, Organization admin otherwise) - same shape UserApiController.ResolveCallerTokenRolesAsync produces.
     private static void SetCaller(ControllerBase controller, string role, int? tenantId)
     {
         if (role == "admin")
@@ -105,7 +105,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.DeviceSimulationGetAsync(42)).ReturnsAsync((DeviceSimulation?)null);
 
         var controller = NewDeviceController();
-        SetCaller(controller, "user", 7); // DeviceGet scopes to the caller's tenant
+        SetCaller(controller, "user", 7); // DeviceGet scopes to the caller's organization
         var result = await controller.DeviceGet(42);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -235,7 +235,7 @@ public class ApiControllerTests
     [Fact]
     public async Task DeviceAssign_GlobalAdmin_CrossTenantDeviceAndZone_Returns403_NeverAssigns()
     {
-        // GlobalAdmin legitimately crosses tenants for the device AND the zone's own ownership checks, but the device and zone still belong to different tenants from each other.
+        // GlobalAdmin legitimately crosses organizations for the device AND the zone's own ownership checks, but the device and zone still belong to different organizations from each other.
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 1 });
         _repo.Setup(r => r.DeviceFarmUnitZoneGetByIdAsync(5)).ReturnsAsync(new DeviceFarmUnitZone { IDDeviceFarmUnitZone = 5, TenantID = 2 });
 
@@ -707,8 +707,8 @@ public class ApiControllerTests
         captured = () => c;
     }
 
-    // A device registered under a genuinely tenant-less user must stay tenant-less
-    // itself, not get silently collapsed into the TenantID=0 bootstrap tenant's identity.
+    // A device registered under a genuinely organization-less user must stay organization-less
+    // itself, not get silently collapsed into the TenantID=0 bootstrap organization's identity.
     [Fact]
     public async Task DeviceRegistration_OwnerHasNoTenant_NewDeviceAlsoHasNoTenant()
     {
@@ -729,7 +729,7 @@ public class ApiControllerTests
 
         Assert.IsType<OkObjectResult>(result.Result);
         Assert.Null(captured!.TenantID);
-        // MockBehavior.Strict: TenantGetByIdAsync/RulesGetForTenantGlobalAsync have no setup, proving BuildAsync never looked either up for a tenant-less device.
+        // MockBehavior.Strict: TenantGetByIdAsync/RulesGetForTenantGlobalAsync have no setup, proving BuildAsync never looked either up for an organization-less device.
     }
 
     [Fact]
@@ -798,14 +798,14 @@ public class ApiControllerTests
         Assert.Equal("Provisioned Greenhouse", captured()!.DeviceName);
     }
 
-    /// UserRegistration now delegates tenant-create + user-add + activation-token + starting-role to one transactional Repo.RegisterUserAsync - this stubs it to capture what a test needs and mutate `user.TenantID` the same way the real method does, since UserRegistration's own `return Ok(user)` reflects that mutation.
+    /// UserRegistration now delegates organization-create + user-add + activation-token + starting-role to one transactional Repo.RegisterUserAsync - this stubs it to capture what a test needs and mutate `user.TenantID` the same way the real method does, since UserRegistration's own `return Ok(user)` reflects that mutation.
     private void StubRegisterUser(int idUser, Action<User, int?, string?, IReadOnlyList<string>>? capture = null)
     {
         _repo.Setup(r => r.RegisterUserAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<IEnumerable<string>>(), It.IsAny<Func<int?, Task<string?>>?>()))
              .Callback<User, UserSecret, int?, string?, string, DateTime, IEnumerable<string>, Func<int?, Task<string?>>?>((u, _, existingTenantId, newTenantName, _, _, roles, _) =>
              {
                  var roleList = roles.ToList();
-                 u.TenantID = existingTenantId ?? 42; // 42 stands in for a freshly created tenant's id
+                 u.TenantID = existingTenantId ?? 42; // 42 stands in for a freshly created organization's id
                  capture?.Invoke(u, existingTenantId, newTenantName, roleList);
              })
              .ReturnsAsync(idUser);
@@ -835,10 +835,10 @@ public class ApiControllerTests
 
         Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(capturedUser);
-        Assert.Null(capturedExistingTenantId); // a brand new tenant, not an existing one
+        Assert.Null(capturedExistingTenantId); // a brand new organization, not an existing one
         Assert.Equal("AcmeCorp", capturedNewTenantName);
         Assert.Equal(42, capturedUser!.TenantID);
-        Assert.Equal(new[] { RoleNames.TenantAdmin }, seededRoles); // admin on a brand new tenant
+        Assert.Equal(new[] { RoleNames.TenantAdmin }, seededRoles); // admin on a brand new organization
         Assert.False(capturedUser.Enabled);         // Activate() is what enables, not registration
         Assert.False(capturedUser.EmailVerified);   // still needs to click the activation link
         await RunOneQueuedJobAsync();
@@ -893,7 +893,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.TenantGetAsync("Acme")).ReturnsAsync(true);
         _repo.Setup(r => r.TenantGetIdAsync("Acme")).ReturnsAsync(42);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.TenantQuotaGetAsync(42)).ReturnsAsync((TenantQuota?)null); // no quota governs this tenant in this test
+        _repo.Setup(r => r.TenantQuotaGetAsync(42)).ReturnsAsync((TenantQuota?)null); // no quota governs this organization in this test
 
         User? capturedUser = null;
         int? capturedExistingTenantId = null;
@@ -911,10 +911,10 @@ public class ApiControllerTests
 
         Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(capturedUser);
-        Assert.Equal(42, capturedExistingTenantId); // joins the existing tenant, no new one created
+        Assert.Equal(42, capturedExistingTenantId); // joins the existing organization, no new one created
         Assert.Equal(42, capturedUser!.TenantID);
         Assert.Equal(new[] { RoleNames.TenantReader }, seededRoles); // regular user, not admin
-        Assert.False(capturedUser.Enabled);        // waits for that tenant's admin to enable them
+        Assert.False(capturedUser.Enabled);        // waits for that organization's admin to enable them
     }
 
     [Fact]
@@ -1319,10 +1319,10 @@ public class ApiControllerTests
              .Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
-        _repo.Setup(r => r.TenantQuotaGetAsync(24)).ReturnsAsync((TenantQuota?)null); // no quota governs this tenant in this test
+        _repo.Setup(r => r.TenantQuotaGetAsync(24)).ReturnsAsync((TenantQuota?)null); // no quota governs this organization in this test
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 24); // NOT tenant 0 - a regular Tenant admin, not Global admin
+        SetCaller(controller, "admin", 24); // NOT organization 0 - a regular Organization admin, not Global admin
         var value = new UserAdd { Email = "boss@test.local", Username = "boss", Password = "TestPass123!", RoleNames = new() { RoleNames.TenantAdmin }, Enabled = true };
         await controller.UserAdd(value);
 
@@ -1390,14 +1390,14 @@ public class ApiControllerTests
         Assert.Equal(new[] { RoleNames.TenantReader }, seededRoles);
     }
 
-    /// A Tenant admin may only grant Tenant-scoped roles - requesting a Global role must 403.
+    /// An Organization admin may only grant Organization-scoped roles - requesting a Global role must 403.
     [Fact]
     public async Task UserAdd_TenantAdminRequestsGlobalRole_Returns403()
     {
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 24); // Tenant admin, not Global
+        SetCaller(controller, "admin", 24); // Organization admin, not Global
         var value = new UserAdd { Email = "x@test.local", Username = "x", Password = "TestPass123!", RoleNames = new() { RoleNames.GlobalAdmin }, Enabled = true };
 
         var result = await controller.UserAdd(value);
@@ -1423,7 +1423,7 @@ public class ApiControllerTests
     [Fact]
     public async Task UserUpdate_DifferentTenant_Returns403_EvenForEmailOnlyChange()
     {
-        // Regression guard: the tenant check must fire for any change, not only Enabled.
+        // Regression guard: the organization check must fire for any change, not only Enabled.
         _repo.Setup(r => r.UserGetAsync(50, null, null))
              .ReturnsAsync(new User { IDUser = 50, TenantID = 99, Email = "target@test.local" });
 
@@ -1455,7 +1455,7 @@ public class ApiControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Contains("now sign in", (string)ok.Value!);
         Assert.True(updatedUser!.Enabled);
-        // Strict mock: no UserRoleNamesGetAsync/TenantAdminsGetAsync/DispatchAsync setup needed - tenant 0 short-circuits before any of them run.
+        // Strict mock: no UserRoleNamesGetAsync/TenantAdminsGetAsync/DispatchAsync setup needed - organization 0 short-circuits before any of them run.
     }
 
     [Fact]
@@ -1601,7 +1601,7 @@ public class ApiControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal(2, Assert.IsAssignableFrom<IList<User>>(ok.Value).Count);
-        // Strict mock: an un-set-up UsersGetAsync(0) call would throw, proving the "all tenants" path was taken instead of the normal tenant-scoped one.
+        // Strict mock: an un-set-up UsersGetAsync(0) call would throw, proving the "all organizations" path was taken instead of the normal organization-scoped one.
     }
 
     [Fact]
@@ -1622,7 +1622,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99, Email = "x@test.local" });
         _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
-        // Not the tenant's last user - the migration guard only blocks when this comes back with Count <= 1.
+        // Not the organization's last user - the migration guard only blocks when this comes back with Count <= 1.
         _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 }, new() { IDUser = 51, TenantID = 99 } });
         User? capturedUser = null;
         _repo.Setup(r => r.UserUpdateAsync(It.IsAny<User>()))
@@ -1648,7 +1648,7 @@ public class ApiControllerTests
              .Returns(Task.CompletedTask);
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 1); // a regular (non-global) tenant admin
+        SetCaller(controller, "admin", 1); // a regular (non-global) organization admin
         var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, TenantID = 7 });
 
         Assert.IsType<OkObjectResult>(result.Result);
@@ -1660,7 +1660,7 @@ public class ApiControllerTests
     {
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 99 });
         _repo.Setup(r => r.UserRoleNamesGetAsync(50)).ReturnsAsync(new List<string> { RoleNames.TenantReader });
-        // Not the tenant's last user - the delete guard only blocks when this comes back with Count <= 1.
+        // Not the organization's last user - the delete guard only blocks when this comes back with Count <= 1.
         _repo.Setup(r => r.UsersGetAsync(99)).ReturnsAsync(new List<User> { new() { IDUser = 50, TenantID = 99 }, new() { IDUser = 51, TenantID = 99 } });
         _repo.Setup(r => r.UserDeleteAsync(50)).ReturnsAsync(true);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
@@ -1778,7 +1778,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.UserGetAsync(50, null, null)).ReturnsAsync(new User { IDUser = 50, TenantID = 1 });
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 1); // regular Tenant admin, not Global admin
+        SetCaller(controller, "admin", 1); // regular Organization admin, not Global admin
         var result = await controller.UserRolesSet(new UserRolesUpdate { IDUser = 50, RoleNames = new List<string> { RoleNames.GlobalAdmin } });
 
         var obj = Assert.IsType<ObjectResult>(result);
@@ -1845,7 +1845,7 @@ public class ApiControllerTests
     [Fact]
     public async Task DeviceUpdate_DefaultTenantDevice_CallerOwnsDefaultTenant_Succeeds()
     {
-        // TenantID=0 is a real default tenant, not a "no tenant" sentinel - its own admin must be able to manage devices there.
+        // TenantID=0 is a real default organization, not a "no organization" sentinel - its own admin must be able to manage devices there.
         _repo.Setup(r => r.DeviceGetByIdAsync(8)).ReturnsAsync(new Device { IDDevice = 8, TenantID = 0 });
         _repo.Setup(r => r.DeviceUpdateAsync(It.IsAny<Device>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
@@ -2139,7 +2139,7 @@ public class ApiControllerTests
         _repo.Verify(r => r.TenantEmergencyStopSetAsync(5, true), Times.Once);
     }
 
-    /// Confirms the actual wiring - EmergencyStopActivate must not just write the DB flag, it must nudge every device in the tenant so the flag reaches them before their next scheduled poll.
+    /// Confirms the actual wiring - EmergencyStopActivate must not just write the DB flag, it must nudge every device in the organization so the flag reaches them before their next scheduled poll.
     [Fact]
     public async Task EmergencyStopActivate_NudgesEveryDeviceInTheTenant_NotJustTheDbFlag()
     {
@@ -2172,7 +2172,7 @@ public class ApiControllerTests
 
         var status = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, status.StatusCode);
-        // MockBehavior.Strict: TenantEmergencyStopSetAsync has no setup, proving cross-tenant was rejected before any write.
+        // MockBehavior.Strict: TenantEmergencyStopSetAsync has no setup, proving cross-organization was rejected before any write.
     }
 
     [Fact]
@@ -2596,7 +2596,7 @@ public class ApiControllerTests
     [Fact]
     public async Task DevicesGet_GlobalReader_SeesEveryTenant()
     {
-        // Strict mock: an un-set-up DevicesGetAsync(3) call would throw, proving the all-tenants path was taken.
+        // Strict mock: an un-set-up DevicesGetAsync(3) call would throw, proving the all-organizations path was taken.
         _repo.Setup(r => r.DevicesGetAllAsync()).ReturnsAsync(new List<Device>
         {
             new() { IDDevice = 1, TenantID = 0 }, new() { IDDevice = 2, TenantID = 7 },
@@ -2760,7 +2760,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 1); // Tenant admin
+        SetCaller(controller, "admin", 1); // Organization admin
         var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, RoleNames = new() { RoleNames.TenantUser, RoleNames.TenantDevice } });
 
         Assert.IsType<OkObjectResult>(result.Result);
@@ -2790,7 +2790,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.UserUpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 1); // Tenant admin, not Global
+        SetCaller(controller, "admin", 1); // Organization admin, not Global
         var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, RoleNames = new() { RoleNames.GlobalDevice } });
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
@@ -2876,7 +2876,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.UserUpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
         var controller = NewUserController();
-        SetCaller(controller, "admin", 1); // Tenant admin
+        SetCaller(controller, "admin", 1); // Organization admin
         var result = await controller.UserUpdate(new UserUpdate { IDUser = 50, FirstName = "New" });
 
         Assert.IsType<OkObjectResult>(result.Result);
@@ -3108,7 +3108,7 @@ public class ApiControllerTests
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
 
         var controller = NewTenantController();
-        SetCallerRoles(controller, 7, "user", RoleNames.TenantReader, RoleNames.TenantAdmin); // Tenant admin of tenant 7
+        SetCallerRoles(controller, 7, "user", RoleNames.TenantReader, RoleNames.TenantAdmin); // Organization admin of organization 7
         var result = await controller.Export(7);
 
         Assert.IsType<FileStreamResult>(result);
@@ -3119,7 +3119,7 @@ public class ApiControllerTests
     public async Task TenantExport_TenantAdmin_DifferentTenant_Returns403_NoAuditLog()
     {
         var controller = NewTenantController();
-        SetCallerRoles(controller, 7, "user", RoleNames.TenantReader, RoleNames.TenantAdmin); // Tenant admin of tenant 7, not 8
+        SetCallerRoles(controller, 7, "user", RoleNames.TenantReader, RoleNames.TenantAdmin); // Organization admin of organization 7, not 8
         var result = await controller.Export(8);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
@@ -3279,7 +3279,7 @@ public class RoleGateAuthorizationTests
     [Fact]
     public void RoleGranting_StaysAdminOnly_NeverJustUserManager()
     {
-        // A Tenant User must not be able to hand themselves Tenant admin - see UserRolesSet.
+        // An Organization User must not be able to hand themselves Organization admin - see UserRolesSet.
         Assert.Equal(RoleNames.Admins, RolesOn(typeof(UserApiController), "UserRolesSet"));
         Assert.DoesNotContain(RoleNames.TenantUser, RoleNames.Admins);
         Assert.DoesNotContain(RoleNames.GlobalUser, RoleNames.Admins);

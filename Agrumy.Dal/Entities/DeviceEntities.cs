@@ -1,6 +1,6 @@
 namespace Agrumy.Dal.Entities
 {
-    /// Top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
+    /// Top-level organizational grouping ABOVE Unit within the same organization (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarmRow
     {
         public int IDDeviceFarm { get; set; }
@@ -72,7 +72,7 @@ namespace Agrumy.Dal.Entities
         public string? DashboardWidgetsJson { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree, (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
+    /// See Agrumy.Shared.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree, (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-organization) scope.
     public class DeviceFarmUnitZoneRuleRow
     {
         public int IDDeviceFarmUnitZoneRule { get; set; }
@@ -331,7 +331,7 @@ namespace Agrumy.Dal.Entities
     public class DeviceRow
     {
         public int IDDevice { get; set; }
-        // Nullable, matching the DB column (now nullable, no DEFAULT). TenantID=0 stays a real tenant (the bootstrap/default one); null means genuinely unassigned.
+        // Nullable, matching the DB column (now nullable, no DEFAULT). TenantID=0 stays a real organization (the bootstrap/default one); null means genuinely unassigned.
         public int? TenantID { get; set; }
         public int? DeviceRoleID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
@@ -462,7 +462,7 @@ namespace Agrumy.Dal.Entities
         public long? UptimeSeconds { get; set; }
         public int? RssiDbm { get; set; }
         public long? FreeHeapBytes { get; set; }
-        // Set by SensorDataApiController.Post on every accepted push (not the config-poll heartbeat, which runs on a different cadence) - TenantQuotaEnforcer.CheckSensorPushIntervalAsync compares this against MinSensorIntervalMinutes to catch a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its tenant's quota allows.
+        // Set by SensorDataApiController.Post on every accepted push (not the config-poll heartbeat, which runs on a different cadence) - TenantQuotaEnforcer.CheckSensorPushIntervalAsync compares this against MinSensorIntervalMinutes to catch a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its organization's quota allows.
         public DateTimeOffset? LastSensorPushAt { get; set; }
         // Minimum ever recorded since boot (ESP.getMinFreeHeap()), largest single allocatable block (ESP.getMaxAllocHeap(), low value flags fragmentation even when FreeHeapBytes looks fine), and the loop task's unused stack margin (uxTaskGetStackHighWaterMark, low value flags an approaching stack overflow).
         public long? MinFreeHeapBytes { get; set; }

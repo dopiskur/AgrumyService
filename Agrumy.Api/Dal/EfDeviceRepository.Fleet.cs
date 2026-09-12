@@ -125,7 +125,7 @@ namespace Agrumy.Api.Dal
             return result;
         }
 
-        /// A write that changes a device's fleet row (e.g. zone assignment) must drop both its own-tenant and the GlobalAdmin's cached snapshot, or the next Fleet read can still serve the pre-write result for up to CacheKeys.FleetTtl. Public (not private) since EfRepository.DeviceFarmUnits.cs (not yet extracted) also calls it after assign/unassign.
+        /// A write that changes a device's fleet row (e.g. zone assignment) must drop both its own-organization and the GlobalAdmin's cached snapshot, or the next Fleet read can still serve the pre-write result for up to CacheKeys.FleetTtl. Public (not private) since EfRepository.DeviceFarmUnits.cs (not yet extracted) also calls it after assign/unassign.
         public Task InvalidateFleetCacheAsync(int? tenantID) => Task.WhenAll(
             cache.RemoveAsync(CacheKeys.Fleet(null)),
             tenantID != null ? cache.RemoveAsync(CacheKeys.Fleet(tenantID)) : Task.CompletedTask);

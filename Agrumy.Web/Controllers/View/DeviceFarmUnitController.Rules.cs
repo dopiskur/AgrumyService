@@ -200,7 +200,7 @@ namespace Agrumy.Web.Controllers.View
             AllRules = await BuildRuleOverviewAsync(),
         });
 
-        /// Flattens every scope's rules into one tenant-wide list for GlobalRules' overview table - N+1 by design (one page load, not a hot path), same tradeoff as BuildZoneOptionsAsync above.
+        /// Flattens every scope's rules into one organization-wide list for GlobalRules' overview table - N+1 by design (one page load, not a hot path), same tradeoff as BuildZoneOptionsAsync above.
         private async Task<IList<RuleOverviewRow>> BuildRuleOverviewAsync()
         {
             var rows = new List<RuleOverviewRow>();

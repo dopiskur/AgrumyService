@@ -57,7 +57,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(created?.ToDto());
         }
 
-        /// Tenant-scoped for everyone including Global admin - a deliberate deviation from the usual Global-admin-sees-everything pattern, since a simulation is scoped to the tenant it was created for.
+        /// Organization-scoped for everyone including Global admin - a deliberate deviation from the usual Global-admin-sees-everything pattern, since a simulation is scoped to the organization it was created for.
         [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Device")]
         public async Task<ActionResult<IList<int>>> ListVirtualDevices() =>
@@ -112,7 +112,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(created);
         }
 
-        /// Tenant-scoped for everyone including Global admin, same deliberate deviation as ListVirtualDevices above - a session belongs to the tenant it was created for.
+        /// Organization-scoped for everyone including Global admin, same deliberate deviation as ListVirtualDevices above - a session belongs to the organization it was created for.
         [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         [HttpGet("Session")]
         public async Task<ActionResult<IList<SimulationSession>>> ListSessions() =>

@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Notifications
 {
-    /// Shared "tenant admins, minus anyone who opted out of this event type" recipient list - used by every alert-generating background worker (OfflineAlertEvaluator, LowBatteryAlertEvaluator, TankRefillAlertEvaluator, RuleNotificationEvaluator) so the per-user opt-out actually applies uniformly instead of each evaluator re-deriving its own admin list.
+    /// Shared "organization admins, minus anyone who opted out of this event type" recipient list - used by every alert-generating background worker (OfflineAlertEvaluator, LowBatteryAlertEvaluator, TankRefillAlertEvaluator, RuleNotificationEvaluator) so the per-user opt-out actually applies uniformly instead of each evaluator re-deriving its own admin list.
     public static class NotificationRecipientBuilder
     {
         public static async Task<IReadOnlyList<NotificationRecipient>> BuildForTenantAdminsAsync(IUserRepository userRepo, int tenantId, NotificationEventType eventType)

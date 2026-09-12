@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Read-only view of the admin-action trail written by AuditLogRepository.AuditLogAddAsync - a Global admin sees every tenant's history, a Tenant admin only their own.
+    /// Read-only view of the admin-action trail written by AuditLogRepository.AuditLogAddAsync - a Global admin sees every organization's history, an Organization admin only their own.
     [Route("api/AuditLog")]
     public class AuditLogApiController(IAuditLogRepository auditLogRepo, IUserRepository userRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {

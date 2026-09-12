@@ -28,7 +28,7 @@ namespace Agrumy.Web.Controllers.View
             return View(user);
         }
 
-        /// null for an "Unassigned" user (TenantID cleared by TenantController.DeleteConfirm) - never calls the API for that case. ApiException swallowed - a Tenant User has no cross-tenant read here, so a caller viewing another tenant's user (Global reader path) just shows nothing rather than an error page.
+        /// null for an "Unassigned" user (TenantID cleared by TenantController.DeleteConfirm) - never calls the API for that case. ApiException swallowed - an Organization User has no cross-organization read here, so a caller viewing another organization's user (Global reader path) just shows nothing rather than an error page.
         private async Task<string?> ResolveTenantNameAsync(int? tenantId)
         {
             if (tenantId is not int id) { return null; }
@@ -36,7 +36,7 @@ namespace Agrumy.Web.Controllers.View
             catch (ApiException) { return null; }
         }
 
-        /// One TenantGet per distinct id actually present in the list - a Global admin/reader's Index (many tenants) pays for it, a Tenant-scoped viewer's Index (their own tenant only) makes at most one call.
+        /// One TenantGet per distinct id actually present in the list - a Global admin/reader's Index (many organizations) pays for it, an Organization-scoped viewer's Index (their own organization only) makes at most one call.
         private async Task<Dictionary<int, string?>> ResolveTenantNamesAsync(IEnumerable<int?> tenantIds)
         {
             var result = new Dictionary<int, string?>();
@@ -113,7 +113,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idUser = userView.UserUpdate!.IDUser });
         }
 
-        /// Global-tier only (RoleNames.GlobalUserManagers), same bar as UserApiController.UserUpdate's TenantID branch (CallerManagesUsersGlobally) - a Tenant admin can manage users but never move them to a tenant they don't administer.
+        /// Global-tier only (RoleNames.GlobalUserManagers), same bar as UserApiController.UserUpdate's TenantID branch (CallerManagesUsersGlobally) - an Organization admin can manage users but never move them to an organization they don't administer.
         [Authorize(Roles = RoleNames.GlobalUserManagers)]
         public async Task<ActionResult> MigrateTenant(int idUser)
         {

@@ -4,7 +4,7 @@ namespace Agrumy.Dal.Entities
 
     public class TenantRow
     {
-        // Nullable, not int - EF Core's ValueGeneratedOnAdd only sends an explicit value in the INSERT when the property differs from its CLR type's default; for `int` that default is 0, exactly the literal value SeedDefaultTenantAsync needs to insert for the default tenant. Nullable flips the "not set yet" sentinel to null instead, so IDTenant=0 is treated as a real, explicit value and actually reaches the INSERT statement.
+        // Nullable, not int - EF Core's ValueGeneratedOnAdd only sends an explicit value in the INSERT when the property differs from its CLR type's default; for `int` that default is 0, exactly the literal value SeedDefaultTenantAsync needs to insert for the default organization. Nullable flips the "not set yet" sentinel to null instead, so IDTenant=0 is treated as a real, explicit value and actually reaches the INSERT statement.
         public int? IDTenant { get; set; }
         public string TenantName { get; set; } = "";
         public string? ScheduleTimeZone { get; set; } // See Agrumy.Shared.Models.Tenant.ScheduleTimeZone.
@@ -13,10 +13,10 @@ namespace Agrumy.Dal.Entities
         public bool EmergencyStopActive { get; set; } // See Agrumy.Shared.Models.Tenant.EmergencyStopActive.
         public DateTimeOffset? DateCreated { get; set; }
 
-        // Per-tenant override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
+        // Per-organization override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
         public int? RecycleBinRetentionDays { get; set; }
 
-        // Per-tenant alert override, same cascade convention as RecycleBinRetentionDays above; see Agrumy.Shared.Models.TenantAlertConfig.
+        // Per-organization alert override, same cascade convention as RecycleBinRetentionDays above; see Agrumy.Shared.Models.TenantAlertConfig.
         public bool? ProblemEventAlertsEnabled { get; set; }
         public int? ProblemEventExpiryHours { get; set; }
         public double? BatteryLowThreshold { get; set; }
@@ -58,7 +58,7 @@ namespace Agrumy.Dal.Entities
         public bool Enabled { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.TenantWeatherState - one row per tenant, upserted by WeatherEvaluator/FrostAlertEvaluator.
+    /// See Agrumy.Shared.Models.TenantWeatherState - one row per organization, upserted by WeatherEvaluator/FrostAlertEvaluator.
     public class TenantWeatherStateRow
     {
         public int TenantID { get; set; }
@@ -99,7 +99,7 @@ namespace Agrumy.Dal.Entities
     public class UserRow
     {
         public int IDUser { get; set; }
-        // Nullable so a deleted tenant can leave its surviving users "Unassigned" instead of forcing them onto tenant 0 - only EfTenantRepository.TenantDeleteAsync ever writes null here.
+        // Nullable so a deleted organization can leave its surviving users "Unassigned" instead of forcing them onto organization 0 - only EfTenantRepository.TenantDeleteAsync ever writes null here.
         public int? TenantID { get; set; }
         public string Email { get; set; } = "";
         public string? Username { get; set; }
@@ -168,7 +168,7 @@ namespace Agrumy.Dal.Entities
         public int? MaxRulesPerZone { get; set; }
         public bool AllowSelfServiceTenantCreation { get; set; }
         public bool TenantManagementEnabled { get; set; }
-        // ScheduleTimeZone is now per-tenant (see TenantRow.ScheduleTimeZone) - the serverConfig column is left in place, unmapped, rather than dropped.
+        // ScheduleTimeZone is now per-organization (see TenantRow.ScheduleTimeZone) - the serverConfig column is left in place, unmapped, rather than dropped.
         public int FirmwareSource { get; set; }
         public string? FirmwareGitHubRepository { get; set; }
         public string? FirmwareCustomRepositoryUrl { get; set; }

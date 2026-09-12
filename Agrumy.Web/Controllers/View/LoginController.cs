@@ -46,7 +46,7 @@ namespace Agrumy.Web.Controllers.View
             }
             catch (ApiException ex)
             {
-                // 428 = MustChangePassword (tenant import) - a distinct status so this branches without parsing message text, unlike the other cases below.
+                // 428 = MustChangePassword (organization import) - a distinct status so this branches without parsing message text, unlike the other cases below.
                 if (ex.StatusCode == 428)
                 {
                     TempData["ForceChangePasswordLogin"] = userLogin.Login;
@@ -75,7 +75,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction("Farms", "DeviceFarmUnit");
         }
 
-        /// Tenant-import counterpart to the login form, reached via the 428 redirect (Agrumy.Shared.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
+        /// Organization-import counterpart to the login form, reached via the 428 redirect (Agrumy.Shared.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
         public ActionResult ForceChangePassword()
         {
             return View(new UserForceChangePassword { Login = TempData["ForceChangePasswordLogin"] as string });

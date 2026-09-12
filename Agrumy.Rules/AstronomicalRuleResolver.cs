@@ -6,7 +6,7 @@ namespace Agrumy.Rules
     /// Recursively replaces every Astronomical node anywhere in a rule's tree with an effective Schedule node for today's local date (Astronomical is nestable inside a GroupNode, not just a top-level flat entry) so firmware only ever has to understand NodeType.Schedule; a rule with a node that can't be resolved today (no location set, polar day/night, or a zero/negative window) is dropped entirely rather than sent with a broken link in its tree, leaving the function's other rules intact.
     public static class AstronomicalRuleResolver
     {
-        // lat/lon: the resolved location for this rule's tenant (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same per-tenant-then-server-wide cascade as ScheduleTimeZone), not a bare ServerConfig - a rule's own tenant may sit at a different physical site than the server-wide default.
+        // lat/lon: the resolved location for this rule's organization (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same per-organization-then-server-wide cascade as ScheduleTimeZone), not a bare ServerConfig - a rule's own organization may sit at a different physical site than the server-wide default.
         public static IList<DeviceFarmUnitZoneRule> Resolve(IList<DeviceFarmUnitZoneRule> rules, double? lat, double? lon, DateOnly localDate, int utcOffsetSeconds)
         {
             var result = new List<DeviceFarmUnitZoneRule>(rules.Count);

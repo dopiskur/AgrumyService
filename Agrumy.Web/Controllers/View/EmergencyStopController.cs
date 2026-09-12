@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// One-click, tenant-wide fail-closed actuator stop - reachable from every page via _Layout.cshtml, not tied to the Global-admin-only Tenant Management area.
+    /// One-click, organization-wide fail-closed actuator stop - reachable from every page via _Layout.cshtml, not tied to the Global-admin-only Organization Management area.
     [Authorize(Roles = RoleNames.DeviceManagers)]
     public class EmergencyStopController(IApi api) : Controller
     {

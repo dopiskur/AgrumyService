@@ -5,7 +5,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Daily per-tenant satellite sync (Detaljni dizajn S, B3) - backfills a zone's whole archive once (Statistical API, stats only), then incrementally ingests new scenes since the last one (Process API, raw grid for scalar indices). One tenant's failure/quota-pause never blocks another (D1/D12). The external tick (SatelliteSyncBackgroundService) still fires once a day; a tenant with SyncIntervalDays &gt; 1 just gets skipped on the ticks it isn't due for yet.
+    /// Daily per-organization satellite sync (Detaljni dizajn S, B3) - backfills a zone's whole archive once (Statistical API, stats only), then incrementally ingests new scenes since the last one (Process API, raw grid for scalar indices). One organization's failure/quota-pause never blocks another (D1/D12). The external tick (SatelliteSyncBackgroundService) still fires once a day; an organization with SyncIntervalDays &gt; 1 just gets skipped on the ticks it isn't due for yet.
     public sealed class SatelliteSyncEvaluator(
         ISatelliteConfigRepository configRepo, IFarmParcelRepository farmParcelRepo, ISatelliteSceneRepository sceneRepo,
         ISatelliteImagerySourceFactory sourceFactory, IUserRepository userRepo, INotificationDispatcher dispatcher,
@@ -16,7 +16,7 @@ namespace Agrumy.Api.BackgroundWorkers
         // The daily tick and a SyncNow enqueue can overlap - two runs backfilling the same zone race on the scene unique index and one of them dies mid-zone, so a second trigger queues behind the first.
         private static readonly SemaphoreSlim RunLock = new(1, 1);
 
-        /// isManualTrigger (FarmOpenfieldApiController.SatelliteMapSyncNow) bypasses every tenant's own SyncIntervalDays gate entirely and never touches LastAutoSyncUtc - the daily background tick is the only writer of that field, so a manual sync can never shift or reset it.
+        /// isManualTrigger (FarmOpenfieldApiController.SatelliteMapSyncNow) bypasses every organization's own SyncIntervalDays gate entirely and never touches LastAutoSyncUtc - the daily background tick is the only writer of that field, so a manual sync can never shift or reset it.
         public async Task RunOnceAsync(bool isManualTrigger = false, CancellationToken ct = default)
         {
             await RunLock.WaitAsync(ct);
@@ -29,7 +29,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     if (!isManualTrigger && config.LastAutoSyncUtc is DateTimeOffset lastAutoSync
                         && DateTimeOffset.UtcNow - lastAutoSync < TimeSpan.FromDays(config.SyncIntervalDays))
                     {
-                        continue; // this tenant's own interval hasn't elapsed since the last automatic run
+                        continue; // this organization's own interval hasn't elapsed since the last automatic run
                     }
                     try
                     {
@@ -37,7 +37,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     }
                     catch (Exception ex)
                     {
-                        // A token/auth failure (or any other tenant-level error) stops THIS tenant's tick, never the whole job.
+                        // A token/auth failure (or any other organization-level error) stops THIS organization's tick, never the whole job.
                         logger.LogWarning(ex, "Satellite sync failed for tenant {TenantId}.", config.IDTenant);
                         await NotifyAsync(config.IDTenant, NotificationEventType.SatelliteSyncFailed, "Agrumy: satellite sync failed",
                             $"The satellite sync job failed for your tenant: {ex.Message}. It will retry on the next scheduled run.", ct);
@@ -120,7 +120,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 }
                 catch (Exception ex)
                 {
-                    // Per-zone failures don't stop the tenant's other zones - the zone just retries next tick.
+                    // Per-zone failures don't stop the organization's other zones - the zone just retries next tick.
                     logger.LogWarning(ex, "Satellite sync failed for zone {ZoneId} (tenant {TenantId}).", idZone, config.IDTenant);
                 }
                 processedZones++;

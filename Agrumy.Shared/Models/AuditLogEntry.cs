@@ -8,7 +8,7 @@ namespace Agrumy.Shared.Models
         public int IDAuditLog { get; set; }
         public DateTimeOffset TimestampUtc { get; set; }
 
-        /// Null for a cross-tenant action taken by a Global admin.
+        /// Null for a cross-organization action taken by a Global admin.
         public int? TenantID { get; set; }
 
         /// Null if the actor's own account was later deleted - ActorEmail is the durable record.
@@ -25,7 +25,7 @@ namespace Agrumy.Shared.Models
         [MaxLength(50)]
         public string? TargetId { get; set; }
 
-        /// Free-text summary, e.g. "TenantReader -> TenantAdmin". Not for secrets - this is readable by every tenant admin who can see the row.
+        /// Free-text summary, e.g. "TenantReader -> TenantAdmin". Not for secrets - this is readable by every organization admin who can see the row.
         public string? Details { get; set; }
     }
 }

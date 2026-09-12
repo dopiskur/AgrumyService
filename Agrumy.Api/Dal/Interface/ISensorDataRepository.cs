@@ -45,10 +45,10 @@ namespace Agrumy.Api.Dal.Interface
 
         Task SensorDataDeleteAsync(int? tenantID, int? deviceID, DateTimeOffset olderThan);
 
-        /// Raw, untransformed rows for a whole tenant (tenant export), not shaped for chart consumption like SensorDataGetAsync - sinceUtc null means every row ever recorded.
+        /// Raw, untransformed rows for a whole organization (organization export), not shaped for chart consumption like SensorDataGetAsync - sinceUtc null means every row ever recorded.
         Task<IList<SensorData>> SensorDataExportGetAsync(int tenantID, DateTime? sinceUtc);
 
-        /// Bulk-inserts already-remapped rows (tenant import) - the caller has resolved every id to its new value on the target server, this just persists them as-is.
+        /// Bulk-inserts already-remapped rows (organization import) - the caller has resolved every id to its new value on the target server, this just persists them as-is.
         Task SensorDataImportAsync(IList<SensorData> rows);
 
         /// Downsamples every row older than cutoffUtc, per device, into one 5-minute-bucket average-without-outliers row, replacing the raw rows in place.
@@ -57,7 +57,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Deletes rows older than cutoffUtc outright (drop_chunks() on TimescaleDB, plain DELETE in PurgeBatchSize-row chunks on MariaDB/MySQL - batching alone is enough, no separate locking OPTIMIZE TABLE rebuild).
         Task PurgeOldSensorDataAsync(DateTime cutoffUtc, CancellationToken ct);
 
-        /// Tenant-scoped IQueryable for the OData/Power BI feed - filtered to tenantID here, server-side, before OData's [EnableQuery] layers $filter/$select/$orderby/$top on top; the client's OData query can never widen this to another tenant's rows.
+        /// Organization-scoped IQueryable for the OData/Power BI feed - filtered to tenantID here, server-side, before OData's [EnableQuery] layers $filter/$select/$orderby/$top on top; the client's OData query can never widen this to another organization's rows.
         IQueryable<SensorDataODataEntry> SensorDataODataQueryable(int tenantID);
     }
 }

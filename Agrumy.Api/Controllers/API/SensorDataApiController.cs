@@ -24,7 +24,7 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest($"Invalid window: 'to' must be after 'from', and the span must not exceed {MaxWindowDays} days.");
             }
 
-            // Stays tenant-scoped even for a Global reader, unlike DevicesGet/DeviceFleetGet.
+            // Stays organization-scoped even for a Global reader, unlike DevicesGet/DeviceFleetGet.
             return Ok(await sensorDataRepo.SensorDataGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId, deviceID, from, to, bucket));
         }
 
@@ -43,14 +43,14 @@ namespace Agrumy.Api.Controllers.API
 
             string apiId = HttpContext.DeviceApiId()!;
 
-            // Device/tenant come from the authenticated identity, never from the payload.
+            // Device/organization come from the authenticated identity, never from the payload.
             Device? device = await deviceRepo.DeviceGetByApiIdAsync(apiId);
             if (device is null)
             {
                 return Unauthorized();
             }
 
-            // Catches a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its tenant's quota allows - separate from DeviceUpdate's CheckMinSensorIntervalAsync, which only gates the CONFIGURED value.
+            // Catches a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its organization's quota allows - separate from DeviceUpdate's CheckMinSensorIntervalAsync, which only gates the CONFIGURED value.
             if (await quotaEnforcer.CheckSensorPushIntervalAsync(device.TenantID, device.IDDevice!.Value) is string intervalLimitError)
             {
                 return ForbidWith(intervalLimitError);
@@ -62,7 +62,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(device.ConfigVersion);
         }
 
-        /// Deleting telemetry is device management, gated to the device-manager roles; the target device's own tenant is resolved and checked explicitly.
+        /// Deleting telemetry is device management, gated to the device-manager roles; the target device's own organization is resolved and checked explicitly.
         [HttpDelete]
         [Authorize(Roles = RoleNames.DeviceManagers)]
         public async Task<ActionResult> Delete(int deviceID, DateTimeOffset olderThan)

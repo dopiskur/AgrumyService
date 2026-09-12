@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Html
 @model Agrumy.Web.ViewModels.RuleEditorViewModel
 @{
-    // Recursive ConditionNode tree, Name/Description/IsSafetyRule per rule - shared across the Zone page, the Unit/Farm "Rules" tabs, and the tenant-wide Global Rules page.
+    // Recursive ConditionNode tree, Name/Description/IsSafetyRule per rule - shared across the Zone page, the Unit/Farm "Rules" tabs, and the organization-wide Global Rules page.
     var relayRules = Model.Rules.Where(r => r.ActionType == Agrumy.Shared.Models.ActionType.Relay).ToList();
     var notificationRules = Model.Rules.Where(r => r.ActionType == Agrumy.Shared.Models.ActionType.Notification).ToList();
     var rulesByFunction = relayRules.GroupBy(r => r.RelayFunction!.Value).ToDictionary(g => g.Key, g => g.ToList());

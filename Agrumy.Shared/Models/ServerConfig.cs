@@ -18,7 +18,7 @@ namespace Agrumy.Shared.Models
         public double? BatteryLowThreshold { get; set; }
         public double? BatteryLowHysteresis { get; set; }
 
-        // TankRefillAlertEvaluator's threshold/hysteresis (percent of TankCalculator fill), global like Battery's - a physical tank's own capacity/calibration is per-zone (DeviceFarmUnitZone), but "how empty is too empty" is one policy for the whole tenant.
+        // TankRefillAlertEvaluator's threshold/hysteresis (percent of TankCalculator fill), global like Battery's - a physical tank's own capacity/calibration is per-zone (DeviceFarmUnitZone), but "how empty is too empty" is one policy for the whole organization.
         public double? TankRefillThreshold { get; set; }
         public double? TankRefillHysteresis { get; set; }
 
@@ -43,11 +43,11 @@ namespace Agrumy.Shared.Models
         // Default 10, hard ceiling 32 (AgrumyFirmware DeviceModel.h's MAX_RULES) - see ServerConfigApiController.Update for the enforced bound.
         public int? MaxRulesPerZone { get; set; }
 
-        // Allows UserRegistration to create an unrecognized tenant name instead of rejecting; non-nullable because bool? would render asp-for as a text box, not a checkbox.
+        // Allows UserRegistration to create an unrecognized organization name instead of rejecting; non-nullable because bool? would render asp-for as a text box, not a checkbox.
         [Display(Name = "Allow self-service tenant creation")]
         public bool AllowSelfServiceTenantCreation { get; set; }
 
-        // Gates the Tenant Management menu item alongside the GlobalAdmin role check (_Layout.cshtml), so a fresh install doesn't expose cross-tenant management by default.
+        // Gates the Organization Management menu item alongside the GlobalAdmin role check (_Layout.cshtml), so a fresh install doesn't expose cross-organization management by default.
         [Display(Name = "Enable Tenant Management page")]
         public bool TenantManagementEnabled { get; set; }
 
@@ -75,7 +75,7 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Sensor data retention (days)")]
         public int? SensorDataRetentionDays { get; set; }
 
-        // How long a rendered satellite index PNG stays on disk before the retention job deletes it (S-B, D11) - the grid/stats it was rendered from stay in the DB forever, so a deleted PNG just regenerates on next view. Default 30, per-tenant override on TenantSatelliteConfig.
+        // How long a rendered satellite index PNG stays on disk before the retention job deletes it (S-B, D11) - the grid/stats it was rendered from stay in the DB forever, so a deleted PNG just regenerates on next view. Default 30, per-organization override on TenantSatelliteConfig.
         [Display(Name = "Satellite raster cache retention (days)")]
         [Range(0, 365)]
         public int? SatelliteRasterRetentionDays { get; set; } = 30;
@@ -89,17 +89,17 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Schedule daily orphaned sensor data purge")]
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
-        // Server-wide default location OpenWeatherMap forecasts are pulled for - Tenant.Latitude/Longitude overrides this per tenant (same cascade as ScheduleTimeZone); null (and no tenant override) leaves WeatherBackgroundService inert rather than failing loudly.
+        // Server-wide default location OpenWeatherMap forecasts are pulled for - Tenant.Latitude/Longitude overrides this per organization (same cascade as ScheduleTimeZone); null (and no organization override) leaves WeatherBackgroundService inert rather than failing loudly.
         [Display(Name = "Default latitude")]
         public double? WeatherLocationLat { get; set; }
         [Display(Name = "Default longitude")]
         public double? WeatherLocationLon { get; set; }
 
-        // Admin-editable poll cadence - WeatherBackgroundService ticks every minute but only calls the API once this many minutes have elapsed since a tenant's own TenantWeatherState.WeatherCheckedAtUtc, making the interval live-editable without a restart.
+        // Admin-editable poll cadence - WeatherBackgroundService ticks every minute but only calls the API once this many minutes have elapsed since an organization's own TenantWeatherState.WeatherCheckedAtUtc, making the interval live-editable without a restart.
         [Display(Name = "Forecast poll interval (minutes)")]
         public int? WeatherPollIntervalMinutes { get; set; }
 
-        // Rain-probability percentage (OpenWeatherMap's "pop" field) at or above which WeatherEvaluator sets a tenant's TenantWeatherState.WeatherRainPredicted.
+        // Rain-probability percentage (OpenWeatherMap's "pop" field) at or above which WeatherEvaluator sets an organization's TenantWeatherState.WeatherRainPredicted.
         [Display(Name = "Rain-skip threshold (%)")]
         public double? WeatherRainSkipThreshold { get; set; }
 
@@ -255,7 +255,7 @@ namespace Agrumy.Shared.Models
         CustomRollingDays = 2,
     }
 
-    /// The only ServerConfig field a pre-login, unauthenticated page may see - Register uses it to decide whether to show "create a new tenant" without needing the admin-only /api/ServerConfig.
+    /// The only ServerConfig field a pre-login, unauthenticated page may see - Register uses it to decide whether to show "create a new organization" without needing the admin-only /api/ServerConfig.
     public class PublicServerConfig
     {
         public bool AllowSelfServiceTenantCreation { get; set; }

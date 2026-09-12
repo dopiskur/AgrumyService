@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// CRUD over the three horticulture subcatalogs (Crop/Perma/Hydroponic) - reads are open to any authenticated user (every tenant browses the same shared catalog to apply a template), writes are Global Admin-only for now; a future public/community catalog (roadmap's own explicit "not now") would relax the read side further, not the write side.
+    /// CRUD over the three horticulture subcatalogs (Crop/Perma/Hydroponic) - reads are open to any authenticated user (every organization browses the same shared catalog to apply a template), writes are Global Admin-only for now; a future public/community catalog (roadmap's own explicit "not now") would relax the read side further, not the write side.
     [Route("/api/HorticultureCatalog")]
     [Authorize]
     public class HorticultureCatalogApiController(IHorticultureCatalogRepository catalogRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)

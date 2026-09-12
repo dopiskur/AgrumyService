@@ -8,7 +8,7 @@ namespace Agrumy.Api.Quota
     {
         public const string LimitMessage = "Limit for the current tier reached, please contact support.";
 
-        /// IDTenant=0 (the default/bootstrap tenant) is exempt without ever reaching the repository - a pure business rule, not something that needs a DB round trip.
+        /// IDTenant=0 (the default/bootstrap organization) is exempt without ever reaching the repository - a pure business rule, not something that needs a DB round trip.
         private Task<TenantQuota?> GetQuotaAsync(int? tenantId) =>
             tenantId is int id and not 0 ? tenantRepo.TenantQuotaGetAsync(id) : Task.FromResult<TenantQuota?>(null);
 
@@ -46,7 +46,7 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxUnits ? LimitMessage : null;
         }
 
-        /// Zones aren't queryable tenant-wide directly (DeviceFarmUnitZonesGetAsync takes one unit) - summed across the tenant's units instead, bounded by MaxUnits so this stays cheap.
+        /// Zones aren't queryable organization-wide directly (DeviceFarmUnitZonesGetAsync takes one unit) - summed across the organization's units instead, bounded by MaxUnits so this stays cheap.
         public async Task<string?> CheckCanAddZoneAsync(int? tenantId)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
@@ -74,7 +74,7 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxCrops ? LimitMessage : null;
         }
 
-        /// Same "not queryable tenant-wide, summed across the tenant's parcels instead" shape as CheckCanAddZoneAsync, bounded by the tenant's small admin-managed FarmOpenfield/FarmParcel counts.
+        /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed FarmOpenfield/FarmParcel counts.
         public async Task<string?> CheckCanAddParcelAsync(int? tenantId)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);

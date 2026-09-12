@@ -51,7 +51,7 @@ namespace Agrumy.Api.Controllers.API
             ((CallerHasRole(RoleNames.TenantAdmin) || CallerHasRole(RoleNames.TenantUser))
              && targetTenantId == CallerTenantId);
 
-        // Numeric privilege per role - CallerOutranksTarget requires callerRank strictly greater than targetRank, so two peers holding the same role (e.g. two Tenant Users) never outrank each other.
+        // Numeric privilege per role - CallerOutranksTarget requires callerRank strictly greater than targetRank, so two peers holding the same role (e.g. two Organization Users) never outrank each other.
         private static readonly Dictionary<string, int> RoleRanks = new()
         {
             [RoleNames.GlobalAdmin] = 100,
@@ -70,7 +70,7 @@ namespace Agrumy.Api.Controllers.API
         private static int RoleRank(IEnumerable<string> roleNames) =>
             roleNames.Select(r => RoleRanks.GetValueOrDefault(r, 0)).DefaultIfEmpty(0).Max();
 
-        /// Beyond CallerManagesUsers' tenant check: may the caller act on a user holding <paramref name="targetRoleNames"/>, given relative privilege - Global admin outranks everyone including a Global admin peer; a Global User grant outranks everyone except a Global admin, including a Global User peer; Tenant admin outranks everyone in-tenant including a Tenant admin peer; below that, a strictly-greater numeric rank is required, so a Tenant User (or other composable grant) can never act on a peer holding the same or a higher rank.
+        /// Beyond CallerManagesUsers' organization check: may the caller act on a user holding <paramref name="targetRoleNames"/>, given relative privilege - Global admin outranks everyone including a Global admin peer; a Global User grant outranks everyone except a Global admin, including a Global User peer; Organization admin outranks everyone in-organization including an Organization admin peer; below that, a strictly-greater numeric rank is required, so an Organization User (or other composable grant) can never act on a peer holding the same or a higher rank.
         protected bool CallerOutranksTarget(IEnumerable<string> targetRoleNames)
         {
             ICollection<string> targetRoles = targetRoleNames as ICollection<string> ?? targetRoleNames.ToList();
@@ -112,7 +112,7 @@ namespace Agrumy.Api.Controllers.API
             && !CallerHasRole(RoleNames.TenantAdmin) && !CallerHasRole(RoleNames.TenantReader) && !CallerHasRole(RoleNames.TenantDevice)
             && !CallerManagesUsersGlobally && !CallerHasRole(RoleNames.TenantUser);
 
-        /// Shared body behind each Device-domain controller's per-entity EnsureOwned* helper: 404 on missing, 403 on tenant mismatch unless the caller's role crosses tenants (CallerManagesDevicesGlobally on a write, the wider CallerReadsDevicesGlobally on a read).
+        /// Shared body behind each Device-domain controller's per-entity EnsureOwned* helper: 404 on missing, 403 on organization mismatch unless the caller's role crosses organizations (CallerManagesDevicesGlobally on a write, the wider CallerReadsDevicesGlobally on a read).
         protected async Task<OwnedResult<T>> EnsureOwnedDeviceEntityAsync<T>(Func<Task<T?>> lookup, Func<T, int?> tenantIdOf, string ownerLabel, bool forWrite) where T : class
         {
             T? entity = await lookup();

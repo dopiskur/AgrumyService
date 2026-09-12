@@ -228,7 +228,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(DbErrorResponse.MentionsConstraint(exUsername, "Username_UNIQUE"), "Username_UNIQUE no longer matches the real schema's index name.");
     }
 
-    // Registration (tenant create + user add + activation token + starting role) is one transaction - a crash/failure partway must never leave a user with no role, or a tenant with no admin.
+    // Registration (organization create + user add + activation token + starting role) is one transaction - a crash/failure partway must never leave a user with no role, or an organization with no admin.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task RegisterUser_NewTenant_CreatesTenantUserTokenAndRole_Atomically(DbProviderKind provider)
     {
@@ -267,7 +267,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         // A failed SaveChangesAsync leaves the poisoned entity tracked - Use() hands back a fresh context/repo, same as a new HTTP request would get.
         Use(provider);
-        Assert.False(await _repo.TenantGetAsync(newTenantName)); // the tenant the failed registration would have created must not exist either
+        Assert.False(await _repo.TenantGetAsync(newTenantName)); // the organization the failed registration would have created must not exist either
     }
 
     // DeviceCommand otherwise grows unbounded - only terminal (Executed/Expired) rows older than the cutoff are purged, Pending/Acknowledged and recent rows are left alone regardless of status.
@@ -298,7 +298,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains((int)CommandStatus.Pending, remainingStatuses);  // the old-but-active one
     }
 
-    // User.TenantID and eventDevice(DeviceID, Date) had no index - every tenant-scoped user list and every device-events/problem-alert scan filtered these columns with a full table scan.
+    // User.TenantID and eventDevice(DeviceID, Date) had no index - every organization-scoped user list and every device-events/problem-alert scan filtered these columns with a full table scan.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task MissingIndexes_310_NowExist(DbProviderKind provider)
     {
@@ -413,7 +413,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         var tenant = await _repo.TenantGetByIdAsync(idTenant);
         Assert.NotNull(tenant);
-        Assert.Null(tenant.ScheduleTimeZone); // not configured yet - per-tenant, not a global fallback
+        Assert.Null(tenant.ScheduleTimeZone); // not configured yet - per-organization, not a global fallback
 
         tenant.ScheduleTimeZone = "Europe/Zagreb";
         await _repo.TenantUpdateAsync(tenant);
@@ -482,7 +482,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task TenantWeatherState_SetWeatherAndFrost_RoundTrips_IndependentlyOfEachOther(DbProviderKind provider)
     {
-        // Weather/frost/outdoor state moved out of the single global ServerConfig row into a per-tenant table - each tenant's own row, and the three writers (WeatherEvaluator writes both Weather* and Outdoor*, FrostAlertEvaluator writes Frost*) must not clobber each other's half of it.
+        // Weather/frost/outdoor state moved out of the single global ServerConfig row into a per-organization table - each organization's own row, and the three writers (WeatherEvaluator writes both Weather* and Outdoor*, FrostAlertEvaluator writes Frost*) must not clobber each other's half of it.
         Use(provider);
         int tenantId = await _repo.TenantAddAsync($"weather-state-{Guid.NewGuid():N}");
 
@@ -1050,7 +1050,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(d.IDDevice, (await _repo.DeviceGetAsync(tenantId, null, null, d.MacAddress))!.IDDevice);
         Assert.Null(await _repo.DeviceGetAsync(tenantId + 12345, null, d.ApiId, null));
         Assert.Equal(d.IDDevice, (await _repo.DeviceGetByIdAsync(d.IDDevice))!.IDDevice);
-        // DeviceGetByApiIdAsync has no tenant filter - device-comm endpoints have no tenant context.
+        // DeviceGetByApiIdAsync has no organization filter - device-comm endpoints have no organization context.
         Assert.Equal(d.IDDevice, (await _repo.DeviceGetByApiIdAsync(d.ApiId))!.IDDevice);
         Assert.Null(await _repo.DeviceGetByApiIdAsync("no-such-api-id-" + U()));
         Assert.Single(await _repo.DevicesGetAsync(tenantId));
@@ -1873,7 +1873,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
     }
 
-    // Idempotent: a tenant that already has a farm (of any name) is left alone.
+    // Idempotent: an organization that already has a farm (of any name) is left alone.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task EnsureFirstFarm_TenantAlreadyHasFarm_IsNoOp(DbProviderKind provider)
     {
@@ -1889,7 +1889,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotEqual("First farm", farm.DeviceFarmName);
     }
 
-    // A brand-new self-service tenant registration gets a "First farm" for free, via the same isNewTenant branch as TenantApiController.TenantAdd.
+    // A brand-new self-service organization registration gets a "First farm" for free, via the same isNewTenant branch as TenantApiController.TenantAdd.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task RegisterUserAsync_NewTenant_GetsFirstFarm(DbProviderKind provider)
     {
@@ -2161,13 +2161,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         // Not yet marked - reap must refuse (guards on Purged, not just Deleted).
         Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId));
 
-        Assert.False(await _repo.DeviceRecycleBinMarkPurgedAsync(d.IDDevice.Value, tenantId + 1)); // wrong tenant - no-op
+        Assert.False(await _repo.DeviceRecycleBinMarkPurgedAsync(d.IDDevice.Value, tenantId + 1)); // wrong organization - no-op
         Assert.True(await _repo.DeviceRecycleBinMarkPurgedAsync(d.IDDevice.Value, tenantId));
         // Still fully restorable while only marked - nothing physically removed yet.
         Assert.NotNull(await _repo.DeviceRecycleBinGetByIdAsync(d.IDDevice.Value));
         Assert.Contains(await _repo.DevicePendingPurgeGetAsync(tenantId), x => x.IDDevice == d.IDDevice);
 
-        Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId + 1)); // wrong tenant - no-op
+        Assert.False(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId + 1)); // wrong organization - no-op
         Assert.True(await _repo.DeviceRecycleBinPurgeAsync(d.IDDevice.Value, tenantId));
 
         await using var db = _fx.NewContext(t);
@@ -2182,7 +2182,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await _repo.DeviceRestoreAsync(d.IDDevice.Value, tenantId));
     }
 
-    // The per-tenant retention override drives the automatic mark phase: a tenant with its own (shorter) override gets marked sooner than the server default would, and it doesn't affect other tenants still on the default.
+    // The per-organization retention override drives the automatic mark phase: an organization with its own (shorter) override gets marked sooner than the server default would, and it doesn't affect other organizations still on the default.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceRecycleBinMarkPurgedByRetentionAsync_UsesPerTenantOverride(DbProviderKind provider)
     {
@@ -2449,7 +2449,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(60, second.Humidity);
     }
 
-    // The registry is purely internal bookkeeping - registering, listing (globally and tenant-scoped), and a delete that also nukes sensorData (unlike an ordinary device delete).
+    // The registry is purely internal bookkeeping - registering, listing (globally and organization-scoped), and a delete that also nukes sensorData (unlike an ordinary device delete).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task VirtualDevice_RegisterListDelete_AlsoRemovesSensorData(DbProviderKind provider)
     {
@@ -2460,14 +2460,14 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             d.IDDevice!.Value, tenantId, null, null);
 
         await _repo.VirtualDeviceRegisterAsync(d.IDDevice!.Value);
-        // The parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
+        // The parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the organization-scoped overload below is the plain registry check, unaffected by session membership.
         var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
         // Add no longer sets a time window; the device only counts as "active" once the session is actually Started.
         await _repo.SimulationSessionStartAsync(session.IDSimulationSession!.Value, 60);
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync());
         Assert.Contains(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId));
-        Assert.DoesNotContain(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId + 12345)); // wrong tenant
+        Assert.DoesNotContain(d.IDDevice!.Value, await _repo.VirtualDeviceIdsGetAsync(tenantId + 12345)); // wrong organization
 
         await _repo.VirtualDeviceDeleteAsync(d.IDDevice!.Value, tenantId);
 
@@ -2901,7 +2901,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Empty(dashboard.ProblemAlerts);
     }
 
-    // A foreign tenant's event id must match zero rows - same ownership-lens rule as every other Device sub-resource write.
+    // A foreign organization's event id must match zero rows - same ownership-lens rule as every other Device sub-resource write.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitDashboard_Status_AcknowledgeWrongTenant_IsNoOp(DbProviderKind provider)
     {
@@ -3375,7 +3375,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.TenantAddAsync(name);
 
         await using var db = _fx.NewContext(t);
-        db.Tenants.Add(new TenantRow { TenantName = name }); // collides with tenant.Name_UNIQUE
+        db.Tenants.Add(new TenantRow { TenantName = name }); // collides with organization.Name_UNIQUE
         try
         {
             await db.SaveChangesAsync();
@@ -3475,7 +3475,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var adminBack = await _repo.UserGetAsync(null, admin.Email, null);
         await _repo.UserRolesSetAsync(adminBack!.IDUser!.Value, new[] { RoleNames.TenantAdmin });
 
-        var (_, _, _) = await MakeUser(t); // creates its own tenant + a regular user, unrelated
+        var (_, _, _) = await MakeUser(t); // creates its own organization + a regular user, unrelated
         int otherTenantId = await _repo.TenantAddAsync("T_" + U());
         var otherAdmin = new User { TenantID = otherTenantId, Email = U() + "@ex.com", Username = "u_" + U(), DevicePin = "PIN2C2" };
         await _repo.UserAddAsync(otherAdmin, new UserSecret { PwdHash = "h", PwdSalt = "s" });
@@ -4004,7 +4004,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(1.23, refetchedA!.AreaHectares);
         Assert.Equal("ARKOD-A", refetchedA.ArkodParcelId);
         Assert.Equal(tenantA, refetchedA.TenantID);
-        // Tenant B's parcel (same call pattern, different id) must be completely untouched - proves the update is scoped to the one row, not e.g. every parcel of that name.
+        // Organization B's parcel (same call pattern, different id) must be completely untouched - proves the update is scoped to the one row, not e.g. every parcel of that name.
         Assert.Null(refetchedB!.GeometryGeoJson);
         Assert.Null(refetchedB.AreaHectares);
         Assert.Equal(tenantB, refetchedB.TenantID);
@@ -4149,7 +4149,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (farm, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
         var (_, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P1_" + U() });
         var (_, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P2_" + U() });
-        // A third, untouched zone in the same farm - must never leak into the sowing-scoped result even though it shares the farm/tenant.
+        // A third, untouched zone in the same farm - must never leak into the sowing-scoped result even though it shares the farm/organization.
         var (_, siblingZone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "P3_" + U() });
         var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
         var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });

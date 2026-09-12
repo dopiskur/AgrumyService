@@ -50,10 +50,6 @@ namespace Agrumy.Shared.Models
     public sealed class AccountSettings : IServerConfigSection
     {
         public int? ActivationResendCooldownMinutes { get; set; }
-        [Display(Name = "Allow self-service tenant creation")]
-        public bool AllowSelfServiceTenantCreation { get; set; }
-        [Display(Name = "Enable Tenant Management page")]
-        public bool TenantManagementEnabled { get; set; }
         [Display(Name = "Minimum password length")]
         public int PasswordMinLength { get; set; } = 8;
         [Display(Name = "Require upper/lower case, digit, and symbol")]
@@ -64,8 +60,6 @@ namespace Agrumy.Shared.Models
         public static AccountSettings From(ServerConfig c) => new()
         {
             ActivationResendCooldownMinutes = c.ActivationResendCooldownMinutes,
-            AllowSelfServiceTenantCreation = c.AllowSelfServiceTenantCreation,
-            TenantManagementEnabled = c.TenantManagementEnabled,
             PasswordMinLength = c.PasswordMinLength,
             PasswordRequireComplexity = c.PasswordRequireComplexity,
             DevicePinValidMinutes = c.DevicePinValidMinutes,
@@ -74,15 +68,13 @@ namespace Agrumy.Shared.Models
         public void ApplyTo(ServerConfig c)
         {
             c.ActivationResendCooldownMinutes = ActivationResendCooldownMinutes;
-            c.AllowSelfServiceTenantCreation = AllowSelfServiceTenantCreation;
-            c.TenantManagementEnabled = TenantManagementEnabled;
             c.PasswordMinLength = PasswordMinLength;
             c.PasswordRequireComplexity = PasswordRequireComplexity;
             c.DevicePinValidMinutes = DevicePinValidMinutes;
         }
     }
 
-    /// Server-wide alert defaults; a tenant's own TenantAlertConfig overrides these per tenant.
+    /// Server-wide alert defaults; an organization's own TenantAlertConfig overrides these per organization.
     public sealed class AlertSettings : IServerConfigSection
     {
         public double? BatteryLowThreshold { get; set; }

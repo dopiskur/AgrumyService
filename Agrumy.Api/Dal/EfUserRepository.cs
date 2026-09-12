@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Agrumy.Api.Dal
 {
-    /// IUserRepository, extracted out of the EfRepository god class - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent tenant-create on registration) and IDeviceFarmUnitRepository (same tenant-create branch also seeds the tenant's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository (and ICache, to invalidate Agrumy.Api.Security.TokenRevocationValidator's own cached state) - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
+    /// IUserRepository, extracted out of the EfRepository god class - accounts, secrets, composable roles, email activation, and bootstrap admin. RegisterUserAsync needs ITenantRepository (silent organization-create on registration) and IDeviceFarmUnitRepository (same organization-create branch also seeds the organization's first farm), RevokeUserTokensAsync needs IRefreshTokenRepository (and ICache, to invalidate Agrumy.Api.Security.TokenRevocationValidator's own cached state) - all already-extracted facets, no circular dependency (neither depends back on IUserRepository).
     internal sealed class EfUserRepository(AgrumyDbContext db, ITenantRepository tenantRepository, IDeviceFarmUnitRepository deviceFarmUnitRepository, IRefreshTokenRepository refreshTokenRepository, ICache cache) : IUserRepository
     {
         /// quotaCheckAsync null (RegisterUserAsync's own internal call) means "already checked by the caller, don't check again" - not "unlimited".
@@ -36,7 +36,7 @@ namespace Agrumy.Api.Dal
                 return true;
             });
 
-        // Same retry count/reasoning as Agrumy.Api.Quota.QuotaGuard.RunAsync - this method can't call that helper directly (the quota check needs user.TenantID, only known once the tenant-create branch above has run inside the same transaction), so it inlines the identical Serializable-transaction-plus-Contention-retry shape instead.
+        // Same retry count/reasoning as Agrumy.Api.Quota.QuotaGuard.RunAsync - this method can't call that helper directly (the quota check needs user.TenantID, only known once the organization-create branch above has run inside the same transaction), so it inlines the identical Serializable-transaction-plus-Contention-retry shape instead.
         private const int MaxContentionRetries = 3;
 
         public async Task<int> RegisterUserAsync(User user, UserSecret userSecret, int? existingTenantId, string? newTenantName,
@@ -55,7 +55,7 @@ namespace Agrumy.Api.Dal
                         await deviceFarmUnitRepository.EnsureFirstFarmAsync(user.TenantID.Value);
                     }
 
-                    // Checked inside this same transaction, not by the caller beforehand - a plain pre-check would let two concurrent registrations into the same near-full tenant both read "one seat free" and both take it.
+                    // Checked inside this same transaction, not by the caller beforehand - a plain pre-check would let two concurrent registrations into the same near-full organization both read "one seat free" and both take it.
                     if (quotaCheckAsync != null && await quotaCheckAsync(user.TenantID) is string limitError)
                     {
                         await transaction.RollbackAsync();
@@ -185,7 +185,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDto).ToList();
         }
 
-        // Same query as UsersGetAsync minus the tenant filter - callers (UserApiController) only reach this after confirming the caller is a TenantID==0 admin.
+        // Same query as UsersGetAsync minus the organization filter - callers (UserApiController) only reach this after confirming the caller is a TenantID==0 admin.
         public async Task<IList<User>> UsersGetAllAsync()
         {
             var rows = await db.Users.AsNoTracking().ToListAsync();
@@ -248,7 +248,7 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        // Never empty for a real tenant since its creator becomes an admin at registration - TenantID 0 has no owning admin, so Global admin is the equivalent role there.
+        // Never empty for a real organization since its creator becomes an admin at registration - TenantID 0 has no owning admin, so Global admin is the equivalent role there.
         public async Task<IList<User>> TenantAdminsGetAsync(int tenantId)
         {
             string adminRoleName = tenantId == 0 ? RoleNames.GlobalAdmin : RoleNames.TenantAdmin;
@@ -265,7 +265,7 @@ namespace Agrumy.Api.Dal
             return await db.Users.AsNoTracking().AnyAsync(u => u.PwdHash == null);
         }
 
-        /// One bulk query for a whole recipient list (e.g. every tenant admin for one alert) rather than one round trip per user - only explicit opt-outs exist as rows, so a user/channel absent from the result stays enabled.
+        /// One bulk query for a whole recipient list (e.g. every organization admin for one alert) rather than one round trip per user - only explicit opt-outs exist as rows, so a user/channel absent from the result stays enabled.
         public async Task<IReadOnlyDictionary<int, HashSet<string>>> NotificationDisabledChannelsGetAsync(IEnumerable<int> userIds, NotificationEventType eventType)
         {
             var ids = userIds.ToList();

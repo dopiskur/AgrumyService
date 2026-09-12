@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.Storage
 {
-    /// The rendered-PNG cache directory (Detaljni dizajn S, D7/D10) - structured, not GUID-flat like FirmwareStorage/FieldLogAttachmentStorage, because every path segment (tenant/zone/date/index) is server-controlled data, never a user-supplied file name. Purely a cache: SatelliteRasterRetentionEvaluator deletes freely, the next view just re-renders from the grid already in the DB.
+    /// The rendered-PNG cache directory (Detaljni dizajn S, D7/D10) - structured, not GUID-flat like FirmwareStorage/FieldLogAttachmentStorage, because every path segment (organization/zone/date/index) is server-controlled data, never a user-supplied file name. Purely a cache: SatelliteRasterRetentionEvaluator deletes freely, the next view just re-renders from the grid already in the DB.
     public sealed class SatelliteStorage(IOptions<AgrumySettings> settings, IHostEnvironment environment)
     {
         public const string DefaultRelativePath = "satellite-store";

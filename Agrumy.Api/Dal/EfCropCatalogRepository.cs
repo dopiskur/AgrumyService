@@ -57,7 +57,7 @@ namespace Agrumy.Api.Dal
         {
             int? existing = await db.Crops.AsNoTracking()
                 .Where(c => c.Name == name && (c.TenantID == null || c.TenantID == tenantID))
-                .OrderByDescending(c => c.TenantID) // prefer the tenant's own row over an identically-named global one
+                .OrderByDescending(c => c.TenantID) // prefer the organization's own row over an identically-named global one
                 .Select(c => (int?)c.IDCrop)
                 .FirstOrDefaultAsync();
             if (existing is int id)

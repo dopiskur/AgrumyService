@@ -79,7 +79,7 @@ public class DeviceFarmUnitApiControllerTests
         var result = await controller.UnitWifiUpdate(5, new UnitWifiUpdateRequest { Ssid = "NewSsid", WifiPassword = "pw" });
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: DeviceFarmUnitGetDevicesAsync has no setup, proving nothing was issued for a foreign tenant's unit.
+        // MockBehavior.Strict: DeviceFarmUnitGetDevicesAsync has no setup, proving nothing was issued for a foreign organization's unit.
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class DeviceFarmUnitApiControllerTests
         var result = await controller.DeviceFarmUnitZoneWidgetsSet(7, [new DashboardWidget { Type = DashboardWidgetType.Text, Label = "Hi" }]);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: DeviceFarmUnitZoneWidgetsSetAsync has no setup, proving nothing was saved for a foreign tenant's zone.
+        // MockBehavior.Strict: DeviceFarmUnitZoneWidgetsSetAsync has no setup, proving nothing was saved for a foreign organization's zone.
     }
 
     [Fact]
@@ -213,6 +213,6 @@ public class DeviceFarmUnitApiControllerTests
         var result = await controller.DashboardWidgetAggregateGet(HierarchyNodeKind.Farm, 3);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: DashboardAggregateGetAsync has no setup, proving it was never queried for a foreign tenant's farm.
+        // MockBehavior.Strict: DashboardAggregateGetAsync has no setup, proving it was never queried for a foreign organization's farm.
     }
 }

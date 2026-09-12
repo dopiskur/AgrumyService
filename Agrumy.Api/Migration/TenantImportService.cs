@@ -6,7 +6,7 @@ namespace Agrumy.Api.Migration
     /// Applies a TenantExport to this server (see Agrumy.Shared.Models.TenantImportTarget for ByName vs AsSentinel) - every id on the target is freshly assigned, stitched back together via the *IdMap dictionaries below.
     public class TenantImportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
     {
-        /// ByName: ties to an existing tenant with this exact name, or creates one; GlobalAdmin-only at the controller layer.
+        /// ByName: ties to an existing organization with this exact name, or creates one; GlobalAdmin-only at the controller layer.
         public async Task<TenantImportResult> ImportByNameAsync(TenantExport export, string targetTenantName)
         {
             int tenantId = await tenantRepo.TenantGetIdAsync(targetTenantName) ?? await tenantRepo.TenantAddAsync(targetTenantName);
@@ -30,7 +30,7 @@ namespace Agrumy.Api.Migration
 
             await ImportUsersAsync(export, tenantId, result);
             Dictionary<int, int> unitIdMap = await ImportUnitsAsync(export, tenantId, result);
-            // TenantExport predates Farm and carries no farm data, so every imported unit lands farm-less; this is a no-op for an existing tenant that already has a farm, and otherwise sweeps the freshly-imported units into a new "First farm" same as a brand-new registration would.
+            // TenantExport predates Farm and carries no farm data, so every imported unit lands farm-less; this is a no-op for an existing organization that already has a farm, and otherwise sweeps the freshly-imported units into a new "First farm" same as a brand-new registration would.
             await deviceFarmUnitRepo.EnsureFirstFarmAsync(tenantId);
             Dictionary<int, int> zoneIdMap = await ImportZonesAsync(export, tenantId, unitIdMap, result);
             await ImportZoneRulesAsync(export, tenantId, zoneIdMap, result);
@@ -44,7 +44,7 @@ namespace Agrumy.Api.Migration
         {
             foreach (TenantExportUser eu in export.Users)
             {
-                // Email/Username carry a GLOBAL unique index (not per-tenant) - a collision (re-run import, or already has an account) is expected, so skip the row rather than fail the batch.
+                // Email/Username carry a GLOBAL unique index (not per-organization) - a collision (re-run import, or already has an account) is expected, so skip the row rather than fail the batch.
                 if (!string.IsNullOrEmpty(eu.User.Email) && await userRepo.UserGetAsync(null, eu.User.Email, null) is not null)
                 {
                     result.UsersSkipped++;
@@ -82,7 +82,7 @@ namespace Agrumy.Api.Migration
                     result.SkippedReasons.Add($"User {eu.User.Email}: did not persist.");
                     continue;
                 }
-                // Global-* roles are a server-level concept, not portable across a tenant export/import boundary - never let an imported user land on this server as a Global admin/reader/etc.
+                // Global-* roles are a server-level concept, not portable across an organization export/import boundary - never let an imported user land on this server as a Global admin/reader/etc.
                 var importableRoles = eu.Roles.Where(r => !r.StartsWith("Global", StringComparison.Ordinal)).ToList();
                 await userRepo.UserRolesSetAsync(newId, importableRoles);
                 result.UsersImported++;
@@ -175,7 +175,7 @@ namespace Agrumy.Api.Migration
             var map = new Dictionary<int, int>();
             foreach (TenantExportDevice ed in export.Devices)
             {
-                // ApiId is globally unique - a collision (re-run import, or already here under a different tenant) is skipped, not failed on.
+                // ApiId is globally unique - a collision (re-run import, or already here under a different organization) is skipped, not failed on.
                 if (!string.IsNullOrEmpty(ed.ApiId) && await deviceRepo.DeviceGetByApiIdAsync(ed.ApiId) is not null)
                 {
                     result.DevicesSkipped++;

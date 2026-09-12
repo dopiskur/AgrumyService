@@ -17,7 +17,7 @@ public class SimulationApiControllerTests
     private readonly Mock<ICache> _cache = new();
     private readonly Mock<IHttpClientFactory> _httpClientFactory = new(MockBehavior.Strict);
 
-    // These tests aren't about quota behavior - every tenant is unlimited by default here.
+    // These tests aren't about quota behavior - every organization is unlimited by default here.
     public SimulationApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     private SimulationApiController NewController()
@@ -189,7 +189,7 @@ public class SimulationApiControllerTests
         var result = await controller.DeleteSession(5);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
-        // MockBehavior.Strict: SimulationSessionDeleteAsync has no setup, proving a foreign tenant's session was never deleted.
+        // MockBehavior.Strict: SimulationSessionDeleteAsync has no setup, proving a foreign organization's session was never deleted.
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public class SimulationApiControllerTests
         var result = await controller.AddDeviceToSession(5, 8);
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
-        // MockBehavior.Strict: DeviceGetByIdAsync/SimulationSessionDeviceAddAsync have no setup, proving a caller's own device was never added to another tenant's session.
+        // MockBehavior.Strict: DeviceGetByIdAsync/SimulationSessionDeviceAddAsync have no setup, proving a caller's own device was never added to another organization's session.
     }
 
     [Fact]
@@ -436,7 +436,7 @@ public class SimulationApiControllerTests
         var result = await controller.SessionRuleDelete(5, 77);
 
         Assert.IsType<NotFoundResult>(result.Result);
-        // MockBehavior.Strict: RuleDeleteAsync has no setup, proving a rule from a DIFFERENT session was never deleted just because both belong to the same caller's tenant.
+        // MockBehavior.Strict: RuleDeleteAsync has no setup, proving a rule from a DIFFERENT session was never deleted just because both belong to the same caller's organization.
     }
 
     // ---- Simulation groups ----
@@ -476,7 +476,7 @@ public class SimulationApiControllerTests
         var result = await controller.SessionGroupAdd(5, new SimulationGroup { Scope = HierarchyNodeKind.Zone, ScopeID = 9 });
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
-        // MockBehavior.Strict: SimulationGroupAddAsync has no setup, proving a zone from a foreign tenant was rejected before any fan-out happened.
+        // MockBehavior.Strict: SimulationGroupAddAsync has no setup, proving a zone from a foreign organization was rejected before any fan-out happened.
     }
 
     [Fact]

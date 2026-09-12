@@ -45,7 +45,7 @@ namespace Agrumy.Api.Satellite
 
     public interface ISatelliteImagerySourceFactory
     {
-        /// Null when the tenant has no config row or Enabled=false - D1, no server-wide fallback.
+        /// Null when the organization has no config row or Enabled=false - D1, no server-wide fallback.
         Task<ISatelliteImagerySource?> ForAsync(int tenantId, CancellationToken ct);
     }
 }

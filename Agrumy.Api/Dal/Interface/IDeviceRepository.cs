@@ -19,7 +19,7 @@ namespace Agrumy.Api.Dal.Interface
         int? Battery,
         DateTimeOffset? LowBatteryNotifiedAt);
 
-    /// The minimal shape FrostAlertEvaluator needs for its local DewPoint-spread confirmation signal - latest Temperature+Humidity per enabled device, no tenant scoping since the underlying forecast check is itself install-wide.
+    /// The minimal shape FrostAlertEvaluator needs for its local DewPoint-spread confirmation signal - latest Temperature+Humidity per enabled device, no organization scoping since the underlying forecast check is itself install-wide.
     public sealed record FrostSensorReading(double? Temperature, double? Humidity);
 
     /// Device facet of the data layer: device CRUD, sensor/controller configs, firmware (OTA), the fixed type lists, and device events.
@@ -31,50 +31,50 @@ namespace Agrumy.Api.Dal.Interface
         /// Soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
         Task DeviceDeleteAsync(int? idDevice, int? tenantID);
 
-        /// Every soft-deleted, not-yet-Purged device (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
+        /// Every soft-deleted, not-yet-Purged device (tenantID null = every organization) - still visible/restorable in the Recycle Bin listing.
         Task<IList<Device>> DeviceRecycleBinGetAsync(int? tenantID);
 
-        /// Ownership-check lookup for a soft-deleted device (no tenant filter, Purged or not) - null if the device doesn't exist or isn't deleted.
+        /// Ownership-check lookup for a soft-deleted device (no organization filter, Purged or not) - null if the device doesn't exist or isn't deleted.
         Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice);
 
-        /// Every Deleted AND Purged device (tenantID null = every tenant) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
+        /// Every Deleted AND Purged device (tenantID null = every organization) - marked for permanent removal but still restorable until the purge cycle actually reaps it.
         Task<IList<Device>> DevicePendingPurgeGetAsync(int? tenantID);
 
-        /// Undoes DeviceDeleteAsync (or a pending DeviceRecycleBinMarkPurgedAsync) - clears BOTH Deleted and Purged, false if the device doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Undoes DeviceDeleteAsync (or a pending DeviceRecycleBinMarkPurgedAsync) - clears BOTH Deleted and Purged, false if the device doesn't exist, isn't deleted, or belongs to a different organization.
         Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID);
 
-        /// Marks an already soft-deleted device for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceRestoreAsync until the purge cycle actually runs. False if it doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Marks an already soft-deleted device for permanent removal without waiting out its organization's RecycleBinRetentionDays; still fully restorable via DeviceRestoreAsync until the purge cycle actually runs. False if it doesn't exist, isn't deleted, or belongs to a different organization.
         Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID);
 
-        /// The automatic half of marking - every Deleted, not-yet-Purged device whose OWNING TENANT's effective retention (its own override, falling back to serverDefaultRetentionDays) has elapsed. Returns how many were marked.
+        /// The automatic half of marking - every Deleted, not-yet-Purged device whose OWNING ORGANIZATION's effective retention (its own override, falling back to serverDefaultRetentionDays) has elapsed. Returns how many were marked.
         Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct);
 
-        /// Every device currently marked Purged, with its owning tenant - the reap step's worklist (DeviceRecycleBinPurgeAsync needs the tenant for its own ownership check).
+        /// Every device currently marked Purged, with its owning organization - the reap step's worklist (DeviceRecycleBinPurgeAsync needs the organization for its own ownership check).
         Task<IList<(int IDDevice, int? TenantID)>> DevicePurgedIdsGetAsync();
 
-        /// The actual, irreversible removal: every row tied to this device INCLUDING SensorData - false if the device doesn't exist, isn't Deleted+Purged, or belongs to a different tenant. Only ever called once Purged is set (DeviceRecycleBinMarkPurgedAsync or the farm-wide cascade), never directly from an API action.
+        /// The actual, irreversible removal: every row tied to this device INCLUDING SensorData - false if the device doesn't exist, isn't Deleted+Purged, or belongs to a different organization. Only ever called once Purged is set (DeviceRecycleBinMarkPurgedAsync or the farm-wide cascade), never directly from an API action.
         Task<bool> DeviceRecycleBinPurgeAsync(int idDevice, int? tenantID);
 
-        /// The device matched by id / apiId / macAddress within the tenant, or null if none matches (or no key was given).
+        /// The device matched by id / apiId / macAddress within the organization, or null if none matches (or no key was given).
         Task<Device?> DeviceGetAsync(int? tenantID, int? idDevice, string? apiId, string? macAddress);
 
-        /// The device with this id (no tenant filter) - used only for ownership checks before an authorized write - or null if none.
+        /// The device with this id (no organization filter) - used only for ownership checks before an authorized write - or null if none.
         Task<Device?> DeviceGetByIdAsync(int? idDevice);
 
-        /// The device with this globally unique ApiId (no tenant filter), or null if none. Device-comm endpoints authenticate by ApiId/ApiKey and have no tenant context.
+        /// The device with this globally unique ApiId (no organization filter), or null if none. Device-comm endpoints authenticate by ApiId/ApiKey and have no organization context.
         Task<Device?> DeviceGetByApiIdAsync(string? apiId);
         Task<IList<Device>> DevicesGetAsync(int? tenantID);
 
-        /// Every device in every tenant - callers must check CallerReadsDevicesGlobally themselves.
+        /// Every device in every organization - callers must check CallerReadsDevicesGlobally themselves.
         Task<IList<Device>> DevicesGetAllAsync();
 
-        /// Every sensor-only device (DeviceSensorEnabled, not DeviceControllerEnabled) in the tenant, or every tenant when null - excludes controller-capable devices since a WiFi.scanNetworks() pause would disrupt their real-time relay duties.
+        /// Every sensor-only device (DeviceSensorEnabled, not DeviceControllerEnabled) in the organization, or every organization when null - excludes controller-capable devices since a WiFi.scanNetworks() pause would disrupt their real-time relay duties.
         Task<IList<Device>> DevicesSensorOnlyGetAsync(int? tenantID);
         Task<bool> DeviceCheckMacAddressAsync(int? tenantID, string? macAddress);
         Task<DeviceConfigSensor?> DeviceConfigSensorGetAsync(int? deviceConfigSensorID);
         Task<DeviceConfigController?> DeviceConfigControllerGetAsync(int? deviceConfigControllerID);
 
-        /// The device owning this sensor/controller config id (no tenant filter) - for ownership checks before returning config data - or null if none.
+        /// The device owning this sensor/controller config id (no organization filter) - for ownership checks before returning config data - or null if none.
         Task<Device?> DeviceGetByDeviceConfigSensorIdAsync(int? deviceConfigSensorID);
         Task<Device?> DeviceGetByDeviceConfigControllerIdAsync(int? deviceConfigControllerID);
 
@@ -125,13 +125,13 @@ namespace Agrumy.Api.Dal.Interface
         /// The device's current (highest LastSeenUtc) v2 session, for Web Device Details' operator-visible "LoRa v2 session" card - null if the device has never sent an accepted uplink.
         Task<DeviceLoRaSessionInfo?> DeviceLoRaLatestSessionGetAsync(int deviceID);
 
-        /// Fleet status for every device in the tenant, or everywhere when tenantID is null (caller must check CallerReadsDevicesGlobally first) - Online comes from DeviceFleetStatus.ComputeOnline.
+        /// Fleet status for every device in the organization, or everywhere when tenantID is null (caller must check CallerReadsDevicesGlobally first) - Online comes from DeviceFleetStatus.ComputeOnline.
         Task<IList<DeviceFleetStatus>> DeviceFleetGetAsync(int? tenantID);
 
-        /// Same shape as one DeviceFleetGetAsync row, scoped to a single device - null if deviceID doesn't exist or (when tenantID is set) belongs to another tenant.
+        /// Same shape as one DeviceFleetGetAsync row, scoped to a single device - null if deviceID doesn't exist or (when tenantID is set) belongs to another organization.
         Task<DeviceFleetStatus?> DeviceFleetStatusGetAsync(int deviceID, int? tenantID);
 
-        /// Drops the cached DeviceFleetGetAsync snapshot (own-tenant and global) - called by IDeviceFarmUnitRepository after any write that changes a device's fleet row (e.g. zone assignment).
+        /// Drops the cached DeviceFleetGetAsync snapshot (own-organization and global) - called by IDeviceFarmUnitRepository after any write that changes a device's fleet row (e.g. zone assignment).
         Task InvalidateFleetCacheAsync(int? tenantID);
 
         // Device events
@@ -139,15 +139,15 @@ namespace Agrumy.Api.Dal.Interface
         /// Skips (returns false) an identical eventType for the same device within ServerConfig.EventDedupeMinutes - a flapping "NoInternet" every loop cycle must not flood the table.
         Task<bool> EventDevicePushAsync(int deviceID, int tenantID, DeviceEventType eventType, string? message);
 
-        /// Most recent events for one device, newest first, capped at <paramref name="limit"/> - tenantID is the caller's own, so a cross-tenant device just matches zero rows rather than leaking events.
+        /// Most recent events for one device, newest first, capped at <paramref name="limit"/> - tenantID is the caller's own, so a cross-organization device just matches zero rows rather than leaking events.
         Task<IList<DeviceEvent>> EventDeviceGetAsync(int? deviceID, int? tenantID, int limit = 100);
 
-        /// Marks one event acknowledged so it stops counting toward Unit/Zone Orange status - returns false rather than throwing when the id doesn't match (wrong tenant or already gone).
+        /// Marks one event acknowledged so it stops counting toward Unit/Zone Orange status - returns false rather than throwing when the id doesn't match (wrong organization or already gone).
         Task<bool> EventDeviceAcknowledgeAsync(int idEventDevice, int? tenantID);
 
         // Offline alert background worker
 
-        /// Every enabled device across every tenant - the worker is not tenant-scoped, it runs once for the whole install.
+        /// Every enabled device across every organization - the worker is not organization-scoped, it runs once for the whole install.
         Task<IList<OfflineAlertCandidate>> OfflineAlertCandidatesGetAsync();
 
         /// Sets (or clears, notifiedAt: null) OfflineNotifiedAt on one device's diagnostic row.
@@ -155,7 +155,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // Low-battery alert background worker
 
-        /// Every enabled device across every tenant with its latest battery reading - not tenant-scoped, runs once for the whole install.
+        /// Every enabled device across every organization with its latest battery reading - not organization-scoped, runs once for the whole install.
         Task<IList<LowBatteryAlertCandidate>> LowBatteryAlertCandidatesGetAsync();
 
         /// Sets (or clears, notifiedAt: null) LowBatteryNotifiedAt on one device's diagnostic row.
@@ -163,7 +163,7 @@ namespace Agrumy.Api.Dal.Interface
 
         // Frost alert background worker
 
-        /// Latest Temperature+Humidity per enabled device in one tenant - frost forecasting is per-tenant, so local confirmation must be too.
+        /// Latest Temperature+Humidity per enabled device in one organization - frost forecasting is per-organization, so local confirmation must be too.
         Task<IList<FrostSensorReading>> FrostSensorReadingsGetAsync(int tenantId);
 
         // Simulation Mode (per-metric overrides on an existing physical device)

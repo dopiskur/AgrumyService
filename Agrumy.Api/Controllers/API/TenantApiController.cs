@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Tenant Management CRUD - write is Global admin only since a tenant has no meaningful self-management of its own existence, unlike Device/User management.
+    /// Organization Management CRUD - write is Global admin only since an organization has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
     public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
@@ -25,7 +25,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await tenantRepo.TenantsGetAllAsync());
         }
 
-        /// Any authenticated caller may look up their OWN tenant (e.g. UserController.Edit/Details resolving a TenantName to display) - only a cross-tenant lookup needs the Global admin/reader role.
+        /// Any authenticated caller may look up their OWN organization (e.g. UserController.Edit/Details resolving a TenantName to display) - only a cross-organization lookup needs the Global admin/reader role.
         [Authorize]
         [HttpGet]
         public async Task<ActionResult<Tenant>> TenantGet(int idTenant)
@@ -73,7 +73,7 @@ namespace Agrumy.Api.Controllers.API
             }
             tenant.TenantName = tenant.TenantName.Trim();
 
-            // A bad id would silently degrade every device in this tenant's schedule mode to UTC (TimeZoneHelper.GetUtcOffsetSeconds' fallback) instead of failing at save time; blank/null clears it back to "not configured".
+            // A bad id would silently degrade every device in this organization's schedule mode to UTC (TimeZoneHelper.GetUtcOffsetSeconds' fallback) instead of failing at save time; blank/null clears it back to "not configured".
             if (!string.IsNullOrWhiteSpace(tenant.ScheduleTimeZone))
             {
                 if (!TimeZoneHelper.TryNormalizeToIana(tenant.ScheduleTimeZone, out string iana))
@@ -105,7 +105,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// GlobalAdmin only, same bar as TenantAdd - deletes the tenant row plus its Wifi configs/quota/usage snapshots; a tenant still holding any device is refused outright (device tenant reassignment has no UI yet, so a stray orphaned device would be unrecoverable). deleteUsers=false leaves the tenant's users behind with TenantID cleared to null ("Unassigned"); true deletes them too - never automatic, always the caller's explicit choice.
+        /// GlobalAdmin only, same bar as TenantAdd - deletes the organization row plus its Wifi configs/quota/usage snapshots; an organization still holding any device is refused outright (device organization reassignment has no UI yet, so a stray orphaned device would be unrecoverable). deleteUsers=false leaves the organization's users behind with TenantID cleared to null ("Unassigned"); true deletes them too - never automatic, always the caller's explicit choice.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpDelete]
         public async Task<ActionResult> TenantDelete(int idTenant, bool deleteUsers = false)
@@ -139,7 +139,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Alert config -----------------------------------------------------
 
-        /// Always the caller's own tenant - a Tenant admin's Battery/Tank/problem-event alert overrides, no idTenant parameter to avoid needing a separate ownership check. Global reader can view (read-only, same as the ServerConfig-backed Alerts page), write stays Admins-only below.
+        /// Always the caller's own organization - an Organization admin's Battery/Tank/problem-event alert overrides, no idTenant parameter to avoid needing a separate ownership check. Global reader can view (read-only, same as the ServerConfig-backed Alerts page), write stays Admins-only below.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet("AlertConfig")]
         public async Task<ActionResult<TenantAlertConfig>> TenantAlertConfigGet()
@@ -168,7 +168,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// idTenant defaults to the caller's own tenant - same optional-query-param shape as EmergencyStopStatus above, so a Tenant admin's plain GET "just works" while a Global admin/reader can still target any tenant explicitly. Read-only (WeatherEvaluator/FrostAlertEvaluator are the only writers), so no PUT counterpart.
+        /// idTenant defaults to the caller's own organization - same optional-query-param shape as EmergencyStopStatus above, so an Organization admin's plain GET "just works" while a Global admin/reader can still target any organization explicitly. Read-only (WeatherEvaluator/FrostAlertEvaluator are the only writers), so no PUT counterpart.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet("WeatherState")]
         public async Task<ActionResult<TenantWeatherState>> WeatherStateGet(int? idTenant = null)
@@ -183,7 +183,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Emergency stop -----------------------------------
 
-        /// Fail-closed, tenant-wide: forces every actuator in idTenant (defaulting to the caller's own) off ahead of any rule, until explicitly cleared. Deliberately one click, no confirmation - unlike a destructive action, hesitation here is the wrong default.
+        /// Fail-closed, organization-wide: forces every actuator in idTenant (defaulting to the caller's own) off ahead of any rule, until explicitly cleared. Deliberately one click, no confirmation - unlike a destructive action, hesitation here is the wrong default.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("EmergencyStop")]
         public async Task<ActionResult> EmergencyStopActivate(int? idTenant = null)
@@ -231,7 +231,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Export/Import --------------------------------------------------
 
-        /// SENSITIVE: carries every exported user's password hash/salt and device's ApiKey (treat like a credential bundle, never persisted server-side, built in memory and streamed straight back) - a TenantAdmin exports only their OWN tenant, Global admin any. ZIP-packaged (single export.json entry, see TenantExportService.BuildExportZipAsync) - same repackaging already applies to the firmware catalog.
+        /// SENSITIVE: carries every exported user's password hash/salt and device's ApiKey (treat like a credential bundle, never persisted server-side, built in memory and streamed straight back) - a TenantAdmin exports only their OWN organization, Global admin any. ZIP-packaged (single export.json entry, see TenantExportService.BuildExportZipAsync) - same repackaging already applies to the firmware catalog.
         [Authorize(Roles = RoleNames.Admins)]
         [HttpGet("Export")]
         public async Task<ActionResult> Export(int idTenant, bool includeSensorData = false, DateTime? sensorDataSinceUtc = null, CancellationToken cancellationToken = default)
@@ -245,7 +245,7 @@ namespace Agrumy.Api.Controllers.API
             return File(content, "application/zip", fileName);
         }
 
-        /// ByName only (see Agrumy.Shared.Models.TenantImportTarget), Global admin only - unlike Export this can create a brand-new tenant or add into one the caller doesn't administer, same bar as TenantAdd/TenantUpdate.
+        /// ByName only (see Agrumy.Shared.Models.TenantImportTarget), Global admin only - unlike Export this can create a brand-new organization or add into one the caller doesn't administer, same bar as TenantAdd/TenantUpdate.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost("Import")]
         public async Task<ActionResult<TenantImportResult>> Import([FromBody] TenantImportRequest value)
@@ -287,7 +287,7 @@ namespace Agrumy.Api.Controllers.API
 
         private static readonly int[] AllowedSyncIntervalDays = [1, 2, 3, 4, 5, 6, 7, 30];
 
-        /// idTenant defaults to the caller's own tenant - same optional-query-param shape as EmergencyStopActivate above, so a Tenant admin's plain GET/PUT "just works" for their own tenant while a Global admin can still target any tenant explicitly.
+        /// idTenant defaults to the caller's own organization - same optional-query-param shape as EmergencyStopActivate above, so an Organization admin's plain GET/PUT "just works" for their own organization while a Global admin can still target any organization explicitly.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet("Satellite")]
         public async Task<ActionResult<TenantSatelliteConfig>> SatelliteConfigGet(int? idTenant = null)
@@ -330,7 +330,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(saved);
         }
 
-        /// D1 - one token request + one lightweight Catalog query, same "test before/after save" shape as ServerConfigApiController.TestArchiveDatabase; blank ClientSecret in the request falls back to whatever's already saved for this tenant. On success the tested credentials are saved immediately (this endpoint doubles as "test and save") and LastTokenIssuedUtc refreshes so the settings page's health indicator reflects this test too.
+        /// D1 - one token request + one lightweight Catalog query, same "test before/after save" shape as ServerConfigApiController.TestArchiveDatabase; blank ClientSecret in the request falls back to whatever's already saved for this organization. On success the tested credentials are saved immediately (this endpoint doubles as "test and save") and LastTokenIssuedUtc refreshes so the settings page's health indicator reflects this test too.
         [Authorize(Roles = RoleNames.Admins)]
         [HttpPost("Satellite/Test")]
         public async Task<ActionResult<SatelliteConfigTestResult>> SatelliteConfigTest([FromBody] SatelliteConfigTestRequest request, int? idTenant = null)
@@ -369,11 +369,11 @@ namespace Agrumy.Api.Controllers.API
 
         #endregion
 
-        /// GET: Global admin/reader can view any tenant; a Tenant admin can view only their own. Same shape as CallerManagesDevices, but for tenant-settings ownership rather than device-management roles.
+        /// GET: Global admin/reader can view any organization; an Organization admin can view only their own. Same shape as CallerManagesDevices, but for organization-settings ownership rather than device-management roles.
         private bool CallerReadsTenantConfig(int targetTenantId) =>
             CallerManagesTenantConfig(targetTenantId) || CallerHasRole(RoleNames.GlobalReader);
 
-        /// PUT/Test: Global admin can manage any tenant; a Tenant admin only their own.
+        /// PUT/Test: Global admin can manage any organization; an Organization admin only their own.
         private bool CallerManagesTenantConfig(int targetTenantId) =>
             CallerIsGlobalAdmin || (CallerHasRole(RoleNames.TenantAdmin) && targetTenantId == CallerTenantId);
     }

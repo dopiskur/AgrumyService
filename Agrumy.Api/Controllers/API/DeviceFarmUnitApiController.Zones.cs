@@ -45,7 +45,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return error;
             }
-            zone.TenantID = unit!.TenantID; // the owning unit's tenant, not necessarily the caller's (a Global admin may add to another tenant's unit)
+            zone.TenantID = unit!.TenantID; // the owning unit's organization, not necessarily the caller's (a Global admin may add to another organization's unit)
             DeviceFarmUnitZone added;
             try
             {
@@ -87,14 +87,14 @@ namespace Agrumy.Api.Controllers.API
                 return BadRequest($"Ventilation max run time must be between 0 (disabled) and {SafetyLimitValidation.MaxReasonableSeconds} seconds.");
             }
 
-            zone.TenantID = existing!.TenantID; // payload cannot move a zone to another tenant
+            zone.TenantID = existing!.TenantID; // payload cannot move a zone to another organization
             zone.DeviceFarmUnitID = existing.DeviceFarmUnitID; // ...or to another unit - rename only, see DeviceFarmUnitZoneMigrate for the deliberate version
             await deviceFarmUnitRepo.DeviceFarmUnitZoneUpdateAsync(zone);
             await WriteAuditAsync("DeviceFarmUnitZone.Updated", existing.TenantID, "DeviceFarmUnitZone", existing.IDDeviceFarmUnitZone.ToString()!, zone.DeviceFarmUnitZoneName);
             return true;
         }
 
-        /// Deliberate unit reassignment, kept out of DeviceFarmUnitZoneUpdate's payload on purpose (see the comment there); both ends' ownership are checked separately since a Global admin can own zone and target unit in different tenants.
+        /// Deliberate unit reassignment, kept out of DeviceFarmUnitZoneUpdate's payload on purpose (see the comment there); both ends' ownership are checked separately since a Global admin can own zone and target unit in different organizations.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPut("Zone/{idDeviceFarmUnitZone}/Migrate")]
         public async Task<ActionResult<bool>> DeviceFarmUnitZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit)
@@ -202,7 +202,7 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
-        /// NotificationEventType values with a live, continuously-queryable "currently active" signal - see EfDeviceFarmUnitRepository.DashboardAlertStatusGetAsync. RuleTriggered fires on transition only (no "still true" state) and the three Satellite* types are tenant-quota concerns, not farm/unit/zone-scoped, so none of them belong on this widget.
+        /// NotificationEventType values with a live, continuously-queryable "currently active" signal - see EfDeviceFarmUnitRepository.DashboardAlertStatusGetAsync. RuleTriggered fires on transition only (no "still true" state) and the three Satellite* types are organization-quota concerns, not farm/unit/zone-scoped, so none of them belong on this widget.
         private static readonly NotificationEventType[] AlertStatusEventTypes =
         [
             NotificationEventType.Offline, NotificationEventType.LowBattery, NotificationEventType.TankRefill, NotificationEventType.Frost,
@@ -267,7 +267,7 @@ namespace Agrumy.Api.Controllers.API
                 return zoneError;
             }
 
-            // Unconditional, no exception for a caller who legitimately crosses tenants for the two ownership checks above - a device must never end up assigned into another tenant's zone, not even by a Global admin's mistake.
+            // Unconditional, no exception for a caller who legitimately crosses organizations for the two ownership checks above - a device must never end up assigned into another organization's zone, not even by a Global admin's mistake.
             if (device!.TenantID != zone!.TenantID)
             {
                 return ForbidWith("Device and zone belong to different tenants.");

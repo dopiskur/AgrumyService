@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Devices
 {
-    /// Best-effort, non-blocking heads-up when a newly saved rule's RelayFunction/Name already has a rule sitting at a DIFFERENT scope somewhere in its ancestor/descendant chain. RuleHierarchyResolver already picks a silent Zone&gt;Unit&gt;Farm&gt;Global winner regardless of this check - it only surfaces that a shadow situation now exists so the admin isn't surprised later. Walking every unit/zone under a Farm/Global rule is N+1 by design (one save, not a hot path) - fine at greenhouse-install scale, not meant for a tenant with thousands of zones.
+    /// Best-effort, non-blocking heads-up when a newly saved rule's RelayFunction/Name already has a rule sitting at a DIFFERENT scope somewhere in its ancestor/descendant chain. RuleHierarchyResolver already picks a silent Zone&gt;Unit&gt;Farm&gt;Global winner regardless of this check - it only surfaces that a shadow situation now exists so the admin isn't surprised later. Walking every unit/zone under a Farm/Global rule is N+1 by design (one save, not a hot path) - fine at greenhouse-install scale, not meant for an organization with thousands of zones.
     public class RuleScopeConflictService(IDeviceFarmUnitRepository repo)
     {
         public async Task<string?> FindConflictWarningAsync(DeviceFarmUnitZoneRule rule)

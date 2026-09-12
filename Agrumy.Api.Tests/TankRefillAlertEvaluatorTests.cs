@@ -24,7 +24,7 @@ public class TankRefillAlertEvaluatorTests
         DateTime? tankRefillNotifiedAt = null) =>
         new(id, tenantId, name, waterLevel, rawEmpty, rawFull, capacityLiters, tankRefillNotifiedAt);
 
-    // No tenant override in any of these tests - every candidate's tenant falls back to ServerConfig's own threshold/hysteresis.
+    // No organization override in any of these tests - every candidate's organization falls back to ServerConfig's own threshold/hysteresis.
     private void SetupCandidates(params TankRefillAlertCandidate[] candidates)
     {
         _deviceFarmUnits.Setup(d => d.TankRefillAlertCandidatesGetAsync()).ReturnsAsync(candidates);

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Agrumy.Api.Dal
 {
-    /// Row seeding split out of the former EfRepository (see SchemaBootstrapper for the migrate/schema-check slice) - roles, lookup tables, the Unit/Zone sentinel pair, the default tenant, and the bootstrap Global Admin.
+    /// Row seeding split out of the former EfRepository (see SchemaBootstrapper for the migrate/schema-check slice) - roles, lookup tables, the Unit/Zone sentinel pair, the default organization, and the bootstrap Global Admin.
     internal sealed class DataSeeder(ILogger<DataSeeder> logger)
     {
         public async Task SeedAsync(AgrumyDbContext db)
@@ -32,7 +32,7 @@ namespace Agrumy.Api.Dal
             }
         }
 
-        /// TenantID=0 is the shared default tenant every bootstrap admin relies on - TenantRow.IDTenant is nullable specifically so a normal EF Add can carry the explicit literal 0 through (see that property's own remarks); MySQL separately needs NO_AUTO_VALUE_ON_ZERO for the INSERT it still generates, or it silently reassigns a literal 0 to the next auto-increment value (confirmed empirically) - a server-level AUTO_INCREMENT behavior, not an EF quirk, so switching off raw SQL doesn't remove the need for it.
+        /// TenantID=0 is the shared default organization every bootstrap admin relies on - TenantRow.IDTenant is nullable specifically so a normal EF Add can carry the explicit literal 0 through (see that property's own remarks); MySQL separately needs NO_AUTO_VALUE_ON_ZERO for the INSERT it still generates, or it silently reassigns a literal 0 to the next auto-increment value (confirmed empirically) - a server-level AUTO_INCREMENT behavior, not an EF quirk, so switching off raw SQL doesn't remove the need for it.
         private static async Task SeedDefaultTenantAsync(AgrumyDbContext db)
         {
             if (await db.Tenants.AsNoTracking().AnyAsync(t => t.IDTenant == 0))

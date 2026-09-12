@@ -81,7 +81,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
             // Referential integrity only - deliberately not declared to EF's own model (AgrumyDbContext has no
             // HasOne/HasForeignKey for this table), which confuses SaveChanges' key-fixup when TenantID is 0
-            // (the real, legitimate bootstrap tenant) and is also a shared PK/FK pointing at a store-generated column.
+            // (the real, legitimate bootstrap organization) and is also a shared PK/FK pointing at a store-generated column.
             migrationBuilder.AddForeignKey(
                 name: "FK_tenantSatelliteConfig_tenant_TenantID",
                 table: "tenantSatelliteConfig",

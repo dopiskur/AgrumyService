@@ -5,13 +5,13 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Migration
 {
-    /// Builds the full portable snapshot of one tenant - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
+    /// Builds the full portable snapshot of one organization - see Agrumy.Shared.Models.TenantExport for exactly what is/isn't included and why; read-only, composed from existing IRepository reads.
     public class TenantExportService(ITenantRepository tenantRepo, IUserRepository userRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, ISensorDataRepository sensorDataRepo)
     {
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.
         private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-        /// Packages ExportAsync's snapshot into a ZIP (single export.json entry) - same repackaging already applies to the firmware catalog, so a tenant export behaves like every other admin download/upload pair instead of being the one plain-JSON exception.
+        /// Packages ExportAsync's snapshot into a ZIP (single export.json entry) - same repackaging already applies to the firmware catalog, so an organization export behaves like every other admin download/upload pair instead of being the one plain-JSON exception.
         public async Task<(Stream Content, string FileName)> BuildExportZipAsync(int tenantId, bool includeSensorData, DateTime? sensorDataSinceUtc, CancellationToken cancellationToken = default)
         {
             TenantExport export = await ExportAsync(tenantId, includeSensorData, sensorDataSinceUtc);

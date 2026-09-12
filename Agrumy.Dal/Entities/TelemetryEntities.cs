@@ -110,7 +110,7 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? AcknowledgedAt { get; set; } // Set once an admin dismisses this alert, stopping it counting toward Unit/Zone Orange status even inside the expiry window.
     }
 
-    /// One row per tenant per calendar day - upserted, not appended, so a service restart re-ticking the same day just refreshes it instead of piling up duplicates.
+    /// One row per organization per calendar day - upserted, not appended, so a service restart re-ticking the same day just refreshes it instead of piling up duplicates.
     public class TenantUsageSnapshotRow
     {
         public int IDTenantUsageSnapshot { get; set; }

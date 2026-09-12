@@ -33,7 +33,7 @@ namespace Agrumy.Api.Controllers.API
         [HttpGet]
         public async Task<ActionResult<DeviceDto>> DeviceGet(int? idDevice)
         {
-            // A Global reader/Device/admin sees any tenant's device - DeviceGetAsync's tenant filter would hide it, so use the unfiltered by-id lookup for them.
+            // A Global reader/Device/admin sees any organization's device - DeviceGetAsync's organization filter would hide it, so use the unfiltered by-id lookup for them.
             Device? device = CallerReadsDevicesGlobally
                 ? await deviceRepo.DeviceGetByIdAsync(idDevice)
                 : await deviceRepo.DeviceGetAsync(CallerTenantId, idDevice, null, null);
@@ -64,7 +64,7 @@ namespace Agrumy.Api.Controllers.API
             }
 
             Device internalDevice = device.ToDevice();
-            internalDevice.TenantID = existing!.TenantID; // payload cannot move a device to another tenant
+            internalDevice.TenantID = existing!.TenantID; // payload cannot move a device to another organization
 
             if (internalDevice.LoRaGatewayEnabled == true && await quotaEnforcer.CheckLoRaAllowedAsync(internalDevice.TenantID) is string loRaLimitError)
             {
@@ -91,7 +91,7 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
 
-            // The device's OWN tenant, not the caller's - a Global admin/Device deleting a foreign tenant's device would otherwise silently match zero rows.
+            // The device's OWN organization, not the caller's - a Global admin/Device deleting a foreign organization's device would otherwise silently match zero rows.
             await deviceRepo.DeviceDeleteAsync(idDevice, device!.TenantID);
             await WriteAuditAsync("Device.Deleted", device.TenantID, "Device", idDevice.ToString()!, device.DeviceName);
             return true;
@@ -154,7 +154,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await deviceRepo.DeviceConfigControllerGetAsync(deviceConfigControllerID));
         }
 
-        /// Read-only status of every device at once, open to any authenticated caller; tenant scoping mirrors DevicesGet, with global readers seeing all tenants.
+        /// Read-only status of every device at once, open to any authenticated caller; organization scoping mirrors DevicesGet, with global readers seeing all organizations.
         [Authorize]
         [HttpGet("Fleet")]
         public async Task<ActionResult<IList<DeviceFleetStatus>>> DeviceFleetGet() =>
@@ -169,7 +169,7 @@ namespace Agrumy.Api.Controllers.API
             return status is null ? NotFound() : Ok(status);
         }
 
-        /// Diagnostic event log, open to any authenticated caller (a Tenant reader sees their own tenant's log); tenant ownership enforced the same way as every other Device sub-resource GET.
+        /// Diagnostic event log, open to any authenticated caller (an Organization reader sees their own organization's log); organization ownership enforced the same way as every other Device sub-resource GET.
         [Authorize]
         [HttpGet("Events")]
         public async Task<ActionResult<IList<DeviceEvent>>> DeviceEventsGet(int? idDevice)
@@ -181,7 +181,7 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
 
-            // The device's own tenant (== the caller's for a tenant-scoped caller; the ensure call above already authorized a cross-tenant global reader).
+            // The device's own organization (== the caller's for an organization-scoped caller; the ensure call above already authorized a cross-organization global reader).
             return Ok(await deviceRepo.EventDeviceGetAsync(device!.IDDevice, device.TenantID));
         }
 
@@ -524,7 +524,7 @@ namespace Agrumy.Api.Controllers.API
                     device = await deviceRepo.DeviceAddAsync(new Device
                     {
                         ConfigVersion = 1,
-                        // Not collapsed to 0: a device registered under a genuinely tenant-less user stays genuinely tenant-less too, instead of silently landing in the bootstrap tenant.
+                        // Not collapsed to 0: a device registered under a genuinely organization-less user stays genuinely organization-less too, instead of silently landing in the bootstrap organization.
                         TenantID = user.TenantID,
                         // Discovery-provisioned name (admin, pre-registration) beats the captive-portal one (device owner, at setup) beats the generic default.
                         DeviceName = !string.IsNullOrWhiteSpace(provision?.DeviceName) ? provision.DeviceName

@@ -163,7 +163,7 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.Email).IsUnique().HasDatabaseName("email_UNIQUE");
                 e.HasIndex(x => x.Username).IsUnique().HasDatabaseName("Username_UNIQUE");
                 e.HasIndex(x => x.ActivationTokenHash).IsUnique().HasDatabaseName("ActivationTokenHash_UNIQUE");
-                e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every tenant-scoped user list filters by TenantID alone.
+                e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every organization-scoped user list filters by TenantID alone.
             });
 
             // Four tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
@@ -282,7 +282,7 @@ namespace Agrumy.Dal
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
-            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): farmOpenfield is Farm's 1:1 type-extension row; crop is a global-or-tenant catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone); sowing is the mid-level rule scope, FK straight to deviceFarm (not routed through farmOpenfield) since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
+            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): farmOpenfield is Farm's 1:1 type-extension row; crop is a global-or-organization catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone); sowing is the mid-level rule scope, FK straight to deviceFarm (not routed through farmOpenfield) since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
             modelBuilder.Entity<FarmOpenfieldRow>(e =>
             {
                 e.ToTable("farmOpenfield");
@@ -293,7 +293,7 @@ namespace Agrumy.Dal
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
-            // TenantID null = global, Global-admin-maintained catalog row (D12) - a tenant's own additions set TenantID to themselves; the app layer unions both, never the DB.
+            // TenantID null = global, Global-admin-maintained catalog row (D12) - an organization's own additions set TenantID to themselves; the app layer unions both, never the DB.
             modelBuilder.Entity<CropRow>(e =>
             {
                 e.ToTable("crop");
@@ -333,13 +333,13 @@ namespace Agrumy.Dal
             {
                 e.ToTable("tenantSatelliteConfig");
                 e.HasKey(x => x.TenantID);
-                // PK doubles as the FK to tenant.IDTenant, an auto-increment column - a normal HasOne()/HasForeignKey() relationship here confuses EF's SaveChanges key-fixup (it treats the CLR-default value 0, which is also the real id of the bootstrap tenant, as "pending, will flow from a principal insert" and either throws or silently sends the wrong value). The DB-level FK constraint (already created by the migration) still enforces referential integrity; this just keeps EF's own change tracker out of that resolution entirely.
+                // PK doubles as the FK to organization.IDTenant, an auto-increment column - a normal HasOne()/HasForeignKey() relationship here confuses EF's SaveChanges key-fixup (it treats the CLR-default value 0, which is also the real id of the bootstrap organization, as "pending, will flow from a principal insert" and either throws or silently sends the wrong value). The DB-level FK constraint (already created by the migration) still enforces referential integrity; this just keeps EF's own change tracker out of that resolution entirely.
                 e.Property(x => x.TenantID).ValueGeneratedNever();
                 e.Property(x => x.ClientId).HasMaxLength(120);
                 // Same 512 ciphertext-column reasoning as TenantWifiConfigRow.Password above.
                 e.Property(x => x.ClientSecretEncrypted).HasMaxLength(512);
                 e.Property(x => x.CommercialCollectionId).HasMaxLength(80);
-                // Without this, EF's own migration default is the CLR default (0) rather than the DTO's "= 1" initializer - an existing tenant's ALTER TABLE backfill would land on an invalid, out-of-{1..7,30} value.
+                // Without this, EF's own migration default is the CLR default (0) rather than the DTO's "= 1" initializer - an existing organization's ALTER TABLE backfill would land on an invalid, out-of-{1..7,30} value.
                 e.Property(x => x.SyncIntervalDays).HasDefaultValue(1);
             });
 
@@ -606,7 +606,7 @@ namespace Agrumy.Dal
                             ? "(CASE WHEN NOT \"Deleted\" THEN \"MacAddress\" ELSE NULL END)"
                             : "(CASE WHEN `Deleted` = 0 THEN `MacAddress` ELSE NULL END)",
                         stored: true);
-                e.HasIndex("ActiveMacAddress", nameof(DeviceRow.TenantID)).IsUnique().HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE"); // Composite, not a bare MacAddress unique - a device can be legitimately resold across tenants.
+                e.HasIndex("ActiveMacAddress", nameof(DeviceRow.TenantID)).IsUnique().HasDatabaseName("ActiveMacAddress_TenantID_UNIQUE"); // Composite, not a bare MacAddress unique - a device can be legitimately resold across organizations.
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_device_tenant"); // TenantID is the second column of the unique index above, so it can't be used as a prefix for a plain WHERE TenantID = x.
                 e.Property(x => x.DeviceFarmUnitID).HasColumnName("FarmGreenhouseUnitID");
                 e.Property(x => x.DeviceFarmUnitZoneID).HasColumnName("FarmGreenhouseUnitZoneID");
@@ -617,7 +617,7 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceTypeServiceRow>().WithMany().HasForeignKey(x => x.DeviceTypeServiceID).OnDelete(DeleteBehavior.NoAction);
                 // Admin-chosen from the SAME catalog as deviceDiagnostic.DeviceTypeID (no auto-registration needed here - the Web dropdown only ever offers existing catalog entries).
                 e.HasOne<DeviceTypeRow>().WithMany().HasForeignKey(x => x.ManualDeviceTypeID).OnDelete(DeleteBehavior.NoAction);
-                // IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap tenant).
+                // IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap organization).
                 e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 // Open-Field equivalents - SowingID mirrors DeviceFarmUnitID's real FK, FarmParcelZoneID mirrors DeviceFarmUnitZoneID's no-FK.
@@ -836,7 +836,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.Action).HasMaxLength(100);
                 e.Property(x => x.TargetType).HasMaxLength(50);
                 e.Property(x => x.TargetId).HasMaxLength(50);
-                e.HasIndex(x => new { x.TenantID, x.TimestampUtc }).HasDatabaseName("ix_auditLog_tenant_timestamp"); // A Global admin's cross-tenant listing scans the whole table, acceptable at this volume.
+                e.HasIndex(x => new { x.TenantID, x.TimestampUtc }).HasDatabaseName("ix_auditLog_tenant_timestamp"); // A Global admin's cross-organization listing scans the whole table, acceptable at this volume.
             });
 
             modelBuilder.Entity<TenantUsageSnapshotRow>(e =>

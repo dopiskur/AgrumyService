@@ -19,7 +19,7 @@ namespace Agrumy.Shared.Models
 
         [HiddenInput(DisplayValue = true)]
         public int? IDDevice { get; set; }
-        // Nullable (reversing the earlier non-nullable decision, per explicit user instruction): TenantID=0 is still a real tenant (the bootstrap/default one), null means genuinely unassigned, same distinction as DeviceRoleID below.
+        // Nullable (reversing the earlier non-nullable decision, per explicit user instruction): TenantID=0 is still a real organization (the bootstrap/default one), null means genuinely unassigned, same distinction as DeviceRoleID below.
         [HiddenInput(DisplayValue = true)]
         public int? TenantID { get; set; }
 
@@ -346,7 +346,7 @@ namespace Agrumy.Shared.Models
         // DeviceFirmware.Sha256 for the offered build; firmware verifies it against the streamed .bin (Update.abort() on mismatch). Null skips the check rather than failing closed.
         public string? FirmwareSha256 { get; set; }
         public bool? Enabled { get; set; }
-        // Tenant-wide fail-closed switch, from Tenant.EmergencyStopActive - ActuatorController forces every relay off ahead of any rule when set, independent of DeviceConfigController.RelayEnabled.
+        // Organization-wide fail-closed switch, from Tenant.EmergencyStopActive - ActuatorController forces every relay off ahead of any rule when set, independent of DeviceConfigController.RelayEnabled.
         public bool? EmergencyStop { get; set; }
         // True tells firmware to start polling GET /api/Device/Simulation every 5s (or on every wake if SleepDeep) for per-metric overrides, instead of relying on this same, slower Config poll.
         public bool? SimulationModeEnabled { get; set; }

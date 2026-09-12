@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// A Global admin/reader edits the server-wide alert defaults (ServerConfig's Alerts section); a Tenant admin edits their own tenant's TenantAlertConfig override instead - same nav item and URL, the Index view picks by role.
+    /// A Global admin/reader edits the server-wide alert defaults (ServerConfig's Alerts section); an Organization admin edits their own organization's TenantAlertConfig override instead - same nav item and URL, the Index view picks by role.
     [Authorize]
     public class AlertsController(IApi api) : Controller
     {

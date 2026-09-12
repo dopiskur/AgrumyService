@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Forecast-based early warning (temperature + cloudiness + wind - the three factors radiative frost actually depends on) fires hours before frost sets in, refined with a same-tick local DewPoint-spread reading where sensors report one; local readings only ever add confidence to the message, never gate the alert, since the whole point is to warn before local conditions would show it. Runs once per tenant, since each tenant can sit at a genuinely different physical site (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same cascade AstronomicalRuleResolver's callers already use).
+    /// Forecast-based early warning (temperature + cloudiness + wind - the three factors radiative frost actually depends on) fires hours before frost sets in, refined with a same-tick local DewPoint-spread reading where sensors report one; local readings only ever add confidence to the message, never gate the alert, since the whole point is to warn before local conditions would show it. Runs once per organization, since each organization can sit at a genuinely different physical site (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same cascade AstronomicalRuleResolver's callers already use).
     public sealed class FrostAlertEvaluator(
         IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, IUserRepository userRepo,
         IWeatherForecastClient weatherClient, INotificationDispatcher dispatcher, IOptions<AgrumySettings> settingsOptions,
@@ -42,7 +42,7 @@ namespace Agrumy.Api.BackgroundWorkers
             double? lon = tenant.Longitude ?? config.WeatherLocationLon;
             if (lat is not double latitude || lon is not double longitude)
             {
-                return; // null = neither this tenant nor the server-wide default has a location set yet
+                return; // null = neither this organization nor the server-wide default has a location set yet
             }
 
             TenantWeatherState state = await tenantRepo.TenantWeatherStateGetAsync(tenantId);

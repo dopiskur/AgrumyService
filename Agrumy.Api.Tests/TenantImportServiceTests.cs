@@ -6,7 +6,7 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// Exercises TenantImportService.ImportUsersAsync's Global-role stripping - a Global-scope role is a server-level concept and must never survive a tenant export/import round-trip onto a different server.
+/// Exercises TenantImportService.ImportUsersAsync's Global-role stripping - a Global-scope role is a server-level concept and must never survive an organization export/import round-trip onto a different server.
 public class TenantImportServiceTests
 {
     // ITenantRepository is the primary mocked type; IUserRepository/IDeviceFarmUnitRepository are the same underlying mock viewed through Mock.As<T>() - IDeviceRepository/ISensorDataRepository are never called by ImportByNameAsync's user-only path here, so they're separate, unconfigured strict mocks.

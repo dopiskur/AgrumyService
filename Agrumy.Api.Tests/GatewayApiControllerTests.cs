@@ -17,13 +17,13 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// A gateway must only forward entries for devices in its own tenant, never cross a tenant boundary.
+/// A gateway must only forward entries for devices in its own organization, never cross an organization boundary.
 public class GatewayApiControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
     private readonly Mock<ICache> _cache = new();
 
-    // Gateway tenant-boundary behavior, not quota behavior - every tenant is unlimited by default here.
+    // Gateway organization-boundary behavior, not quota behavior - every organization is unlimited by default here.
     public GatewayApiControllerTests() => _repo.Setup(r => r.TenantQuotaGetAsync(It.IsAny<int>())).ReturnsAsync((TenantQuota?)null);
 
     private GatewayApiController NewController(string callerApiId)
@@ -83,7 +83,7 @@ public class GatewayApiControllerTests
         var result = Assert.Single(Assert.IsType<GatewayBatchResponse>(Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(response.Result).Value).Results);
         Assert.False(result.Success);
         Assert.Equal(403, result.StatusCode);
-        // Strict mock: an un-set-up EventDevicePushAsync call would throw, proving the cross-tenant entry was never forwarded.
+        // Strict mock: an un-set-up EventDevicePushAsync call would throw, proving the cross-organization entry was never forwarded.
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.DeviceGetByIdAsync(1)).ReturnsAsync(new Device { IDDevice = 1, IsGateway = true, TenantID = 1 });
 
         var controller = NewJwtController();
-        SetCallerRoles(controller, 2, RoleNames.TenantDevice); // caller manages tenant 2, gateway belongs to tenant 1
+        SetCallerRoles(controller, 2, RoleNames.TenantDevice); // caller manages organization 2, gateway belongs to organization 1
         var result = await controller.DeviceMappingAdd(new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "ABCDEF0123456789", IDDevice = 5 });
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
@@ -175,7 +175,7 @@ public class GatewayApiControllerTests
         _repo.Setup(r => r.GatewayDeviceMappingAddAsync(1, "ABCDEF0123456789", 5, 1)).ReturnsAsync(true);
 
         var controller = NewJwtController();
-        // GlobalAdmin's own tenant (0) legitimately crosses the gateway-ownership check, but the gateway's OWN tenant (1) - not the caller's - must be what's passed down for the device-tenant guard.
+        // GlobalAdmin's own organization (0) legitimately crosses the gateway-ownership check, but the gateway's OWN organization (1) - not the caller's - must be what's passed down for the device-organization guard.
         SetCallerRoles(controller, 0, RoleNames.GlobalAdmin);
         var result = await controller.DeviceMappingAdd(new GatewayDeviceMapping { IDGatewayDevice = 1, DevEUI = "abcdef0123456789", IDDevice = 5 });
 

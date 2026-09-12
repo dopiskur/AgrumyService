@@ -9,7 +9,7 @@ namespace Agrumy.Api.Dal.Interface
         Task UserAddAsync(User user, UserSecret userHash, Func<Task<string?>>? quotaCheckAsync = null);
         Task UserUpdateAsync(User user);
 
-        /// Registration, atomically: optionally creates a new tenant, adds the user (with TenantID set from whichever tenant applies), issues its first activation token, and seeds its starting role - one Serializable transaction, so a crash partway can never leave a user row with no role and a concurrent registration can't slip past quotaCheckAsync on a stale count. quotaCheckAsync (when given) runs inside that same transaction, right after TenantID is resolved and before the user row is added - throws QuotaLimitExceededException instead of returning, since this method's own return type carries the new IDUser, not a nullable error. Returns the new IDUser.
+        /// Registration, atomically: optionally creates a new organization, adds the user (with TenantID set from whichever organization applies), issues its first activation token, and seeds its starting role - one Serializable transaction, so a crash partway can never leave a user row with no role and a concurrent registration can't slip past quotaCheckAsync on a stale count. quotaCheckAsync (when given) runs inside that same transaction, right after TenantID is resolved and before the user row is added - throws QuotaLimitExceededException instead of returning, since this method's own return type carries the new IDUser, not a nullable error. Returns the new IDUser.
         Task<int> RegisterUserAsync(User user, UserSecret userSecret, int? existingTenantId, string? newTenantName,
             string activationTokenHash, DateTime activationTokenExpiresAtUtc, IEnumerable<string> startingRoles,
             Func<int?, Task<string?>>? quotaCheckAsync = null);
@@ -26,7 +26,7 @@ namespace Agrumy.Api.Dal.Interface
         Task<User?> UserGetAsync(int? idUser, string? email, string? username);
         Task<IList<User>> UsersGetAsync(int? tenantID);
 
-        /// Every user in every tenant - callers must enforce the global-admin check themselves.
+        /// Every user in every organization - callers must enforce the global-admin check themselves.
         Task<IList<User>> UsersGetAllAsync();
 
         /// The password hash+salt for the user matched by id / email / username, or null if none matches.
@@ -67,7 +67,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Marks the user matching this activation token hash as EmailVerified and clears the token - null if the hash matches nothing or already expired.
         Task<User?> UserActivateAsync(string tokenHash);
 
-        /// Every admin-role user in the given tenant, used to notify a tenant's admins - never empty for a real tenant since its creator always becomes its first admin.
+        /// Every admin-role user in the given organization, used to notify an organization's admins - never empty for a real organization since its creator always becomes its first admin.
         Task<IList<User>> TenantAdminsGetAsync(int tenantId);
 
         /// Bulk lookup for a whole recipient list at once - per user, the channel names (matching INotificationChannel.Name) they've explicitly turned OFF for this event type; a user/channel absent from the result stays enabled (opt-out model, see UserNotificationPreferenceRow).

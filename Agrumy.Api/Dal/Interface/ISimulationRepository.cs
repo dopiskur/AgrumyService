@@ -7,10 +7,10 @@ namespace Agrumy.Api.Dal.Interface
     {
         Task VirtualDeviceRegisterAsync(int deviceID);
 
-        /// Every virtual device across every tenant that's also in a currently-active simulation session - the runner drives only these, not every registered virtual device unconditionally.
+        /// Every virtual device across every organization that's also in a currently-active simulation session - the runner drives only these, not every registered virtual device unconditionally.
         Task<IList<int>> VirtualDeviceIdsGetAsync();
 
-        /// Virtual device ids owned by tenantID, for the Web listing page (or every one when tenantID is null, GlobalAdmin's own-tenant-only rule still enforced by the caller). Unlike the parameterless overload, NOT limited to active-session membership - this is the raw registry for admin management (delete etc.), not the runner's own drive-list.
+        /// Virtual device ids owned by tenantID, for the Web listing page (or every one when tenantID is null, GlobalAdmin's own-organization-only rule still enforced by the caller). Unlike the parameterless overload, NOT limited to active-session membership - this is the raw registry for admin management (delete etc.), not the runner's own drive-list.
         Task<IList<int>> VirtualDeviceIdsGetAsync(int? tenantID);
 
         /// Deletes sensorData/controllerData/the registry row/the device itself (in that order) - a virtual device's synthetic telemetry has no historical value once it's gone, unlike a real device's (DeviceDeleteAsync alone does not touch sensorData).
@@ -28,7 +28,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Removes the session and its device memberships outright - caller is responsible for turning off any member physical device's sensor override first (same as SimulationSessionStopAsync's own cleanup).
         Task SimulationSessionDeleteAsync(int idSimulationSession);
 
-        /// Every session for tenantID (or every tenant when null, caller's own Global-admin check already applied) - Devices left empty, same "list is cheap" convention as the rest of this codebase's list/detail pairs.
+        /// Every session for tenantID (or every organization when null, caller's own Global-admin check already applied) - Devices left empty, same "list is cheap" convention as the rest of this codebase's list/detail pairs.
         Task<IList<SimulationSession>> SimulationSessionsGetAsync(int? tenantID);
 
         /// Devices populated - the one place that costs an extra join, only paid on the single-session detail fetch.

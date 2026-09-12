@@ -9,7 +9,7 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// SensorDataODataController.Get - the [EnableQuery]/OData query-string composition itself is exercised by ASP.NET Core's own OData middleware (not re-tested here); this covers the gating this controller adds on top: disabled feed, no-tenant caller, and that an enabled+tenant-scoped call reaches the tenant-filtered IQueryable.
+/// SensorDataODataController.Get - the [EnableQuery]/OData query-string composition itself is exercised by ASP.NET Core's own OData middleware (not re-tested here); this covers the gating this controller adds on top: disabled feed, no-organization caller, and that an enabled+organization-scoped call reaches the organization-filtered IQueryable.
 public class SensorDataODataControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);

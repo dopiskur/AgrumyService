@@ -93,7 +93,7 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
     public async Task ProtectedEndpoint_TokenWithoutRequiredRole_Returns403()
     {
         using HttpClient client = _factory.CreateClient();
-        // "Tenant reader" is a real role, just not one RoleNames.TenantReaders' [Authorize(Roles=...)] accepts.
+        // "Organization reader" is a real role, just not one RoleNames.TenantReaders' [Authorize(Roles=...)] accepts.
         client.DefaultRequestHeaders.Authorization = new("Bearer", _factory.TokenFor(RoleNames.TenantReader));
 
         HttpResponseMessage response = await client.GetAsync("/api/Tenant/All");
@@ -313,11 +313,11 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
 
     // A class this role-endpoint matrix never covers: a bare [Authorize] action
     // (no role list) relies entirely on an ownership check in the controller body, not a role, to keep
-    // Tenant A out of Tenant B's resource. Enumerated here so the gap is visible and countable; a
-    // cross-tenant 403/404 assertion per action needs a real (not the deliberately-unreachable
-    // ApiWebApplicationFactory) database, so that part is covered separately by the existing cross-tenant
+    // Organization A out of Organization B's resource. Enumerated here so the gap is visible and countable; a
+    // cross-organization 403/404 assertion per action needs a real (not the deliberately-unreachable
+    // ApiWebApplicationFactory) database, so that part is covered separately by the existing cross-organization
     // tests in RelationalIntegrationTests/ApiControllerTests/GatewayApiControllerTests/
-    // DiscoveryWifiConfigTests (grep "cross-tenant"/"CrossTenant"/"DifferentTenant") - this asserts that
+    // DiscoveryWifiConfigTests (grep "cross-organization"/"CrossTenant"/"DifferentTenant") - this asserts that
     // set of actions is at least fully enumerated, not (yet) that every single one has a dedicated test.
     public static IEnumerable<object[]> BareAuthorizeActions()
     {

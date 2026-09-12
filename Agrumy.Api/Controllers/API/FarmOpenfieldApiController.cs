@@ -360,7 +360,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await fieldLogRepo.EarliestHarvestDateAsync(idSowing));
         }
 
-        /// "Bilanca N" - kg N per ha across every fertilization entry, with the tenant's warning threshold (default 170) so the Web page can flag it without a second round trip.
+        /// "Bilanca N" - kg N per ha across every fertilization entry, with the organization's warning threshold (default 170) so the Web page can flag it without a second round trip.
         [Authorize]
         [HttpGet("Sowing/NitrogenBalance")]
         public async Task<ActionResult<double?>> NitrogenBalanceGet(int idSowing)
@@ -1013,7 +1013,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await satelliteSceneRepo.DistinctSceneDatesAsync(zoneIds));
         }
 
-        /// D-manager only; rate-limited to one enqueue per tenant per 5 minutes (ICache-backed cooldown) so a repeatedly-clicked button can't flood the job queue. Re-syncs the whole tenant (the daily job's own per-tenant loop), not just the clicked scope - a fully zone-scoped sync would need SatelliteSyncEvaluator split into a per-zone entry point, deferred as a fast-follow rather than duplicating its backfill/incremental logic here.
+        /// D-manager only; rate-limited to one enqueue per organization per 5 minutes (ICache-backed cooldown) so a repeatedly-clicked button can't flood the job queue. Re-syncs the whole organization (the daily job's own per-organization loop), not just the clicked scope - a fully zone-scoped sync would need SatelliteSyncEvaluator split into a per-zone entry point, deferred as a fast-follow rather than duplicating its backfill/incremental logic here.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("{scope}/{id}/Satellite/SyncNow")]
         public async Task<ActionResult> SatelliteMapSyncNow(SatelliteMapScope scope, int id)

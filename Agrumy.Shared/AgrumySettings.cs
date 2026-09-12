@@ -47,10 +47,10 @@ namespace Agrumy.Shared
         // Hard ceiling is 32 (AgrumyFirmware DeviceModel.h's MAX_RULES), enforced in ServerConfigApiController.Update - this is only the default.
         public int MaxRulesPerZone { get; set; } = 10;
 
-        // Off by default - UserRegistration rejects unknown tenant names until an admin opts in.
+        // Off by default - UserRegistration rejects unknown organization names until an admin opts in.
         public bool AllowSelfServiceTenantCreation { get; set; }
 
-        // Off by default - gates the Tenant Management menu item alongside the GlobalAdmin role check.
+        // Off by default - gates the Organization Management menu item alongside the GlobalAdmin role check.
         public bool TenantManagementEnabled { get; set; }
 
         // FirmwareLocalPath: relative to content root, null = FirmwareStorage.DefaultRelativePath. FirmwareGitHubRepository only seeds serverConfig - the admin page owns the live value.

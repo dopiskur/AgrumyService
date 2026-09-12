@@ -100,7 +100,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDto).ToList();
         }
 
-        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a device's owning tenant before calling DeviceRestoreAsync/DeviceRecycleBinMarkPurgedAsync.
+        /// Same "no organization filter, ownership check before an authorized write" role as DeviceGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a device's owning organization before calling DeviceRestoreAsync/DeviceRecycleBinMarkPurgedAsync.
         public async Task<Device?> DeviceRecycleBinGetByIdAsync(int idDevice)
         {
             var row = await db.Devices.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.IDDevice == idDevice && d.Deleted);
@@ -119,7 +119,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDto).ToList();
         }
 
-        /// False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant - same "caller's tenant must match" rule as DeviceDeleteAsync. Clears Purged too - a device pending permanent removal is still fully recoverable up until the purge cycle actually reaps it.
+        /// False if the device doesn't exist, isn't soft-deleted, or belongs to a different organization - same "caller's organization must match" rule as DeviceDeleteAsync. Clears Purged too - a device pending permanent removal is still fully recoverable up until the purge cycle actually reaps it.
         public async Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID)
         {
             int updated = await db.Devices.IgnoreQueryFilters()
@@ -129,7 +129,7 @@ namespace Agrumy.Api.Dal
             return updated > 0;
         }
 
-        /// The manual "delete permanently now" trigger; just flips the flag; the actual removal happens later, in DeviceRecycleBinPurgeAsync, once the purge cycle reaps it. False if the device doesn't exist, isn't soft-deleted, or belongs to a different tenant.
+        /// The manual "delete permanently now" trigger; just flips the flag; the actual removal happens later, in DeviceRecycleBinPurgeAsync, once the purge cycle reaps it. False if the device doesn't exist, isn't soft-deleted, or belongs to a different organization.
         public async Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID)
         {
             int updated = await db.Devices.IgnoreQueryFilters()
@@ -138,7 +138,7 @@ namespace Agrumy.Api.Dal
             return updated > 0;
         }
 
-        /// The scheduled half of marking - evaluated per device's OWNING TENANT (a governing TenantQuota's RecycleBinRetentionDays replaces the tenant's own self-configured override entirely, since that field moved behind the quota; falls back to the tenant's own override, then serverDefaultRetentionDays), made retention a per-tenant setting. Materializes candidates client-side (recycle-bin volumes are small) rather than trying to push a per-row variable cutoff into a single translatable EF query.
+        /// The scheduled half of marking - evaluated per device's OWNING ORGANIZATION (a governing TenantQuota's RecycleBinRetentionDays replaces the organization's own self-configured override entirely, since that field moved behind the quota; falls back to the organization's own override, then serverDefaultRetentionDays), made retention a per-organization setting. Materializes candidates client-side (recycle-bin volumes are small) rather than trying to push a per-row variable cutoff into a single translatable EF query.
         public async Task<int> DeviceRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
         {
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
@@ -174,7 +174,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(d => (d.IDDevice, d.TenantID)).ToList();
         }
 
-        /// The purge cycle's actual, irreversible removal - every row tied to this device INCLUDING SensorData, matching the "Deleted=1 means ready for purge" decision (SensorData is no longer preserved the way DeviceDeleteAsync's own soft-delete step preserves DeviceConfigSensor/DeviceConfigController for a possible restore - once Purged, there's no restore left to protect). False if the device doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        /// The purge cycle's actual, irreversible removal - every row tied to this device INCLUDING SensorData, matching the "Deleted=1 means ready for purge" decision (SensorData is no longer preserved the way DeviceDeleteAsync's own soft-delete step preserves DeviceConfigSensor/DeviceConfigController for a possible restore - once Purged, there's no restore left to protect). False if the device doesn't exist, isn't Deleted+Purged, or belongs to a different organization.
         public async Task<bool> DeviceRecycleBinPurgeAsync(int idDevice, int? tenantID)
         {
             DeviceRow? row = await db.Devices.IgnoreQueryFilters().AsNoTracking()
@@ -259,7 +259,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDto).ToList();
         }
 
-        // Same query minus the tenant filter - callers (DeviceApiController) only reach this after CallerReadsDevicesGlobally passed, mirroring UsersGetAllAsync.
+        // Same query minus the organization filter - callers (DeviceApiController) only reach this after CallerReadsDevicesGlobally passed, mirroring UsersGetAllAsync.
         public async Task<IList<Device>> DevicesGetAllAsync()
         {
             var rows = await db.Devices.AsNoTracking().ToListAsync();

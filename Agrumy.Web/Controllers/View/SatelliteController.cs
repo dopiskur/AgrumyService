@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Tenant satellite module settings (Detaljni dizajn S, D1/D8; collection choice is S-B2) - a Tenant admin always edits their own tenant (idTenant omitted, the API resolves it from the caller), a Global admin/reader can view/edit any tenant by passing idTenant explicitly.
+    /// Organization satellite module settings (Detaljni dizajn S, D1/D8; collection choice is S-B2) - an Organization admin always edits their own organization (idTenant omitted, the API resolves it from the caller), a Global admin/reader can view/edit any organization by passing idTenant explicitly.
     [Authorize]
     public class SatelliteController(IApi api) : Controller
     {

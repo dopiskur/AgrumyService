@@ -20,12 +20,12 @@ namespace Agrumy.Web.ViewModels
         Parcel,
     }
 
-    /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the tenant-wide Global Rules page, a Simulation session's own Details page, and an Experiment's own Details page - the six scopes differ only in which API routes/hidden field they post to.
+    /// Drives _RuleEditor.cshtml, shared across the Zone page, Unit "Rules" tab, the Farm "Rules" tab, the organization-wide Global Rules page, a Simulation session's own Details page, and an Experiment's own Details page - the six scopes differ only in which API routes/hidden field they post to.
     public class RuleEditorViewModel
     {
         public required RuleScope Scope { get; init; }
 
-        /// IDDeviceFarmUnitZone for Zone scope, IDDeviceFarmUnit for Unit scope, IDDeviceFarm for Farm scope, IDSimulationSession for Simulation scope, IDExperiment for Experiment scope, null for Global (implied by the caller's tenant).
+        /// IDDeviceFarmUnitZone for Zone scope, IDDeviceFarmUnit for Unit scope, IDDeviceFarm for Farm scope, IDSimulationSession for Simulation scope, IDExperiment for Experiment scope, null for Global (implied by the caller's organization).
         public int? ScopeId { get; init; }
 
         public IList<DeviceFarmUnitZoneRule> Rules { get; init; } = [];
@@ -58,7 +58,7 @@ namespace Agrumy.Web.ViewModels
             _ => "GlobalRuleDelete",
         };
 
-        /// "" for Global, where there's no scope id to carry - RuleAdd's own scope check (server-side) resolves it from the caller's tenant instead.
+        /// "" for Global, where there's no scope id to carry - RuleAdd's own scope check (server-side) resolves it from the caller's organization instead.
         public string ScopeHiddenFieldName => Scope switch
         {
             RuleScope.Zone => "idDeviceFarmUnitZone",
@@ -78,7 +78,7 @@ namespace Agrumy.Web.ViewModels
         public bool ShowRelayCard => Scope != RuleScope.UnitAlert && Scope != RuleScope.FarmAlert;
     }
 
-    /// One row of GlobalRules' flat, searchable overview across every scope in the tenant - a triage list, not a detail view, so it carries only what the table shows plus a link to the rule's own scope page for editing.
+    /// One row of GlobalRules' flat, searchable overview across every scope in the organization - a triage list, not a detail view, so it carries only what the table shows plus a link to the rule's own scope page for editing.
     public class RuleOverviewRow
     {
         public required DeviceFarmUnitZoneRule Rule { get; init; }
@@ -86,7 +86,7 @@ namespace Agrumy.Web.ViewModels
         public required string DetailUrl { get; init; }
     }
 
-    /// GlobalRules page model - the tenant-wide overview table (AllRules) plus the existing Global-scope rule editor (Editor), which still lives on this same page for actually adding/removing Global-scope rules.
+    /// GlobalRules page model - the organization-wide overview table (AllRules) plus the existing Global-scope rule editor (Editor), which still lives on this same page for actually adding/removing Global-scope rules.
     public class GlobalRulesPageViewModel
     {
         public required RuleEditorViewModel Editor { get; init; }

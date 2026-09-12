@@ -153,23 +153,6 @@
                         <span asp-validation-for="ActivationResendCooldownMinutes" class="text-danger"></span>
                     </div>
                     <p class="text-secondary">
-                        When enabled, the public Register page lets a visitor create a brand new
-                        tenant (min. 6-character name) by simply typing a name that doesn't exist
-                        yet - they become that tenant's admin. Off by default.
-                    </p>
-                    <div class="mb-3 form-check">
-                        <input asp-for="AllowSelfServiceTenantCreation" class="form-check-input" />
-                        <label asp-for="AllowSelfServiceTenantCreation" class="form-check-label"></label>
-                    </div>
-                    <p class="text-secondary">
-                        When enabled, Global admins get a "Tenants" menu item to list, create, and
-                        rename tenants. Global readers can view the list but not change it.
-                    </p>
-                    <div class="mb-3 form-check">
-                        <input asp-for="TenantManagementEnabled" class="form-check-input" />
-                        <label asp-for="TenantManagementEnabled" class="form-check-label"></label>
-                    </div>
-                    <p class="text-secondary">
                         Enforced whenever a user sets a new password (registration, admin reset, self
                         change) - never against an existing password already on file.
                     </p>

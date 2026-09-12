@@ -52,7 +52,7 @@ namespace Agrumy.Api.Dal
 
         public async Task<bool> GatewayDeviceMappingAddAsync(int idGatewayDevice, string devEUI, int idDevice, int? gatewayTenantId)
         {
-            // Unconditional, no caller-role exception (same reasoning as DeviceFarmUnitApiController's Zone/Assign check) - a gateway must never be handed another tenant's device ApiKey, not even by a Global admin's mistake.
+            // Unconditional, no caller-role exception (same reasoning as DeviceFarmUnitApiController's Zone/Assign check) - a gateway must never be handed another organization's device ApiKey, not even by a Global admin's mistake.
             if (!await db.Devices.AsNoTracking().AnyAsync(d => d.IDDevice == idDevice && d.TenantID == gatewayTenantId))
             {
                 return false;

@@ -19,7 +19,7 @@ namespace Agrumy.Api.Commands
         public static string ForDevice(int tenantId, int deviceId) => $"agrumy/{tenantId}/{deviceId}/command";
     }
 
-    /// Best-effort instant command delivery over MQTT alongside the HTTP/JWT poll cycle - never the only way a command reaches a device, since DeviceOutboxService.GetPendingAsync's next poll response always carries it too; a no-op when MqttTransportEnabled is off/unconfigured or the device's tenant quota disallows MQTT, and any broker/network failure is swallowed so it can never fail the triggering request.
+    /// Best-effort instant command delivery over MQTT alongside the HTTP/JWT poll cycle - never the only way a command reaches a device, since DeviceOutboxService.GetPendingAsync's next poll response always carries it too; a no-op when MqttTransportEnabled is off/unconfigured or the device's organization quota disallows MQTT, and any broker/network failure is swallowed so it can never fail the triggering request.
     public sealed class MqttCommandPublisher(IServerConfigRepository serverConfigRepo, IMqttConnectionManager connectionManager, Agrumy.Api.Quota.TenantQuotaEnforcer quotaEnforcer, ILogger<MqttCommandPublisher> logger) : IMqttCommandPublisher
     {
         public async Task PublishAsync(Device device, PendingCommand command, CancellationToken ct = default)
@@ -38,7 +38,7 @@ namespace Agrumy.Api.Commands
             // ConditionConfigJson.Options camelCases properties and leaves ActionType as its int, matching the shape the HTTP config-poll response already sends this same type as.
             byte[] commandBytes = JsonSerializer.SerializeToUtf8Bytes(command, ConditionConfigJson.Options);
 
-            // Anyone with broker credentials could otherwise command any device on any tenant (MqttUsername/Password are ServerConfig-wide, not per-device) - signing with the TARGET device's own ApiKey means forging a command needs that specific device's credential, not just broker access.
+            // Anyone with broker credentials could otherwise command any device on any organization (MqttUsername/Password are ServerConfig-wide, not per-device) - signing with the TARGET device's own ApiKey means forging a command needs that specific device's credential, not just broker access.
             JsonNode commandNode = JsonNode.Parse(commandBytes)!;
             string canonical = CanonicalString(commandNode);
             commandNode["sig"] = ComputeSignature(canonical, device.ApiKey ?? "");

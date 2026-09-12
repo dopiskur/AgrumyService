@@ -30,7 +30,7 @@ namespace Agrumy.Api.Devices
         {
             // Computed fresh (not cached) every response so a DST shift or ScheduleTimeZone change reaches every device on its next poll; also reused below as the server-wide location fallback.
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
-            // Per-tenant, not global - a device with no tenant (genuinely unassigned) or an unset zone both fall back to UTC via GetUtcOffsetSeconds' own null handling.
+            // Per-organization, not global - a device with no organization (genuinely unassigned) or an unset zone both fall back to UTC via GetUtcOffsetSeconds' own null handling.
             Tenant? tenant = device.TenantID is int tenantId ? await tenantRepo.TenantGetByIdAsync(tenantId) : null;
             int utcOffsetSeconds = TimeZoneHelper.GetUtcOffsetSeconds(DateTime.UtcNow, tenant?.ScheduleTimeZone);
 
@@ -142,7 +142,7 @@ namespace Agrumy.Api.Devices
                         : [];
                     IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, leafRules, midRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
-                    // Tenant's own site location first, server-wide default otherwise (same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
+                    // Organization's own site location first, server-wide default otherwise (same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER organization nor server has one set.
                     double? lat = tenant?.Latitude ?? serverConfig.WeatherLocationLat;
                     double? lon = tenant?.Longitude ?? serverConfig.WeatherLocationLon;
                     controller.Rules = AstronomicalRuleResolver.Resolve(rules, lat, lon, localDate, utcOffsetSeconds);
@@ -151,7 +151,7 @@ namespace Agrumy.Api.Devices
                     controller.WaterPumpMinLevel = leafNode?.WaterPumpMinLevel;
                     controller.WaterLevelRawEmpty = leafNode?.WaterLevelRawEmpty;
                     controller.WaterLevelRawFull = leafNode?.WaterLevelRawFull;
-                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks. Per-tenant, so the lookup is skipped entirely unless the zone actually opted in.
+                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks. Per-organization, so the lookup is skipped entirely unless the zone actually opted in.
                     controller.SkipWaterPumpForRain = leafNode?.SkipWaterPumpWhenRainPredicted == true
                         && device.TenantID is int weatherTenantId
                         && (await tenantRepo.TenantWeatherStateGetAsync(weatherTenantId)).WeatherRainPredicted;

@@ -2,7 +2,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Web.ViewModels
 {
-    /// UserController.MigrateTenant's model - Tenants is always "every tenant except the user's current one", so the dropdown can never accidentally submit a same-tenant no-op.
+    /// UserController.MigrateTenant's model - Organizations is always "every organization except the user's current one", so the dropdown can never accidentally submit a same-organization no-op.
     public class UserMigrateTenantViewModel
     {
         public int IDUser { get; set; }

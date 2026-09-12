@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Global Admin-only content curation for the three horticulture subcatalogs - any tenant applies an entry's template from the Zone page (see DeviceFarmUnitController.ApplyHorticultureCatalog). A Tenant admin can browse the catalog same as a Global reader (read-only, see Index/Edit.cshtml's isReadOnly), but still can't Save/Delete: it's one shared, cross-tenant catalog, not per-tenant data.
+    /// Global Admin-only content curation for the three horticulture subcatalogs - any organization applies an entry's template from the Zone page (see DeviceFarmUnitController.ApplyHorticultureCatalog). An Organization admin can browse the catalog same as a Global reader (read-only, see Index/Edit.cshtml's isReadOnly), but still can't Save/Delete: it's one shared, cross-organization catalog, not per-organization data.
     [Authorize]
     public class HorticultureCatalogController(IApi api) : Controller
     {

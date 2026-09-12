@@ -295,7 +295,7 @@ namespace Agrumy.Api.Controllers.API
             return Task.FromResult<string?>(null);
         }
 
-        /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new tenant" field - this exposes only that one flag.
+        /// The Register page is anonymous and must not call the admin-only Get() above just to know whether to show a "create a new organization" field - this exposes only that one flag.
         [HttpGet("Public")]
         [AllowAnonymous]
         public async Task<ActionResult<PublicServerConfig>> GetPublic()

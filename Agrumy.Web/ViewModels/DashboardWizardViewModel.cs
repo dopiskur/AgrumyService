@@ -7,7 +7,7 @@ namespace Agrumy.Web.ViewModels
     {
         public IList<ZoneOption> Zones { get; init; } = [];
         public IList<ParcelOption> Parcels { get; init; } = [];
-        /// Tenant-wide, independent of which zone/parcel is Selected - feeds the wizard's own target step and its scope picker.
+        /// Organization-wide, independent of which zone/parcel is Selected - feeds the wizard's own target step and its scope picker.
         public IList<DeviceFarm> Farms { get; init; } = [];
         public IList<DeviceFarmUnit> Units { get; init; } = [];
         public bool CanManage { get; init; }

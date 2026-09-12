@@ -38,7 +38,7 @@ namespace Agrumy.Shared.Models
 
         public UIMode UIMode { get; set; }
 
-        // Set only by tenant import - the imported hash is portable but unproven on this server, so login is blocked (UserApiController.UserLogin's 428 gate) until ForceChangePassword clears it.
+        // Set only by organization import - the imported hash is portable but unproven on this server, so login is blocked (UserApiController.UserLogin's 428 gate) until ForceChangePassword clears it.
         public bool MustChangePassword { get; set; }
 
         // Written only by EfRepository.RevokeUserTokensAsync (password change, Enabled->false) - an access token whose iat predates this is rejected even though it hasn't naturally expired yet.
@@ -64,7 +64,7 @@ namespace Agrumy.Shared.Models
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Phone { get; set; }
-        // Non-admin callers can't grant roles - UserApiController.UserAdd falls back to Tenant reader regardless of what's sent here.
+        // Non-admin callers can't grant roles - UserApiController.UserAdd falls back to Organization reader regardless of what's sent here.
         public List<string> RoleNames { get; set; } = new();
         [DefaultValue(true)]
         public bool Enabled { get; set; } = true;

@@ -10,7 +10,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Covers the tenant-scoping decision AuditLogApiController makes before delegating to IAuditLogRepository - a Global admin sees every tenant, everyone else only their own.
+/// Covers the organization-scoping decision AuditLogApiController makes before delegating to IAuditLogRepository - a Global admin sees every organization, everyone else only their own.
 public class AuditLogApiControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);

@@ -16,7 +16,7 @@ namespace Agrumy.Api.Devices
         /// method also runs automatically wherever the DTO is model-bound, so a rule posted through any
         /// [ApiController] action already gets these checks even before reaching here. This method's own,
         /// non-duplicated job is the one check that needs a DB lookup and so can't live on the DTO itself:
-        /// RuleTriggered's referenced-rule existence/tenant/action-type cross-reference.
+        /// RuleTriggered's referenced-rule existence/organization/action-type cross-reference.
         public async Task<string?> ShapeErrorAsync(DeviceFarmUnitZoneRule rule)
         {
             var results = new List<ValidationResult>();

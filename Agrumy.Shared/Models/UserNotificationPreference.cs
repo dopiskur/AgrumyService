@@ -1,6 +1,6 @@
 namespace Agrumy.Shared.Models
 {
-    /// One entry per alert-generating background worker - matches the four evaluators that currently blanket-notify every tenant admin (OfflineAlertEvaluator, LowBatteryAlertEvaluator, TankRefillAlertEvaluator, RuleNotificationEvaluator).
+    /// One entry per alert-generating background worker - matches the four evaluators that currently blanket-notify every organization admin (OfflineAlertEvaluator, LowBatteryAlertEvaluator, TankRefillAlertEvaluator, RuleNotificationEvaluator).
     public enum NotificationEventType
     {
         Offline = 1,

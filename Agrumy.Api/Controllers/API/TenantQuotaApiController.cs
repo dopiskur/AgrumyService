@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// TenantQuota CRUD - Global Admin only, mirroring TenantApiController's write bar; IDTenant=0 (the default/bootstrap tenant) has no quota to configure, see TenantQuotaEnforcer.
+    /// TenantQuota CRUD - Global Admin only, mirroring TenantApiController's write bar; IDTenant=0 (the default/bootstrap organization) has no quota to configure, see TenantQuotaEnforcer.
     [Route("/api/TenantQuota")]
     [Authorize]
     public class TenantQuotaApiController(ITenantRepository tenantRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)

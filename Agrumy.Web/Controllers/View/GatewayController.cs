@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Lists registered gateways and manages a LoRaGateway's DevEUI-&gt;device mapping; gateways are install-wide infrastructure (IGatewayRepository), so this is Global-Admin-only, not tenant-scoped.
+    /// Lists registered gateways and manages a LoRaGateway's DevEUI-&gt;device mapping; gateways are install-wide infrastructure (IGatewayRepository), so this is Global-Admin-only, not organization-scoped.
     [Authorize]
     public class GatewayController(IApi api) : Controller
     {

@@ -6,14 +6,14 @@ namespace Agrumy.Api.Satellite
 {
     public interface ICdseTokenProvider
     {
-        /// Null means "not configured" or "token request failed" (already logged) - callers treat both as "skip this tenant this tick", never throw.
+        /// Null means "not configured" or "token request failed" (already logged) - callers treat both as "skip this organization this tick", never throw.
         Task<string?> GetAccessTokenAsync(int tenantId, CancellationToken ct);
 
-        /// Bypasses the per-tenant cache/DB entirely - the "Test connection" endpoint's own path for possibly-unsaved credentials (Agrumy.Api.Controllers.API.TenantApiController.SatelliteConfigTest), never written to LastTokenIssuedUtc.
+        /// Bypasses the per-organization cache/DB entirely - the "Test connection" endpoint's own path for possibly-unsaved credentials (Agrumy.Api.Controllers.API.TenantApiController.SatelliteConfigTest), never written to LastTokenIssuedUtc.
         Task<(bool Ok, string? Error)> TryGetAccessTokenForCredentialsAsync(string clientId, string clientSecret, CancellationToken ct);
     }
 
-    /// Client-credentials OAuth against CDSE's identity server (Detaljni dizajn S, B1) - cached per tenant with TTL = expires_in - 60s, refreshed on the next call once expired. Never puts the token on HttpClient's own default headers (that instance is shared/pooled across every tenant); callers attach it per-request instead.
+    /// Client-credentials OAuth against CDSE's identity server (Detaljni dizajn S, B1) - cached per organization with TTL = expires_in - 60s, refreshed on the next call once expired. Never puts the token on HttpClient's own default headers (that instance is shared/pooled across every organization); callers attach it per-request instead.
     public sealed class CdseTokenProvider(HttpClient httpClient, ISatelliteConfigRepository configRepo, Agrumy.Api.Dal.Interface.ICache cache, ILogger<CdseTokenProvider> logger) : ICdseTokenProvider
     {
         public const string TokenUrl = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token";

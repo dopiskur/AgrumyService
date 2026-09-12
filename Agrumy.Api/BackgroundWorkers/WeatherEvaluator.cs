@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Computes each tenant's own TenantWeatherState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind). Runs once per tenant - a tenant can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
+    /// Computes each organization's own TenantWeatherState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind). Runs once per organization - an organization can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
     public sealed class WeatherEvaluator(
         IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions,
         ILogger<WeatherEvaluator> logger)
@@ -36,7 +36,7 @@ namespace Agrumy.Api.BackgroundWorkers
             double? lon = tenant.Longitude ?? config.WeatherLocationLon;
             if (lat is not double latitude || lon is not double longitude)
             {
-                return; // null = neither this tenant nor the server-wide default has a location set yet
+                return; // null = neither this organization nor the server-wide default has a location set yet
             }
 
             TenantWeatherState state = await tenantRepo.TenantWeatherStateGetAsync(tenantId);

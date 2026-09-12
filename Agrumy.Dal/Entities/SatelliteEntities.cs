@@ -1,6 +1,6 @@
 namespace Agrumy.Dal.Entities
 {
-    /// See Agrumy.Shared.Models.TenantSatelliteConfig - PK is TenantID itself, one row per tenant, no row means the module is off for that tenant (D1).
+    /// See Agrumy.Shared.Models.TenantSatelliteConfig - PK is TenantID itself, one row per organization, no row means the module is off for that organization (D1).
     public class TenantSatelliteConfigRow
     {
         public int TenantID { get; set; }
@@ -36,7 +36,7 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset IngestedUtc { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.ParcelSatelliteIndex - ImagePath is the PNG cache's on-disk location (satellite-store/{tenant}/{zone}/{sceneDate}/{index}.png), regenerated from GridBase64 whenever the retention job has reaped it.
+    /// See Agrumy.Shared.Models.ParcelSatelliteIndex - ImagePath is the PNG cache's on-disk location (satellite-store/{organization}/{zone}/{sceneDate}/{index}.png), regenerated from GridBase64 whenever the retention job has reaped it.
     public class ParcelSatelliteIndexRow
     {
         public int IDParcelSatelliteIndex { get; set; }

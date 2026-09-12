@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Shared.Models
 {
-    /// Top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site, e.g. separate LoRa networks or gateways naturally map to separate Farms); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
+    /// Top-level organizational grouping ABOVE Unit within the same organization (a physical farm/site, e.g. separate LoRa networks or gateways naturally map to separate Farms); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarm
     {
         [HiddenInput(DisplayValue = true)]
@@ -50,7 +50,7 @@ namespace Agrumy.Shared.Models
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }
 
-        // Per-zone opt-in, not a global switch; combined server-side with the device's tenant's own TenantWeatherState.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
+        // Per-zone opt-in, not a global switch; combined server-side with the device's organization's own TenantWeatherState.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
         // Tank calibration - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (Agrumy.Shared.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.
@@ -90,7 +90,7 @@ namespace Agrumy.Shared.Models
         AlertStatus = 5,
     }
 
-    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific node id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone/parcel id; AlertStatus's LevelID is optional (Frost is tenant-wide, ignores it).
+    /// One tile on a Zone's customizable dashboard - only the fields matching Type are meaningful (flat, tagged-union style, same convention as AgrumyFirmware's wire structs). Label is required for Text, optional elsewhere (overrides the auto-generated title, e.g. "Metric" -> its own name). SensorValue/SensorTrend read AggregationLevel+LevelID (a specific node id, independent of which zone's page the widget is displayed on); RelayStatus's LevelID is always a zone/parcel id; AlertStatus's LevelID is optional (Frost is organization-wide, ignores it).
     public class DashboardWidget
     {
         public DashboardWidgetType Type { get; set; }
@@ -262,7 +262,7 @@ namespace Agrumy.Shared.Models
         public int? SunriseOffsetMinutes { get; set; }
         public int? SunsetOffsetMinutes { get; set; }
 
-        /// RuleTriggered only - another Notification-action rule (same tenant, any zone/unit) whose own tree folded true this tick.
+        /// RuleTriggered only - another Notification-action rule (same organization, any zone/unit) whose own tree folded true this tick.
         public int? ReferencedRuleId { get; set; }
 
         // Group only.
@@ -313,7 +313,7 @@ namespace Agrumy.Shared.Models
         public IList<string> RulesSkipped { get; set; } = [];
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmParcelZoneID/DeviceSowingID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-tenant). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmParcelZoneID/DeviceSowingID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-organization). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]
@@ -442,7 +442,7 @@ namespace Agrumy.Shared.Models
             }
         }
 
-        /// Shape+bound check per NodeType - the firmware would otherwise silently treat a malformed rule as inert (ConfigParser/evaluateRule), a confusing way to discover a typo; a ComparisonNode's Value1 is deliberately unbounded, only Hysteresis has a universal "must not be negative" rule. RuleTriggered's own referencedRuleId presence is checked here (cheap, no DB); its existence/tenant/action-type cross-reference is not (see RuleValidationService).
+        /// Shape+bound check per NodeType - the firmware would otherwise silently treat a malformed rule as inert (ConfigParser/evaluateRule), a confusing way to discover a typo; a ComparisonNode's Value1 is deliberately unbounded, only Hysteresis has a universal "must not be negative" rule. RuleTriggered's own referencedRuleId presence is checked here (cheap, no DB); its existence/organization/action-type cross-reference is not (see RuleValidationService).
         private static string? NodeConfigError(ConditionNode node)
         {
             switch (node.Type)
@@ -569,7 +569,7 @@ namespace Agrumy.Shared.Models
     {
         public int IDDeviceFarmUnit { get; set; }
         public string? DeviceFarmUnitName { get; set; }
-        // Null means unassigned; only used to group units by farm on the dashboard once a tenant has a second farm.
+        // Null means unassigned; only used to group units by farm on the dashboard once an organization has a second farm.
         public int? DeviceFarmID { get; set; }
         // Same drag-and-drop reorder field as DeviceFarmUnit.DisplayOrder - carried here too since this is the DTO the Farm page's cubes actually render.
         public int DisplayOrder { get; set; }

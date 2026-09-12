@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Read-only - the API itself already scopes the result to the caller's tenant (or every tenant for a Global admin), nothing further to decide here.
+    /// Read-only - the API itself already scopes the result to the caller's organization (or every organization for a Global admin), nothing further to decide here.
     [Authorize]
     public class AuditLogController(IApi api) : Controller
     {

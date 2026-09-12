@@ -4,7 +4,7 @@ using Agrumy.Api.Notifications;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold (or its tenant's own TenantAlertConfig override) fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
+    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold (or its organization's own TenantAlertConfig override) fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
     public sealed class LowBatteryAlertEvaluator(
         IDeviceRepository deviceRepo, IUserRepository userRepo, ITenantRepository tenantRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {
@@ -13,7 +13,7 @@ namespace Agrumy.Api.BackgroundWorkers
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
             var candidates = await deviceRepo.LowBatteryAlertCandidatesGetAsync();
 
-            // One TenantAlertConfig lookup per distinct tenant in this batch, not per device.
+            // One TenantAlertConfig lookup per distinct organization in this batch, not per device.
             var tenantConfigs = new Dictionary<int, TenantAlertConfig>();
             foreach (int tenantId in candidates.Where(d => d.TenantID != null).Select(d => d.TenantID!.Value).Distinct())
             {
@@ -29,7 +29,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 {
                     continue;
                 }
-                // A genuinely tenant-less device has no tenant admins to notify.
+                // A genuinely organization-less device has no organization admins to notify.
                 if (d.TenantID is not int tenantId)
                 {
                     continue;

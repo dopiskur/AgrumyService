@@ -116,7 +116,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Quota --------------------------------------------------------
 
-        /// The default tenant (IDTenant=0) has no configurable quota - GlobalAdmin never reaches this route for it (Index hides the button), but redirect defensively rather than surface a raw 404/400 if it's ever hit directly.
+        /// The default organization (IDTenant=0) has no configurable quota - GlobalAdmin never reaches this route for it (Index hides the button), but redirect defensively rather than surface a raw 404/400 if it's ever hit directly.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> Quota(int idTenant)
         {

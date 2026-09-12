@@ -1,6 +1,6 @@
 namespace Agrumy.Shared.Models
 {
-    /// Where an import lands: ByName matches/creates a tenant by exact name; AsSentinel targets TenantID=0 and is only reachable via TenantApiController.ImportAsSentinel while the bootstrap Global Admin is still unclaimed (ITenantRepository.TenantZeroIsEmptyAsync).
+    /// Where an import lands: ByName matches/creates an organization by exact name; AsSentinel targets TenantID=0 and is only reachable via TenantApiController.ImportAsSentinel while the bootstrap Global Admin is still unclaimed (ITenantRepository.TenantZeroIsEmptyAsync).
     public enum TenantImportTarget
     {
         ByName = 0,
@@ -26,7 +26,7 @@ namespace Agrumy.Shared.Models
         public DeviceConfigController? Controller { get; set; }
     }
 
-    /// The full portable snapshot of one tenant (excludes install-wide ServerConfig/firmware catalog, includes SensorData only when opt-in) - SENSITIVE (password hashes, device ApiKeys), never persisted server-side, streamed directly to the admin's browser.
+    /// The full portable snapshot of one organization (excludes install-wide ServerConfig/firmware catalog, includes SensorData only when opt-in) - SENSITIVE (password hashes, device ApiKeys), never persisted server-side, streamed directly to the admin's browser.
     public class TenantExport
     {
         public const string CurrentFormatVersion = "1";
@@ -50,7 +50,7 @@ namespace Agrumy.Shared.Models
     public class TenantImportRequest
     {
         public TenantExport? Export { get; set; }
-        /// Required for ByName - matched case-sensitively against an existing tenant, or used to create a new one if none matches.
+        /// Required for ByName - matched case-sensitively against an existing organization, or used to create a new one if none matches.
         public string? TargetTenantName { get; set; }
     }
 

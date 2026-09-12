@@ -12,7 +12,7 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/User/Login")]
         Task<UserLoginResult?> UserLogin([Body] UserLogin userLogin);
 
-        /// Tenant-import counterpart to Login - proves identity with the old (imported) password since MustChangePassword blocks Login itself (428, Agrumy.Shared.Models.User.MustChangePassword).
+        /// Organization-import counterpart to Login - proves identity with the old (imported) password since MustChangePassword blocks Login itself (428, Agrumy.Shared.Models.User.MustChangePassword).
         [Post("/api/User/ForceChangePassword")]
         Task<UserLoginResult?> UserForceChangePassword([Body] UserForceChangePassword value);
 
@@ -728,7 +728,7 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/SensorData/UnitAverage")]
         Task<string> SensorDataUnitAverageGet(int deviceFarmUnitID, DateTimeOffset from, DateTimeOffset to, SensorDataBucket bucket);
 
-        // ---- Tenant -------------------------------------------------------
+        // ---- Organization -------------------------------------------------------
 
         [Get("/api/Tenant/All")]
         Task<IEnumerable<Tenant>> TenantsGet();
@@ -745,7 +745,7 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/Tenant")]
         Task TenantDelete(int idTenant, bool deleteUsers = false);
 
-        /// Always the caller's own tenant - see TenantApiController.TenantAlertConfigGet.
+        /// Always the caller's own organization - see TenantApiController.TenantAlertConfigGet.
         [Get("/api/Tenant/AlertConfig")]
         Task<TenantAlertConfig> TenantAlertConfigGet();
 
@@ -784,7 +784,7 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/Tenant/ImportAsSentinel")]
         Task<TenantImportResult> TenantImportAsSentinel([Body] TenantExport value);
 
-        // ---- Tenant Quota ---------------------------------------------------
+        // ---- Organization Quota ---------------------------------------------------
 
         [Get("/api/TenantQuota")]
         Task<TenantQuota> TenantQuotaGet(int idTenant);
@@ -878,7 +878,7 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/ServerConfig/Arkod")]
         Task ServerConfigArkodUpdate([Body] ArkodSettings settings);
 
-        /// The one ServerConfig field an anonymous page (Register) is allowed to read - whether to show the "create a new tenant" option at all.
+        /// The one ServerConfig field an anonymous page (Register) is allowed to read - whether to show the "create a new organization" option at all.
         [Get("/api/ServerConfig/Public")]
         Task<PublicServerConfig> ServerConfigGetPublic();
 

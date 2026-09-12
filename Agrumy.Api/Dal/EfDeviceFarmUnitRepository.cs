@@ -69,7 +69,7 @@ namespace Agrumy.Api.Dal
                 return ToDtoFarm(row);
             });
 
-        /// Idempotent, safe to call from every tenant-creation path (registration, admin-created, import). A real "First farm" row lands in the DB immediately (not deferred to whenever an admin first visits Farms.cshtml) - the UI hides its name while it's still the tenant's only farm, matching Farms.cshtml's own multipleFarms check. Any unit the tenant already has, sitting unassigned, joins it too, so a pre-existing single-farm tenant doesn't suddenly see its units listed as "unassigned" once the invisible farm underneath them appears.
+        /// Idempotent, safe to call from every organization-creation path (registration, admin-created, import). A real "First farm" row lands in the DB immediately (not deferred to whenever an admin first visits Farms.cshtml) - the UI hides its name while it's still the organization's only farm, matching Farms.cshtml's own multipleFarms check. Any unit the organization already has, sitting unassigned, joins it too, so a pre-existing single-farm organization doesn't suddenly see its units listed as "unassigned" once the invisible farm underneath them appears.
         public async Task EnsureFirstFarmAsync(int tenantId)
         {
             bool hasFarm = await db.DeviceFarms.AsNoTracking().AnyAsync(f => f.TenantID == tenantId);
@@ -94,7 +94,7 @@ namespace Agrumy.Api.Dal
             {
                 return;
             }
-            // TenantID intentionally not overwritten - same "payload cannot move to another tenant" rule as DeviceFarmUnitUpdateAsync.
+            // TenantID intentionally not overwritten - same "payload cannot move to another organization" rule as DeviceFarmUnitUpdateAsync.
             row.DeviceFarmName = farm.DeviceFarmName;
             await db.SaveChangesAsync();
         }
@@ -152,7 +152,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoFarm).ToList();
         }
 
-        /// Same "no tenant filter, ownership check before an authorized write" role as DeviceFarmGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a farm's owning tenant before calling DeviceFarmRestoreAsync/DeviceFarmRecycleBinMarkPurgedAsync.
+        /// Same "no organization filter, ownership check before an authorized write" role as DeviceFarmGetByIdAsync, but also sees soft-deleted rows (Purged or not) - RecycleBinApiController uses this to resolve a farm's owning organization before calling DeviceFarmRestoreAsync/DeviceFarmRecycleBinMarkPurgedAsync.
         public async Task<DeviceFarm?> DeviceFarmRecycleBinGetByIdAsync(int idDeviceFarm)
         {
             var row = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(f => f.IDDeviceFarm == idDeviceFarm && f.Deleted);
@@ -187,7 +187,7 @@ namespace Agrumy.Api.Dal
             return (unitIds, zoneIds, deviceIds);
         }
 
-        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged. False if the farm doesn't exist, isn't soft-deleted, or belongs to a different tenant.
+        /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged. False if the farm doesn't exist, isn't soft-deleted, or belongs to a different organization.
         public async Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID)
         {
             var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
@@ -236,7 +236,7 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
-        /// The scheduled half of marking - same per-tenant-retention logic as DeviceRecycleBinMarkPurgedByRetentionAsync (a governing TenantQuota's RecycleBinRetentionDays replaces the tenant's own override entirely), cascading Purged onto the farm's devices the same way DeviceFarmRecycleBinMarkPurgedAsync does for the manual trigger.
+        /// The scheduled half of marking - same per-organization-retention logic as DeviceRecycleBinMarkPurgedByRetentionAsync (a governing TenantQuota's RecycleBinRetentionDays replaces the organization's own override entirely), cascading Purged onto the farm's devices the same way DeviceFarmRecycleBinMarkPurgedAsync does for the manual trigger.
         public async Task<int> DeviceFarmRecycleBinMarkPurgedByRetentionAsync(int serverDefaultRetentionDays, CancellationToken ct)
         {
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
@@ -281,7 +281,7 @@ namespace Agrumy.Api.Dal
             return rows.Select(f => (f.IDDeviceFarm, f.TenantID)).ToList();
         }
 
-        /// The purge cycle's actual, irreversible removal of the farm and its exact cascade. Devices are purged first via DeviceRecycleBinPurgeAsync (SensorData included, same as a standalone device purge), then the now-empty Zone/Unit-scope rules and the Zone/Unit/Farm rows themselves. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different tenant.
+        /// The purge cycle's actual, irreversible removal of the farm and its exact cascade. Devices are purged first via DeviceRecycleBinPurgeAsync (SensorData included, same as a standalone device purge), then the now-empty Zone/Unit-scope rules and the Zone/Unit/Farm rows themselves. False if the farm doesn't exist, isn't Deleted+Purged, or belongs to a different organization.
         public async Task<bool> DeviceFarmRecycleBinPurgeAsync(int idDeviceFarm, int? tenantID)
         {
             var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()
@@ -351,7 +351,7 @@ namespace Agrumy.Api.Dal
             {
                 return;
             }
-            // TenantID intentionally not overwritten - same "payload cannot move to another tenant" rule as DeviceUpdateAsync.
+            // TenantID intentionally not overwritten - same "payload cannot move to another organization" rule as DeviceUpdateAsync.
             row.DeviceFarmUnitName = unit.DeviceFarmUnitName;
             row.DeviceFarmID = unit.DeviceFarmID;
             await db.SaveChangesAsync();

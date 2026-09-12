@@ -2,7 +2,7 @@ using Agrumy.Api.Commands;
 
 namespace Agrumy.Api.Startup
 {
-    /// Request-scoped domain services the controllers compose: command queue, manual actuation, config building, rule validation, tenant migration and quota.
+    /// Request-scoped domain services the controllers compose: command queue, manual actuation, config building, rule validation, organization migration and quota.
     public static class DomainServiceExtensions
     {
         public static WebApplicationBuilder AddAgrumyDomainServices(this WebApplicationBuilder builder)

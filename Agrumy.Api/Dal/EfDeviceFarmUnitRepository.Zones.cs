@@ -65,7 +65,7 @@ namespace Agrumy.Api.Dal
             {
                 return;
             }
-            // TenantID/DeviceFarmUnitID intentionally not overwritten - renaming a zone must not silently move it to another unit or tenant.
+            // TenantID/DeviceFarmUnitID intentionally not overwritten - renaming a zone must not silently move it to another unit or organization.
             row.DeviceFarmUnitZoneName = zone.DeviceFarmUnitZoneName;
             row.WaterPumpMaxRunSeconds = zone.WaterPumpMaxRunSeconds;
             row.WaterPumpCooldownSeconds = zone.WaterPumpCooldownSeconds;

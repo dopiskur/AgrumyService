@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Offline/manual-upload path for the local ARKOD GeoPackage mirror - the primary WMS click-lookup (parcel-geometry-map.js) talks to servisi.apprrr.hr directly from the browser and never touches this controller (CORS is open on that endpoint). No tenant/ownership scoping here - ARKOD parcel data is a public national registry, not tenant data. Plain ControllerBase, not ApiControllerBase - no audit-log/cache dependency to justify that base's constructor.
+    /// Offline/manual-upload path for the local ARKOD GeoPackage mirror - the primary WMS click-lookup (parcel-geometry-map.js) talks to servisi.apprrr.hr directly from the browser and never touches this controller (CORS is open on that endpoint). No organization/ownership scoping here - ARKOD parcel data is a public national registry, not organization data. Plain ControllerBase, not ApiControllerBase - no audit-log/cache dependency to justify that base's constructor.
     [ApiController]
     [ApiVersion("1.0")]
     [Route("/api/Arkod")]

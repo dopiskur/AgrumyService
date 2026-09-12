@@ -46,7 +46,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 {
                     continue; // already alerted for this ongoing streak - dedup
                 }
-                // A genuinely tenant-less device has no tenant admins to notify.
+                // A genuinely organization-less device has no organization admins to notify.
                 if (d.TenantID is not int tenantId)
                 {
                     continue;

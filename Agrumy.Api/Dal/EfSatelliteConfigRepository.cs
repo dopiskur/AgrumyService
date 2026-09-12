@@ -35,7 +35,7 @@ namespace Agrumy.Api.Dal
                 row.ClientSecretEncrypted = secretProtector.Protect(config.ClientSecret);
             }
             row.PlanTier = (int)config.PlanTier;
-            // Free tenants stay on Sentinel2 no matter what the request body asked for - server-side enforcement of D2, not just a UI restriction.
+            // Free organizations stay on Sentinel2 no matter what the request body asked for - server-side enforcement of D2, not just a UI restriction.
             row.Collection = config.PlanTier == SatellitePlanTier.Paid ? (int)config.Collection : (int)SatelliteCollection.Sentinel2;
             row.CommercialCollectionId = config.PlanTier == SatellitePlanTier.Paid ? config.CommercialCollectionId : null;
             row.DefaultIndicesJson = System.Text.Json.JsonSerializer.Serialize(config.DefaultIndices);

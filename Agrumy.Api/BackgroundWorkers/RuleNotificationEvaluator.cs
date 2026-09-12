@@ -51,14 +51,14 @@ namespace Agrumy.Api.BackgroundWorkers
             DateOnly localDate = DateOnly.FromDateTime(utcNow.AddSeconds(utcOffsetSeconds));
             notificationRules = AstronomicalRuleResolver.Resolve(notificationRules, lat, lon, localDate, utcOffsetSeconds);
 
-            // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind below - one fetch per tenant, not per rule/zone.
+            // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind below - one fetch per organization, not per rule/zone.
             TenantWeatherState weatherState = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
 
-            // Which zones (if any) currently have a member device of an active simulation session, and which session - fetched once per tenant, not once per zone. Simulation-scoped rules for each such session are also fetched lazily and cached here (a session commonly covers several zones).
+            // Which zones (if any) currently have a member device of an active simulation session, and which session - fetched once per organization, not once per zone. Simulation-scoped rules for each such session are also fetched lazily and cached here (a session commonly covers several zones).
             IDictionary<int, int> simulationSessionIdByZone = await simulationRepo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
             var simulationRulesBySession = new Dictionary<int, List<DeviceFarmUnitZoneRule>>();
 
-            // Same batched, once-per-tenant lookup as Simulation above (Zone>Unit>Farm cascade already resolved by ActiveExperimentIdsByZoneAsync itself).
+            // Same batched, once-per-organization lookup as Simulation above (Zone>Unit>Farm cascade already resolved by ActiveExperimentIdsByZoneAsync itself).
             IDictionary<int, int> experimentIdByZone = await experimentRepo.ActiveExperimentIdsByZoneAsync(tenantId);
             var experimentRulesByExperiment = new Dictionary<int, List<DeviceFarmUnitZoneRule>>();
 
@@ -252,7 +252,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 .Replace("{metric}", firstComparison?.Metric?.ToString() ?? "");
         }
 
-        /// Outdoor* metrics read from the tenant's own WeatherEvaluator-computed state regardless of averages (a zone with no reporting device can still have a working outdoor-weather rule); every other metric is a zone SensorAverages reading and needs one.
+        /// Outdoor* metrics read from the organization's own WeatherEvaluator-computed state regardless of averages (a zone with no reporting device can still have a working outdoor-weather rule); every other metric is a zone SensorAverages reading and needs one.
         private static double? ReadMetric(SensorAverages? averages, SensorMetric metric, TenantWeatherState weatherState) => metric switch
         {
             SensorMetric.OutdoorTemperature => weatherState.OutdoorTemperatureC,

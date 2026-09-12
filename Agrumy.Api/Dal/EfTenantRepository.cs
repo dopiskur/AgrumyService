@@ -28,7 +28,7 @@ namespace Agrumy.Api.Dal
             var row = new TenantRow { TenantName = tenantName };
             db.Tenants.Add(row);
             await db.SaveChangesAsync();
-            return row.IDTenant!.Value; // always populated post-save - either DB-generated or, for the default tenant, explicitly 0
+            return row.IDTenant!.Value; // always populated post-save - either DB-generated or, for the default organization, explicitly 0
         }
 
         public async Task<IList<Tenant>> TenantsGetAllAsync()
@@ -61,7 +61,7 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// The only writer of EmergencyStopActive - also bumps ConfigVersion for every device in the tenant so the change reaches them on their VERY NEXT poll instead of waiting for ConfigHeartbeatHours, since a fail-closed safety switch can't tolerate that latency.
+        /// The only writer of EmergencyStopActive - also bumps ConfigVersion for every device in the organization so the change reaches them on their VERY NEXT poll instead of waiting for ConfigHeartbeatHours, since a fail-closed safety switch can't tolerate that latency.
         public async Task TenantEmergencyStopSetAsync(int idTenant, bool active)
         {
             var row = await db.Tenants.FirstOrDefaultAsync(t => t.IDTenant == idTenant);

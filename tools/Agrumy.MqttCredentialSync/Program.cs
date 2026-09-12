@@ -24,7 +24,7 @@ var connection = GetArg("--connection")
 
 await using var db = new AgrumyDbContext(DbOptionsFactory.Build(provider, connection));
 
-// TenantQuotaRow absent for a tenant means TenantQuota.Default (Agrumy.Shared), whose MqttEnabled is false - MQTT is opt-in, not opt-out, same as TenantQuotaEnforcer.IsMqttAllowedAsync.
+// TenantQuotaRow absent for an organization means TenantQuota.Default (Agrumy.Shared), whose MqttEnabled is false - MQTT is opt-in, not opt-out, same as TenantQuotaEnforcer.IsMqttAllowedAsync.
 var mqttEnabledByTenant = await db.TenantQuotas.AsNoTracking().ToDictionaryAsync(q => q.IDTenant, q => q.MqttEnabled);
 
 var devices = await db.Devices.AsNoTracking()
