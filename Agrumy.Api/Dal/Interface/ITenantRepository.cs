@@ -60,5 +60,8 @@ namespace Agrumy.Api.Dal.Interface
 
         /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as TenantWeatherStateSetWeatherAsync.
         Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc);
+
+        /// The only writer of OutdoorTemperatureC/OutdoorHumidityPercent/OutdoorWindSpeedMetersPerSecond/OutdoorCheckedAtUtc, called exclusively by WeatherEvaluator - same isolation reasoning as TenantWeatherStateSetWeatherAsync.
+        Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc);
     }
 }

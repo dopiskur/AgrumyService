@@ -3176,6 +3176,18 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int?>("FrostPredictedHoursAhead")
                         .HasColumnType("int");
 
+                    b.Property<DateTimeOffset?>("OutdoorCheckedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<double?>("OutdoorHumidityPercent")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("OutdoorTemperatureC")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("OutdoorWindSpeedMetersPerSecond")
+                        .HasColumnType("double");
+
                     b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
                         .HasColumnType("datetime(6)");
 

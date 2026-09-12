@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Computes each tenant's own TenantWeatherState.WeatherRainPredicted flag; DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto. Runs once per tenant - a tenant can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
+    /// Computes each tenant's own TenantWeatherState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind). Runs once per tenant - a tenant can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
     public sealed class WeatherEvaluator(
         IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions,
         ILogger<WeatherEvaluator> logger)
@@ -60,6 +60,13 @@ namespace Agrumy.Api.BackgroundWorkers
                 logger.LogInformation("Weather check (tenant {TenantId}): max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", tenantId, pop, threshold, rainPredicted);
             }
             await tenantRepo.TenantWeatherStateSetWeatherAsync(tenantId, rainPredicted, DateTimeOffset.UtcNow);
+
+            // Separate forecast call, same endpoint as GetFrostForecastAsync - failure here (unlike above) doesn't block the rain-skip feature, so it never returns early.
+            OutdoorConditions? outdoor = await weatherClient.GetCurrentOutdoorConditionsAsync(latitude, longitude, settings.WeatherApiKey!, ct);
+            if (outdoor != null)
+            {
+                await tenantRepo.TenantWeatherStateSetOutdoorAsync(tenantId, outdoor.TemperatureC, outdoor.HumidityPercent, outdoor.WindSpeedMetersPerSecond, DateTimeOffset.UtcNow);
+            }
         }
     }
 }

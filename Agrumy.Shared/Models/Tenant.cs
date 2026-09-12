@@ -53,5 +53,10 @@ namespace Agrumy.Shared.Models
         public bool FrostPredicted { get; set; }
         public int? FrostPredictedHoursAhead { get; set; }
         public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+        /// Nearest-bucket reading from the same forecast call WeatherEvaluator already makes - feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind (RuleConditionEvaluator, "climate mirroring") as a live value alongside a zone's own SensorAverages, never a device's own SensorData.
+        public double? OutdoorTemperatureC { get; set; }
+        public double? OutdoorHumidityPercent { get; set; }
+        public double? OutdoorWindSpeedMetersPerSecond { get; set; }
+        public DateTimeOffset? OutdoorCheckedAtUtc { get; set; }
     }
 }

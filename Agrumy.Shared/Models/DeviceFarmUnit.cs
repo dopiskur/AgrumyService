@@ -177,6 +177,10 @@ namespace Agrumy.Shared.Models
         Ec = 16,
         /// RAW - load cell reading, HX711.
         Weight = 17,
+        /// PSEUDO - live outdoor reading from Agrumy.Api.Weather.IWeatherForecastClient (Agrumy.Api.BackgroundWorkers.WeatherEvaluator), not a device sensor - Notification-action rules only, same restriction as RateOfChange/DifDisruption.
+        OutdoorTemperature = 18,
+        OutdoorHumidity = 19,
+        OutdoorWind = 20,
     }
 
     /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.
@@ -405,6 +409,10 @@ namespace Agrumy.Shared.Models
             if ((node.Type == NodeType.RateOfChange || node.Type == NodeType.DifDisruption) && actionType != ActionType.Notification)
             {
                 yield return new ValidationResult("A rate-of-change/DIF condition is only valid on a Notification-action rule - it reads SensorTrend history the device never receives, so a Relay rule would always evaluate this condition as false.", [nameof(Root)]);
+            }
+            if (node.Type == NodeType.Comparison && node.Metric is SensorMetric.OutdoorTemperature or SensorMetric.OutdoorHumidity or SensorMetric.OutdoorWind && actionType != ActionType.Notification)
+            {
+                yield return new ValidationResult("An outdoor-weather condition is only valid on a Notification-action rule - it reads live weather data the device never receives, so a Relay rule would always evaluate this condition as false.", [nameof(Root)]);
             }
             if (NodeConfigError(node) is string configError)
             {

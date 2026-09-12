@@ -73,6 +73,8 @@ public class WeatherEvaluatorTests
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(10.0);
         _tenants.Setup(t => t.TenantWeatherStateSetWeatherAsync(TenantId, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+        _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutdoorConditions?)null);
 
         await NewEvaluator().RunOnceAsync();
 
@@ -88,6 +90,8 @@ public class WeatherEvaluatorTests
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(50.0); // exactly at threshold - counts as predicted, same >= convention as LowBatteryAlertEvaluator's threshold check
         _tenants.Setup(t => t.TenantWeatherStateSetWeatherAsync(TenantId, true, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+        _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutdoorConditions?)null);
 
         await NewEvaluator().RunOnceAsync();
 
@@ -103,10 +107,48 @@ public class WeatherEvaluatorTests
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(49.9);
         _tenants.Setup(t => t.TenantWeatherStateSetWeatherAsync(TenantId, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+        _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutdoorConditions?)null);
 
         await NewEvaluator().RunOnceAsync();
 
         _tenants.Verify(t => t.TenantWeatherStateSetWeatherAsync(TenantId, false, It.IsAny<DateTimeOffset>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Outdoor_Conditions_Fetched_And_Persisted_Alongside_Rain_Check()
+    {
+        SetupServerConfig(new ServerConfig { WeatherPollIntervalMinutes = 15, WeatherRainSkipThreshold = 50.0 });
+        SetupTenant(45.8, 16.0);
+        SetupState(DateTimeOffset.UtcNow.AddHours(-1));
+        _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(10.0);
+        _tenants.Setup(t => t.TenantWeatherStateSetWeatherAsync(TenantId, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+        _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OutdoorConditions(22.5, 61.0, 3.2));
+        _tenants.Setup(t => t.TenantWeatherStateSetOutdoorAsync(TenantId, 22.5, 61.0, 3.2, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+
+        await NewEvaluator().RunOnceAsync();
+
+        _tenants.Verify(t => t.TenantWeatherStateSetOutdoorAsync(TenantId, 22.5, 61.0, 3.2, It.IsAny<DateTimeOffset>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Outdoor_Fetch_Failure_Leaves_Last_Known_Outdoor_State_Untouched()
+    {
+        SetupServerConfig(new ServerConfig { WeatherPollIntervalMinutes = 15, WeatherRainSkipThreshold = 50.0 });
+        SetupTenant(45.8, 16.0);
+        SetupState(DateTimeOffset.UtcNow.AddHours(-1));
+        _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(10.0);
+        _tenants.Setup(t => t.TenantWeatherStateSetWeatherAsync(TenantId, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
+        _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(45.8, 16.0, "test-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OutdoorConditions?)null);
+
+        await NewEvaluator().RunOnceAsync();
+
+        // Strict mock: TenantWeatherStateSetOutdoorAsync would throw if called - a failed fetch must not overwrite the last good reading.
+        _tenants.Verify(t => t.TenantWeatherStateSetOutdoorAsync(It.IsAny<int>(), It.IsAny<double?>(), It.IsAny<double?>(), It.IsAny<double?>(), It.IsAny<DateTimeOffset>()), Times.Never);
     }
 
     [Fact]

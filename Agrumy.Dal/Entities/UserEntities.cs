@@ -67,6 +67,10 @@ namespace Agrumy.Dal.Entities
         public bool FrostPredicted { get; set; }
         public int? FrostPredictedHoursAhead { get; set; }
         public DateTimeOffset? FrostCheckedAtUtc { get; set; }
+        public double? OutdoorTemperatureC { get; set; }
+        public double? OutdoorHumidityPercent { get; set; }
+        public double? OutdoorWindSpeedMetersPerSecond { get; set; }
+        public DateTimeOffset? OutdoorCheckedAtUtc { get; set; }
     }
 
     /// See Agrumy.Shared.Models.TenantWifiConfig.

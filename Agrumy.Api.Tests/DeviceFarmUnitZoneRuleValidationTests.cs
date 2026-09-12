@@ -83,6 +83,32 @@ public class DeviceFarmUnitZoneRuleValidationTests
     }
 
     [Fact]
+    public void OutdoorMetricOnRelayRule_IsInvalid_WithNoRepository()
+    {
+        var rule = new DeviceFarmUnitZoneRule
+        {
+            TenantID = 1, ActionType = ActionType.Relay, RelayFunction = RelayFunction.Heating, Name = "test",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.OutdoorTemperature, Operator = ComparisonOperator.GreaterThan, Value1 = 30, Hysteresis = 1 },
+        };
+
+        Assert.False(IsValid(rule, out var results));
+        Assert.Contains(results, r => r.ErrorMessage!.Contains("outdoor-weather condition"));
+    }
+
+    [Fact]
+    public void OutdoorMetricOnNotificationRule_IsValid()
+    {
+        var rule = new DeviceFarmUnitZoneRule
+        {
+            TenantID = 1, ActionType = ActionType.Notification, Name = "test", NotificationSubject = "test",
+            Root = new ConditionNode { Type = NodeType.Comparison, Metric = SensorMetric.OutdoorTemperature, Operator = ComparisonOperator.GreaterThan, Value1 = 30, Hysteresis = 1 },
+        };
+
+        Assert.True(IsValid(rule, out var results));
+        Assert.Empty(results);
+    }
+
+    [Fact]
     public void HorticultureRuleTemplateBuilderOutput_IsValid_SameCheckAsAHandAddedRule()
     {
         // Agrumy.Rules can't be referenced from here without a project reference this test project

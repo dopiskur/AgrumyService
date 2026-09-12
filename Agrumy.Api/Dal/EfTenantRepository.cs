@@ -277,6 +277,10 @@ namespace Agrumy.Api.Dal
                     FrostPredicted = row.FrostPredicted,
                     FrostPredictedHoursAhead = row.FrostPredictedHoursAhead,
                     FrostCheckedAtUtc = row.FrostCheckedAtUtc,
+                    OutdoorTemperatureC = row.OutdoorTemperatureC,
+                    OutdoorHumidityPercent = row.OutdoorHumidityPercent,
+                    OutdoorWindSpeedMetersPerSecond = row.OutdoorWindSpeedMetersPerSecond,
+                    OutdoorCheckedAtUtc = row.OutdoorCheckedAtUtc,
                 };
         }
 
@@ -305,6 +309,16 @@ namespace Agrumy.Api.Dal
             row.FrostPredicted = frostPredicted;
             row.FrostPredictedHoursAhead = hoursAhead;
             row.FrostCheckedAtUtc = checkedAtUtc;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc)
+        {
+            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            row.OutdoorTemperatureC = temperatureC;
+            row.OutdoorHumidityPercent = humidityPercent;
+            row.OutdoorWindSpeedMetersPerSecond = windSpeedMetersPerSecond;
+            row.OutdoorCheckedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
         }
 

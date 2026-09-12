@@ -482,7 +482,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task TenantWeatherState_SetWeatherAndFrost_RoundTrips_IndependentlyOfEachOther(DbProviderKind provider)
     {
-        // Weather/frost state moved out of the single global ServerConfig row into a per-tenant table - each tenant's own row, and the two writers (WeatherEvaluator/FrostAlertEvaluator) must not clobber each other's half of it.
+        // Weather/frost/outdoor state moved out of the single global ServerConfig row into a per-tenant table - each tenant's own row, and the three writers (WeatherEvaluator writes both Weather* and Outdoor*, FrostAlertEvaluator writes Frost*) must not clobber each other's half of it.
         Use(provider);
         int tenantId = await _repo.TenantAddAsync($"weather-state-{Guid.NewGuid():N}");
 
@@ -491,6 +491,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Null(empty.WeatherCheckedAtUtc);
         Assert.False(empty.FrostPredicted);
         Assert.Null(empty.FrostCheckedAtUtc);
+        Assert.Null(empty.OutdoorTemperatureC);
+        Assert.Null(empty.OutdoorCheckedAtUtc);
 
         DateTimeOffset checkedAt = DateTimeOffset.UtcNow;
         await _repo.TenantWeatherStateSetWeatherAsync(tenantId, true, checkedAt);
@@ -499,6 +501,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(afterWeather.WeatherRainPredicted);
         Assert.NotNull(afterWeather.WeatherCheckedAtUtc);
         Assert.False(afterWeather.FrostPredicted); // untouched by the weather writer
+        Assert.Null(afterWeather.OutdoorTemperatureC); // untouched by the weather writer
 
         await _repo.TenantWeatherStateSetFrostAsync(tenantId, true, 6, checkedAt);
 
@@ -506,6 +509,17 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(afterFrost.WeatherRainPredicted); // untouched by the frost writer
         Assert.True(afterFrost.FrostPredicted);
         Assert.Equal(6, afterFrost.FrostPredictedHoursAhead);
+        Assert.Null(afterFrost.OutdoorTemperatureC); // untouched by the frost writer
+
+        await _repo.TenantWeatherStateSetOutdoorAsync(tenantId, 22.5, 61.0, 3.2, checkedAt);
+
+        var afterOutdoor = await _repo.TenantWeatherStateGetAsync(tenantId);
+        Assert.True(afterOutdoor.WeatherRainPredicted); // untouched by the outdoor writer
+        Assert.True(afterOutdoor.FrostPredicted); // untouched by the outdoor writer
+        Assert.Equal(22.5, afterOutdoor.OutdoorTemperatureC);
+        Assert.Equal(61.0, afterOutdoor.OutdoorHumidityPercent);
+        Assert.Equal(3.2, afterOutdoor.OutdoorWindSpeedMetersPerSecond);
+        Assert.NotNull(afterOutdoor.OutdoorCheckedAtUtc);
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

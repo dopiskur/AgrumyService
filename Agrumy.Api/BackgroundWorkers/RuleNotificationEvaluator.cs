@@ -17,7 +17,7 @@ namespace Agrumy.Api.BackgroundWorkers
         INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo,
         IExperimentRepository experimentRepo)
     {
-        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend);
+        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend, TenantWeatherState WeatherState);
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
@@ -50,6 +50,9 @@ namespace Agrumy.Api.BackgroundWorkers
             double? lon = tenant.Longitude ?? serverConfig.WeatherLocationLon;
             DateOnly localDate = DateOnly.FromDateTime(utcNow.AddSeconds(utcOffsetSeconds));
             notificationRules = AstronomicalRuleResolver.Resolve(notificationRules, lat, lon, localDate, utcOffsetSeconds);
+
+            // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind below - one fetch per tenant, not per rule/zone.
+            TenantWeatherState weatherState = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
 
             // Which zones (if any) currently have a member device of an active simulation session, and which session - fetched once per tenant, not once per zone. Simulation-scoped rules for each such session are also fetched lazily and cached here (a session commonly covers several zones).
             IDictionary<int, int> simulationSessionIdByZone = await simulationRepo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
@@ -116,7 +119,7 @@ namespace Agrumy.Api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, zoneId);
-                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend));
+                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend, weatherState));
                     }
                 }
             }
@@ -174,7 +177,7 @@ namespace Agrumy.Api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, parcelId);
-                        items.Add(new EvalItem(rule, parcelId, tenantId, wasTrue, averages, utcOffsetSeconds, trend));
+                        items.Add(new EvalItem(rule, parcelId, tenantId, wasTrue, averages, utcOffsetSeconds, trend, weatherState));
                     }
                 }
             }
@@ -197,7 +200,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 int before = firedThisTick.Count;
                 foreach (EvalItem item in items)
                 {
-                    Func<SensorMetric, double?> readMetric = metric => item.Averages != null ? ReadMetric(item.Averages, metric) : null;
+                    Func<SensorMetric, double?> readMetric = metric => ReadMetric(item.Averages, metric, item.WeatherState);
                     bool result = RuleConditionEvaluator.EvaluateRule(item.Rule, item.WasTrue, readMetric, utcNow, item.UtcOffsetSeconds, firedThisTick.Contains, item.Trend);
                     results[item] = result;
                     if (result)
@@ -233,7 +236,7 @@ namespace Agrumy.Api.BackgroundWorkers
             var recipients = await NotificationRecipientBuilder.BuildForTenantAdminsAsync(userRepo, item.TenantId, NotificationEventType.RuleTriggered);
             // Best-effort now that a rule can span several metrics - {metric}/{value} resolve from the first ComparisonNode found in the tree, not "the" rule's metric (there no longer is a single one).
             ConditionNode? firstComparison = RuleConditionEvaluator.FindFirstComparison(item.Rule.Root);
-            double? firstValue = firstComparison?.Metric is SensorMetric m && item.Averages != null ? ReadMetric(item.Averages, m) : null;
+            double? firstValue = firstComparison?.Metric is SensorMetric m ? ReadMetric(item.Averages, m, item.WeatherState) : null;
             if (recipients.Count > 0)
             {
                 await dispatcher.DispatchToRecipientsAsync(
@@ -249,8 +252,13 @@ namespace Agrumy.Api.BackgroundWorkers
                 .Replace("{metric}", firstComparison?.Metric?.ToString() ?? "");
         }
 
-        private static double? ReadMetric(SensorAverages averages, SensorMetric metric) => metric switch
+        /// Outdoor* metrics read from the tenant's own WeatherEvaluator-computed state regardless of averages (a zone with no reporting device can still have a working outdoor-weather rule); every other metric is a zone SensorAverages reading and needs one.
+        private static double? ReadMetric(SensorAverages? averages, SensorMetric metric, TenantWeatherState weatherState) => metric switch
         {
+            SensorMetric.OutdoorTemperature => weatherState.OutdoorTemperatureC,
+            SensorMetric.OutdoorHumidity => weatherState.OutdoorHumidityPercent,
+            SensorMetric.OutdoorWind => weatherState.OutdoorWindSpeedMetersPerSecond,
+            _ when averages == null => null,
             SensorMetric.Temperature => averages.Temperature,
             SensorMetric.SoilTemperature => averages.SoilTemperature,
             SensorMetric.Humidity => averages.Humidity,

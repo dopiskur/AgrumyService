@@ -50,5 +50,8 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc) => tenantRepository.TenantWeatherStateSetWeatherAsync(idTenant, rainPredicted, checkedAtUtc);
 
         public Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc) => tenantRepository.TenantWeatherStateSetFrostAsync(idTenant, frostPredicted, hoursAhead, checkedAtUtc);
+
+        public Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc) =>
+            tenantRepository.TenantWeatherStateSetOutdoorAsync(idTenant, temperatureC, humidityPercent, windSpeedMetersPerSecond, checkedAtUtc);
     }
 }

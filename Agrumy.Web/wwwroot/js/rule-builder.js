@@ -28,10 +28,10 @@
             this.root = root;
             this.simpleMode = root.dataset.simpleMode === 'true';
             const allMetrics = JSON.parse(root.dataset.metrics || '[]');
-            // Simple mode hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor.
-            this.metrics = this.simpleMode ? allMetrics.filter(m => !m.derived) : allMetrics;
             this.referenceableRules = JSON.parse(root.dataset.referenceableRules || '[]');
             this.isNotification = root.dataset.notification === 'true';
+            // Simple mode hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor. Outdoor* metrics are live weather data, not a device reading - a Relay rule's tree would always evaluate them false (DeviceFarmUnitZoneRule.Validate() rejects them there outright), so they're hidden from that tree's picker rather than offered and silently broken.
+            this.metrics = allMetrics.filter(m => (!this.simpleMode || !m.derived) && (this.isNotification || !m.outdoor));
             this.treeContainer = root.querySelector('.rule-tree-container');
             this.hiddenInput = root.querySelector('input[name="RootConditionJson"]');
             const addRow = document.createElement('div');

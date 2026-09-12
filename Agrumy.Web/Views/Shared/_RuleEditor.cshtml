@@ -27,9 +27,13 @@
         (Agrumy.Shared.Models.SensorMetric.RainLevel, "RainLevel"), (Agrumy.Shared.Models.SensorMetric.WaterLevel, "WaterLevel"),
         (Agrumy.Shared.Models.SensorMetric.Wind, "Wind"),
         (Agrumy.Shared.Models.SensorMetric.Ec, "Ec"), (Agrumy.Shared.Models.SensorMetric.Weight, "Weight"),
+        (Agrumy.Shared.Models.SensorMetric.OutdoorTemperature, "Outdoor temperature"), (Agrumy.Shared.Models.SensorMetric.OutdoorHumidity, "Outdoor humidity"),
+        (Agrumy.Shared.Models.SensorMetric.OutdoorWind, "Outdoor wind"),
     ];
     // Computed from other readings, not a raw sensor value - hidden from the metric picker in Simple mode along with every non-comparison node type (see rule-builder.js's allowedTypes()).
     HashSet<Agrumy.Shared.Models.SensorMetric> derivedMetrics = [Agrumy.Shared.Models.SensorMetric.Vpd, Agrumy.Shared.Models.SensorMetric.DewPoint, Agrumy.Shared.Models.SensorMetric.DewPointSpread];
+    // Live weather data, not a device reading - only valid on a Notification-action rule (DeviceFarmUnitZoneRule.Validate() rejects it on Relay), hidden from the Relay tree's metric picker (see rule-builder.js's metrics filter).
+    HashSet<Agrumy.Shared.Models.SensorMetric> outdoorMetrics = [Agrumy.Shared.Models.SensorMetric.OutdoorTemperature, Agrumy.Shared.Models.SensorMetric.OutdoorHumidity, Agrumy.Shared.Models.SensorMetric.OutdoorWind];
     bool simpleUIMode = User.GetUIMode() == UIMode.Simple;
     bool isReadOnly = ViewBag.IsReadOnly is true;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -67,7 +71,7 @@
 
     IHtmlContent TreeBuilder(string idSuffix, bool isNotification, IList<Agrumy.Shared.Models.DeviceFarmUnitZoneRule> referenceable)
     {
-        string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label, derived = derivedMetrics.Contains(m.Value) }), jsonOpts).Replace("\"", "&quot;");
+        string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label, derived = derivedMetrics.Contains(m.Value), outdoor = outdoorMetrics.Contains(m.Value) }), jsonOpts).Replace("\"", "&quot;");
         string rulesJson = JsonSerializer.Serialize(referenceable.Select(r => new { id = r.IDDeviceFarmUnitZoneRule, name = r.Name }), jsonOpts).Replace("\"", "&quot;");
         var html = $"""
         <div class="rule-tree-builder" data-metrics="{metricsJson}" data-referenceable-rules="{rulesJson}" data-notification="{(isNotification ? "true" : "false")}" data-simple-mode="{(simpleUIMode ? "true" : "false")}">
