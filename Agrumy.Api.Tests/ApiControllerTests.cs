@@ -2245,134 +2245,185 @@ public class ApiControllerTests
         Assert.Null(config.ArchivePassword);
     }
 
-    [Fact]
-    public async Task ServerConfigUpdate_WaterPumpMaxRunSecondsNegative_Returns400_AndNeverWrites()
+    private ServerConfigSectionsApiController NewServerConfigSectionsController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object);
+
+    private void SetupSectionSave(Action<ServerConfig> onSaved)
     {
-        var controller = NewServerConfigController();
-        SetCaller(controller, "admin", 0);
-
-        var result = await controller.Update(new ServerConfig { WaterPumpMaxRunSeconds = -1 });
-
-        Assert.IsType<BadRequestObjectResult>(result);
-        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { IDServerConfig = 1, EmailHost = "kept.example.com", MqttPassword = "stored-secret" });
+        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
+             .Callback(onSaved)
+             .Returns(Task.CompletedTask);
+        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_WaterPumpCooldownSecondsTooLarge_Returns400()
+    public async Task ServerConfigDeviceDefaultsUpdate_WaterPumpMaxRunSecondsNegative_Returns400_AndNeverWrites()
     {
-        var controller = NewServerConfigController();
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { WaterPumpCooldownSeconds = 86401 });
+        var result = await controller.UpdateDeviceDefaults(new DeviceDefaultsSettings { WaterPumpMaxRunSeconds = -1 });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        // MockBehavior.Strict: ServerConfigGetAsync/ServerConfigUpdateAsync have no setup, proving the bad value was rejected before any read or write.
+    }
+
+    [Fact]
+    public async Task ServerConfigDeviceDefaultsUpdate_WaterPumpCooldownSecondsTooLarge_Returns400()
+    {
+        var controller = NewServerConfigSectionsController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.UpdateDeviceDefaults(new DeviceDefaultsSettings { WaterPumpCooldownSeconds = 86401 });
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
-
-    /// Roadmap #209 - enabling archiving without host/database/username set must be rejected before any write.
+    /// A section PUT rewrites only its own fields - every other section's stored value rides through untouched, and stored secrets stay put because the repo treats blank as "keep".
     [Fact]
-    public async Task ServerConfigUpdate_ArchiveEnabledWithoutHost_Returns400_AndNeverWrites()
+    public async Task ServerConfigSectionUpdate_LeavesOtherSectionsAndSecretsUntouched()
     {
-        var controller = NewServerConfigController();
+        ServerConfig? saved = null;
+        SetupSectionSave(c => saved = c);
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { ArchiveEnabled = true });
+        var result = await controller.UpdateDeviceDefaults(new DeviceDefaultsSettings { MaxRulesPerZone = 12, ConfigHeartbeatHours = 2 });
 
-        Assert.IsType<BadRequestObjectResult>(result);
-        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
+        Assert.IsType<OkResult>(result);
+        Assert.Equal(12, saved!.MaxRulesPerZone);
+        Assert.Equal("kept.example.com", saved.EmailHost);
+        Assert.Null(saved.MqttPassword);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_ArchiveEnabledCustomRollingDaysNotPreset_Returns400()
+    public async Task ServerConfigMqttUpdate_ResendsOnlyItsOwnSecret()
     {
-        var controller = NewServerConfigController();
+        ServerConfig? saved = null;
+        SetupSectionSave(c => saved = c);
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig
+        var result = await controller.UpdateMqtt(new MqttSettings { MqttTransportEnabled = true, MqttBrokerHost = "broker", MqttPassword = "new-secret" });
+
+        Assert.IsType<OkResult>(result);
+        Assert.Equal("new-secret", saved!.MqttPassword);
+        Assert.Null(saved.EmailPassword);
+    }
+
+    [Fact]
+    public async Task ServerConfigSectionGet_NeverReturnsSecrets()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig
         {
-            ArchiveEnabled = true,
-            ArchiveCutoffMode = ArchiveCutoffMode.CustomRollingDays,
-            ArchiveCustomRollingDays = 30,
-            ArchiveHost = "archive.example.com",
-            ArchiveDatabaseName = "archive",
-            ArchiveUsername = "archiver",
-            ArchivePassword = "secret",
+            IDServerConfig = 1,
+            MqttPassword = "broker-secret",
+            EmailPassword = "smtp-secret",
+            WebhookSecret = "hook-secret",
+        });
+        var controller = NewServerConfigSectionsController();
+        SetCaller(controller, "admin", 0);
+
+        Assert.Null(Assert.IsType<MqttSettings>(Assert.IsType<OkObjectResult>((await controller.GetMqtt()).Result).Value).MqttPassword);
+        Assert.Null(Assert.IsType<EmailSettings>(Assert.IsType<OkObjectResult>((await controller.GetEmail()).Result).Value).EmailPassword);
+        Assert.Null(Assert.IsType<WebhookSettings>(Assert.IsType<OkObjectResult>((await controller.GetWebhook()).Result).Value).WebhookSecret);
+    }
+
+    /// Enabling archiving without host/database/username set must be rejected before any write.
+    [Fact]
+    public async Task ServerConfigArchiveSettings_EnabledWithoutHost_Returns400_AndNeverWrites()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { IDServerConfig = 1 });
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.SaveArchiveSettings(new ArchiveSettingsSaveRequest { Enabled = true });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
+    }
+
+    [Fact]
+    public async Task ServerConfigArchiveSettings_EnabledCustomRollingDaysNotPreset_Returns400()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { IDServerConfig = 1 });
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.SaveArchiveSettings(new ArchiveSettingsSaveRequest
+        {
+            Enabled = true,
+            CutoffMode = ArchiveCutoffMode.CustomRollingDays,
+            CustomRollingDays = 30,
+            Host = "archive.example.com",
+            DatabaseName = "archive",
+            Username = "archiver",
+            Password = "secret",
         });
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_ArchiveDisabled_SkipsAllArchiveValidation()
+    public async Task ServerConfigArchiveSettings_Disabled_SkipsAllArchiveValidation()
     {
         ServerConfig? saved = null;
-        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
-             .Callback<ServerConfig>(c => saved = c)
-             .Returns(Task.CompletedTask);
-        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
+        SetupSectionSave(c => saved = c);
         var controller = NewServerConfigController();
         SetCaller(controller, "admin", 0);
 
-        // ArchiveEnabled left false/default - host/database/username all blank must not block an otherwise-valid save.
-        var result = await controller.Update(new ServerConfig());
+        // Enabled false - host/database/username all blank must not block disabling.
+        var result = await controller.SaveArchiveSettings(new ArchiveSettingsSaveRequest());
 
         Assert.IsType<OkResult>(result);
         Assert.False(saved!.ArchiveEnabled);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_SensorDataRetentionDaysNegative_Returns400_AndNeverWrites()
+    public async Task ServerConfigDataRetentionUpdate_SensorDataRetentionDaysNegative_Returns400_AndNeverWrites()
     {
-        var controller = NewServerConfigController();
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { SensorDataRetentionDays = -1 });
+        var result = await controller.UpdateDataRetention(new DataRetentionSettings { SensorDataRetentionDays = -1 });
 
         Assert.IsType<BadRequestObjectResult>(result);
-        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_SensorDataRetentionDaysNullOrPositive_Persists()
+    public async Task ServerConfigDataRetentionUpdate_SensorDataRetentionDaysNullOrPositive_Persists()
     {
         ServerConfig? saved = null;
-        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
-             .Callback<ServerConfig>(c => saved = c)
-             .Returns(Task.CompletedTask);
-        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
-        var controller = NewServerConfigController();
+        SetupSectionSave(c => saved = c);
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { SensorDataRetentionDays = 365 });
+        var result = await controller.UpdateDataRetention(new DataRetentionSettings { SensorDataRetentionDays = 365 });
 
         Assert.IsType<OkResult>(result);
         Assert.Equal(365, saved!.SensorDataRetentionDays);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_ProblemEventExpiryHoursNotInFixedSet_Returns400_AndNeverWrites()
+    public async Task ServerConfigAlertsUpdate_ProblemEventExpiryHoursNotInFixedSet_Returns400_AndNeverWrites()
     {
-        var controller = NewServerConfigController();
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { ProblemEventExpiryHours = 3 });
+        var result = await controller.UpdateAlerts(new AlertSettings { ProblemEventExpiryHours = 3 });
 
         Assert.IsType<BadRequestObjectResult>(result);
-        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_ProblemEventExpiryHoursInFixedSet_Persists()
+    public async Task ServerConfigAlertsUpdate_ProblemEventExpiryHoursInFixedSet_Persists()
     {
         ServerConfig? saved = null;
-        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
-             .Callback<ServerConfig>(c => saved = c)
-             .Returns(Task.CompletedTask);
-        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
-        var controller = NewServerConfigController();
+        SetupSectionSave(c => saved = c);
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { ProblemEventExpiryHours = 6 });
+        var result = await controller.UpdateAlerts(new AlertSettings { ProblemEventExpiryHours = 6 });
 
         Assert.IsType<OkResult>(result);
         Assert.Equal(6, saved!.ProblemEventExpiryHours);
@@ -2381,40 +2432,36 @@ public class ApiControllerTests
     [Theory]
     [InlineData(0)]
     [InlineData(65536)]
-    public async Task ServerConfigUpdate_EmailPortOutOfRange_Returns400_AndNeverWrites(int port)
+    public async Task ServerConfigEmailUpdate_EmailPortOutOfRange_Returns400_AndNeverWrites(int port)
     {
-        var controller = NewServerConfigController();
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig { EmailPort = port });
-
-        Assert.IsType<BadRequestObjectResult>(result);
-        // MockBehavior.Strict: ServerConfigUpdateAsync has no setup, proving the bad value was rejected before any write.
-    }
-
-    [Fact]
-    public async Task ServerConfigUpdate_EmailEnabledWithoutHostOrFromAddress_Returns400_AndNeverWrites()
-    {
-        var controller = NewServerConfigController();
-        SetCaller(controller, "admin", 0);
-
-        var result = await controller.Update(new ServerConfig { EmailEnabled = true, EmailPort = 587 });
+        var result = await controller.UpdateEmail(new EmailSettings { EmailPort = port });
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
-    public async Task ServerConfigUpdate_EmailEnabledWithHostAndFromAddress_Persists()
+    public async Task ServerConfigEmailUpdate_EnabledWithoutHostOrFromAddress_Returns400_AndNeverWrites()
+    {
+        var controller = NewServerConfigSectionsController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.UpdateEmail(new EmailSettings { EmailEnabled = true, EmailPort = 587 });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task ServerConfigEmailUpdate_EnabledWithHostAndFromAddress_Persists()
     {
         ServerConfig? saved = null;
-        _repo.Setup(r => r.ServerConfigUpdateAsync(It.IsAny<ServerConfig>()))
-             .Callback<ServerConfig>(c => saved = c)
-             .Returns(Task.CompletedTask);
-        _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
-        var controller = NewServerConfigController();
+        SetupSectionSave(c => saved = c);
+        var controller = NewServerConfigSectionsController();
         SetCaller(controller, "admin", 0);
 
-        var result = await controller.Update(new ServerConfig
+        var result = await controller.UpdateEmail(new EmailSettings
         {
             EmailEnabled = true,
             EmailHost = "smtp.example.com",
@@ -2904,8 +2951,11 @@ public class ApiControllerTests
         var controller = NewServerConfigController();
         SetCallerRoles(controller, 5, "admin", RoleNames.TenantAdmin);
 
+        var sections = NewServerConfigSectionsController();
+        SetCallerRoles(sections, 5, "admin", RoleNames.TenantAdmin);
+
         var get = await controller.Get();
-        var put = await controller.Update(new ServerConfig());
+        var put = await sections.UpdateWeather(new WeatherSettings());
 
         Assert.Equal(403, Assert.IsType<ObjectResult>(get.Result).StatusCode);
         Assert.Equal(403, Assert.IsType<ObjectResult>(put).StatusCode);
@@ -2920,9 +2970,11 @@ public class ApiControllerTests
 
         var controller = NewServerConfigController();
         SetCallerRoles(controller, 0, "admin", RoleNames.GlobalAdmin);
+        var sections = NewServerConfigSectionsController();
+        SetCallerRoles(sections, 0, "admin", RoleNames.GlobalAdmin);
 
         Assert.IsType<OkObjectResult>((await controller.Get()).Result);
-        Assert.IsType<OkResult>(await controller.Update(new ServerConfig()));
+        Assert.IsType<OkResult>(await sections.UpdateGateway(new GatewaySettings()));
     }
 
     /// An out-of-range window must 400 before reaching the repo - strict mock (SensorDataGetAsync never set up) proves it.

@@ -468,7 +468,8 @@ next step - not required today.
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `GET /api/ServerConfig`, `PUT /api/ServerConfig` | admin | Global defaults (hysteresis, alert thresholds, firmware source, etc.) - Global admin only, applies across every account |
+| `GET /api/ServerConfig` | admin | The whole server-wide settings row (secrets redacted) - Global admin/reader only, applies across every account |
+| `GET`/`PUT /api/ServerConfig/{DeviceDefaults,Accounts,Alerts,Firmware,DataRetention,Weather,Gateway,Mqtt,Email,Webhook,OData,Arkod}` | admin | One domain section each; a PUT rewrites only that section's fields, so no save can blank a field its form never rendered. `POST /api/ServerConfig/ArchiveSettings` is the archiving section's own test-then-save |
 | `GET /api/ServerConfig/Public` | no auth | The subset of server config safe to expose pre-login (e.g. registration open/closed) |
 
 **DataMaintenance** (`DataMaintenanceApiController`, `api/DataMaintenance`)

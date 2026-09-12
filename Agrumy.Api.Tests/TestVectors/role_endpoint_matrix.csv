@@ -2,8 +2,8 @@ HttpMethod,RouteTemplate,Roles
 DELETE,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Device/FirmwareUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
-DELETE,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Parcel/Rule,Global admin;Global Device;Tenant admin;Tenant Device
@@ -45,14 +45,25 @@ GET,api/Firmware/Fetch,Global admin;Global Device;Tenant admin;Tenant Device;Glo
 GET,api/Firmware/Manifest,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Gateway/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Gateway/DeviceMapping/All,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
-GET,api/odata/SensorData,Global admin;Global reader;Global User;Tenant admin;Tenant reader;Tenant User;Global Data Reader;Tenant Data Reader;Simulation administrator
 GET,api/RecycleBin/Device,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Device/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Farm,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/RecycleBin/Farm/PendingPurge,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/ServerConfig,Global admin;Global reader
+GET,api/ServerConfig/Accounts,Global admin;Global reader
+GET,api/ServerConfig/Alerts,Global admin;Global reader
+GET,api/ServerConfig/Arkod,Global admin;Global reader
+GET,api/ServerConfig/DataRetention,Global admin;Global reader
+GET,api/ServerConfig/DeviceDefaults,Global admin;Global reader
+GET,api/ServerConfig/Email,Global admin;Global reader
+GET,api/ServerConfig/Firmware,Global admin;Global reader
 GET,api/ServerConfig/FirmwareSsrfAllowlist,Global admin;Global reader
+GET,api/ServerConfig/Gateway,Global admin;Global reader
 GET,api/ServerConfig/Health,Global admin;Global reader
+GET,api/ServerConfig/Mqtt,Global admin;Global reader
+GET,api/ServerConfig/OData,Global admin;Global reader
+GET,api/ServerConfig/Weather,Global admin;Global reader
+GET,api/ServerConfig/Webhook,Global admin;Global reader
 GET,api/ServerConfig/WebhookSsrfAllowlist,Global admin;Global reader
 GET,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin;Global reader
@@ -68,6 +79,7 @@ GET,api/Tenant/WeatherState,Global admin;Tenant admin;Global reader
 GET,api/TenantQuota,Global admin;Global reader
 GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
 GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
+GET,api/odata/SensorData,Global admin;Global reader;Global User;Tenant admin;Tenant reader;Tenant User;Global Data Reader;Tenant Data Reader;Simulation administrator
 POST,api/Arkod/GeoPackage/Upload,Global admin
 POST,api/DataMaintenance/Optimize,Global admin
 POST,api/DataMaintenance/Purge,Global admin
@@ -96,9 +108,9 @@ POST,api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog,Global admin;Global Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/Planting/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Close,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Planting/Start,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Discovery/Register,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Discovery/Scan,Global admin;Global Device;Tenant admin;Tenant Device
@@ -110,9 +122,9 @@ POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/FarmParcel,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/FarmOpenfield/Parcel/Merge,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/Merge,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Split,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/Close,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
@@ -169,7 +181,18 @@ PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry,Global admin;Global Dev
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/HorticultureCatalog,Global admin
-PUT,api/ServerConfig,Global admin
+PUT,api/ServerConfig/Accounts,Global admin
+PUT,api/ServerConfig/Alerts,Global admin
+PUT,api/ServerConfig/Arkod,Global admin
+PUT,api/ServerConfig/DataRetention,Global admin
+PUT,api/ServerConfig/DeviceDefaults,Global admin
+PUT,api/ServerConfig/Email,Global admin
+PUT,api/ServerConfig/Firmware,Global admin
+PUT,api/ServerConfig/Gateway,Global admin
+PUT,api/ServerConfig/Mqtt,Global admin
+PUT,api/ServerConfig/OData,Global admin
+PUT,api/ServerConfig/Weather,Global admin
+PUT,api/ServerConfig/Webhook,Global admin
 PUT,api/Simulation/Session/{idSimulationSession}/Group/{idGroup},Global admin;Simulation administrator;Tenant admin
 PUT,api/Tenant,Global admin
 PUT,api/Tenant/AlertConfig,Global admin;Tenant admin

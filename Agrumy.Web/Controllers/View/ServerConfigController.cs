@@ -8,24 +8,113 @@ using StreamPart = Refit.StreamPart; // not `using Refit;` - its AuthorizeAttrib
 
 namespace Agrumy.Web.Controllers.View
 {
+    /// Server Settings page: one read of the whole ServerConfig row, but every tab saves through its own section endpoint so a tab can only change the fields it renders.
     [Authorize]
     public class ServerConfigController(IApi api, IConfiguration configuration) : Controller
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
-        public async Task<ActionResult> Index()
+        public async Task<ActionResult> Index() => await IndexViewAsync(await api.ServerConfigGet(), TempData["ActiveTab"] as string);
+
+        private async Task<ViewResult> IndexViewAsync(ServerConfig config, string? activeTab)
         {
             await PopulateHealthAsync();
             await PopulateWeatherStateAsync();
             ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
             // Same config key Program.cs's own Refit HttpClient is built from - the actual base URL a Power BI OData connector would be pointed at.
             ViewBag.ApiServiceUrl = configuration["WebView:ApiService"];
-            return View(await api.ServerConfigGet());
+            ViewBag.ActiveTab = activeTab;
+            return View("Index", config);
         }
 
         /// Weather/frost state is per-tenant - tenant 0 stands in for "the default install location" on this server-wide page, same convention TenantAdminsGetAsync already uses for tenantId 0 = GlobalAdmin.
         private async Task PopulateWeatherStateAsync() => ViewBag.WeatherState = await api.TenantWeatherStateGet(0);
 
-        /// Relaxes SsrfGuard's private-IP/https-only checks for this one hostname or CIDR range, webhook-only (FirmwareController.SsrfAllowlistAdd is the separate firmware list). AJAX, not a redirect form post, since the Webhook tab lives inside this page's one big Server Settings <form> and can't nest a form of its own - see webhook-ssrf-allowlist.js.
+        private async Task PopulateHealthAsync()
+        {
+            // Best-effort - a health-check hiccup must never block the Server Settings page itself from loading/saving.
+            try
+            {
+                ViewBag.ServerHealth = await api.ServerConfigGetHealth();
+            }
+            catch (ApiException)
+            {
+                ViewBag.ServerHealth = Array.Empty<ServerHealthEntry>();
+            }
+        }
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveDeviceDefaults(DeviceDefaultsSettings settings) => SaveSectionAsync(settings, "device-defaults", api.ServerConfigDeviceDefaultsUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveAccounts(AccountSettings settings) => SaveSectionAsync(settings, "accounts", api.ServerConfigAccountsUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveDataRetention(DataRetentionSettings settings) => SaveSectionAsync(settings, "database", api.ServerConfigDataRetentionUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveWeather(WeatherSettings settings) => SaveSectionAsync(settings, "weather", api.ServerConfigWeatherUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveGateway(GatewaySettings settings) => SaveSectionAsync(settings, "gateway", api.ServerConfigGatewayUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveMqtt(MqttSettings settings) => SaveSectionAsync(settings, "mqtt", api.ServerConfigMqttUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveEmail(EmailSettings settings) => SaveSectionAsync(settings, "email", api.ServerConfigEmailUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveWebhook(WebhookSettings settings) => SaveSectionAsync(settings, "webhook", api.ServerConfigWebhookUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveOData(ODataSettings settings) => SaveSectionAsync(settings, "odata", api.ServerConfigODataUpdate);
+
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public Task<ActionResult> SaveArkod(ArkodSettings settings) => SaveSectionAsync(settings, "arkod", api.ServerConfigArkodUpdate);
+
+        /// PUTs one section; on failure re-renders the page on the same tab with the typed values kept and the API's message under the field it names.
+        private async Task<ActionResult> SaveSectionAsync<T>(T settings, string tab, Func<T, Task> put) where T : IServerConfigSection
+        {
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    await put(settings);
+                    TempData["Message"] = "Server settings saved.";
+                    TempData["ActiveTab"] = tab;
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (ApiException ex)
+                {
+                    ModelState.AddModelError(ApiErrorField.Resolve<T>(ex.Body), ex.Body);
+                }
+            }
+            ServerConfig config = await api.ServerConfigGet();
+            settings.ApplyTo(config);
+            return await IndexViewAsync(config, tab);
+        }
+
+        /// Relaxes SsrfGuard's private-IP/https-only checks for this one hostname or CIDR range, webhook-only (FirmwareController.SsrfAllowlistAdd is the separate firmware list). AJAX rather than a form post so it can sit inside the Webhook tab's own form - see webhook-ssrf-allowlist.js.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -51,81 +140,9 @@ namespace Agrumy.Web.Controllers.View
             return Ok();
         }
 
-        /// Roadmap #419 - the "Server Health" tab's live-refresh.js poll target (Agrumy.Web's own passive proxy, not an on-demand test button).
+        /// The "Server Health" tab's live-refresh.js poll target - a passive proxy, not an on-demand test button.
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Health() => PartialView("_ServerHealth", await api.ServerConfigGetHealth());
-
-        private async Task PopulateHealthAsync()
-        {
-            // Best-effort - a health-check hiccup must never block the Server Settings page itself from loading/saving.
-            try
-            {
-                ViewBag.ServerHealth = await api.ServerConfigGetHealth();
-            }
-            catch (ApiException)
-            {
-                ViewBag.ServerHealth = Array.Empty<ServerHealthEntry>();
-            }
-        }
-
-        [Authorize(Roles = RoleNames.GlobalAdmin)]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Index(ServerConfig serverConfig)
-        {
-            await PopulateHealthAsync();
-            await PopulateWeatherStateAsync();
-            ViewBag.WebhookSsrfAllowlist = await api.WebhookSsrfAllowlistGet();
-            if (!ModelState.IsValid)
-            {
-                return View(serverConfig);
-            }
-
-            try
-            {
-                await api.ServerConfigUpdate(serverConfig);
-            }
-            catch (ApiException ex)
-            {
-                // Route the API's error text to the field it's actually about, else it lands under firmware source by default.
-                string field = ex.Body.Contains("firmware", StringComparison.OrdinalIgnoreCase) || ex.Body.Contains("GitHub", StringComparison.OrdinalIgnoreCase)
-                    ? nameof(ServerConfig.FirmwareSource)
-                    : ex.Body.Contains("cooldown", StringComparison.OrdinalIgnoreCase)
-                        ? nameof(ServerConfig.WaterPumpCooldownSeconds)
-                        : ex.Body.Contains("WaterPump", StringComparison.OrdinalIgnoreCase)
-                            ? nameof(ServerConfig.WaterPumpMaxRunSeconds)
-                            : ex.Body.Contains("retention", StringComparison.OrdinalIgnoreCase)
-                                ? nameof(ServerConfig.SensorDataRetentionDays)
-                                : ex.Body.Contains("latitude", StringComparison.OrdinalIgnoreCase)
-                                    ? nameof(ServerConfig.WeatherLocationLat)
-                                    : ex.Body.Contains("longitude", StringComparison.OrdinalIgnoreCase)
-                                        ? nameof(ServerConfig.WeatherLocationLon)
-                                        : ex.Body.Contains("poll interval", StringComparison.OrdinalIgnoreCase)
-                                            ? nameof(ServerConfig.WeatherPollIntervalMinutes)
-                                            : ex.Body.Contains("rain-skip", StringComparison.OrdinalIgnoreCase)
-                                                ? nameof(ServerConfig.WeatherRainSkipThreshold)
-                                                : ex.Body.Contains("Frost lookahead", StringComparison.OrdinalIgnoreCase)
-                                                    ? nameof(ServerConfig.FrostLookaheadHours)
-                                                    : ex.Body.Contains("Frost max cloudiness", StringComparison.OrdinalIgnoreCase)
-                                                        ? nameof(ServerConfig.FrostCloudinessMaxPercent)
-                                                        : ex.Body.Contains("Frost max wind", StringComparison.OrdinalIgnoreCase)
-                                                            ? nameof(ServerConfig.FrostWindMaxMetersPerSecond)
-                                                            : ex.Body.Contains("SMTP port", StringComparison.OrdinalIgnoreCase)
-                                                                ? nameof(ServerConfig.EmailPort)
-                                                                : ex.Body.Contains("email notifications", StringComparison.OrdinalIgnoreCase)
-                                                                    ? nameof(ServerConfig.EmailHost)
-                                                                    : ex.Body.Contains("PIN validity", StringComparison.OrdinalIgnoreCase)
-                                                                        ? nameof(ServerConfig.DevicePinValidMinutes)
-                                                                        : ex.Body.Contains("archive", StringComparison.OrdinalIgnoreCase)
-                                                                            ? nameof(ServerConfig.ArchiveEnabled)
-                                                                            : nameof(ServerConfig.FirmwareSource);
-                ModelState.AddModelError(field, ex.Body);
-                return View(serverConfig);
-            }
-
-            TempData["Message"] = "Server settings saved.";
-            return RedirectToAction(nameof(Index));
-        }
 
         /// Sends through the SAVED settings (Save first, then test) - not whatever is currently typed into the unsaved form.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
@@ -178,7 +195,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        /// Saves the whole "Data Archiving" subsection independently of this page's main Save button - see ServerConfigApiController.SaveArchiveSettings.
+        /// Saves the "Data Archiving" subsection on its own - see ServerConfigApiController.SaveArchiveSettings.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -195,7 +212,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        /// Offline/manual fallback for the ARKOD GeoPackage sync toggle above: an admin who downloaded the file some other way (no outbound internet on this server) uploads it here instead of waiting on ArkodGeoPackageSyncBackgroundService. AJAX (inline script in Index.cshtml), not a form post - this tab-pane lives inside the page's one big non-multipart Server Settings &lt;form&gt;, same "can't nest a form" reasoning as WebhookSsrfAllowlistAdd.
+        /// Offline/manual fallback for the ARKOD GeoPackage sync toggle: an admin who downloaded the file some other way uploads it here instead of waiting on ArkodGeoPackageSyncBackgroundService. AJAX (inline script in Index.cshtml) because the ARKOD tab's own form is not multipart.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]

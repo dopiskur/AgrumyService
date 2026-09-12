@@ -7,11 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Alerts settings, split out of Server Settings into their own sidebar page (roadmap #338).
-    /// A Global admin/reader edits the server-wide DEFAULTS (still the same ServerConfig model/endpoint
-    /// as before). A Tenant admin instead edits their OWN tenant's override of those same thresholds
-    /// (roadmap #509, TenantAlertConfig) - the Index view renders one or the other depending on role,
-    /// so both share the "Alerts" nav item and URL.
+    /// A Global admin/reader edits the server-wide alert defaults (ServerConfig's Alerts section); a Tenant admin edits their own tenant's TenantAlertConfig override instead - same nav item and URL, the Index view picks by role.
     [Authorize]
     public class AlertsController(IApi api) : Controller
     {
@@ -19,26 +15,26 @@ namespace Agrumy.Web.Controllers.View
 
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         public async Task<ActionResult> Index() =>
-            IsGlobal ? View(await api.ServerConfigGet()) : View("TenantIndex", await api.TenantAlertConfigGet());
+            IsGlobal ? View(await api.ServerConfigAlertsGet()) : View("TenantIndex", await api.TenantAlertConfigGet());
 
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Index(ServerConfig serverConfig)
+        public async Task<ActionResult> Index(AlertSettings settings)
         {
             if (!ModelState.IsValid)
             {
-                return View(serverConfig);
+                return View(settings);
             }
 
             try
             {
-                await api.ServerConfigUpdate(serverConfig);
+                await api.ServerConfigAlertsUpdate(settings);
             }
             catch (ApiException ex)
             {
-                ModelState.AddModelError(nameof(ServerConfig.ProblemEventExpiryHours), ex.Body);
-                return View(serverConfig);
+                ModelState.AddModelError(ApiErrorField.Resolve<AlertSettings>(ex.Body), ex.Body);
+                return View(settings);
             }
 
             TempData["Message"] = "Alert settings saved.";

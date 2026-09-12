@@ -14,44 +14,14 @@
         {
             <div class="alert alert-success">@message</div>
         }
-        <form asp-action="Index">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
         <fieldset disabled="@isReadOnly">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="IDServerConfig" />
-            @* Firmware source settings moved to the Firmware page - this form still posts the whole ServerConfig object, so these three must ride along hidden or a save from any other tab here would reset them to defaults. *@
-            <input type="hidden" asp-for="FirmwareSource" />
-            <input type="hidden" asp-for="FirmwareGitHubRepository" />
-            <input type="hidden" asp-for="FirmwareCustomRepositoryUrl" />
-            @* Alerts settings moved to their own page (#338) - same "ride along hidden" reasoning as the Firmware fields above. *@
-            <input type="hidden" asp-for="BatteryLowThreshold" />
-            <input type="hidden" asp-for="BatteryLowHysteresis" />
-            <input type="hidden" asp-for="TankRefillThreshold" />
-            <input type="hidden" asp-for="TankRefillHysteresis" />
-            <input type="hidden" asp-for="EventDedupeMinutes" />
-            <input type="hidden" asp-for="ProblemEventAlertsEnabled" />
-            <input type="hidden" asp-for="ProblemEventExpiryHours" />
-            @* Data Archiving has its own dedicated save action (test-before-persist), never part of this form's own submit - these just carry the last-saved values along so saving any OTHER tab here doesn't reset them, same reasoning as the Firmware/Alerts fields above. *@
-            <input type="hidden" asp-for="ArchiveEnabled" />
-            <input type="hidden" asp-for="ArchiveCutoffMode" />
-            <input type="hidden" asp-for="ArchiveCustomCutoffDate" />
-            <input type="hidden" asp-for="ArchiveCustomRollingDays" />
-            <input type="hidden" asp-for="ArchiveHost" />
-            <input type="hidden" asp-for="ArchivePort" />
-            <input type="hidden" asp-for="ArchiveDatabaseName" />
-            <input type="hidden" asp-for="ArchiveUsername" />
-
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-health" type="button" role="tab">Server Health</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-hysteresis" type="button" role="tab">Relay Hysteresis</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-safety-limits" type="button" role="tab">Water Pump Safety</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-device-defaults" type="button" role="tab">Device Defaults</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-accounts" type="button" role="tab">Accounts</button>
@@ -91,7 +61,9 @@
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-general" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-device-defaults" role="tabpanel">
+                    <form asp-action="SaveDeviceDefaults">
+                    <h6 class="fw-semibold">Config heartbeat</h6>
                     <div class="mb-0" style="max-width:16rem">
                         <label asp-for="ConfigHeartbeatHours" class="form-label"></label>
                         <input asp-for="ConfigHeartbeatHours" class="form-control" />
@@ -102,9 +74,8 @@
                             this and relies on ConfigVersion alone.
                         </div>
                     </div>
-                </div>
-
-                <div class="tab-pane fade" id="tab-hysteresis" role="tabpanel">
+                    <hr />
+                    <h6 class="fw-semibold">Relay hysteresis</h6>
                     <p class="text-secondary">
                         Dead-zone defaults a newly-added device's Controller config is seeded with.
                         Changing these has no effect on devices that already exist -
@@ -143,9 +114,8 @@
                         <input asp-for="MaxRulesPerZone" class="form-control" style="width:10rem" />
                         <span asp-validation-for="MaxRulesPerZone" class="text-danger"></span>
                     </div>
-                </div>
-
-                <div class="tab-pane fade" id="tab-safety-limits" role="tabpanel">
+                    <hr />
+                    <h6 class="fw-semibold">Water pump safety</h6>
                     <p class="text-secondary">
                         Water pump safety limits: a hard ceiling the device enforces
                         AFTER whichever mode (threshold/interval/schedule) decides the pump should
@@ -163,9 +133,17 @@
                         <input asp-for="WaterPumpCooldownSeconds" class="form-control" />
                         <span asp-validation-for="WaterPumpCooldownSeconds" class="text-danger"></span>
                     </div>
-                </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-accounts" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-accounts" role="tabpanel">
+                    <form asp-action="SaveAccounts">
                     <p class="text-secondary">
                         Minimum minutes a user must wait between "resend activation email" requests.
                     </p>
@@ -220,7 +198,14 @@
                             <option value="1440">24 hours</option>
                         </select>
                     </div>
-                </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    </div>
 
                 <div class="tab-pane fade" id="tab-database" role="tabpanel">
                     <ul class="nav nav-pills mb-3" role="tablist">
@@ -233,6 +218,7 @@
                     </ul>
                     <div class="tab-content">
                     <div class="tab-pane fade show active" id="subtab-retention" role="tabpanel">
+                    <form asp-action="SaveDataRetention">
                     <p class="text-secondary">
                         Automatic sensor data retention. PostgreSQL/TimescaleDB
                         installs enforce this through a native retention policy (whole chunks
@@ -247,6 +233,12 @@
                         <span asp-validation-for="SensorDataRetentionDays" class="text-danger"></span>
                     </div>
 
+                    <div class="mb-3" style="max-width:12rem">
+                        <label asp-for="SatelliteRasterRetentionDays" class="form-label"></label>
+                        <input asp-for="SatelliteRasterRetentionDays" class="form-control" />
+                        <span asp-validation-for="SatelliteRasterRetentionDays" class="text-danger"></span>
+                        <div class="form-text">How long a rendered satellite index PNG stays on disk; tenants can override this on their satellite settings.</div>
+                    </div>
                     <hr />
 
                     <h5>Recycle Bin</h5>
@@ -267,6 +259,14 @@
                         <input asp-for="PurgeOrphanedSensorDataScheduleEnabled" class="form-check-input" />
                         <label asp-for="PurgeOrphanedSensorDataScheduleEnabled" class="form-check-label"></label>
                     </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    <hr />
                     <p class="text-secondary">
                         Permanently removes every Farm/Device already marked for purge (Recycle
                         Bin retention elapsed, or an admin's "Delete permanently now"/"Empty
@@ -315,8 +315,8 @@
                             their own native tiered storage instead, see Data Retention). Moves
                             sensorData rows past the cutoff below to a separate database instead of
                             deleting them - opt-in, inactive until a connection is successfully
-                            tested and saved. This section saves independently of the page's main
-                            Save button below.
+                            tested and saved. This section saves on its own, separately from the
+                            Data Retention form.
                         </p>
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="archiveEnabledToggle" @(Model.ArchiveEnabled ? "checked" : null) />
@@ -399,7 +399,8 @@
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="tab-weather" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-weather" role="tabpanel">
+                    <form asp-action="SaveWeather">
                     <p class="text-secondary">
                         When a zone's WaterPump has "Skip when rain predicted" checked
                         (Zone page &rarr; Automation rules), it also stays off whenever the forecast
@@ -500,9 +501,17 @@
                             <span class="text-secondary small">not checked yet</span>
                         }
                     </p>
-                </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-gateway" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-gateway" role="tabpanel">
+                    <form asp-action="SaveGateway">
                     <p class="text-secondary">
                         Agrumy.Gateway forwards other devices' traffic through
                         <code>POST /api/Gateway/Batch</code> instead of reporting its own sensors - a
@@ -533,9 +542,17 @@
                         <input asp-for="GatewayWaitWindowSeconds" class="form-control" />
                         <span asp-validation-for="GatewayWaitWindowSeconds" class="text-danger"></span>
                     </div>
-                </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-mqtt" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-mqtt" role="tabpanel">
+                    <form asp-action="SaveMqtt">
                     <p class="text-secondary">
                         Opt-in, alongside the normal HTTP/JWT poll cycle, not a
                         replacement of it. When enabled, a newly-queued command is also published
@@ -564,9 +581,17 @@
                         <input asp-for="MqttPassword" type="password" class="form-control" autocomplete="new-password" />
                         <div class="form-text">Leave blank to keep the currently stored password.</div>
                     </div>
-                </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-email" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-email" role="tabpanel">
+                    <form asp-action="SaveEmail">
                     <p class="text-secondary">
                         SMTP delivery for alert/activation emails - replaces the old
                         appsettings-only configuration, so it's editable here without server file
@@ -609,6 +634,12 @@
                         <input asp-for="EmailFromName" class="form-control" />
                     </div>
 
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
                     <hr />
                     <div class="mb-0" style="max-width:24rem">
                         <label class="form-label" for="testEmailRecipient">Send test email to</label>
@@ -618,9 +649,11 @@
                         </div>
                         <div id="testEmailStatus" class="mt-2"></div>
                     </div>
-                </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-webhook" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-webhook" role="tabpanel">
+                    <form asp-action="SaveWebhook">
                     <p class="text-secondary">
                         Sends a signed HTTP POST to an external URL for every alert - replaces the old
                         appsettings-only configuration, so it's editable here without server file
@@ -642,6 +675,12 @@
                         <div class="form-text">Leave blank to keep the currently stored secret. Used to sign each POST body (X-Agrumy-Signature, HMAC-SHA256).</div>
                     </div>
 
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
                     <hr />
                     <div class="mb-0">
                         <button type="button" id="testWebhookButton" class="btn btn-outline-secondary">Send test webhook</button>
@@ -714,9 +753,11 @@
                             </div>
                         </div>
                     }
-                </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-odata" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-odata" role="tabpanel">
+                    <form asp-action="SaveOData">
                     <p class="text-secondary">
                         A read-only OData v4 feed of this install's own sensor readings, scoped to the
                         signed-in account's organization the same way every other endpoint is - Power BI's
@@ -727,6 +768,12 @@
                     <div class="form-check mb-3">
                         <input asp-for="ODataEnabled" class="form-check-input" />
                         <label asp-for="ODataEnabled" class="form-check-label"></label>
+                    </div>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
                     </div>
                     @{ var odataUrl = $"{(ViewBag.ApiServiceUrl as string)?.TrimEnd('/')}/api/odata/SensorData"; }
                     <div class="mb-0">
@@ -745,9 +792,11 @@
                             connection. Disabled above, this URL answers 404.
                         </div>
                     </div>
-                </div>
+                    </form>
+                    </div>
 
-                <div class="tab-pane fade" id="tab-arkod" role="tabpanel">
+                    <div class="tab-pane fade" id="tab-arkod" role="tabpanel">
+                    <form asp-action="SaveArkod">
                     <p class="text-secondary">
                         The Open-Field parcel boundary editor's primary ARKOD lookup
                         ("Find ARKOD parcel by click") queries APPRRR's public WMS directly from the
@@ -765,6 +814,12 @@
                         Last synced:
                         @(Model.ArkodGeoPackageSyncedAtUtc is DateTimeOffset syncedAt ? syncedAt.ToString("u") : "never")
                     </p>
+                    <div class="mt-3">
+                        @if (!isReadOnly)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
+                        }
+                    </div>
                     <div class="mb-0">
                         <label class="form-label">Manual upload (offline deployments)</label>
                         <div class="input-group" style="max-width:40rem">
@@ -778,17 +833,11 @@
                         </div>
                         <p class="text-secondary small fst-italic mt-2" id="arkodGeoPackageUploadStatus" hidden></p>
                     </div>
-                </div>
-            </div>
+                    </form>
+                    </div>
 
-            <div class="mb-0">
-                @if (!isReadOnly)
-                {
-                    <input type="submit" value="Save" class="btn btn-primary" data-action="save" />
-                }
             </div>
         </fieldset>
-        </form>
     </div>
 </div>
 
@@ -896,6 +945,11 @@
                 },
                 intervalMs: 30000
             });
+            const activeTab = '@(ViewBag.ActiveTab as string)';
+            const tabButton = activeTab ? document.querySelector('[data-bs-target="#tab-' + activeTab + '"]') : null;
+            if (tabButton) {
+                bootstrap.Tab.getOrCreateInstance(tabButton).show();
+            }
         });
     </script>
 }

@@ -65,20 +65,20 @@ namespace Agrumy.Web.Controllers.View
                 .Select(g => g.First())
                 .ToList();
 
-        // ServerConfigApiController.Update overwrites the whole row, so this re-fetches and overlays only these three fields to avoid clobbering concurrent Server Settings changes.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SaveSettings(FirmwareSource firmwareSource, string? firmwareGitHubRepository, string? firmwareCustomRepositoryUrl, int? firmwareRefreshIntervalHours)
         {
-            ServerConfig config = await api.ServerConfigGet();
-            config.FirmwareSource = firmwareSource;
-            config.FirmwareGitHubRepository = firmwareGitHubRepository;
-            config.FirmwareCustomRepositoryUrl = firmwareCustomRepositoryUrl;
-            config.FirmwareRefreshIntervalHours = firmwareRefreshIntervalHours;
             try
             {
-                await api.ServerConfigUpdate(config);
+                await api.ServerConfigFirmwareUpdate(new FirmwareSettings
+                {
+                    FirmwareSource = firmwareSource,
+                    FirmwareGitHubRepository = firmwareGitHubRepository,
+                    FirmwareCustomRepositoryUrl = firmwareCustomRepositoryUrl,
+                    FirmwareRefreshIntervalHours = firmwareRefreshIntervalHours,
+                });
                 TempData["Message"] = "Firmware source settings saved.";
             }
             catch (ApiException ex)

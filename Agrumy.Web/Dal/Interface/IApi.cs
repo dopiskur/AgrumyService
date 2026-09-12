@@ -817,8 +817,66 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/ServerConfig/ArchiveSettings")]
         Task ServerConfigSaveArchiveSettings([Body] ArchiveSettingsSaveRequest request);
 
-        [Put("/api/ServerConfig")]
-        Task ServerConfigUpdate([Body] ServerConfig config);
+        /// One GET/PUT per ServerConfig domain section (ServerConfigSectionsApiController) - a PUT rewrites only that section's fields.
+        [Get("/api/ServerConfig/DeviceDefaults")]
+        Task<DeviceDefaultsSettings> ServerConfigDeviceDefaultsGet();
+        [Put("/api/ServerConfig/DeviceDefaults")]
+        Task ServerConfigDeviceDefaultsUpdate([Body] DeviceDefaultsSettings settings);
+
+        [Get("/api/ServerConfig/Accounts")]
+        Task<AccountSettings> ServerConfigAccountsGet();
+        [Put("/api/ServerConfig/Accounts")]
+        Task ServerConfigAccountsUpdate([Body] AccountSettings settings);
+
+        [Get("/api/ServerConfig/Alerts")]
+        Task<AlertSettings> ServerConfigAlertsGet();
+        [Put("/api/ServerConfig/Alerts")]
+        Task ServerConfigAlertsUpdate([Body] AlertSettings settings);
+
+        [Get("/api/ServerConfig/Firmware")]
+        Task<FirmwareSettings> ServerConfigFirmwareGet();
+        [Put("/api/ServerConfig/Firmware")]
+        Task ServerConfigFirmwareUpdate([Body] FirmwareSettings settings);
+
+        [Get("/api/ServerConfig/DataRetention")]
+        Task<DataRetentionSettings> ServerConfigDataRetentionGet();
+        [Put("/api/ServerConfig/DataRetention")]
+        Task ServerConfigDataRetentionUpdate([Body] DataRetentionSettings settings);
+
+        [Get("/api/ServerConfig/Weather")]
+        Task<WeatherSettings> ServerConfigWeatherGet();
+        [Put("/api/ServerConfig/Weather")]
+        Task ServerConfigWeatherUpdate([Body] WeatherSettings settings);
+
+        [Get("/api/ServerConfig/Gateway")]
+        Task<GatewaySettings> ServerConfigGatewayGet();
+        [Put("/api/ServerConfig/Gateway")]
+        Task ServerConfigGatewayUpdate([Body] GatewaySettings settings);
+
+        [Get("/api/ServerConfig/Mqtt")]
+        Task<MqttSettings> ServerConfigMqttGet();
+        [Put("/api/ServerConfig/Mqtt")]
+        Task ServerConfigMqttUpdate([Body] MqttSettings settings);
+
+        [Get("/api/ServerConfig/Email")]
+        Task<EmailSettings> ServerConfigEmailGet();
+        [Put("/api/ServerConfig/Email")]
+        Task ServerConfigEmailUpdate([Body] EmailSettings settings);
+
+        [Get("/api/ServerConfig/Webhook")]
+        Task<WebhookSettings> ServerConfigWebhookGet();
+        [Put("/api/ServerConfig/Webhook")]
+        Task ServerConfigWebhookUpdate([Body] WebhookSettings settings);
+
+        [Get("/api/ServerConfig/OData")]
+        Task<ODataSettings> ServerConfigODataGet();
+        [Put("/api/ServerConfig/OData")]
+        Task ServerConfigODataUpdate([Body] ODataSettings settings);
+
+        [Get("/api/ServerConfig/Arkod")]
+        Task<ArkodSettings> ServerConfigArkodGet();
+        [Put("/api/ServerConfig/Arkod")]
+        Task ServerConfigArkodUpdate([Body] ArkodSettings settings);
 
         /// The one ServerConfig field an anonymous page (Register) is allowed to read - whether to show the "create a new tenant" option at all.
         [Get("/api/ServerConfig/Public")]
