@@ -913,12 +913,16 @@ namespace Agrumy.Api.Controllers.API
                 return File(cached, "image/png");
             }
 
-            ParcelSatelliteIndex? indexRow = await satelliteSceneRepo.IndexGetAsync(idScene, index);
             bool isScalar = Evalscripts.All[index].HasStatistics;
             byte[] png;
-            if (isScalar && indexRow?.GridBase64 is string gridB64)
+            if (isScalar)
             {
-                png = SatellitePaletteRenderer.RenderPng(Convert.FromBase64String(gridB64), index);
+                (byte[]? gridRaw, ActionResult? gridError) = await EnsureGridRawAsync(zone, scene, idScene, index);
+                if (gridError != null)
+                {
+                    return gridError;
+                }
+                png = SatellitePaletteRenderer.RenderPng(gridRaw!, index);
             }
             else
             {
@@ -928,25 +932,66 @@ namespace Agrumy.Api.Controllers.API
                     return StatusCode(503, "Satellite provider not configured, or this zone has no boundary.");
                 }
                 TenantSatelliteConfig? satConfig = await satelliteConfigRepo.SatelliteConfigGetAsync(zone.TenantID ?? 0);
-                IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, satConfig?.Collection ?? SatelliteCollection.Sentinel2, satConfig?.CommercialCollectionId, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: isScalar, HttpContext.RequestAborted);
-                if (isScalar && rendered.GridRaw != null)
-                {
-                    // A backfilled scene already carries the Statistical API's numbers - the render's quantized stats only fill in when nothing better exists.
-                    await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = indexRow?.StatsJson ?? rendered.StatsJson });
-                    png = SatellitePaletteRenderer.RenderPng(rendered.GridRaw, index);
-                }
-                else if (rendered.PngBytes != null)
-                {
-                    png = rendered.PngBytes;
-                }
-                else
+                IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, satConfig?.Collection ?? SatelliteCollection.Sentinel2, satConfig?.CommercialCollectionId, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: false, HttpContext.RequestAborted);
+                if (rendered.PngBytes == null)
                 {
                     return StatusCode(502, "Provider did not return a usable image.");
                 }
+                png = rendered.PngBytes;
             }
 
             await satelliteStorage.SaveAsync(path, png, HttpContext.RequestAborted);
             return File(png, "image/png");
+        }
+
+        /// Raw scalar-index grid (D9's GridBase64, un-palettized) for client-side rendering - same source-of-truth EnsureGridRawAsync serves to SatelliteIndexPngGet, just without the palette step. Composites have no scalar grid, so this 400s for them; the client falls back to SatelliteIndexPngGet's PNG for those.
+        [Authorize]
+        [HttpGet("Parcel/{idFarmParcelZone}/Satellite/Scenes/{idScene}/Index/{index}/Grid")]
+        public async Task<ActionResult> SatelliteIndexGridGet(int idFarmParcelZone, int idScene, SatelliteIndex index)
+        {
+            var (zone, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            if (!Evalscripts.All[index].HasStatistics)
+            {
+                return BadRequest($"{index} is a visual composite - it has no scalar grid.");
+            }
+            IList<FarmParcelZoneSatelliteScene> scenes = await satelliteSceneRepo.ScenesGetAsync(idFarmParcelZone);
+            FarmParcelZoneSatelliteScene? scene = scenes.FirstOrDefault(s => s.IDFarmParcelZoneSatelliteScene == idScene);
+            if (scene == null)
+            {
+                return NotFound();
+            }
+
+            (byte[]? gridRaw, ActionResult? gridError) = await EnsureGridRawAsync(zone!, scene, idScene, index);
+            return gridError ?? File(gridRaw!, "application/octet-stream");
+        }
+
+        /// Shared by SatelliteIndexPngGet and SatelliteIndexGridGet - DB row (D9's GridBase64) if already stored, else a fresh CDSE render (persisted for next time). Caller has already confirmed the index is scalar (Evalscripts.All[index].HasStatistics).
+        private async Task<(byte[]? GridRaw, ActionResult? Error)> EnsureGridRawAsync(FarmParcelZone zone, FarmParcelZoneSatelliteScene scene, int idScene, SatelliteIndex index)
+        {
+            ParcelSatelliteIndex? indexRow = await satelliteSceneRepo.IndexGetAsync(idScene, index);
+            if (indexRow?.GridBase64 is string gridB64)
+            {
+                return (Convert.FromBase64String(gridB64), null);
+            }
+
+            ISatelliteImagerySource? source = await satelliteSourceFactory.ForAsync(zone.TenantID ?? 0, HttpContext.RequestAborted);
+            if (source == null || zone.GeometryGeoJson == null)
+            {
+                return (null, StatusCode(503, "Satellite provider not configured, or this zone has no boundary."));
+            }
+            TenantSatelliteConfig? satConfig = await satelliteConfigRepo.SatelliteConfigGetAsync(zone.TenantID ?? 0);
+            IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, satConfig?.Collection ?? SatelliteCollection.Sentinel2, satConfig?.CommercialCollectionId, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: false, renderGrid: true, HttpContext.RequestAborted);
+            if (rendered.GridRaw == null)
+            {
+                return (null, StatusCode(502, "Provider did not return a usable grid."));
+            }
+            // A backfilled scene already carries the Statistical API's numbers - the render's quantized stats only fill in when nothing better exists.
+            await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = indexRow?.StatsJson ?? rendered.StatsJson });
+            return (rendered.GridRaw, null);
         }
 
         [Authorize]

@@ -124,6 +124,17 @@ namespace Agrumy.Web.Controllers.View
             return File(await response.Content.ReadAsStreamAsync(), "image/png");
         }
 
+        /// Raw scalar-index grid (width/height header + one byte per pixel) for satellite-map.js to palette-render client-side instead of a server-rendered PNG - same-origin passthrough, same reason as SatelliteImage above.
+        public async Task<ActionResult> SatelliteGrid(int idFarmParcelZone, int idScene, int index)
+        {
+            HttpResponseMessage response = await api.SatelliteIndexGridGet(idFarmParcelZone, idScene, index);
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode((int)response.StatusCode);
+            }
+            return File(await response.Content.ReadAsStreamAsync(), "application/octet-stream");
+        }
+
         public async Task<ActionResult<IList<SatelliteSeriesPoint>>> SatelliteSeries(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable = true) =>
             Json(await api.SatelliteSeriesGet(idFarmParcelZone, index, from, to, onlyReliable));
 

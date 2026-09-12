@@ -394,6 +394,9 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Scenes/{idScene}/Index/{index}")]
         Task<HttpResponseMessage> SatelliteIndexPngGet(int idFarmParcelZone, int idScene, int index);
 
+        [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Scenes/{idScene}/Index/{index}/Grid")]
+        Task<HttpResponseMessage> SatelliteIndexGridGet(int idFarmParcelZone, int idScene, int index);
+
         [Get("/api/FarmOpenfield/Parcel/{idFarmParcelZone}/Satellite/Series")]
         Task<IList<SatelliteSeriesPoint>> SatelliteSeriesGet(int idFarmParcelZone, int index, DateOnly? from, DateOnly? to, bool onlyReliable);
 
