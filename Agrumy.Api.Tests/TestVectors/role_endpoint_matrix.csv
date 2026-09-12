@@ -81,6 +81,7 @@ GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
 GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
 GET,api/odata/SensorData,Global admin;Global reader;Global User;Tenant admin;Tenant reader;Tenant User;Global Data Reader;Tenant Data Reader;Simulation administrator
 POST,api/Arkod/GeoPackage/Upload,Global admin
+POST,api/Arkod/GeoPackage/SyncNow,Global admin
 POST,api/DataMaintenance/Optimize,Global admin
 POST,api/DataMaintenance/Purge,Global admin
 POST,api/DataMaintenance/PurgeOrphaned,Global admin

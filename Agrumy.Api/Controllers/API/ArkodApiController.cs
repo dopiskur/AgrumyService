@@ -13,7 +13,7 @@ namespace Agrumy.Api.Controllers.API
     [ApiController]
     [ApiVersion("1.0")]
     [Route("/api/Arkod")]
-    public class ArkodApiController(ArkodGeoPackageLookup lookup, ArkodGeoPackageStorage storage, IServerConfigRepository serverConfigRepo) : ControllerBase
+    public class ArkodApiController(ArkodGeoPackageLookup lookup, ArkodGeoPackageStorage storage, IServerConfigRepository serverConfigRepo, ArkodGeoPackageSyncEvaluator syncEvaluator) : ControllerBase
     {
         [Authorize]
         [HttpGet("Lookup")]
@@ -45,6 +45,21 @@ namespace Agrumy.Api.Controllers.API
             // Same "last synced" field the automatic job writes - a manual upload is meant to be an equivalent, not a second, untracked path.
             await serverConfigRepo.ServerConfigArkodSyncStateSetAsync(DateTimeOffset.UtcNow, 1);
             return Ok();
+        }
+
+        /// Runs ArkodGeoPackageSyncEvaluator immediately instead of waiting for ArkodGeoPackageSyncBackgroundService's next daily tick - same HEAD-then-conditional-GET logic, not a forced re-download.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost("GeoPackage/SyncNow")]
+        public async Task<ActionResult<ArkodGeoPackageSyncNowResult>> GeoPackageSyncNow(CancellationToken ct)
+        {
+            ArkodGeoPackageSyncOutcome outcome = await syncEvaluator.RunOnceAsync(ct);
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
+            return Ok(new ArkodGeoPackageSyncNowResult
+            {
+                SyncEnabled = outcome != ArkodGeoPackageSyncOutcome.Disabled,
+                Downloaded = outcome == ArkodGeoPackageSyncOutcome.Downloaded,
+                LastSyncedUtc = config.ArkodGeoPackageSyncedAtUtc,
+            });
         }
     }
 }

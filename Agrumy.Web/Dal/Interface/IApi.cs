@@ -412,6 +412,9 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/Arkod/GeoPackage/Upload")]
         Task ArkodGeoPackageUpload([AliasAs("file")] StreamPart file);
 
+        [Post("/api/Arkod/GeoPackage/SyncNow")]
+        Task<ArkodGeoPackageSyncNowResult> ArkodGeoPackageSyncNow();
+
         [Get("/api/FarmOpenfield/Crop/All")]
         Task<IList<Sowing>> CropsGet();
 

@@ -3,6 +3,14 @@ using Agrumy.Api.Storage;
 
 namespace Agrumy.Api.Arkod
 {
+    /// One RunOnceAsync call reports back which of these happened - lets a manual "Sync now" trigger show something more useful than a blind "done".
+    public enum ArkodGeoPackageSyncOutcome
+    {
+        Disabled,
+        UpToDate,
+        Downloaded,
+    }
+
     /// Secondary/offline path: mirrors APPRRR's whole-Croatia ARKOD GeoPackage (weekly-refreshed, ~860 MB, confirmed stable direct URL + no registration needed) so ArkodApiController.Lookup keeps working even with no outbound internet at request time. HEAD-then-conditional-GET, never blind - a daily tick only re-downloads when the upstream file actually changed.
     public sealed partial class ArkodGeoPackageSyncEvaluator(HttpClient httpClient, ArkodGeoPackageStorage storage, IServerConfigRepository serverConfigRepo, ILogger<ArkodGeoPackageSyncEvaluator> logger)
     {
@@ -11,12 +19,12 @@ namespace Agrumy.Api.Arkod
         [LoggerMessage(Level = LogLevel.Information, Message = "ARKOD GeoPackage changed upstream (or no local copy yet) - downloading.")]
         private static partial void LogDownloading(ILogger logger);
 
-        public async Task RunOnceAsync(CancellationToken ct = default)
+        public async Task<ArkodGeoPackageSyncOutcome> RunOnceAsync(CancellationToken ct = default)
         {
             var config = await serverConfigRepo.ServerConfigGetAsync(1);
             if (!config.ArkodGeoPackageSyncEnabled)
             {
-                return;
+                return ArkodGeoPackageSyncOutcome.Disabled;
             }
 
             using var headRequest = new HttpRequestMessage(HttpMethod.Head, SourceUrl);
@@ -40,6 +48,7 @@ namespace Agrumy.Api.Arkod
             }
 
             await serverConfigRepo.ServerConfigArkodSyncStateSetAsync(DateTimeOffset.UtcNow, 1);
+            return needsDownload ? ArkodGeoPackageSyncOutcome.Downloaded : ArkodGeoPackageSyncOutcome.UpToDate;
         }
     }
 }

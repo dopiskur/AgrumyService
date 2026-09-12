@@ -314,6 +314,14 @@ namespace Agrumy.Shared.Models
         public required string GeometryGeoJson { get; set; }
     }
 
+    /// Response for the ARKOD GeoPackage "Sync now" button - SyncEnabled false means the toggle is off and nothing ran (RunOnceAsync no-ops before the HEAD check in that case).
+    public class ArkodGeoPackageSyncNowResult
+    {
+        public bool SyncEnabled { get; set; }
+        public bool Downloaded { get; set; }
+        public DateTimeOffset? LastSyncedUtc { get; set; }
+    }
+
     /// Body of the greenhouse "Start planting" action (D8) - crop name is resolved against the same catalog Sowing uses (D12).
     public class ZonePlantingStartRequest
     {

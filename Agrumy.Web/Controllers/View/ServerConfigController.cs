@@ -236,6 +236,22 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        /// "Sync now" on the ARKOD tab - runs ArkodGeoPackageSyncEvaluator immediately instead of waiting for the daily background tick.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ArkodGeoPackageSyncNow()
+        {
+            try
+            {
+                return Ok(await api.ArkodGeoPackageSyncNow());
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode == 0 ? 500 : ex.StatusCode, ex.Body);
+            }
+        }
+
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]

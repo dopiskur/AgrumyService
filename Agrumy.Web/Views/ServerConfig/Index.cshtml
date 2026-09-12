@@ -793,10 +793,15 @@
                         <label asp-for="ArkodGeoPackageSyncEnabled" class="form-check-label"></label>
                         <div class="form-text">Off by default - a weekly ~900 MB download is a real resource commitment, not something a fresh install should opt into silently.</div>
                     </div>
-                    <p class="text-secondary small mb-3">
+                    <p class="text-secondary small mb-1">
                         Last synced:
-                        @(Model.ArkodGeoPackageSyncedAtUtc is DateTimeOffset syncedAt ? syncedAt.ToString("u") : "never")
+                        <span id="arkodGeoPackageLastSynced">@(Model.ArkodGeoPackageSyncedAtUtc is DateTimeOffset syncedAt ? syncedAt.ToString("u") : "never")</span>
+                        @if (!isReadOnly)
+                        {
+                            <button type="button" id="arkodGeoPackageSyncNowBtn" class="btn btn-sm btn-outline-primary ms-2">Sync now</button>
+                        }
                     </p>
+                    <p class="text-secondary small fst-italic mb-3" id="arkodGeoPackageSyncNowStatus" hidden></p>
                     <div class="mt-3">
                         @if (!isReadOnly)
                         {
@@ -854,6 +859,44 @@
                 status.textContent = 'Upload failed (network error).';
             } finally {
                 uploadBtn.disabled = false;
+            }
+        });
+
+        const syncNowBtn = document.getElementById('arkodGeoPackageSyncNowBtn');
+        const syncNowStatus = document.getElementById('arkodGeoPackageSyncNowStatus');
+        const lastSyncedSpan = document.getElementById('arkodGeoPackageLastSynced');
+        if (!syncNowBtn) {
+            return;
+        }
+        syncNowBtn.addEventListener('click', async () => {
+            syncNowStatus.hidden = false;
+            syncNowStatus.textContent = 'Checking upstream (HEAD request) - only re-downloads if it changed...';
+            syncNowBtn.disabled = true;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+            try {
+                const response = await fetch('/ServerConfig/ArkodGeoPackageSyncNow', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token },
+                });
+                if (!response.ok) {
+                    syncNowStatus.textContent = 'Sync failed.';
+                } else {
+                    const result = await response.json();
+                    if (!result.syncEnabled) {
+                        syncNowStatus.textContent = 'Sync is disabled - enable it above and Save first.';
+                    } else {
+                        syncNowStatus.textContent = result.downloaded
+                            ? 'Downloaded a new GeoPackage from APPRRR.'
+                            : 'Already up to date - upstream has not changed.';
+                        if (result.lastSyncedUtc && lastSyncedSpan) {
+                            lastSyncedSpan.textContent = new Date(result.lastSyncedUtc).toISOString().replace('T', ' ').slice(0, 19) + 'Z';
+                        }
+                    }
+                }
+            } catch (err) {
+                syncNowStatus.textContent = 'Sync failed (network error).';
+            } finally {
+                syncNowBtn.disabled = false;
             }
         });
     });
