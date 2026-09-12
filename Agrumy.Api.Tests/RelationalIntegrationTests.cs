@@ -206,7 +206,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         return saved;
     }
 
-    // Roadmap #303: DbExceptionFilter's duplicate-email/-username messages match on these literal index names - if a future migration ever renames them, this must fail loudly here instead of the filter silently falling back to the generic constraint_violation message.
+    // DbExceptionFilter's duplicate-email/-username messages match on these literal index names - if a future migration ever renames them, this must fail loudly here instead of the filter silently falling back to the generic constraint_violation message.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task UserAdd_DuplicateEmailOrUsername_StillMatchesTheExpectedConstraintName(DbProviderKind provider)
     {
@@ -228,7 +228,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.True(DbErrorResponse.MentionsConstraint(exUsername, "Username_UNIQUE"), "Username_UNIQUE no longer matches the real schema's index name.");
     }
 
-    // Roadmap #293: registration (tenant create + user add + activation token + starting role) is one transaction - a crash/failure partway must never leave a user with no role, or a tenant with no admin.
+    // Registration (tenant create + user add + activation token + starting role) is one transaction - a crash/failure partway must never leave a user with no role, or a tenant with no admin.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task RegisterUser_NewTenant_CreatesTenantUserTokenAndRole_Atomically(DbProviderKind provider)
     {
@@ -270,7 +270,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await _repo.TenantGetAsync(newTenantName)); // the tenant the failed registration would have created must not exist either
     }
 
-    // Roadmap #294: deviceCommand otherwise grows unbounded - only terminal (Executed/Expired) rows older than the cutoff are purged, Pending/Acknowledged and recent rows are left alone regardless of status.
+    // DeviceCommand otherwise grows unbounded - only terminal (Executed/Expired) rows older than the cutoff are purged, Pending/Acknowledged and recent rows are left alone regardless of status.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task PurgeOldCommands_DeletesOnlyOldTerminalRows(DbProviderKind provider)
     {
@@ -298,7 +298,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains((int)CommandStatus.Pending, remainingStatuses);  // the old-but-active one
     }
 
-    // Roadmap #310: user.TenantID and eventDevice(DeviceID, Date) had no index - every tenant-scoped user list and every device-events/problem-alert scan filtered these columns with a full table scan.
+    // User.TenantID and eventDevice(DeviceID, Date) had no index - every tenant-scoped user list and every device-events/problem-alert scan filtered these columns with a full table scan.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task MissingIndexes_310_NowExist(DbProviderKind provider)
     {
@@ -315,7 +315,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Contains("ix_eventdevice_device_date", indexNames);
     }
 
-    // Roadmap #302: CURRENT_TIMESTAMP/NOW() column defaults must compute in UTC regardless of the server process's own OS timezone (verified live on invent.hr, whose MySQL @@global.time_zone was SYSTEM/CEST, 2h off UTC) - SessionTimeZoneInterceptor sets this on every connection open.
+    // CURRENT_TIMESTAMP/NOW() column defaults must compute in UTC regardless of the server process's own OS timezone (verified live on invent.hr, whose MySQL @@global.time_zone was SYSTEM/CEST, 2h off UTC) - SessionTimeZoneInterceptor sets this on every connection open.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task NewConnection_SessionTimeZoneIsUtc(DbProviderKind provider)
     {
@@ -1413,7 +1413,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Empty(config.DeviceConfigController!.Rules!);
     }
 
-    // Roadmap #238 - the widget list round-trips through the real JSON column, and saves independently of the zone's other fields (no ConfigVersion bump, no interference with WaterPump limits set moments earlier).
+    // The widget list round-trips through the real JSON column, and saves independently of the zone's other fields (no ConfigVersion bump, no interference with WaterPump limits set moments earlier).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitZone_DashboardWidgets_DefaultEmpty_ThenRoundTrips(DbProviderKind provider)
     {
@@ -1934,7 +1934,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.DoesNotContain(await _repo.RulesGetForUnitAsync(migratedDeviceUnitId), r => r.IDDeviceFarmUnitZoneRule == sourceUnitRuleId);
     }
 
-    // Roadmap #384 - Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).
+    // Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarm_UnitAssignment_And_FarmScopeRule_RoundTrip(DbProviderKind provider)
     {
@@ -1956,7 +1956,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         });
         Assert.Equal(farmRuleId, Assert.Single(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).IDDeviceFarmUnitZoneRule);
 
-        // Roadmap #408 - deleting the farm now cascades: the unit (still attached) is soft-deleted right along with it, invisible to the ordinary getter below. The farm-scope rule is untouched (neither deleted nor unreachable-but-orphaned forever) - it just goes dormant until DeviceFarmRestoreAsync brings the unit back.
+        // Deleting the farm now cascades: the unit (still attached) is soft-deleted right along with it, invisible to the ordinary getter below. The farm-scope rule is untouched (neither deleted nor unreachable-but-orphaned forever) - it just goes dormant until DeviceFarmRestoreAsync brings the unit back.
         await _repo.DeviceFarmDeleteAsync(farm.IDDeviceFarm!.Value);
         Assert.Null(await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit));
         Assert.Equal(farmRuleId, Assert.Single(await _repo.RulesGetForFarmAsync(farm.IDDeviceFarm!.Value)).IDDeviceFarmUnitZoneRule);
@@ -1965,7 +1965,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(farm.IDDeviceFarm, (await _repo.DeviceFarmUnitGetByIdAsync(unit.IDDeviceFarmUnit))!.DeviceFarmID);
     }
 
-    // Roadmap #427 - marking a soft-deleted farm for purge cascades Purged onto its exact DeviceFarmDeleteAsync cascade (unit, zone, and the zone's device); reaping it then removes all of that plus the farm-scope rule the soft delete deliberately left dormant for restore - none of that restore path applies once permanently purged. A device still just Purged (not yet reaped) stays fully restorable.
+    // Marking a soft-deleted farm for purge cascades Purged onto its exact DeviceFarmDeleteAsync cascade (unit, zone, and the zone's device); reaping it then removes all of that plus the farm-scope rule the soft delete deliberately left dormant for restore - none of that restore path applies once permanently purged. A device still just Purged (not yet reaped) stays fully restorable.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmRecycleBinPurgeAsync_RemovesFarmCascadeAndFarmScopeRule(DbProviderKind provider)
     {
@@ -2013,7 +2013,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (tenantId, _, _) = await MakeUser(t);
         var (_, zone) = await MakeUnitAndZone(tenantId);
 
-        // (Schedule AND Threshold) OR Interval - exercises a nested group, not just a single leaf (roadmap #396(4)).
+        // (Schedule AND Threshold) OR Interval - exercises a nested group, not just a single leaf.
         int ruleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
             TenantID = tenantId, DeviceFarmUnitZoneID = zone.IDDeviceFarmUnitZone!.Value, RelayFunction = RelayFunction.Ventilation, Name = "Nested tree",
@@ -2069,7 +2069,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         });
         int referencingRuleId = await _repo.RuleAddAsync(new DeviceFarmUnitZoneRule
         {
-            // Cross-zone reference (zoneB's rule references zoneA's rule) - explicitly allowed by #212's design.
+            // Cross-zone reference (zoneB's rule references zoneA's rule) - explicitly allowed by the design.
             TenantID = tenantId, DeviceFarmUnitZoneID = zoneB.IDDeviceFarmUnitZone!.Value, ActionType = ActionType.Notification, Name = "Chained alert",
             Root = new ConditionNode { Type = NodeType.RuleTriggered, ReferencedRuleId = referencedRuleId },
             NotificationSubject = "chained",
@@ -2118,7 +2118,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         await _repo.DeviceDeleteAsync(d.IDDevice, tenantId);
 
-        // Roadmap #409 - soft delete now: the device row itself (and its config) stays, just hidden by AgrumyDbContext's HasQueryFilter; only live operational state (diagnostics/controllerData/simulation) is actually removed.
+        // Soft delete now: the device row itself (and its config) stays, just hidden by AgrumyDbContext's HasQueryFilter; only live operational state (diagnostics/controllerData/simulation) is actually removed.
         Assert.Null(await _repo.DeviceGetByIdAsync(d.IDDevice));
         await using var db = _fx.NewContext(t);
         Assert.True(await db.Devices.IgnoreQueryFilters().AnyAsync(x => x.IDDevice == d.IDDevice && x.Deleted));
@@ -2132,7 +2132,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotNull(await _repo.DeviceGetByIdAsync(d.IDDevice));
     }
 
-    // Roadmap #427 - MarkPurgedAsync just flips a flag (still fully restorable); PurgeAsync (the reap step) is what's actually irreversible, removing everything DeviceDelete's soft-delete left behind INCLUDING SensorData - "Deleted=1 means ready for purge" applies to all of it now, no orphaning.
+    // MarkPurgedAsync just flips a flag (still fully restorable); PurgeAsync (the reap step) is what's actually irreversible, removing everything DeviceDelete's soft-delete left behind INCLUDING SensorData - "Deleted=1 means ready for purge" applies to all of it now, no orphaning.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceRecycleBinPurgeAsync_RemovesDeviceConfigAndSensorData(DbProviderKind provider)
     {
@@ -2168,7 +2168,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False(await _repo.DeviceRestoreAsync(d.IDDevice.Value, tenantId));
     }
 
-    // Roadmap #427 - the per-tenant retention override drives the automatic mark phase: a tenant with its own (shorter) override gets marked sooner than the server default would, and it doesn't affect other tenants still on the default.
+    // The per-tenant retention override drives the automatic mark phase: a tenant with its own (shorter) override gets marked sooner than the server default would, and it doesn't affect other tenants still on the default.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceRecycleBinMarkPurgedByRetentionAsync_UsesPerTenantOverride(DbProviderKind provider)
     {
@@ -2300,7 +2300,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.FirmwareAddAsync(new DeviceFirmware { Board = board, Version = "2.0.0", Source = FirmwareSource.Custom, Url = "custom" });
         await using (var db = _fx.NewContext(t))
         {
-            db.DeviceFirmwares.Add(new DeviceFirmwareRow { DeviceTypeID = 424242, Version = "0.0.1", Url = "legacy", Source = (int)FirmwareSource.GitHub }); // pre-#94 row: no Board
+            db.DeviceFirmwares.Add(new DeviceFirmwareRow { DeviceTypeID = 424242, Version = "0.0.1", Url = "legacy", Source = (int)FirmwareSource.GitHub }); // legacy row: no Board
             await db.SaveChangesAsync();
         }
 
@@ -2446,7 +2446,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             d.IDDevice!.Value, tenantId, null, null);
 
         await _repo.VirtualDeviceRegisterAsync(d.IDDevice!.Value);
-        // Roadmap #403 - the parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
+        // The parameterless overload only returns devices in an active simulation session (what VirtualDeviceRunnerBackgroundService actually simulates); the tenant-scoped overload below is the plain registry check, unaffected by session membership.
         var session = await _repo.SimulationSessionAddAsync(new SimulationSession { TenantID = tenantId, Name = "Test" });
         Assert.True(await _repo.SimulationSessionDeviceAddAsync(session.IDSimulationSession!.Value, d.IDDevice!.Value));
         // Add no longer sets a time window; the device only counts as "active" once the session is actually Started.
@@ -2715,7 +2715,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(originalConfigVersion + 1, unassigned.ConfigVersion); // unchanged by the unassign
     }
 
-    // Roadmap #313: a never-assigned device must read back NULL, not the old 0 sentinel, and the Fleet page's "unassigned first" sort must still work against NULL.
+    // A never-assigned device must read back NULL, not the old 0 sentinel, and the Fleet page's "unassigned first" sort must still work against NULL.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task NewDevice_IsUnassigned_WithNullNotZero_AndSortsFirstOnFleet(DbProviderKind provider)
     {
@@ -2781,7 +2781,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         await _repo.DeviceAssignToZoneAsync(d1.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
         await _repo.DeviceAssignToZoneAsync(d2.IDDevice!.Value, zone.IDDeviceFarmUnitZone!.Value);
 
-        // d1: an older then a newer reading - only the newer one (20.0) must count. Both timestamps are relative to now (not a fixed past date) - #345's staleness cutoff would otherwise exclude them entirely.
+        // d1: an older then a newer reading - only the newer one (20.0) must count. Both timestamps are relative to now (not a fixed past date) - the staleness cutoff would otherwise exclude them entirely.
         DateTime now = DateTime.UtcNow;
         string older = now.AddSeconds(-30).ToString("yyyy-MM-dd HH:mm:ss");
         string newer = now.AddSeconds(-10).ToString("yyyy-MM-dd HH:mm:ss");
@@ -3048,7 +3048,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.All(zoneDetail.Trend.Temperature.Take(zoneDetail.Trend.Temperature.Length - 1), Assert.Null);
     }
 
-    // Roadmap #410 - the ReadUncommitted display variant must return the exact same shape as the ReadCommitted one RuleNotificationEvaluator uses, just under a different isolation level.
+    // The ReadUncommitted display variant must return the exact same shape as the ReadCommitted one RuleNotificationEvaluator uses, just under a different isolation level.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarmUnitZoneDashboardForDisplay_MatchesAlertVariant(DbProviderKind provider)
     {

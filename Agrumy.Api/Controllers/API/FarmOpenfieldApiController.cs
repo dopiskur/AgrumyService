@@ -744,7 +744,7 @@ namespace Agrumy.Api.Controllers.API
 
         #region Dashboard widgets - Open-Field's equivalent of DeviceFarmUnitApiController's Zone/{id}/Widgets
 
-        // Roadmap #238 - same cap as DeviceFarmUnitApiController.MaxWidgetsPerZone.
+        // Same cap as DeviceFarmUnitApiController.MaxWidgetsPerZone.
         private const int MaxWidgetsPerParcel = 20;
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -936,7 +936,7 @@ namespace Agrumy.Api.Controllers.API
 
         private const int MaxMoistureSeriesWindowDays = 400;
 
-        /// #558 - the sensor-side of the Zone-tab dual-axis chart, aligned by day against SatelliteSeriesGet's SceneDateUtc.
+        /// The sensor-side of the Zone-tab dual-axis chart, aligned by day against SatelliteSeriesGet's SceneDateUtc.
         [Authorize]
         [HttpGet("Parcel/{idFarmParcelZone}/Satellite/MoistureSeries")]
         public async Task<ActionResult<IList<FarmParcelZoneMoistureSeriesPoint>>> MoistureSeriesGet(int idFarmParcelZone, DateOnly from, DateOnly to)

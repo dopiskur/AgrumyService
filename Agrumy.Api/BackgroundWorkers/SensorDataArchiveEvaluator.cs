@@ -8,7 +8,7 @@ using MySqlConnector;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Roadmap #209 - MariaDB/MySQL only (Postgres/TimescaleDB uses its own native tiered storage instead, #14). Moves sensorData rows past ArchiveCutoffCalculator's cutoff into a separate, admin-configured archive database instead of deleting them (contrast SensorDataRetentionEvaluator, which deletes).
+    /// MariaDB/MySQL only (Postgres/TimescaleDB uses its own native tiered storage instead). Moves sensorData rows past ArchiveCutoffCalculator's cutoff into a separate, admin-configured archive database instead of deleting them (contrast SensorDataRetentionEvaluator, which deletes).
     public sealed class SensorDataArchiveEvaluator(AgrumyDbContext db, IServerConfigRepository serverConfigRepo, ILogger<SensorDataArchiveEvaluator> logger)
     {
         private const int BatchSize = 2000;

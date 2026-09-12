@@ -3,7 +3,7 @@ using Agrumy.Api.Setup;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #397(6) - SetupWizard.BuildConnectionString must escape each field via the provider's own
+/// SetupWizard.BuildConnectionString must escape each field via the provider's own
 /// builder, not raw string interpolation, so a password containing connection-string-special
 /// characters (';', '=') can't break parsing or inject extra parameters.
 public class SetupWizardTests

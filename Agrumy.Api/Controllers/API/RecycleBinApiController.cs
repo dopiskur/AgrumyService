@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Api.Controllers.API
 {
-    /// Roadmap #409/#427 - lists, restores, and marks-for-purge soft-deleted Farms/Devices (see AgrumyDbContext's HasQueryFilter on each). The actual irreversible removal never happens here - it's PurgeOrphanedSensorDataEvaluator's reap phase, scheduled or manually forced via DataMaintenanceApiController.PurgeOrphaned.
+    /// Lists, restores, and marks-for-purge soft-deleted Farms/Devices (see AgrumyDbContext's HasQueryFilter on each). The actual irreversible removal never happens here - it's PurgeOrphanedSensorDataEvaluator's reap phase, scheduled or manually forced via DataMaintenanceApiController.PurgeOrphaned.
     [Route("/api/RecycleBin")]
     public class RecycleBinApiController(IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
@@ -20,7 +20,7 @@ namespace Agrumy.Api.Controllers.API
         public async Task<ActionResult<IList<DeviceFarm>>> FarmsGet() =>
             Ok(await deviceFarmUnitRepo.DeviceFarmRecycleBinGetAsync(CallerReadsDevicesGlobally ? null : CallerTenantId));
 
-        /// Roadmap #427 - devices marked for permanent removal but not yet reaped; still restorable via DeviceRestore.
+        /// Devices marked for permanent removal but not yet reaped; still restorable via DeviceRestore.
         [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("Device/PendingPurge")]
         public async Task<ActionResult<IList<DeviceDto>>> DevicesPendingPurgeGet() =>
@@ -75,7 +75,7 @@ namespace Agrumy.Api.Controllers.API
             return restored;
         }
 
-        /// Roadmap #427 - Global Admin-only, confirmation-phrase-gated, same bar as DataMaintenanceApiController's manual purge trigger. Only MARKS the device for permanent removal - it stays fully restorable via DeviceRestore until the purge cycle actually reaps it (PurgeOrphanedSensorDataEvaluator).
+        /// Global Admin-only, confirmation-phrase-gated, same bar as DataMaintenanceApiController's manual purge trigger. Only MARKS the device for permanent removal - it stays fully restorable via DeviceRestore until the purge cycle actually reaps it (PurgeOrphanedSensorDataEvaluator).
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost("Device/{idDevice}/PurgeNow")]
         public async Task<ActionResult<bool>> DevicePurgeNow(int idDevice, [FromBody] RecycleBinPurgeRequest value)

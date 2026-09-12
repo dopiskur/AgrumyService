@@ -159,7 +159,7 @@ public class ContractTests
             new DeviceFarmUnitZoneRule
             {
                 IDDeviceFarmUnitZoneRule = 3, RelayFunction = RelayFunction.Light, Name = "Light schedule and threshold",
-                // Nested AND group - Mon-Fri 06:00-06:30 AND a threshold, exercising the #396(4) GroupNode shape (not just a single leaf).
+                // Nested AND group - Mon-Fri 06:00-06:30 AND a threshold, exercising the GroupNode shape (not just a single leaf).
                 Root = new ConditionNode
                 {
                     Type = NodeType.Group,
@@ -249,7 +249,7 @@ public class ContractTests
         AssertValid("authenticate.request.schema.json", "{}");
     }
 
-    // Pre-#326 firmware (String+atof SensorData) - still accepted since not every device in the field is on the new firmware yet.
+    // Older firmware (String+atof SensorData) - still accepted since not every device in the field is on the new firmware yet.
     [Fact]
     public void SensorDataRequest_LegacyStringShapedPayload_MatchesSchemaAndBinds()
     {
@@ -278,7 +278,7 @@ public class ContractTests
         Assert.Equal("2026-08-29 09:50:00", bound.DateCreated);
     }
 
-    // Roadmap #326: SensorData moved from Arduino String+atof to double/NaN, so a real reading now serializes as a JSON number instead of a numeric string.
+    // SensorData moved from Arduino String+atof to double/NaN, so a real reading now serializes as a JSON number instead of a numeric string.
     [Fact]
     public void SensorDataRequest_FirmwareShapedPayload_MatchesSchemaAndBinds()
     {

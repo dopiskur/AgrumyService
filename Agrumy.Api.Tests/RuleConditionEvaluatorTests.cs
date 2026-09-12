@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests;
 
-/// Server-side Notification-action rule evaluation (roadmap #396(4)) - mirrors AgrumyFirmware's RelayLogic.cpp semantics for the same node types, over the recursive ConditionNode tree.
+/// Server-side Notification-action rule evaluation - mirrors AgrumyFirmware's RelayLogic.cpp semantics for the same node types, over the recursive ConditionNode tree.
 public class RuleConditionEvaluatorTests
 {
     private static DeviceFarmUnitZoneRule Rule(ConditionNode root) => new()
@@ -129,7 +129,7 @@ public class RuleConditionEvaluatorTests
     public void Group_ThreeConditions_MixedAndOr_NeedsExplicitNesting()
     {
         // (false AND true) OR true = true - a precedence-aware evaluator (AND binds tighter) would instead compute false AND (true OR true) = false.
-        // Mixed operators now need an explicit inner group (roadmap #396(4)) - unlike the old flat left-to-right fold where this was implicit.
+        // Mixed operators now need an explicit inner group - unlike the old flat left-to-right fold where this was implicit.
         var rule = Rule(Group(LogicalOperator.Or,
             Group(LogicalOperator.And, Comparison(ComparisonOperator.GreaterThan, 1000), Comparison(ComparisonOperator.GreaterThan, -1000)), // false AND true = false
             Comparison(ComparisonOperator.GreaterThan, -1000))); // true

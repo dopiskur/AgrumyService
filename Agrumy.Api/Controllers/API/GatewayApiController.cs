@@ -265,7 +265,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await gatewayRepo.GatewayDeviceMappingsWithSecretsGetAsync(gateway!.IDDevice!.Value));
         }
 
-        /// Roadmap #383 - the WiFi-relay counterpart to LoRaGatewayBridgeController's serial link: one already RF-decoded frame, resolved against the CALLER's own GatewayDeviceMapping (address stored in DevEUI) and dispatched through the same Config/SensorData/Event/CommandAck handlers Batch uses. A small, fixed catalog (a handful of mapped nodes per gateway at most) - no reason for a per-request cache like Gateway's own client-side one.
+        /// The WiFi-relay counterpart to LoRaGatewayBridgeController's serial link: one already RF-decoded frame, resolved against the CALLER's own GatewayDeviceMapping (address stored in DevEUI) and dispatched through the same Config/SensorData/Event/CommandAck handlers Batch uses. A small, fixed catalog (a handful of mapped nodes per gateway at most) - no reason for a per-request cache like Gateway's own client-side one.
         [HttpPost("RelayUplink")]
         [EnableRateLimiting("device-data")]
         [Authorize(Policy = DeviceAuth.ApiKeyPolicy)]
@@ -289,7 +289,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return Ok(new GatewayBatchEntryResult { Success = false, StatusCode = 404, Error = "Mapped device no longer exists." });
             }
-            // [EnableRateLimiting("device-data")] above is keyed by caller IP - the GATEWAY's IP, shared by every leaf node relayed through it (roadmap #396(9)). One noisy/faulty leaf must not exhaust that shared budget for its siblings, so each resolved leaf device gets its own separate ceiling on top.
+            // [EnableRateLimiting("device-data")] above is keyed by caller IP - the GATEWAY's IP, shared by every leaf node relayed through it. One noisy/faulty leaf must not exhaust that shared budget for its siblings, so each resolved leaf device gets its own separate ceiling on top.
             if (!await IsLeafWithinRateLimitAsync(idDevice))
             {
                 return StatusCode(429, $"Node {request.SourceAddress} (device {idDevice}) is relaying too fast - rate limited independently of this gateway's own budget.");

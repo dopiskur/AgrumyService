@@ -30,10 +30,10 @@ file sealed class ImmediateConnectionFailureInterceptor : DbConnectionIntercepto
         throw new TimeoutException("Simulated DB-unreachable failure for HTTP endpoint tests.");
 }
 
-/// Drives the real HTTP middleware pipeline (auth, rate limiting, exception handling) end-to-end instead of unit-testing the pieces in isolation - see roadmap #315.
+/// Drives the real HTTP middleware pipeline (auth, rate limiting, exception handling) end-to-end instead of unit-testing the pieces in isolation.
 public sealed class ApiWebApplicationFactory : WebApplicationFactory<Agrumy.Api.ApiHostMarker>
 {
-    // This factory's own Program.cs run reads these via env vars below - no shared static state with TestConfig/other test classes to race under xUnit's parallel execution (roadmap #397(3) removed the static Config bridge JwtTokenProvider used to depend on).
+    // This factory's own Program.cs run reads these via env vars below - no shared static state with TestConfig/other test classes to race under xUnit's parallel execution (removed the static Config bridge JwtTokenProvider used to depend on).
     public const string SigningKey = "unit-test-signing-key-not-a-secret-0123456789ABCDEF";
     public const string Issuer = "https://tests.agrumy.local";
     public const string Audience = "agrumy-api-tests";
@@ -248,7 +248,7 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
             string httpMethod = action.MethodInfo.GetCustomAttributes(true)
                 .OfType<IActionHttpMethodProvider>().FirstOrDefault()?.HttpMethods.FirstOrDefault() ?? "GET";
 
-            // A reflected action with no CSV row is exactly the gap #462 closes - fail loudly (this exception aborts test discovery/collection for the whole class) rather than silently skip it.
+            // A reflected action with no CSV row is exactly the gap this check closes - fail loudly (this exception aborts test discovery/collection for the whole class) rather than silently skip it.
             if (!csvMatrix.TryGetValue((httpMethod, template), out string[]? csvRoles))
             {
                 throw new InvalidOperationException(
@@ -261,9 +261,9 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
         }
     }
 
-    /// The other half of #462's independence check: not just "does a CSV row exist" (RoleGatedActions
+    /// The other half of the independence check: not just "does a CSV row exist" (RoleGatedActions
     /// throws on that) but "does its role set still match the code" - a role added/removed from the
-    /// [Authorize] attribute without updating the CSV is exactly the #395-style drift this whole
+    /// [Authorize] attribute without updating the CSV is exactly the kind of drift this whole
     /// mechanism exists to catch, in either direction.
     [Theory, MemberData(nameof(RoleGatedActions))]
     public void CsvMatrixRoles_MatchReflectedAuthorizeAttributeRoles(string label, string httpMethod, string url, string wrongRole, string[] csvRoles, string[] reflectedRoles)

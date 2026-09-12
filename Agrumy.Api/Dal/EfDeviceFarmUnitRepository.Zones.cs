@@ -162,7 +162,7 @@ namespace Agrumy.Api.Dal
             DashboardGridColumns = z.DashboardGridColumns,
         };
 
-        /// Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdateAsync (no ConfigVersion bump - a display-only layout never reaches the device).
+        /// Saves independently of DeviceFarmUnitZoneUpdateAsync (no ConfigVersion bump - a display-only layout never reaches the device).
         public async Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets)
         {
             var row = await db.DeviceFarmUnitZones.FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);

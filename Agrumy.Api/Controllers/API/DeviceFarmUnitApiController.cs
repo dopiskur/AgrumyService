@@ -201,7 +201,7 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
-        /// Roadmap #411 - reuses #355's per-device IssueWifiUpdateCommandAsync (verify-then-persist runs on the device itself, unchanged) across every device under the unit; a device that already has one pending is skipped, not retried.
+        /// Reuses the per-device IssueWifiUpdateCommandAsync (verify-then-persist runs on the device itself, unchanged) across every device under the unit; a device that already has one pending is skipped, not retried.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("{idDeviceFarmUnit}/WifiUpdate")]
         public async Task<ActionResult<UnitWifiUpdateResult>> UnitWifiUpdate(int idDeviceFarmUnit, [FromBody] UnitWifiUpdateRequest request)

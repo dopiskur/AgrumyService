@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Rules
 {
-    /// Server-side evaluation of one rule's ConditionNode tree (roadmap #396(4)), mirroring AgrumyFirmware's
+    /// Server-side evaluation of one rule's ConditionNode tree, mirroring AgrumyFirmware's
     /// RelayLogic.cpp/ActuatorController semantics exactly (same GT/LT dead-zone math, same grid-aligned
     /// Interval formula, same Schedule window check, same recursive AND/OR fold) - reimplemented in C#
     /// rather than shared, since firmware runs a genuinely separate language/runtime. Used directly by
@@ -65,7 +65,7 @@ namespace Agrumy.Rules
                     return node.ReferencedRuleId is int referencedRuleId && referencedRuleFiredThisTick(referencedRuleId);
                 case NodeType.RateOfChange:
                 {
-                    // Only meaningful server-side (roadmap #398(1)) - validation restricts this to Notification rules, so trend is always non-null by the time it matters; a null trend (Relay/simulated path) just evaluates false, same fail-closed shape as a missing reading elsewhere in this switch.
+                    // Only meaningful server-side - validation restricts this to Notification rules, so trend is always non-null by the time it matters; a null trend (Relay/simulated path) just evaluates false, same fail-closed shape as a missing reading elsewhere in this switch.
                     if (trend == null || node.Metric is not SensorMetric metric || node.WindowHours is not int windowHours
                         || windowHours is < 1 or >= SensorTrend.HourBuckets || node.ChangeThreshold is not double changeThreshold)
                     {
@@ -77,7 +77,7 @@ namespace Agrumy.Rules
                 }
                 case NodeType.DifDisruption:
                 {
-                    // Roadmap #398(3) - "day" and "night" here are just the two windows relative to now, not calendar/sunrise-aligned; always Temperature, no per-node Metric.
+                    // "day" and "night" here are just the two windows relative to now, not calendar/sunrise-aligned; always Temperature, no per-node Metric.
                     if (trend == null || node.NightWindowHours is not int nightHours || node.DayWindowHours is not int dayHours
                         || nightHours < 1 || dayHours < 1 || nightHours + dayHours > SensorTrend.HourBuckets || node.MinDifDegrees is not double minDif)
                     {
@@ -103,7 +103,7 @@ namespace Agrumy.Rules
                 }
                 case NodeType.Astronomical:
                 default:
-                    // Astronomical never reaches evaluation as-is on either path (roadmap #398(2) extended AstronomicalRuleResolver.Resolve to Notification rules too, not just Relay) - it's always compiled into an effective Schedule node first.
+                    // Astronomical never reaches evaluation as-is on either path (extended AstronomicalRuleResolver.Resolve to Notification rules too, not just Relay) - it's always compiled into an effective Schedule node first.
                     return false;
             }
         }

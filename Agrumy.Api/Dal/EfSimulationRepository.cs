@@ -46,7 +46,7 @@ namespace Agrumy.Api.Dal
             await deviceRepository.DeviceDeleteAsync(deviceID, tenantID);
         }
 
-        // ---- Simulation sessions (roadmap #403) ----------------------------
+        // ---- Simulation sessions ----------------------------
 
         /// Name only; StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.

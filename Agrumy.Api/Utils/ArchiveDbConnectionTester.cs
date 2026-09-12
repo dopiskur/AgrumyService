@@ -2,7 +2,7 @@ using MySqlConnector;
 
 namespace Agrumy.Api.Utils
 {
-    /// Tests connectivity to an admin-supplied archive database (roadmap #209) BEFORE ServerConfigApiController.Update ever saves the credentials - distinguishes "can't reach the host" from "wrong username/password" from "database doesn't exist", since each needs a different fix and a generic "connection failed" leaves the admin guessing.
+    /// Tests connectivity to an admin-supplied archive database BEFORE ServerConfigApiController.Update ever saves the credentials - distinguishes "can't reach the host" from "wrong username/password" from "database doesn't exist", since each needs a different fix and a generic "connection failed" leaves the admin guessing.
     public static class ArchiveDbConnectionTester
     {
         public static async Task<(bool Success, string? Error)> TestAsync(string host, int port, string database, string username, string password, CancellationToken ct = default)

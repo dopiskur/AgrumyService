@@ -83,7 +83,7 @@ namespace Agrumy.Shared.Security
             ClockSkew = TimeSpan.Zero,
         };
 
-        /// Every role claim on a valid token, or null if the token is invalid/expired/wrongly-signed. An empty (non-null) list means the token validated but carried no roles — callers must treat that as "no roles", not "check failed". All four values are explicit parameters (roadmap #397(3)) rather than read from static state, so this has no hidden dependency on any host having run first - a caller passes whatever IOptions&lt;AgrumySettings&gt;/config it already has.
+        /// Every role claim on a valid token, or null if the token is invalid/expired/wrongly-signed. An empty (non-null) list means the token validated but carried no roles — callers must treat that as "no roles", not "check failed". All four values are explicit parameters rather than read from static state, so this has no hidden dependency on any host having run first - a caller passes whatever IOptions&lt;AgrumySettings&gt;/config it already has.
         public static IReadOnlyList<string>? ValidateToken(string token, string? secureKey, string? issuer, string? audience, ILogger? logger = null)
         {
             if (token == null || secureKey == null)

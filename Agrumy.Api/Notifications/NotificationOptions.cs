@@ -13,11 +13,11 @@ namespace Agrumy.Api.Notifications
         // How often LowBatteryAlertEvaluator sweeps battery readings; longer than OfflineCheckIntervalMinutes by default since a battery drains over hours/days, not seconds.
         public int BatteryCheckIntervalMinutes { get; set; } = 30;
 
-        // How often RuleNotificationEvaluator (#212) sweeps Notification-action rules; same cadence as
+        // How often RuleNotificationEvaluator sweeps Notification-action rules; same cadence as
         // OfflineCheckIntervalMinutes - a rule-driven alert is meant to feel timely, not battery-drain-slow.
         public int RuleCheckIntervalMinutes { get; set; } = 5;
 
-        // How often TankRefillAlertEvaluator (#234) sweeps calibrated zones; same reasoning as BatteryCheckIntervalMinutes - a tank drains over hours/days, not seconds.
+        // How often TankRefillAlertEvaluator sweeps calibrated zones; same reasoning as BatteryCheckIntervalMinutes - a tank drains over hours/days, not seconds.
         public int TankCheckIntervalMinutes { get; set; } = 30;
     }
 

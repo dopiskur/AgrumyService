@@ -207,7 +207,7 @@ public class GatewayApiControllerTests
         Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
     }
 
-    /// #383 - a LoRaGatewayEnabled device (not IsGateway) must be authorized the same as a classic Agrumy.Gateway.
+    /// A LoRaGatewayEnabled device (not IsGateway) must be authorized the same as a classic Agrumy.Gateway.
     [Fact]
     public async Task RelayUplink_LoRaGatewayEnabledDevice_NotIsGateway_IsAuthorized()
     {
@@ -370,7 +370,7 @@ public class GatewayApiControllerTests
         Assert.Equal(401, Assert.IsType<GatewayBatchEntryResult>(Assert.IsType<OkObjectResult>(response.Result).Value).StatusCode);
     }
 
-    /// Roadmap #396(9) - the outer [EnableRateLimiting("device-data")] is keyed by the GATEWAY's IP, shared by every leaf relayed through it; this per-leaf ceiling is a separate guard so one noisy node can't starve its siblings.
+    /// The outer [EnableRateLimiting("device-data")] is keyed by the GATEWAY's IP, shared by every leaf relayed through it; this per-leaf ceiling is a separate guard so one noisy node can't starve its siblings.
     [Fact]
     public async Task RelayUplink_LeafAtItsOwnPerLeafRateLimit_Returns429_NeverDecrypts()
     {

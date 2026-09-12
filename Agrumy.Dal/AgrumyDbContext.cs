@@ -252,7 +252,7 @@ namespace Agrumy.Dal
                 e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);
-                // Roadmap #409 - every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.
+                // Every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
@@ -528,7 +528,7 @@ namespace Agrumy.Dal
                 e.HasKey(x => x.IDDeviceType);
                 e.Property(x => x.IDDeviceType).ValueGeneratedOnAdd();
                 e.Property(x => x.Kit).HasMaxLength(64).IsRequired();
-                // Kit itself is a display-only catalog name now (roadmap #385) - every referencing table has a real numeric FK to IDDeviceType instead. Still unique so auto-registration/dropdowns can look a kit up by name without duplicates.
+                // Kit itself is a display-only catalog name now - every referencing table has a real numeric FK to IDDeviceType instead. Still unique so auto-registration/dropdowns can look a kit up by name without duplicates.
                 e.HasIndex(x => x.Kit).IsUnique().HasDatabaseName("ux_deviceType_kit");
             });
 
@@ -615,14 +615,14 @@ namespace Agrumy.Dal
                 e.HasOne<DeviceTypeServiceRow>().WithMany().HasForeignKey(x => x.DeviceTypeServiceID).OnDelete(DeleteBehavior.NoAction);
                 // Admin-chosen from the SAME catalog as deviceDiagnostic.DeviceTypeID (no auto-registration needed here - the Web dropdown only ever offers existing catalog entries).
                 e.HasOne<DeviceTypeRow>().WithMany().HasForeignKey(x => x.ManualDeviceTypeID).OnDelete(DeleteBehavior.NoAction);
-                // Roadmap #406 - IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap tenant).
+                // IsRequired(false): TenantID is now nullable (genuinely unassigned, distinct from the real TenantID=0 bootstrap tenant).
                 e.HasOne<TenantRow>().WithMany().HasForeignKey(x => x.TenantID).OnDelete(DeleteBehavior.NoAction).IsRequired(false);
                 e.HasOne<DeviceFarmUnitRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitID).OnDelete(DeleteBehavior.NoAction);
                 // Open-Field equivalents - SowingID mirrors DeviceFarmUnitID's real FK, FarmParcelZoneID mirrors DeviceFarmUnitZoneID's no-FK.
                 e.HasOne<SowingRow>().WithMany().HasForeignKey(x => x.SowingID).OnDelete(DeleteBehavior.NoAction);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);
-                // Roadmap #409 - every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController explicitly IgnoreQueryFilters() for the recycle bin.
+                // Every ordinary query (including a real device's own auth/config-poll lookup) sees only live devices; a soft-deleted device is refused exactly like one that never existed. RecycleBinApiController explicitly IgnoreQueryFilters() for the recycle bin.
                 e.HasQueryFilter(x => !x.Deleted);
             });
 

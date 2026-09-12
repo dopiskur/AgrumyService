@@ -79,7 +79,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit = request.UnitID });
         }
 
-        /// Roadmap #411 - bulk WiFi switch for every device under the unit, reusing #355's per-device mechanism (see DeviceFarmUnitApiController.UnitWifiUpdate).
+        /// Bulk WiFi switch for every device under the unit, reusing the per-device mechanism (see DeviceFarmUnitApiController.UnitWifiUpdate).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

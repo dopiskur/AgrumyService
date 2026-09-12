@@ -13,7 +13,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Covers the roadmap #268 WiFi-network management endpoints - password visibility by role, and
+/// Covers the WiFi-network management endpoints - password visibility by role, and
 /// ownership checks on cross-tenant Update/Delete.
 public class DiscoveryWifiConfigTests
 {
@@ -47,7 +47,7 @@ public class DiscoveryWifiConfigTests
         Assert.Null(Assert.Single(configs).Password);
     }
 
-    /// Write-only, roadmap #395(6) - Password is never returned to ANY caller, DeviceManagers included, so a saved WiFi password can't leak just by loading the list/edit page.
+    /// Write-only, Password is never returned to ANY caller, DeviceManagers included, so a saved WiFi password can't leak just by loading the list/edit page.
     [Fact]
     public async Task WifiConfigs_TenantAdmin_PasswordAlsoStripped()
     {

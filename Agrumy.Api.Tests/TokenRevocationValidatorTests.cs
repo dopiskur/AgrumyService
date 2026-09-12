@@ -13,7 +13,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #397(4) - ValidateAsync ran repo.UserGetAsync on every authenticated request; now it should hit the cache on a second call within the TTL instead of the DB again.
+/// ValidateAsync ran repo.UserGetAsync on every authenticated request; now it should hit the cache on a second call within the TTL instead of the DB again.
 public class TokenRevocationValidatorTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);

@@ -1,7 +1,7 @@
 @model Agrumy.Web.ViewModels.HorticultureCatalogEditViewModel
 @{
     ViewData["Title"] = Model.Entry.ID is int ? "Edit Catalog Entry" : "Add Catalog Entry";
-    // Roadmap #509 - same read-only browsing as Index.cshtml's own TenantAdmin check.
+    // Same read-only browsing as Index.cshtml's own TenantAdmin check.
     bool isReadOnly = ViewBag.IsReadOnly is true || User.IsInRole(RoleNames.TenantAdmin);
 }
 

@@ -19,7 +19,7 @@ namespace Agrumy.Shared.Models
 
         [HiddenInput(DisplayValue = true)]
         public int? IDDevice { get; set; }
-        // Roadmap #406 - nullable (reversing the earlier non-nullable decision, per explicit user instruction): TenantID=0 is still a real tenant (the bootstrap/default one), null means genuinely unassigned, same distinction as DeviceRoleID below.
+        // Nullable (reversing the earlier non-nullable decision, per explicit user instruction): TenantID=0 is still a real tenant (the bootstrap/default one), null means genuinely unassigned, same distinction as DeviceRoleID below.
         [HiddenInput(DisplayValue = true)]
         public int? TenantID { get; set; }
 
@@ -57,7 +57,7 @@ namespace Agrumy.Shared.Models
         public string? ApiId { get; set; }
         [JsonIgnore]
         public string? ApiKey { get; set; }
-        // LoRa private-protocol uplink encryption (roadmap #395 finding 3) - same "never serialized out" treatment as ApiKey; DeviceApiController.LoRaPrivateKeyGenerate is the only place the raw value is ever returned, once, at generation time.
+        // LoRa private-protocol uplink encryption (same "never serialized out" treatment as ApiKey; DeviceApiController.LoRaPrivateKeyGenerate is the only place the raw value is ever returned, once, at generation time.
         [JsonIgnore]
         public string? LoRaPrivateKeyHex { get; set; }
         public string? ServicePoint { get; set; }
@@ -68,7 +68,7 @@ namespace Agrumy.Shared.Models
 
         public int? SleepSeconds { get; set; } = 60;
         public bool? SleepDeepEnabled { get; set; } = false;
-        // Roadmap #383 - lets an ordinary, already-registered device also relay LoRa private-protocol uplinks via its own WiFi/HTTP connection (GatewayApiController treats it like IsGateway); firmware only actually starts listening if it detects the radio chip physically present.
+        // Lets an ordinary, already-registered device also relay LoRa private-protocol uplinks via its own WiFi/HTTP connection (GatewayApiController treats it like IsGateway); firmware only actually starts listening if it detects the radio chip physically present.
         public bool? LoRaGatewayEnabled { get; set; } = false;
 
         [HiddenInput(DisplayValue = true)]
@@ -98,10 +98,10 @@ namespace Agrumy.Shared.Models
         public string? LastSensorDetectionResult { get; set; }
         public DateTimeOffset? LastSensorDetectionAt { get; set; }
 
-        // Roadmap #409 - null means not deleted (the query filter means this is ALWAYS null on an ordinarily-fetched Device; only RecycleBinApiController's listing ever populates it).
+        // Null means not deleted (the query filter means this is ALWAYS null on an ordinarily-fetched Device; only RecycleBinApiController's listing ever populates it).
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
-        // Roadmap #427 - null unless this came from RecycleBinApiController's pending-purge listing.
+        // Null unless this came from RecycleBinApiController's pending-purge listing.
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
@@ -110,7 +110,7 @@ namespace Agrumy.Shared.Models
     {
         public int? ConfigVersion { get; set; } = 1;
         public int? IDDevice { get; set; }
-        // Roadmap #406 - nullable, matching Device.TenantID above.
+        // Nullable, matching Device.TenantID above.
         public int? TenantID { get; set; }
         public int? DeviceRoleID { get; set; } = 0;
         // No default (unlike DeviceRoleID above) - null means genuinely unassigned, see Device.DeviceFarmUnitID.
@@ -325,7 +325,7 @@ namespace Agrumy.Shared.Models
 
         public int? SleepSeconds { get; set; } = 60;
         public bool? SleepDeep { get; set; } = false;
-        // Roadmap #383 - see Agrumy.Shared.Models.Device.LoRaGatewayEnabled; firmware only actually listens if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise.
+        // See Agrumy.Shared.Models.Device.LoRaGatewayEnabled; firmware only actually listens if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise.
         public bool? LoRaGatewayEnabled { get; set; } = false;
 
         // UTC offset (seconds, positive east) for ServerConfig.ScheduleTimeZone, computed fresh each sync so firmware needs no timezone database of its own; 0 when unconfigured.
@@ -346,7 +346,7 @@ namespace Agrumy.Shared.Models
         // DeviceFirmware.Sha256 for the offered build; firmware verifies it against the streamed .bin (Update.abort() on mismatch). Null skips the check rather than failing closed.
         public string? FirmwareSha256 { get; set; }
         public bool? Enabled { get; set; }
-        // Tenant-wide fail-closed switch (roadmap #230), from Tenant.EmergencyStopActive - ActuatorController forces every relay off ahead of any rule when set, independent of DeviceConfigController.RelayEnabled.
+        // Tenant-wide fail-closed switch, from Tenant.EmergencyStopActive - ActuatorController forces every relay off ahead of any rule when set, independent of DeviceConfigController.RelayEnabled.
         public bool? EmergencyStop { get; set; }
         // True tells firmware to start polling GET /api/Device/Simulation every 5s (or on every wake if SleepDeep) for per-metric overrides, instead of relying on this same, slower Config poll.
         public bool? SimulationModeEnabled { get; set; }
@@ -525,12 +525,12 @@ namespace Agrumy.Shared.Models
         public int? WaterLevel { get; set; }
         public int? Wind { get; set; }
 
-        // Roadmap #508 - unlike the sensor metrics above, never sent to the device (DeviceSimulationPoll) - Device.Latitude/Longitude is server-stored metadata, not a firmware-reported reading, so the override is applied server-side wherever a device's location is read (see DeviceApiController.DeviceGet), overriding even a device with a real GPS fix. Nothing to revert on simulation delete: the real Device.Latitude/Longitude/LocationSource row is never touched, so it's already there the moment the override stops applying.
+        // Unlike the sensor metrics above, never sent to the device (DeviceSimulationPoll) - Device.Latitude/Longitude is server-stored metadata, not a firmware-reported reading, so the override is applied server-side wherever a device's location is read (see DeviceApiController.DeviceGet), overriding even a device with a real GPS fix. Nothing to revert on simulation delete: the real Device.Latitude/Longitude/LocationSource row is never touched, so it's already there the moment the override stops applying.
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
     }
 
-    /// Roadmap #403 - the "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.
+    /// The "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.
     public class SimulationSession
     {
         public int? IDSimulationSession { get; set; }
@@ -576,7 +576,7 @@ namespace Agrumy.Shared.Models
         public string? Name { get; set; }
     }
 
-    /// Body of POST /api/Simulation/Session/{id}/Start - DurationMinutes is clamped 1-2880 (48h, roadmap #403's hard cap) server-side, whether it came from a preset or the free-text custom field. Same request/endpoint whether this is the session's first start or a later Resume after a Stop.
+    /// Body of POST /api/Simulation/Session/{id}/Start - DurationMinutes is clamped 1-2880 (48h, the hard cap) server-side, whether it came from a preset or the free-text custom field. Same request/endpoint whether this is the session's first start or a later Resume after a Stop.
     public class SimulationSessionStartRequest
     {
         public int DurationMinutes { get; set; }
@@ -681,14 +681,14 @@ namespace Agrumy.Shared.Models
         public static readonly SensorMetric[] Allowed = [SensorMetric.Temperature, SensorMetric.Humidity, SensorMetric.Moisture];
     }
 
-    /// Roadmap #219.
+    ///.
     public enum ManualOverrideMode
     {
         Duration = 1,
         Target = 2,
     }
 
-    /// One admin-triggered manual actuation (roadmap #219), DB-backed server-side shape - Agrumy.Api.Commands.ManualActuateService is the only writer; Agrumy.Api.Dal.EfRepository upserts on (DeviceID, RelayFunction). See DeviceManualOverridePush for the narrower wire shape actually sent to the device.
+    /// One admin-triggered manual actuation, DB-backed server-side shape - Agrumy.Api.Commands.ManualActuateService is the only writer; Agrumy.Api.Dal.EfRepository upserts on (DeviceID, RelayFunction). See DeviceManualOverridePush for the narrower wire shape actually sent to the device.
     public class DeviceManualOverride
     {
         [HiddenInput(DisplayValue = true)]
@@ -700,7 +700,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset StartedAtUtc { get; set; }
         /// Hard safety cap regardless of Mode - computed at start time from the zone's own HeatingMaxRunSeconds/VentilationMaxRunSeconds/WaterPumpMaxRunSeconds for RelayFunction.
         public DateTimeOffset ExpiresAtUtc { get; set; }
-        /// Target mode only - Temperature/Humidity/Moisture (roadmap #219's allowed subset), null for Duration.
+        /// Target mode only - Temperature/Humidity/Moisture (the allowed subset), null for Duration.
         public SensorMetric? TargetMetric { get; set; }
         public double? TargetThreshold { get; set; }
         public double? TargetHysteresis { get; set; }
@@ -716,7 +716,7 @@ namespace Agrumy.Shared.Models
         public RelayFunction RelayFunction { get; set; }
         public ManualOverrideMode Mode { get; set; }
         public long ExpiresAtEpoch { get; set; }
-        /// Target mode only - Temperature/Humidity/Moisture (roadmap #219's allowed subset), null for Duration.
+        /// Target mode only - Temperature/Humidity/Moisture (the allowed subset), null for Duration.
         public SensorMetric? TargetMetric { get; set; }
         public double? TargetThreshold { get; set; }
         public double? TargetHysteresis { get; set; }
@@ -754,7 +754,7 @@ namespace Agrumy.Shared.Models
         // Copied from the assigned zone's own field - null (device default: Hold) when the zone never set one.
         public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
 
-        // Roadmap #219 - at most one per manually-triggerable RelayFunction, populated from IManualOverrideRepository.ManualOverridesActiveForDeviceAsync, empty when none are active.
+        // At most one per manually-triggerable RelayFunction, populated from IManualOverrideRepository.ManualOverridesActiveForDeviceAsync, empty when none are active.
         public IList<DeviceManualOverridePush> ManualOverrides { get; set; } = [];
 
         // Physical/hardware, stays per-device.

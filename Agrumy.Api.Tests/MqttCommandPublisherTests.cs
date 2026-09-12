@@ -58,7 +58,7 @@ public class MqttCommandPublisherTests
         // Strict mock: PublishAsync was never set up - a deduplicated command must not publish.
     }
 
-    // ---- #363 HMAC signing --------------------------------------------
+    // ---- HMAC signing --------------------------------------------
 
     private static JsonNode SampleCommandNode() =>
         JsonNode.Parse(JsonSerializer.SerializeToUtf8Bytes(

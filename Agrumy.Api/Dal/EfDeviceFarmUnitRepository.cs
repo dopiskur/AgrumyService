@@ -39,7 +39,7 @@ namespace Agrumy.Api.Dal
             (int)DeviceEventType.Crash,
         ];
 
-        // ---- Farm CRUD (roadmap #384) -----------------------------------
+        // ---- Farm CRUD -----------------------------------
 
         public async Task<IList<DeviceFarm>> DeviceFarmsGetAsync(int? tenantID)
         {
@@ -113,7 +113,7 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        /// Roadmap #408 - reverses #384's original "unassign, don't cascade" decision: deleting a Farm now soft-deletes it AND every Unit/Zone/Device still attached to it, all stamped with the same DeletedAtUtc so DeviceFarmRestoreAsync can undo exactly this cascade (and nothing an unrelated, independently-deleted device/unit brought with it). Rules aren't touched at all - a Unit/Zone/Farm-scope rule simply becomes unreachable while its owner is soft-deleted (nothing still-visible ever looks it up, see RuleNotificationEvaluator/DeviceConfigBuilder), and reactivates for free on restore instead of needing to be recreated.
+        /// Reverses the original "unassign, don't cascade" decision: deleting a Farm now soft-deletes it AND every Unit/Zone/Device still attached to it, all stamped with the same DeletedAtUtc so DeviceFarmRestoreAsync can undo exactly this cascade (and nothing an unrelated, independently-deleted device/unit brought with it). Rules aren't touched at all - a Unit/Zone/Farm-scope rule simply becomes unreachable while its owner is soft-deleted (nothing still-visible ever looks it up, see RuleNotificationEvaluator/DeviceConfigBuilder), and reactivates for free on restore instead of needing to be recreated.
         public async Task DeviceFarmDeleteAsync(int idDeviceFarm)
         {
             bool exists = await db.DeviceFarms.AsNoTracking().AnyAsync(f => f.IDDeviceFarm == idDeviceFarm);
@@ -140,7 +140,7 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(f => f.Deleted, true).SetProperty(f => f.DeletedAtUtc, now));
         }
 
-        /// Every soft-deleted, not-yet-Purged Farm (roadmap #427 - Purged farms move to DeviceFarmPendingPurgeGetAsync instead).
+        /// Every soft-deleted, not-yet-Purged Farm (Purged farms move to DeviceFarmPendingPurgeGetAsync instead).
         public async Task<IList<DeviceFarm>> DeviceFarmRecycleBinGetAsync(int? tenantID)
         {
             IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && !f.Purged);
@@ -159,7 +159,7 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoFarm(row);
         }
 
-        /// Roadmap #427 - marked for permanent removal, still restorable until the purge cycle actually reaps it.
+        /// Marked for permanent removal, still restorable until the purge cycle actually reaps it.
         public async Task<IList<DeviceFarm>> DeviceFarmPendingPurgeGetAsync(int? tenantID)
         {
             IQueryable<DeviceFarmRow> q = db.DeviceFarms.IgnoreQueryFilters().AsNoTracking().Where(f => f.Deleted && f.Purged);
@@ -214,7 +214,7 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
-        /// Roadmap #427 - the manual "delete permanently now" trigger; just flips the flag on the farm AND its exact soft-delete cascade of devices (so DeviceRecycleBinPurgeAsync's own Purged guard passes once the reap cycle gets to them) - the actual removal happens later.
+        /// The manual "delete permanently now" trigger; just flips the flag on the farm AND its exact soft-delete cascade of devices (so DeviceRecycleBinPurgeAsync's own Purged guard passes once the reap cycle gets to them) - the actual removal happens later.
         public async Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID)
         {
             var farm = await db.DeviceFarms.IgnoreQueryFilters().AsNoTracking()

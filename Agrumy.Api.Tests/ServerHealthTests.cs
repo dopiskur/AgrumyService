@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #419 - Server Health card's per-dependency checks, plus ServerHealthService's "only list a currently-enabled dependency" filtering.
+/// Server Health card's per-dependency checks, plus ServerHealthService's "only list a currently-enabled dependency" filtering.
 public class ServerHealthTests
 {
     private static readonly HealthCheckContext Context = new() { Registration = new HealthCheckRegistration("test", sp => null!, null, null) };

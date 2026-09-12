@@ -36,7 +36,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
-        // Roadmap #234 - all three null together means "no tank tracking", the empty-string->null coercion below keeps a blank form submit from writing a zero-capacity/zero-calibration tank instead.
+        // All three null together means "no tank tracking", the empty-string->null coercion below keeps a blank form submit from writing a zero-capacity/zero-calibration tank instead.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -58,7 +58,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
-        // ---- Rules (Zone/Unit/Global scope, roadmap #212) ----------------------------
+        // ---- Rules (Zone/Unit/Global scope) ----------------------------
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
@@ -281,7 +281,7 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
-        /// Builds a DeviceFarmUnitZoneRule from the form input - exactly one of idDeviceFarmUnitZone/idDeviceFarmUnit is non-null for Zone/Unit scope, both null for Global. RootConditionJson comes pre-built from wwwroot/js/rule-builder.js (roadmap #396(4)) - must deserialize with ConditionConfigJson.Options, the options-less overload would misread the camelCase JS produced.
+        /// Builds a DeviceFarmUnitZoneRule from the form input - exactly one of idDeviceFarmUnitZone/idDeviceFarmUnit is non-null for Zone/Unit scope, both null for Global. RootConditionJson comes pre-built from wwwroot/js/rule-builder.js - must deserialize with ConditionConfigJson.Options, the options-less overload would misread the camelCase JS produced.
         private static DeviceFarmUnitZoneRule BuildRule(RuleFormInput input, int? idDeviceFarmUnitZone, int? idDeviceFarmUnit, int? idDeviceFarm = null)
         {
             ConditionNode? root = string.IsNullOrWhiteSpace(input.RootConditionJson)

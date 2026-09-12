@@ -152,7 +152,7 @@ namespace Agrumy.Web.Controllers.View
             return options;
         }
 
-        // ---- Farm (roadmap #384) --------------------------------------
+        // ---- Farm --------------------------------------
 
         // Shared by the full page and its 10s-polled fragment (IndexCubes below) so a live update never reverts the farm grouping.
         private async Task<GroupedUnitCubesViewModel> BuildGroupedUnitCubesAsync() => new()
@@ -163,7 +163,7 @@ namespace Agrumy.Web.Controllers.View
             Openfields = await api.FarmOpenfieldsGet(),
         };
 
-        // The Unit/Zone cube overview moved here from the old Dashboard (roadmap #238's wizard took that route over).
+        // The Unit/Zone cube overview moved here from the old Dashboard (the wizard took that route over).
         public async Task<ActionResult> Farms() => View(new FarmListViewModel
         {
             Farms = await api.DeviceFarmsGet(),
@@ -298,7 +298,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Farms));
         }
 
-        /// Roadmap #408 (b) - the "migrate first" offer in FarmDelete's confirmation flow: every unit still on idDeviceFarm moves to idTargetFarm, one at a time (same UnitAssignFarm write, just looped) - called before FarmDelete, never together with it in one request.
+        /// The "migrate first" offer in FarmDelete's confirmation flow: every unit still on idDeviceFarm moves to idTargetFarm, one at a time (same UnitAssignFarm write, just looped) - called before FarmDelete, never together with it in one request.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

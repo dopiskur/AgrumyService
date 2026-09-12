@@ -14,10 +14,10 @@ namespace Agrumy.Api.Commands
 
     public sealed record ManualActuateResult(ManualActuateOutcome Outcome, IReadOnlyList<int> AffectedDeviceIds, string? Message = null);
 
-    /// Roadmap #219 - target resolution/fan-out (a Zone's one controller, or every controller across a Unit's zones), validation, and the ExpiresAtUtc safety-cap math; no background worker, DeviceConfigBuilder reads the resulting rows lazily on each device's next poll.
+    /// Target resolution/fan-out (a Zone's one controller, or every controller across a Unit's zones), validation, and the ExpiresAtUtc safety-cap math; no background worker, DeviceConfigBuilder reads the resulting rows lazily on each device's next poll.
     public sealed class ManualActuateService(IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo)
     {
-        /// Heating->Temperature only, Ventilation->Temperature or Humidity, WaterPump->Moisture (soil moisture - see AgrumyFirmware's sensor_analog_moist) only - roadmap #219's explicit per-function allowed subset.
+        /// Heating->Temperature only, Ventilation->Temperature or Humidity, WaterPump->Moisture (soil moisture - see AgrumyFirmware's sensor_analog_moist) only - the explicit per-function allowed subset.
         private static readonly Dictionary<RelayFunction, SensorMetric[]> AllowedTargetMetrics = new()
         {
             [RelayFunction.Heating] = [SensorMetric.Temperature],

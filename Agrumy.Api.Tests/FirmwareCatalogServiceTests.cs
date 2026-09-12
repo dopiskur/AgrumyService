@@ -256,7 +256,7 @@ public class FirmwareCatalogServiceTests
     [Fact]
     public async Task Import_FindsAndExtracts_A_Zip_Alongside_A_Loose_Bin()
     {
-        // #337: a directory can mix a loose .bin with a .zip archive - both must import.
+        // A directory can mix a loose .bin with a .zip archive - both must import.
         SetSource(FirmwareSource.Local);
         string usb = Path.Combine(Path.GetTempPath(), "agrumy-fw-tests", "usb-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(usb);
@@ -388,7 +388,7 @@ public class FirmwareCatalogServiceTests
         _repo.Verify(r => r.DeviceFirmwareUpdateSetAsync(5, true, null), Times.Once);
     }
 
-    // Roadmap #292: a GitHub release with no manifest.json asset reaches the catalog with Sha256=null - OtaController.update refuses to install without one, so "latest" must skip it rather than offer a build that silently never applies.
+    // A GitHub release with no manifest.json asset reaches the catalog with Sha256=null - OtaController.update refuses to install without one, so "latest" must skip it rather than offer a build that silently never applies.
     [Fact]
     public async Task ResolveOffer_Latest_SkipsAChecksumlessBuild_FallsBackToTheNewestWithOne()
     {

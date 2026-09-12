@@ -44,7 +44,7 @@ namespace Agrumy.Web.Controllers.View
             }
 
             bool hasController = dashboard.Devices.Any(d => d.DeviceControllerEnabled == true);
-            // Roadmap #238 - fetched unconditionally now: a sensor-only zone still has dashboard widgets to configure, even with no automation section to show below them.
+            // Fetched unconditionally now: a sensor-only zone still has dashboard widgets to configure, even with no automation section to show below them.
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             IList<DeviceFarmUnitZoneRule> rules = [];
             IList<DeviceManualOverride> manualOverrides = [];
@@ -258,7 +258,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone = request.ZoneID });
         }
 
-        // Roadmap #219. durationMinutes is the admin-facing unit (matches the quick-preset buttons); converted to seconds only for the wire request. TargetMetric/TargetThreshold/TargetHysteresis are ignored server-side for Duration mode and vice versa (Agrumy.Api.Commands.ManualActuateService), so posting all six fields regardless of the selected mode is harmless.
+        //. durationMinutes is the admin-facing unit (matches the quick-preset buttons); converted to seconds only for the wire request. TargetMetric/TargetThreshold/TargetHysteresis are ignored server-side for Duration mode and vice versa (Agrumy.Api.Commands.ManualActuateService), so posting all six fields regardless of the selected mode is harmless.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

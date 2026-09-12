@@ -1,6 +1,6 @@
 namespace Agrumy.Shared.Utils
 {
-    /// Linear interpolation between a zone's two raw WaterLevel calibration points (roadmap #234) - null unless a zone has set capacity and both calibration points.
+    /// Linear interpolation between a zone's two raw WaterLevel calibration points - null unless a zone has set capacity and both calibration points.
     public static class TankCalculator
     {
         public static (double? Percent, double? VolumeLiters) Compute(double? rawWaterLevel, int? rawEmpty, int? rawFull, double? capacityLiters)

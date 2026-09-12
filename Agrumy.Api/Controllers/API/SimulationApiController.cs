@@ -81,7 +81,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        // ---- Simulation sessions (roadmap #403) - "Add Simulation" is now the entry point; devices join a named, time-boxed session instead of being independently toggled. ----
+        // ---- Simulation sessions - "Add Simulation" is now the entry point; devices join a named, time-boxed session instead of being independently toggled. ----
 
         /// Hard cap regardless of preset/custom entry - SimulationSessionExpiryEvaluator's own safety net only works if no session can ever be created past this.
         private const int MaxDurationMinutes = 48 * 60;

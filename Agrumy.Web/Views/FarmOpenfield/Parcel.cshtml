@@ -270,7 +270,7 @@
         const showMoisture = document.getElementById('satSeriesShowMoisture');
         const idZone = @parcel.IDFarmParcelZone;
 
-        // #558 - pairs the satellite index with the zone's own device moisture readings on a second y-axis, aligned by day, instead of the satellite-only trend this chart shipped with.
+        // Pairs the satellite index with the zone's own device moisture readings on a second y-axis, aligned by day, instead of the satellite-only trend this chart shipped with.
         async function loadSeries() {
             const response = await fetch(`/FarmOpenfield/SatelliteSeries?idFarmParcelZone=${idZone}&index=${select.value}&onlyReliable=true`);
             const points = response.ok ? await response.json() : [];

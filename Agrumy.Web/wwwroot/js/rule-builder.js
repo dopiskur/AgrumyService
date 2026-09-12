@@ -1,4 +1,4 @@
-// Roadmap #396(4) - recursive rule-condition tree editor. Renders an interactive ConditionNode
+// Recursive rule-condition tree editor. Renders an interactive ConditionNode
 // tree (comparison/interval/schedule/astronomical/ruleTriggered leaves, arbitrarily nested group
 // nodes), and on form submit serializes the whole tree into one hidden RootConditionJson field -
 // the server never sees individual form fields for this part, just the finished JSON tree, matching
@@ -28,7 +28,7 @@
             this.root = root;
             this.simpleMode = root.dataset.simpleMode === 'true';
             const allMetrics = JSON.parse(root.dataset.metrics || '[]');
-            // Simple mode (roadmap #399) hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor.
+            // Simple mode hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor.
             this.metrics = this.simpleMode ? allMetrics.filter(m => !m.derived) : allMetrics;
             this.referenceableRules = JSON.parse(root.dataset.referenceableRules || '[]');
             this.isNotification = root.dataset.notification === 'true';
@@ -58,12 +58,12 @@
         }
 
         allowedTypes() {
-            // Simple mode (roadmap #399) - a rule is one flat "if metric compares to value" comparison, no grouping/schedule/astronomical/rate-of-change/other node types.
+            // Simple mode - a rule is one flat "if metric compares to value" comparison, no grouping/schedule/astronomical/rate-of-change/other node types.
             if (this.simpleMode) {
                 return NODE_TYPES.filter(([value]) => value === 'comparison');
             }
             return NODE_TYPES.filter(([value]) => {
-                // Roadmap #398(2) - astronomical is now valid on both action types (AstronomicalRuleResolver runs on both paths), ruleTriggered/rateOfChange/difDisruption stay Notification-only.
+                // Astronomical is now valid on both action types (AstronomicalRuleResolver runs on both paths), ruleTriggered/rateOfChange/difDisruption stay Notification-only.
                 if (value === 'ruleTriggered' || value === 'rateOfChange' || value === 'difDisruption') return this.isNotification;
                 return true;
             });

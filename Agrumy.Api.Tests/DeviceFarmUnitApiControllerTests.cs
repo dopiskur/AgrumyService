@@ -13,7 +13,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #411 - bulk WiFi switch fan-out across every device in a unit.
+/// Bulk WiFi switch fan-out across every device in a unit.
 public class DeviceFarmUnitApiControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);
@@ -93,7 +93,7 @@ public class DeviceFarmUnitApiControllerTests
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
-    // Roadmap #238 - dashboard widget list validation/ownership on the save endpoint.
+    // Dashboard widget list validation/ownership on the save endpoint.
     [Fact]
     public async Task DeviceFarmUnitZoneWidgetsSet_ForeignTenant_Returns403_NeverSaves()
     {

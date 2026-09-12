@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Shared.Models
 {
-    /// Roadmap #384 - top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site, e.g. separate LoRa networks or gateways naturally map to separate Farms); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
+    /// Top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site, e.g. separate LoRa networks or gateways naturally map to separate Farms); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarm
     {
         [HiddenInput(DisplayValue = true)]
@@ -14,9 +14,9 @@ namespace Agrumy.Shared.Models
         public FarmType FarmType { get; set; } = FarmType.Greenhouse;
         // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
-        // Roadmap #409 - null unless this came from the Recycle Bin listing.
+        // Null unless this came from the Recycle Bin listing.
         public DateTimeOffset? DeletedAtUtc { get; set; }
-        // Roadmap #427 - null unless this came from the pending-purge listing.
+        // Null unless this came from the pending-purge listing.
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
@@ -27,7 +27,7 @@ namespace Agrumy.Shared.Models
         public int? IDDeviceFarmUnit { get; set; }
         public int? TenantID { get; set; }
         public string? DeviceFarmUnitName { get; set; }
-        // Roadmap #384 - optional (a Farm-less Unit stays valid, no default-farm backfill).
+        // Optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
         // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
@@ -53,7 +53,7 @@ namespace Agrumy.Shared.Models
         // Per-zone opt-in, not a global switch; combined server-side with the device's tenant's own TenantWeatherState.WeatherRainPredicted into DeviceConfigController.SkipWaterPumpForRain.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
-        // Tank calibration (roadmap #234) - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (Agrumy.Shared.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.
+        // Tank calibration - all three null means "no tank tracking for this zone", not a zero-capacity tank. TankFillPercent/TankVolumeLiters (Agrumy.Shared.Utils.TankCalculator) are derived from these plus the zone's latest WaterLevel, never stored.
         public double? TankCapacityLiters { get; set; }
         /// Raw sensorData.WaterLevel reading when the tank is empty - not necessarily 0, depends on the physical sensor.
         public int? WaterLevelRawEmpty { get; set; }
@@ -63,14 +63,14 @@ namespace Agrumy.Shared.Models
         // Dry-run protection - blocks WaterPump (device-side, covers Interval/Schedule/Manual too, not just Threshold) below this fill percent. Null/<=0, or WaterLevelRawEmpty==WaterLevelRawFull (no tank calibration), disables it - a Water Valve zone with no tank sensor to protect.
         public double? WaterPumpMinLevel { get; set; }
 
-        // Roadmap #219 - generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (Agrumy.Api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
+        // Generalizes WaterPumpMaxRunSeconds above to the other two manually-triggerable functions; only ever used to compute a manual command's hard ExpiresAtUtc cap (Agrumy.Api.Commands.ManualActuateService), not applied to automated rule-driven runs the way WaterPump's own cap is.
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
 
         /// What a Heating rule does while its temperature reading is stale (sensor absent/disabled/failed) - null means Hold, the long-standing device-side default (see AgrumyFirmware's ActuatorController::evaluateRule).
         public HeatingFailSafePolicyType? HeatingFailSafePolicy { get; set; }
 
-        // Roadmap #238 - admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
+        // Admin-arranged dashboard widgets for this zone's own detail page, in display order. Never null (empty list means "show the default layout only") - see EfDeviceFarmUnitRepository's (de)serialization, same JSON-blob-at-the-app-layer convention as DeviceFarmUnitZoneRule.RootConditionJson. Stored server-side (not per-viewer) so a future mobile client renders the exact same layout, same reasoning the roadmap gave for this design.
         public List<DashboardWidget> DashboardWidgets { get; set; } = [];
 
         /// How many columns the widget grid wraps at on this leaf's dashboard page; display-only, same "no ConfigVersion bump" reasoning as DashboardWidgets.
@@ -153,7 +153,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? DateChanged { get; set; }
     }
 
-    /// Which measured quantity one ComparisonNode reads - RAW (1-13, a real sensor reading) or DERIVED (14+, computed on-the-fly from raw readings, never a stored column). Explicit per-condition (roadmap #396(4)) - the old model forced every condition in a rule to read the same metric the rule's own RelayFunction implied, making "temp>30 AND humidity<40" structurally inexpressible.
+    /// Which measured quantity one ComparisonNode reads - RAW (1-13, a real sensor reading) or DERIVED (14+, computed on-the-fly from raw readings, never a stored column). Explicit per-condition - the old model forced every condition in a rule to read the same metric the rule's own RelayFunction implied, making "temp>30 AND humidity<40" structurally inexpressible.
     public enum SensorMetric
     {
         Temperature = 1,
@@ -204,9 +204,9 @@ namespace Agrumy.Shared.Models
         Astronomical = 5,
         /// Only valid inside a Notification-action rule - a Relay-action rule fires invisibly on-device, so the server has no way to observe it as a trigger.
         RuleTriggered = 6,
-        /// Roadmap #398(1) - only valid inside a Notification-action rule; compares a live reading against Agrumy.Shared.Models.SensorTrend's hourly history, which only the server (not firmware) has.
+        /// Only valid inside a Notification-action rule; compares a live reading against Agrumy.Shared.Models.SensorTrend's hourly history, which only the server (not firmware) has.
         RateOfChange = 7,
-        /// Roadmap #398(3) - only valid inside a Notification-action rule, same SensorTrend dependency as RateOfChange; always reads Temperature, no Metric field.
+        /// Only valid inside a Notification-action rule, same SensorTrend dependency as RateOfChange; always reads Temperature, no Metric field.
         DifDisruption = 8,
     }
 
@@ -233,7 +233,7 @@ namespace Agrumy.Shared.Models
         ScheduleOnly = 2,
     }
 
-    /// Recursive rule-condition tree (roadmap #396(4)) - replaces the old flat Conditions[]+left-to-right-fold entirely (alfa phase, no backward compat). GroupNode.Children recurse arbitrarily, enabling real grouping ("(A AND B) OR (C AND D)"); every other Type is a leaf. A ComparisonNode's Metric is explicit and independent per condition - the old model forced every condition in a Relay rule to read the same metric its RelayFunction implied.
+    /// Recursive rule-condition tree - replaces the old flat Conditions[]+left-to-right-fold entirely (alfa phase, no backward compat). GroupNode.Children recurse arbitrarily, enabling real grouping ("(A AND B) OR (C AND D)"); every other Type is a leaf. A ComparisonNode's Metric is explicit and independent per condition - the old model forced every condition in a Relay rule to read the same metric its RelayFunction implied.
     public class ConditionNode
     {
         public NodeType Type { get; set; }
@@ -492,7 +492,7 @@ namespace Agrumy.Shared.Models
         public double? Humidity { get; set; }
         /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.VpdCalculator) - null whenever either is, never computed from a stale pairing.
         public double? Vpd { get; set; }
-        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator, roadmap #396(4)).
+        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator).
         public double? DewPoint { get; set; }
         /// Temperature minus DewPoint - a shrinking spread (typically &lt;2-3°C) is an early condensation/fungal-disease signal.
         public double? DewPointSpread { get; set; }
@@ -529,7 +529,7 @@ namespace Agrumy.Shared.Models
         public double?[] SoilTemperature { get; set; } = new double?[HourBuckets];
         public double?[] Humidity { get; set; } = new double?[HourBuckets];
         public double?[] Vpd { get; set; } = new double?[HourBuckets];
-        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator) - added for roadmap #398(1)'s RateOfChange node, so every SensorMetric (not just the raw ones) has a bucketed history to compare against.
+        /// Derived from Temperature+Humidity (Agrumy.Shared.Utils.DewPointCalculator) - added for the RateOfChange node, so every SensorMetric (not just the raw ones) has a bucketed history to compare against.
         public double?[] DewPoint { get; set; } = new double?[HourBuckets];
         public double?[] DewPointSpread { get; set; } = new double?[HourBuckets];
         public double?[] Moisture { get; set; } = new double?[HourBuckets];

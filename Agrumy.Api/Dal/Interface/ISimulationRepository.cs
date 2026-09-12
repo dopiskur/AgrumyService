@@ -7,7 +7,7 @@ namespace Agrumy.Api.Dal.Interface
     {
         Task VirtualDeviceRegisterAsync(int deviceID);
 
-        /// Every virtual device across every tenant that's also in a currently-active simulation session (roadmap #403) - the runner drives only these, not every registered virtual device unconditionally.
+        /// Every virtual device across every tenant that's also in a currently-active simulation session - the runner drives only these, not every registered virtual device unconditionally.
         Task<IList<int>> VirtualDeviceIdsGetAsync();
 
         /// Virtual device ids owned by tenantID, for the Web listing page (or every one when tenantID is null, GlobalAdmin's own-tenant-only rule still enforced by the caller). Unlike the parameterless overload, NOT limited to active-session membership - this is the raw registry for admin management (delete etc.), not the runner's own drive-list.
@@ -16,7 +16,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Deletes sensorData/controllerData/the registry row/the device itself (in that order) - a virtual device's synthetic telemetry has no historical value once it's gone, unlike a real device's (DeviceDeleteAsync alone does not touch sensorData).
         Task VirtualDeviceDeleteAsync(int deviceID, int? tenantID);
 
-        // ---- Simulation sessions (roadmap #403) ----------------------------
+        // ---- Simulation sessions ----------------------------
 
         /// Name only, StartedAtUtc/ExpiresAtUtc stay null until SimulationSessionStartAsync.
         /// quotaCheckAsync (when given) runs inside the same Serializable transaction as the insert, so a concurrent Add can't slip past a stale count - see Agrumy.Api.Quota.QuotaGuard.

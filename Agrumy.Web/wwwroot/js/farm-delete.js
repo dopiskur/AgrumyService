@@ -1,4 +1,4 @@
-// Roadmap #408 (b) - farm delete is now a real cascade (units/zones/devices go with it, into the
+// Farm delete is now a real cascade (units/zones/devices go with it, into the
 // Recycle Bin), so this confirms and, when another farm exists, offers migrating units out first.
 document.addEventListener('DOMContentLoaded', function () {
     const modalEl = document.getElementById('farmDeleteModal');

@@ -80,7 +80,7 @@ namespace Agrumy.Shared.Models
         [Range(0, 365)]
         public int? SatelliteRasterRetentionDays { get; set; } = 30;
 
-        // Roadmap #409 - how long a soft-deleted Farm/Device stays listed (and restorable) in the Recycle Bin; 0-90, default 30. Past this, a device/farm just drops off the recycle bin listing - its row (and SensorData) is NOT auto-purged, that's the separate manual/schedulable "Purge orphaned sensor data" action below.
+        // How long a soft-deleted Farm/Device stays listed (and restorable) in the Recycle Bin; 0-90, default 30. Past this, a device/farm just drops off the recycle bin listing - its row (and SensorData) is NOT auto-purged, that's the separate manual/schedulable "Purge orphaned sensor data" action below.
         [Display(Name = "Recycle bin retention (days)")]
         [Range(0, 90)]
         public int? RecycleBinRetentionDays { get; set; }
@@ -136,7 +136,7 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Require upper/lower case, digit, and symbol")]
         public bool PasswordRequireComplexity { get; set; }
 
-        // 0 disables it. DeviceConfigBuilder recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh on every build, but neither bumps ConfigVersion when it changes (a DST transition, an admin edit to ScheduleTimeZone, or a weather-poll flip) - this forces a full config resend periodically so those changes still reach a device that otherwise has nothing else queued. Clamped 1-168 (a week) by ServerConfigApiController.Update when non-zero. Default 1h, not 24h (roadmap #396(2)) - DST/rain-veto changes were tolerating up to a full day of staleness before this.
+        // 0 disables it. DeviceConfigBuilder recomputes UtcOffsetSeconds/SkipWaterPumpForRain fresh on every build, but neither bumps ConfigVersion when it changes (a DST transition, an admin edit to ScheduleTimeZone, or a weather-poll flip) - this forces a full config resend periodically so those changes still reach a device that otherwise has nothing else queued. Clamped 1-168 (a week) by ServerConfigApiController.Update when non-zero. Default 1h, not 24h - DST/rain-veto changes were tolerating up to a full day of staleness before this.
         [Display(Name = "Config heartbeat (hours, 0 = off)")]
         public int ConfigHeartbeatHours { get; set; } = 1;
 
@@ -203,7 +203,7 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Registration PIN validity (minutes)")]
         public int DevicePinValidMinutes { get; set; } = 60;
 
-        // Roadmap #209 - MariaDB/MySQL only (Postgres/TimescaleDB uses its own native tiered storage instead, #14); opt-in, moves sensorData rows past the cutoff to a separate archive database instead of deleting them (SensorDataArchiveEvaluator). Inactive until an admin sets and successfully tests archive credentials.
+        // MariaDB/MySQL only (Postgres/TimescaleDB uses its own native tiered storage instead); opt-in, moves sensorData rows past the cutoff to a separate archive database instead of deleting them (SensorDataArchiveEvaluator). Inactive until an admin sets and successfully tests archive credentials.
         [Display(Name = "Enable database archiving")]
         public bool ArchiveEnabled { get; set; }
 
@@ -261,7 +261,7 @@ namespace Agrumy.Shared.Models
         public bool AllowSelfServiceTenantCreation { get; set; }
     }
 
-    /// Body of POST /api/ServerConfig/TestArchiveDatabase (roadmap #209) - tests connectivity BEFORE Update ever saves these as the real archive credentials. Password blank means "use whatever's already saved" (the "Change archive database" flow editing host/port/etc without re-entering an unchanged password), same convention ServerConfigApiController.Update itself uses.
+    /// Body of POST /api/ServerConfig/TestArchiveDatabase - tests connectivity BEFORE Update ever saves these as the real archive credentials. Password blank means "use whatever's already saved" (the "Change archive database" flow editing host/port/etc without re-entering an unchanged password), same convention ServerConfigApiController.Update itself uses.
     public class ArchiveDbTestRequest
     {
         public string? Host { get; set; }
@@ -271,10 +271,10 @@ namespace Agrumy.Shared.Models
         public string? Password { get; set; }
     }
 
-    /// One row of GET /api/ServerConfig/Health (roadmap #419) - Status mirrors Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.ToString() ("Healthy"/"Degraded"/"Unhealthy"), kept as a plain string here so Agrumy.Web/Agrumy.Shared don't need a reference to that package just to deserialize it.
+    /// One row of GET /api/ServerConfig/Health - Status mirrors Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.ToString() ("Healthy"/"Degraded"/"Unhealthy"), kept as a plain string here so Agrumy.Web/Agrumy.Shared don't need a reference to that package just to deserialize it.
     public sealed record ServerHealthEntry(string Name, string Status, string? Description, double DurationMs);
 
-    /// Body of POST /api/ServerConfig/ArchiveSettings (roadmap #209) - the "Data Archiving" subsection's own self-contained save, independent of the main Server Settings form/button: tests the connection first when Enabled (skipped when disabling - see ServerConfigApiController.SaveArchiveSettings), then persists only these archive-specific fields, leaving the rest of ServerConfig untouched.
+    /// Body of POST /api/ServerConfig/ArchiveSettings - the "Data Archiving" subsection's own self-contained save, independent of the main Server Settings form/button: tests the connection first when Enabled (skipped when disabling - see ServerConfigApiController.SaveArchiveSettings), then persists only these archive-specific fields, leaving the rest of ServerConfig untouched.
     public class ArchiveSettingsSaveRequest
     {
         public bool Enabled { get; set; }

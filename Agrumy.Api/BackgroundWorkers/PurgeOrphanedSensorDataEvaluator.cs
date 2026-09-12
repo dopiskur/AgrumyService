@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Roadmap #427 - the recycle bin's two-phase purge cycle: (1) mark any Deleted-but-not-yet-Purged device/farm whose OWNING TENANT's retention has elapsed, (2) reap everything currently Purged - the actual, irreversible removal (SensorData included). #427's manual "Delete permanently now"/"Empty Recycle Bin" actions only ever do phase 1 for their target(s) directly; this evaluator is what actually finishes the job, on a schedule or via the manual "Purge Orphaned Sensor Data" trigger (DataMaintenanceApiController.PurgeOrphaned) forcing RunOnceAsync regardless of the schedule toggle.
+    /// The recycle bin's two-phase purge cycle: (1) mark any Deleted-but-not-yet-Purged device/farm whose OWNING TENANT's retention has elapsed, (2) reap everything currently Purged - the actual, irreversible removal (SensorData included). The manual "Delete permanently now"/"Empty Recycle Bin" actions only ever do phase 1 for their target(s) directly; this evaluator is what actually finishes the job, on a schedule or via the manual "Purge Orphaned Sensor Data" trigger (DataMaintenanceApiController.PurgeOrphaned) forcing RunOnceAsync regardless of the schedule toggle.
     public sealed class PurgeOrphanedSensorDataEvaluator(
         IServerConfigRepository serverConfigRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, ILogger<PurgeOrphanedSensorDataEvaluator> logger)
     {

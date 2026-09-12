@@ -24,7 +24,7 @@ namespace Agrumy.Shared.Models
         public int? Rssi { get; set; }
         public int ScanningDeviceID { get; set; }
         public string? ScanningDeviceName { get; set; }
-        // Roadmap #406 - nullable, matching Device.TenantID.
+        // Nullable, matching Device.TenantID.
         public int? TenantID { get; set; }
         public DateTimeOffset DateReported { get; set; }
     }

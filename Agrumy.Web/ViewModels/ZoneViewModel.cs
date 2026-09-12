@@ -15,7 +15,7 @@ namespace Agrumy.Web.ViewModels
         public DeviceFarmUnitZone? Zone { get; init; }
         public IList<DeviceFarmUnitZoneRule> Rules { get; init; } = [];
 
-        /// Roadmap #219 - currently-active manual commands (not yet past ExpiresAtUtc), same "no controller, no section" condition as Zone/Rules above.
+        /// Currently-active manual commands (not yet past ExpiresAtUtc), same "no controller, no section" condition as Zone/Rules above.
         public IList<DeviceManualOverride> ManualOverrides { get; init; } = [];
 
         // Same "no controller, no section" gating as Rules/ManualOverrides above - a sensor-only zone has nothing to apply a relay-driving template to.

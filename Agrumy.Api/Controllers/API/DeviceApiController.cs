@@ -41,7 +41,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound();
             }
-            // Roadmap #508 - Simulation Mode's own Latitude/Longitude override, applied only here (never persisted onto the device row itself), so it overrides even a device with a real GPS fix and disappears the instant the simulation is disabled/deleted.
+            // Simulation Mode's own Latitude/Longitude override, applied only here (never persisted onto the device row itself), so it overrides even a device with a real GPS fix and disappears the instant the simulation is disabled/deleted.
             DeviceSimulation? sim = await deviceRepo.DeviceSimulationGetAsync(device.IDDevice!.Value);
             if (sim is { Enabled: true, Latitude: double lat, Longitude: double lon })
             {
@@ -353,7 +353,7 @@ namespace Agrumy.Api.Controllers.API
             return result.Outcome == IssueCommandOutcome.Success ? Ok() : Conflict(result.Message);
         }
 
-        /// Roadmap #395 finding 3 - generates a fresh AES-256 key for this device's LoRa private-protocol uplinks and returns it once, write-only from then on (same convention as TenantWifiConfig.Password/ServerConfig's Mqtt/EmailPassword). The admin copies it into the node's own loraPrivateRegistration.json during provisioning; the node has no other way to learn it. Rotating a device already in the field re-provisions it from scratch - its old uplinks stay undecryptable, which is the point of rotation.
+        /// Generates a fresh AES-256 key for this device's LoRa private-protocol uplinks and returns it once, write-only from then on (same convention as TenantWifiConfig.Password/ServerConfig's Mqtt/EmailPassword). The admin copies it into the node's own loraPrivateRegistration.json during provisioning; the node has no other way to learn it. Rotating a device already in the field re-provisions it from scratch - its old uplinks stay undecryptable, which is the point of rotation.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("LoRaPrivateKey/Generate")]
         public async Task<ActionResult<string>> LoRaPrivateKeyGenerate(int idDevice)

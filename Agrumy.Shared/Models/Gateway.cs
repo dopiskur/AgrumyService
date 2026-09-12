@@ -80,7 +80,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? DateCreated { get; set; }
     }
 
-    /// Body of POST /api/Gateway/RelayUplink (roadmap #383) - a WiFi-connected LoRaGatewayEnabled device forwards one raw, already RF-decoded private-protocol frame, letting the server do the SAME address->device resolution + envelope dispatch Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService does for the serial-bridge path (GatewayDeviceMapping.DevEUI holds the address as a string here too) - "gateway is a transparent forwarder", same principle as Batch/LoRaGatewayBridgeController.
+    /// Body of POST /api/Gateway/RelayUplink - a WiFi-connected LoRaGatewayEnabled device forwards one raw, already RF-decoded private-protocol frame, letting the server do the SAME address->device resolution + envelope dispatch Agrumy.Gateway.LoRaPrivate.LoRaPrivateProtocolUplinkService does for the serial-bridge path (GatewayDeviceMapping.DevEUI holds the address as a string here too) - "gateway is a transparent forwarder", same principle as Batch/LoRaGatewayBridgeController.
     public class GatewayRelayUplinkRequest
     {
         public ushort SourceAddress { get; set; }

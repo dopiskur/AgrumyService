@@ -314,7 +314,7 @@ namespace Agrumy.Api.Firmware
                 result.Warnings.Add($"No {ManifestFileName} in the directory - files imported without checksum verification.");
             }
 
-            // Same ZIP extraction as UploadZipAsync (#337) - each .zip alongside loose .bin files in
+            // Same ZIP extraction as UploadZipAsync - each .zip alongside loose .bin files in
             // the directory extracts to its own scratch dir, then imports through this same method,
             // so a directory can mix loose .bin files and .zip archives freely.
             foreach (string zipPath in Directory.EnumerateFiles(path, "*.zip"))
@@ -562,7 +562,7 @@ namespace Agrumy.Api.Firmware
             }
         }
 
-        /// Shared by UploadZipAsync and ImportFromDirectoryAsync's own .zip handling (#337) - extracts
+        /// Shared by UploadZipAsync and ImportFromDirectoryAsync's own .zip handling - extracts
         /// into destDir (already created by the caller) and returns null on success, or a
         /// warnings-only FirmwareSyncResult if the archive was rejected outright (too many entries/too
         /// large uncompressed).

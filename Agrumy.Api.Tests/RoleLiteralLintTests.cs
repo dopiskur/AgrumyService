@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #299: three parallel authorization styles (raw string literal, a hand-built "admin,"+RoleNames.X hybrid, and RoleNames.* constants) were a source of security holes - a future [Authorize(Roles = "...")] with a raw string literal must fail CI instead of silently reintroducing the inconsistency.
+/// Three parallel authorization styles (raw string literal, a hand-built "admin,"+RoleNames.X hybrid, and RoleNames.* constants) were a source of security holes - a future [Authorize(Roles = "...")] with a raw string literal must fail CI instead of silently reintroducing the inconsistency.
 public class RoleLiteralLintTests
 {
     private static readonly Regex RawRoleLiteral = new("Authorize\\s*\\(\\s*Roles\\s*=\\s*\"", RegexOptions.Compiled);

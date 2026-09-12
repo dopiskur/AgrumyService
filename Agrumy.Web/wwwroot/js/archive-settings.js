@@ -1,4 +1,4 @@
-// Roadmap #209 - Data Archiving is its own self-contained widget, saved independently of the page's
+// Data Archiving is its own self-contained widget, saved independently of the page's
 // main Save button (test-before-persist, unlike every other Server Settings field) - see
 // ServerConfigController.SaveArchiveSettings/TestArchiveDatabase.
 document.addEventListener('DOMContentLoaded', function () {

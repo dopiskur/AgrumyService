@@ -119,7 +119,7 @@ namespace Agrumy.Api.Controllers.API
             return success ? Ok() : BadRequest(error);
         }
 
-        /// Roadmap #209 - the "Data Archiving" subsection's own self-contained save (Web's ServerConfigController.SaveArchiveSettings JS button, not the main Server Settings form), independent of every other tab. Tests the connection first when enabling (skipped when Enabled is false - "disable" needs no working credentials, roadmap #209's own explicit design decision), only THEN persists.
+        /// The "Data Archiving" subsection's own self-contained save (Web's ServerConfigController.SaveArchiveSettings JS button, not the main Server Settings form), independent of every other tab. Tests the connection first when enabling (skipped when Enabled is false - "disable" needs no working credentials, the own explicit design decision), only THEN persists.
         [HttpPost("ArchiveSettings")]
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         public async Task<ActionResult> SaveArchiveSettings([FromBody] ArchiveSettingsSaveRequest request)
@@ -182,7 +182,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// Roadmap #419 - passive Server Health card, polled by the Web page on an interval (Agrumy.Web's ServerConfigController.Health -> live-refresh.js), not an on-demand test button like TestEmail/TestArchiveDatabase above. Only lists a dependency currently enabled/configured in ServerConfig - see ServerHealthService.
+        /// Passive Server Health card, polled by the Web page on an interval (Agrumy.Web's ServerConfigController.Health -> live-refresh.js), not an on-demand test button like TestEmail/TestArchiveDatabase above. Only lists a dependency currently enabled/configured in ServerConfig - see ServerHealthService.
         [HttpGet("Health")]
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<IReadOnlyList<ServerHealthEntry>>> GetHealth()

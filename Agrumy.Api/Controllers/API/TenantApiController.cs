@@ -87,7 +87,7 @@ namespace Agrumy.Api.Controllers.API
                 tenant.ScheduleTimeZone = null;
             }
 
-            // Same pairing/range checks as ServerConfigApiController.Update's WeatherLocationLat/Lon (roadmap #396(6)) - one set without the other silently degrades AstronomicalRuleResolver back to the server-wide fallback instead of failing at save time.
+            // Same pairing/range checks as ServerConfigApiController.Update's WeatherLocationLat/Lon - one set without the other silently degrades AstronomicalRuleResolver back to the server-wide fallback instead of failing at save time.
             if (tenant.Latitude.HasValue != tenant.Longitude.HasValue)
             {
                 return BadRequest("Latitude and Longitude must be set together, or both left blank.");
@@ -181,7 +181,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok(await tenantRepo.TenantWeatherStateGetAsync(targetTenantId));
         }
 
-        // ---- Emergency stop (roadmap #230) -----------------------------------
+        // ---- Emergency stop -----------------------------------
 
         /// Fail-closed, tenant-wide: forces every actuator in idTenant (defaulting to the caller's own) off ahead of any rule, until explicitly cleared. Deliberately one click, no confirmation - unlike a destructive action, hesitation here is the wrong default.
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -231,7 +231,7 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- Export/Import --------------------------------------------------
 
-        /// SENSITIVE: carries every exported user's password hash/salt and device's ApiKey (treat like a credential bundle, never persisted server-side, built in memory and streamed straight back) - a TenantAdmin exports only their OWN tenant, Global admin any. ZIP-packaged (single export.json entry, see TenantExportService.BuildExportZipAsync) - same repackaging #124 already applies to the firmware catalog.
+        /// SENSITIVE: carries every exported user's password hash/salt and device's ApiKey (treat like a credential bundle, never persisted server-side, built in memory and streamed straight back) - a TenantAdmin exports only their OWN tenant, Global admin any. ZIP-packaged (single export.json entry, see TenantExportService.BuildExportZipAsync) - same repackaging already applies to the firmware catalog.
         [Authorize(Roles = RoleNames.Admins)]
         [HttpGet("Export")]
         public async Task<ActionResult> Export(int idTenant, bool includeSensorData = false, DateTime? sensorDataSinceUtc = null, CancellationToken cancellationToken = default)

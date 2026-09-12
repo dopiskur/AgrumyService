@@ -10,7 +10,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #403 - "Add Simulation" sessions: a device (physical or virtual) is added TO a named, time-boxed session instead of being independently toggled.
+/// "Add Simulation" sessions: a device (physical or virtual) is added TO a named, time-boxed session instead of being independently toggled.
 public class SimulationApiControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);

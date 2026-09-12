@@ -8,7 +8,7 @@
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool isGlobalReader = User.IsInRole(RoleNames.GlobalReader);
     Func<string, bool> hasAnyRoleOrReads = csv => hasAnyRole(csv) || isGlobalReader;
-    // Roadmap #509 - Horticulture Catalog (shared, read-only browse) and Alerts (now per-tenant, see TenantAlertConfig) are the two Global-only items a Tenant admin also gets; everything else Global-gated below stays Global admin/reader only.
+    // Horticulture Catalog (shared, read-only browse) and Alerts (now per-tenant, see TenantAlertConfig) are the two Global-only items a Tenant admin also gets; everything else Global-gated below stays Global admin/reader only.
     bool hasCatalogOrAlertsAccess = User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader || User.IsInRole(RoleNames.TenantAdmin);
     // Fetched for a Global admin or Global reader, the only two roles that can ever see the menu
     // items this gates. Swallowed on failure (just hides the item) since this runs in the shared

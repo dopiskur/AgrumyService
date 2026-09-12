@@ -6,10 +6,10 @@ using Moq;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #397(5) - ContractTests only proves a hand-built DeviceConfig serializes to a schema-valid
+/// ContractTests only proves a hand-built DeviceConfig serializes to a schema-valid
 /// shape; it never exercises the real DeviceConfigBuilder.BuildAsync, so a field BuildAsync silently
 /// forgets to map from Device (the user's own example: SleepSeconds never reaching firmware, caught
-/// during #385) would sail through those tests unnoticed. This drives the real builder against a
+/// during the field rename) would sail through those tests unnoticed. This drives the real builder against a
 /// fully-populated Device and asserts each top-level field actually carried over.
 public class DeviceConfigBuilderTests
 {

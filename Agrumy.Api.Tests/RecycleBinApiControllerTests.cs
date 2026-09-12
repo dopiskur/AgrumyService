@@ -10,7 +10,7 @@ using Agrumy.Api.Tests.TestSupport;
 
 namespace Agrumy.Api.Tests;
 
-/// Roadmap #409 - Recycle Bin listing/restore ownership checks.
+/// Recycle Bin listing/restore ownership checks.
 public class RecycleBinApiControllerTests
 {
     private readonly Mock<IAllFacetsRepository> _repo = new(MockBehavior.Strict);

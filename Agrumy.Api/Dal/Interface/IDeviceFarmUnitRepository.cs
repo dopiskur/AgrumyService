@@ -16,7 +16,7 @@ namespace Agrumy.Api.Dal.Interface
     /// Unit/Zone facet of the data layer: CRUD, device assignment, and the hierarchical dashboard aggregation - split out from IDeviceRepository as its own sizeable domain.
     public interface IDeviceFarmUnitRepository
     {
-        // ---- Farm CRUD (roadmap #384) -----------------------------------
+        // ---- Farm CRUD -----------------------------------
 
         /// Every real Farm in the tenant, or every tenant when tenantID is null (caller must check CallerReadsDevicesGlobally).
         Task<IList<DeviceFarm>> DeviceFarmsGetAsync(int? tenantID);
@@ -35,7 +35,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Sets DisplayOrder to each id's index in orderedFarmIds - only touches farms actually owned by tenantID, an id for another tenant (or a stale/unknown id) is silently ignored.
         Task DeviceFarmsReorderAsync(int tenantId, IReadOnlyList<int> orderedFarmIds);
 
-        /// Roadmap #408 - soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
+        /// Soft-deletes the Farm AND cascades to every Unit/Zone/Device still attached to it (see AgrumyDbContext's HasQueryFilter on each); a no-op if the id doesn't exist. Use DeviceFarmRecycleBinGetAsync/DeviceFarmRestoreAsync to see/undo it.
         Task DeviceFarmDeleteAsync(int idDeviceFarm);
 
         /// Every soft-deleted, not-yet-Purged Farm (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
@@ -50,7 +50,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Undoes DeviceFarmDeleteAsync's exact cascade (or a pending mark-for-purge) - clears BOTH Deleted and Purged on the farm AND its cascade Units/Zones/Devices; false if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceFarmRestoreAsync(int idDeviceFarm, int? tenantID);
 
-        /// Roadmap #427 - marks an already soft-deleted Farm (and its exact DeviceFarmDeleteAsync cascade of Units/Zones/Devices, matched by DeletedAtUtc) for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceFarmRestoreAsync until the purge cycle actually runs. False if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Marks an already soft-deleted Farm (and its exact DeviceFarmDeleteAsync cascade of Units/Zones/Devices, matched by DeletedAtUtc) for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceFarmRestoreAsync until the purge cycle actually runs. False if the farm doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceFarmRecycleBinMarkPurgedAsync(int idDeviceFarm, int? tenantID);
 
         /// The automatic half of marking - every Deleted, not-yet-Purged Farm whose OWNING TENANT's effective retention has elapsed. Returns how many were marked.
@@ -97,7 +97,7 @@ namespace Agrumy.Api.Dal.Interface
         /// The deliberate counterpart to DeviceFarmUnitZoneUpdateAsync, which never touches DeviceFarmUnitID - also moves the zone's own devices' denormalized DeviceFarmUnitID and bumps their ConfigVersion, since their effective Unit-scope rules just changed. False if the zone doesn't exist.
         Task<bool> DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
 
-        /// Roadmap #238 - replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
+        /// Replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
         Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets);
 
         /// Saves independently of DeviceFarmUnitZoneUpdateAsync, same reasoning as DeviceFarmUnitZoneWidgetsSetAsync.
@@ -130,7 +130,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Every controller device across every unit/zone under this farm.
         Task<IList<Device>> DeviceFarmGetControllersAsync(int idDeviceFarm);
 
-        /// Every device under this unit regardless of role or zone assignment - roadmap #411.
+        /// Every device under this unit regardless of role or zone assignment.
         Task<IList<Device>> DeviceFarmUnitGetDevicesAsync(int idDeviceFarmUnit);
 
         // ---- Device assignment -----------------------------------------
@@ -155,7 +155,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Single-zone detail: roll-up plus the actual device list, null if the zone id doesn't exist. ReadCommitted (default) - RuleNotificationEvaluator's only caller, where a since-rolled-back read must never drive a notification decision.
         Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardGetAsync(int idDeviceFarmUnitZone);
 
-        /// Same result shape as DeviceFarmUnitZoneDashboardGetAsync, for the Web dashboard display instead of alert evaluation (roadmap #410) - ReadUncommitted, same "dirty reads are fine for a display snapshot" reasoning as SensorDataExportGetAsync (#253), so a #409 purge batch never blocks/is blocked by a dashboard load.
+        /// Same result shape as DeviceFarmUnitZoneDashboardGetAsync, for the Web dashboard display instead of alert evaluation - ReadUncommitted, same "dirty reads are fine for a display snapshot" reasoning as SensorDataExportGetAsync, so a purge batch never blocks/is blocked by a dashboard load.
         Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone);
 
         /// Averages+Trend for one dashboard widget's own (level, levelId) scope - Farm rolls up every zone under every unit of that farm, Unit same narrowed to one unit's zones, Zone is a single zone's own reading.
@@ -169,7 +169,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Every rule scoped to exactly this unit (Unit scope, not the union of its zones' own rules).
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForUnitAsync(int idDeviceFarmUnit);
 
-        /// Every rule scoped to exactly this farm (Farm scope, not the union of its units'/zones' own rules) - roadmap #384.
+        /// Every rule scoped to exactly this farm (Farm scope, not the union of its units'/zones' own rules).
         Task<IList<DeviceFarmUnitZoneRule>> RulesGetForFarmAsync(int idDeviceFarm);
 
         /// Every rule at Global (per-tenant) scope - applies to every farm/unit/zone/crop/parcel the tenant owns unless a more specific scope overrides it for that function/metric.
@@ -214,14 +214,14 @@ namespace Agrumy.Api.Dal.Interface
 
         Task RuleNotificationWasTrueSetAsync(int ruleId, int idDeviceFarmUnitZone, bool wasTrue, DateTime? lastFiredAtUtc);
 
-        // ---- Tank refill alert (roadmap #234) --------------------------
+        // ---- Tank refill alert --------------------------
 
         /// Every real, tank-calibrated zone (TankCapacityLiters + both raw calibration points set) across every tenant, with its latest averaged WaterLevel reading.
         Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync();
 
         Task TankRefillNotifiedSetAsync(int idDeviceFarmUnitZone, DateTimeOffset? notifiedAt);
 
-        // ---- Manual actuate (roadmap #219) --------------------------
+        // ---- Manual actuate --------------------------
 
         /// Upserts on (DeviceID, RelayFunction) - starting a new command for an already-active function replaces it, same "restart the timer" semantics as re-triggering anything else in this system.
         Task ManualOverrideStartAsync(DeviceManualOverride manualOverride);

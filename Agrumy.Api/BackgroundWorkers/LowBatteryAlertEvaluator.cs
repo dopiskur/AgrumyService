@@ -4,7 +4,7 @@ using Agrumy.Api.Notifications;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold (or its tenant's own TenantAlertConfig override, roadmap #509) fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
+    /// A device's latest battery reading crossing ServerConfig.BatteryLowThreshold (or its tenant's own TenantAlertConfig override) fires one alert per low-battery streak, dead-zone-latched against BatteryLowHysteresis to avoid chattering at the boundary.
     public sealed class LowBatteryAlertEvaluator(
         IDeviceRepository deviceRepo, IUserRepository userRepo, ITenantRepository tenantRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {
@@ -29,7 +29,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 {
                     continue;
                 }
-                // Roadmap #406 - a genuinely tenant-less device has no tenant admins to notify.
+                // A genuinely tenant-less device has no tenant admins to notify.
                 if (d.TenantID is not int tenantId)
                 {
                     continue;

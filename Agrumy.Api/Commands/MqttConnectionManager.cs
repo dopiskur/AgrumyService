@@ -7,7 +7,7 @@ namespace Agrumy.Api.Commands
     {
         Task PublishAsync(string brokerHost, int brokerPort, string? username, string? password, MqttApplicationMessage message, CancellationToken ct = default);
 
-        /// Health-check use only (roadmap #419) - opens/reuses the connection without publishing anything.
+        /// Health-check use only - opens/reuses the connection without publishing anything.
         Task<bool> TestConnectionAsync(string brokerHost, int brokerPort, string? username, string? password, CancellationToken ct = default);
     }
 

@@ -3,7 +3,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests;
 
-/// Zone>Unit>Farm>Global precedence (roadmap #212/#384) - a scope's rules for a function (Relay) or name (Notification, #396(4)) fully replace, never merge with, a less specific scope's, UNLESS IsSafetyRule (#396(5)) which always survives regardless of scope.
+/// Zone>Unit>Farm>Global precedence - a scope's rules for a function (Relay) or name (Notification) fully replace, never merge with, a less specific scope's, UNLESS IsSafetyRule which always survives regardless of scope.
 public class RuleHierarchyResolverTests
 {
     private static ConditionNode Leaf() => new() { Type = NodeType.Comparison, Metric = SensorMetric.Temperature, Operator = ComparisonOperator.GreaterThan, Value1 = 1, Hysteresis = 1 };
@@ -166,7 +166,7 @@ public class RuleHierarchyResolverTests
         Assert.Equal(2, result.Count);
     }
 
-    /// Roadmap #396(5) - a global frost-guard survives even though the zone's own rule for the same function wins normal resolution; the old bug this fixes was the zone rule silently erasing it.
+    /// A global frost-guard survives even though the zone's own rule for the same function wins normal resolution; the old bug this fixes was the zone rule silently erasing it.
     [Fact]
     public void ResolveRelayRules_GlobalSafetyRule_SurvivesZoneOverride_OrsInAlongside()
     {
@@ -213,7 +213,7 @@ public class RuleHierarchyResolverTests
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }
 
-    /// Roadmap #396(4) - Notification rules no longer group by SensorMetric (a rule can span several metrics now); a more specific scope's rule with the SAME Name replaces a less specific one instead.
+    /// Notification rules no longer group by SensorMetric (a rule can span several metrics now); a more specific scope's rule with the SAME Name replaces a less specific one instead.
     [Fact]
     public void ResolveNotificationRules_SameName_ZoneOverridesGlobal()
     {
@@ -237,7 +237,7 @@ public class RuleHierarchyResolverTests
         Assert.Equal([1, 2], result.Select(r => r.IDDeviceFarmUnitZoneRule).OrderBy(x => x));
     }
 
-    /// Roadmap #396(5) - same safety-rule survival as Relay, for Notification's name-based override.
+    /// Same safety-rule survival as Relay, for Notification's name-based override.
     [Fact]
     public void ResolveNotificationRules_GlobalSafetyRule_SurvivesZoneOverride_WithSameName()
     {

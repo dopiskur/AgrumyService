@@ -59,7 +59,7 @@ namespace Agrumy.Api.Controllers.API
         }
 
 
-        /// Same shape as DeviceApiController.EnsureOwnedDeviceAsync, for DeviceFarm (roadmap #384).
+        /// Same shape as DeviceApiController.EnsureOwnedDeviceAsync, for DeviceFarm.
         private Task<OwnedResult<DeviceFarm>> EnsureOwnedFarmAsync(int? idDeviceFarm, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => deviceFarmUnitRepo.DeviceFarmGetByIdAsync(idDeviceFarm), f => f.TenantID, "Farm", forWrite);
 

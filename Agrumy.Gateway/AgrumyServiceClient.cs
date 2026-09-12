@@ -68,7 +68,7 @@ namespace Agrumy.Gateway
                 ?? new GatewayBatchResponse();
         }
 
-        /// Roadmap #395 finding 3 - LoRaPrivateProtocolUplinkService forwards the still-encrypted uplink bytes here instead of decrypting locally (same "gateway holds no permanent per-device secret" principle as GatewayDeviceToken); AgrumyService is the only place that ever sees the plaintext or the key. Same apiId/apiKey auth as Batch.
+        /// LoRaPrivateProtocolUplinkService forwards the still-encrypted uplink bytes here instead of decrypting locally (same "gateway holds no permanent per-device secret" principle as GatewayDeviceToken); AgrumyService is the only place that ever sees the plaintext or the key. Same apiId/apiKey auth as Batch.
         public async Task<GatewayBatchEntryResult> RelayUplinkAsync(GatewayRelayUplinkRequest request, CancellationToken ct)
         {
             GatewayRegistrationState reg = registration.Current;

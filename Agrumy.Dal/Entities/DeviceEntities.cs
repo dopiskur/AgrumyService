@@ -1,6 +1,6 @@
 namespace Agrumy.Dal.Entities
 {
-    /// Roadmap #384 - top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
+    /// Top-level organizational grouping ABOVE Unit within the same tenant (a physical farm/site); optional, a DeviceFarmUnit not yet assigned to one has DeviceFarmID null.
     public class DeviceFarmRow
     {
         public int IDDeviceFarm { get; set; }
@@ -10,11 +10,11 @@ namespace Agrumy.Dal.Entities
         public int FarmType { get; set; }
         public int DisplayOrder { get; set; }
 
-        // Roadmap #408/#409 - soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
+        // Soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
-        // Roadmap #427 - still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceFarmUnitRepository.DeviceFarmRecycleBinPurgeAsync).
+        // Still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceFarmUnitRepository.DeviceFarmRecycleBinPurgeAsync).
         public bool Purged { get; set; }
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
@@ -25,11 +25,11 @@ namespace Agrumy.Dal.Entities
         public int? TenantID { get; set; }
         public string? DeviceFarmUnitName { get; set; }
         public bool? ZoneEnabled { get; set; }
-        // Roadmap #384 - optional (a Farm-less Unit stays valid, no default-farm backfill).
+        // Optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
         public int DisplayOrder { get; set; }
 
-        // Roadmap #408 - set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
+        // Set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
     }
@@ -42,7 +42,7 @@ namespace Agrumy.Dal.Entities
         public int DeviceFarmUnitID { get; set; }
         public string? DeviceFarmUnitZoneName { get; set; }
 
-        // Roadmap #408 - set only as a cascade of the owning DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
+        // Set only as a cascade of the owning DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
@@ -53,14 +53,14 @@ namespace Agrumy.Dal.Entities
         // See Agrumy.Shared.Models.DeviceFarmUnitZone.SkipWaterPumpWhenRainPredicted.
         public bool SkipWaterPumpWhenRainPredicted { get; set; }
 
-        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #234).
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation.
         public double? TankCapacityLiters { get; set; }
         public int? WaterLevelRawEmpty { get; set; }
         public int? WaterLevelRawFull { get; set; }
         public DateTimeOffset? TankRefillNotifiedAt { get; set; }
         public double? WaterPumpMinLevel { get; set; }
 
-        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation (roadmap #219).
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone's own copy of these for the full explanation.
         public int? HeatingMaxRunSeconds { get; set; }
         public int? VentilationMaxRunSeconds { get; set; }
         public int DashboardGridColumns { get; set; } = 4;
@@ -68,16 +68,16 @@ namespace Agrumy.Dal.Entities
         // See Agrumy.Shared.Models.DeviceFarmUnitZone.HeatingFailSafePolicy - stored as HeatingFailSafePolicyType's own int value, null means Hold (the device's own default).
         public int? HeatingFailSafePolicy { get; set; }
 
-        // See Agrumy.Shared.Models.DeviceFarmUnitZone.DashboardWidgets (roadmap #238) - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
+        // See Agrumy.Shared.Models.DeviceFarmUnitZone.DashboardWidgets - JSON array, (de)serialized at the application layer same as DeviceFarmUnitZoneRuleRow.RootConditionJson below. Null/empty means no custom widgets configured.
         public string? DashboardWidgetsJson { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree (roadmap #396(4)), (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
+    /// See Agrumy.Shared.Models.DeviceFarmUnitZoneRule - RootConditionJson is a single ConditionNode tree, (de)serialized at the application layer, not a native JSON column type. Exactly one of DeviceFarmUnitZoneID/DeviceFarmUnitID is set for Zone/Unit scope, both null for Global (per-tenant) scope.
     public class DeviceFarmUnitZoneRuleRow
     {
         public int IDDeviceFarmUnitZoneRule { get; set; }
         public int TenantID { get; set; }
-        // Roadmap #384 - exactly one of DeviceFarmID/DeviceFarmUnitID/DeviceFarmUnitZoneID is set (Farm/Unit/Zone scope); all three null means Global. Enforced in DeviceFarmUnitApiController, not the DB, same as the other two.
+        // Exactly one of DeviceFarmID/DeviceFarmUnitID/DeviceFarmUnitZoneID is set (Farm/Unit/Zone scope); all three null means Global. Enforced in DeviceFarmUnitApiController, not the DB, same as the other two.
         public int? DeviceFarmID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
         public int? DeviceFarmUnitZoneID { get; set; }
@@ -272,7 +272,7 @@ namespace Agrumy.Dal.Entities
         public int? WaterLevel { get; set; }
         public int? Wind { get; set; }
 
-        // Roadmap #508 - see Agrumy.Shared.Models.DeviceSimulation.Latitude/Longitude.
+        // See Agrumy.Shared.Models.DeviceSimulation.Latitude/Longitude.
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
     }
@@ -284,7 +284,7 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset DateCreated { get; set; }
     }
 
-    /// Roadmap #403 - the "Add Simulation" container/entry-point a device (physical or virtual) is added TO, replacing the old per-device toggle mental model. ExpiresAtUtc is StartedAtUtc plus an admin-chosen duration, hard-capped at 48h; StoppedAtUtc null means still running, set either by an explicit early stop or by SimulationSessionExpiryEvaluator once ExpiresAtUtc passes.
+    /// The "Add Simulation" container/entry-point a device (physical or virtual) is added TO, replacing the old per-device toggle mental model. ExpiresAtUtc is StartedAtUtc plus an admin-chosen duration, hard-capped at 48h; StoppedAtUtc null means still running, set either by an explicit early stop or by SimulationSessionExpiryEvaluator once ExpiresAtUtc passes.
     public class SimulationSessionRow
     {
         public int IDSimulationSession { get; set; }
@@ -331,7 +331,7 @@ namespace Agrumy.Dal.Entities
     public class DeviceRow
     {
         public int IDDevice { get; set; }
-        // Roadmap #406 - nullable, matching the DB column (now nullable, no DEFAULT). TenantID=0 stays a real tenant (the bootstrap/default one); null means genuinely unassigned.
+        // Nullable, matching the DB column (now nullable, no DEFAULT). TenantID=0 stays a real tenant (the bootstrap/default one); null means genuinely unassigned.
         public int? TenantID { get; set; }
         public int? DeviceRoleID { get; set; }
         public int? DeviceFarmUnitID { get; set; }
@@ -355,7 +355,7 @@ namespace Agrumy.Dal.Entities
         public string? ServicePublicKey { get; set; }
         public int? SleepSeconds { get; set; }
         public bool? SleepDeepEnabled { get; set; }
-        // Roadmap #383 - see Agrumy.Shared.Models.Device.LoRaGatewayEnabled.
+        // See Agrumy.Shared.Models.Device.LoRaGatewayEnabled.
         public bool? LoRaGatewayEnabled { get; set; }
         public bool? DeviceSensorEnabled { get; set; }
         public bool? DeviceControllerEnabled { get; set; }
@@ -384,11 +384,11 @@ namespace Agrumy.Dal.Entities
         // LoRa private-protocol uplink encryption key - null until an admin generates one via DeviceApiController.LoRaPrivateKeyGenerate. 64 hex chars = AES-256's 32 raw bytes.
         public string? LoRaPrivateKeyHex { get; set; }
 
-        // Roadmap #409 - soft delete, see AgrumyDbContext's HasQueryFilter on this entity. Only RecycleBinApiController ever sees a Deleted row directly (IgnoreQueryFilters).
+        // Soft delete, see AgrumyDbContext's HasQueryFilter on this entity. Only RecycleBinApiController ever sees a Deleted row directly (IgnoreQueryFilters).
         public bool Deleted { get; set; }
         public DateTimeOffset? DeletedAtUtc { get; set; }
 
-        // Roadmap #427 - still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceRepository.DeviceRecycleBinPurgeAsync).
+        // Still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceRepository.DeviceRecycleBinPurgeAsync).
         public bool Purged { get; set; }
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
@@ -438,7 +438,7 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? PublishedAt { get; set; } // Set once DeviceOutboxDispatchEvaluator (or a synchronous issue-path publish) has attempted an MQTT push for this row - null means still owed a dispatch attempt.
     }
 
-    /// One active manual actuation (roadmap #219) - upserted on (DeviceID, RelayFunction), so starting a new command for an already-active function replaces it rather than stacking rows.
+    /// One active manual actuation - upserted on (DeviceID, RelayFunction), so starting a new command for an already-active function replaces it rather than stacking rows.
     public class DeviceManualOverrideRow
     {
         public int IDDeviceManualOverride { get; set; }

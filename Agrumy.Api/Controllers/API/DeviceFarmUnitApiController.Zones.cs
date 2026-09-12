@@ -124,7 +124,7 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
-        // Roadmap #238 - a Text widget's own Label carries its content, so it's the one type that's never optional; every other type's Label just overrides an auto-generated title.
+        // A Text widget's own Label carries its content, so it's the one type that's never optional; every other type's Label just overrides an auto-generated title.
         private const int MaxWidgetsPerZone = 20;
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

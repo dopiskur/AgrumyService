@@ -46,7 +46,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 {
                     continue; // already alerted for this ongoing streak - dedup
                 }
-                // Roadmap #406 - a genuinely tenant-less device has no tenant admins to notify.
+                // A genuinely tenant-less device has no tenant admins to notify.
                 if (d.TenantID is not int tenantId)
                 {
                     continue;

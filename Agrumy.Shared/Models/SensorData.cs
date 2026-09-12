@@ -3,7 +3,7 @@ using Agrumy.Shared.Json;
 
 namespace Agrumy.Shared.Models
 {
-    /// One item of the JSON array body for POST /api/SensorData - see contracts/device-api/sensordata.request.schema.json. DeviceID/TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID are present on the wire but always ignored (identity comes from the authenticated device, see SensorDataController.Post); every measurement accepts a JSON number OR a numeric string, since legacy pre-#326 firmware still sends strings.
+    /// One item of the JSON array body for POST /api/SensorData - see contracts/device-api/sensordata.request.schema.json. DeviceID/TenantID/DeviceFarmUnitID/DeviceFarmUnitZoneID are present on the wire but always ignored (identity comes from the authenticated device, see SensorDataController.Post); every measurement accepts a JSON number OR a numeric string, since legacy pre- firmware still sends strings.
     public class SensorDataPushReading
     {
         public int? DeviceID { get; set; }
@@ -81,7 +81,7 @@ namespace Agrumy.Shared.Models
 
     }
 
-    /// One day's average Moisture for a FarmParcelZone - pairs with SatelliteSeriesPoint on the Zone-tab dual-axis trend chart (#558).
+    /// One day's average Moisture for a FarmParcelZone - pairs with SatelliteSeriesPoint on the Zone-tab dual-axis trend chart.
     public class FarmParcelZoneMoistureSeriesPoint
     {
         public DateOnly Date { get; set; }

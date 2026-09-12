@@ -30,7 +30,7 @@ namespace Agrumy.Api.Devices
         {
             // Computed fresh (not cached) every response so a DST shift or ScheduleTimeZone change reaches every device on its next poll; also reused below as the server-wide location fallback.
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
-            // Per-tenant, not global - a device with no tenant (roadmap #406, genuinely unassigned) or an unset zone both fall back to UTC via GetUtcOffsetSeconds' own null handling.
+            // Per-tenant, not global - a device with no tenant (genuinely unassigned) or an unset zone both fall back to UTC via GetUtcOffsetSeconds' own null handling.
             Tenant? tenant = device.TenantID is int tenantId ? await tenantRepo.TenantGetByIdAsync(tenantId) : null;
             int utcOffsetSeconds = TimeZoneHelper.GetUtcOffsetSeconds(DateTime.UtcNow, tenant?.ScheduleTimeZone);
 
@@ -142,7 +142,7 @@ namespace Agrumy.Api.Devices
                         : [];
                     IList<DeviceFarmUnitZoneRule> rules = RuleHierarchyResolver.ResolveRelayRules(simulationRules, experimentRules, leafRules, midRules, farmRules, globalRules);
                     DateOnly localDate = DateOnly.FromDateTime(DateTime.UtcNow.AddSeconds(utcOffsetSeconds));
-                    // Tenant's own site location first, server-wide default otherwise (roadmap #396(6), same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
+                    // Tenant's own site location first, server-wide default otherwise (same cascade as ScheduleTimeZone above) - only falls all the way through when NEITHER tenant nor server has one set.
                     double? lat = tenant?.Latitude ?? serverConfig.WeatherLocationLat;
                     double? lon = tenant?.Longitude ?? serverConfig.WeatherLocationLon;
                     controller.Rules = AstronomicalRuleResolver.Resolve(rules, lat, lon, localDate, utcOffsetSeconds);
@@ -157,7 +157,7 @@ namespace Agrumy.Api.Devices
                         && (await tenantRepo.TenantWeatherStateGetAsync(weatherTenantId)).WeatherRainPredicted;
                     controller.HeatingFailSafePolicy = leafNode?.HeatingFailSafePolicy;
 
-                    // Roadmap #219 - only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.
+                    // Only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.
                     IList<DeviceManualOverride> activeOverrides = await deviceFarmUnitRepo.ManualOverridesActiveForDeviceAsync(device.IDDevice!.Value);
                     controller.ManualOverrides = activeOverrides.Select(o => new DeviceManualOverridePush
                     {

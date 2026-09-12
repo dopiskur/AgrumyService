@@ -4,7 +4,7 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.Tests;
 
-/// SolarCalculator's NOAA formulas (checked against well-known seasonal invariants, not hardcoded minute-precision tables) and AstronomicalRuleResolver's compile-to-Schedule step (#228).
+/// SolarCalculator's NOAA formulas (checked against well-known seasonal invariants, not hardcoded minute-precision tables) and AstronomicalRuleResolver's compile-to-Schedule step.
 public class AstronomicalScheduleTests
 {
     [Fact]
@@ -87,7 +87,7 @@ public class AstronomicalScheduleTests
     [Fact]
     public void Resolve_NotificationActionRule_CompilesJustLikeRelay()
     {
-        // Roadmap #398(2) - the resolver was always ActionType-agnostic, DeviceFarmUnitApiController's validation was the only thing blocking Astronomical on a Notification rule.
+        // The resolver was always ActionType-agnostic, DeviceFarmUnitApiController's validation was the only thing blocking Astronomical on a Notification rule.
         var rule = AstroRule(daysOfWeek: 127, sunriseOffset: 0, sunsetOffset: 0);
         rule.ActionType = ActionType.Notification;
         rule.RelayFunction = null;

@@ -81,7 +81,7 @@ namespace Agrumy.Api.Controllers.API
             return Accepted();
         }
 
-        /// Roadmap #427 - manual trigger for the same recycle-bin purge cycle PurgeOrphanedSensorDataBackgroundService runs on a schedule; forces PurgeOrphanedSensorDataEvaluator.RunOnceAsync regardless of PurgeOrphanedSensorDataScheduleEnabled, since an explicit admin click is not "the schedule". Marks anything newly past its tenant's retention AND reaps everything already Purged (including finalizing any #427 "Delete permanently now"/"Empty Recycle Bin" actions instead of waiting for the next scheduled tick).
+        /// Manual trigger for the same recycle-bin purge cycle PurgeOrphanedSensorDataBackgroundService runs on a schedule; forces PurgeOrphanedSensorDataEvaluator.RunOnceAsync regardless of PurgeOrphanedSensorDataScheduleEnabled, since an explicit admin click is not "the schedule". Marks anything newly past its tenant's retention AND reaps everything already Purged (including finalizing any "Delete permanently now"/"Empty Recycle Bin" actions instead of waiting for the next scheduled tick).
         [HttpPost("PurgeOrphaned")]
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         public ActionResult PurgeOrphaned([FromBody] RecycleBinPurgeRequest request)

@@ -28,7 +28,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Returns the created device (with its generated IDDevice) directly - callers don't need a follow-up DeviceGetAsync. Null quotaCheckAsync (e.g. a virtual/simulation device, or admin data import) skips the quota check and its Serializable transaction entirely - see QuotaGuard.
         Task<Device> DeviceAddAsync(Device device, Func<Task<string?>>? quotaCheckAsync = null);
 
-        /// Roadmap #409 - soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
+        /// Soft delete; see AgrumyDbContext's HasQueryFilter on DeviceRow. Use DeviceRecycleBinGetAsync/DeviceRestoreAsync to see/undo it.
         Task DeviceDeleteAsync(int? idDevice, int? tenantID);
 
         /// Every soft-deleted, not-yet-Purged device (tenantID null = every tenant) - still visible/restorable in the Recycle Bin listing.
@@ -43,7 +43,7 @@ namespace Agrumy.Api.Dal.Interface
         /// Undoes DeviceDeleteAsync (or a pending DeviceRecycleBinMarkPurgedAsync) - clears BOTH Deleted and Purged, false if the device doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceRestoreAsync(int idDevice, int? tenantID);
 
-        /// Roadmap #427 - marks an already soft-deleted device for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceRestoreAsync until the purge cycle actually runs. False if it doesn't exist, isn't deleted, or belongs to a different tenant.
+        /// Marks an already soft-deleted device for permanent removal without waiting out its tenant's RecycleBinRetentionDays; still fully restorable via DeviceRestoreAsync until the purge cycle actually runs. False if it doesn't exist, isn't deleted, or belongs to a different tenant.
         Task<bool> DeviceRecycleBinMarkPurgedAsync(int idDevice, int? tenantID);
 
         /// The automatic half of marking - every Deleted, not-yet-Purged device whose OWNING TENANT's effective retention (its own override, falling back to serverDefaultRetentionDays) has elapsed. Returns how many were marked.

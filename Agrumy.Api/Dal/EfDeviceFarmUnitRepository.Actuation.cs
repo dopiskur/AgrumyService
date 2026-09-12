@@ -13,7 +13,7 @@ namespace Agrumy.Api.Dal
 {
     internal sealed partial class EfDeviceFarmUnitRepository
     {
-        // ---- Tank refill alert (roadmap #234) --------------------------
+        // ---- Tank refill alert --------------------------
 
         public async Task<IList<TankRefillAlertCandidate>> TankRefillAlertCandidatesGetAsync()
         {
@@ -40,7 +40,7 @@ namespace Agrumy.Api.Dal
                     })
                     .ToListAsync();
 
-                // Same staleness window DeviceFarmUnitZoneDashboardGetAsync uses (roadmap #345) - a dead/unreachable sensor's stale last reading must not count toward the average, or the alert never fires despite an actually-empty tank.
+                // Same staleness window DeviceFarmUnitZoneDashboardGetAsync uses - a dead/unreachable sensor's stale last reading must not count toward the average, or the alert never fires despite an actually-empty tank.
                 double? waterLevel = latestPerDevice
                     .Where(d => d.Reading?.DateCreated != null && (utcNow - d.Reading.DateCreated.Value).TotalSeconds <=
                         (d.SleepSeconds ?? 60) * (double)DeviceFleetStatus.OfflineMissedPolls + DeviceFleetStatus.OfflineGraceSeconds)
@@ -60,7 +60,7 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(s => s.SetProperty(z => z.TankRefillNotifiedAt, notifiedAt));
         }
 
-        // ---- Manual actuate (roadmap #219) --------------------------
+        // ---- Manual actuate --------------------------
 
         public async Task ManualOverrideStartAsync(DeviceManualOverride manualOverride)
         {

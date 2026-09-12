@@ -2,7 +2,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Utils
 {
-    /// Pure computation of SensorDataArchiveEvaluator's cutoff (roadmap #209) - rows with DateCreated strictly before the result move to the archive database. Kept separate from the evaluator so the three modes are testable without a database.
+    /// Pure computation of SensorDataArchiveEvaluator's cutoff - rows with DateCreated strictly before the result move to the archive database. Kept separate from the evaluator so the three modes are testable without a database.
     public static class ArchiveCutoffCalculator
     {
         /// Null means "not configured yet" - CustomDate with no date set, or CustomRollingDays with no value set; the caller must treat that as nothing to archive this run, not an error.

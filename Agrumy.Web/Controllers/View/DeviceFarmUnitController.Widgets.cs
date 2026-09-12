@@ -12,7 +12,7 @@ namespace Agrumy.Web.Controllers.View
 {
     public partial class DeviceFarmUnitController
     {
-        // ---- Dashboard widgets (roadmap #238) - fetch-then-patch the whole list, same pattern as ZoneRename above. ----
+        // ---- Dashboard widgets - fetch-then-patch the whole list, same pattern as ZoneRename above. ----
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]

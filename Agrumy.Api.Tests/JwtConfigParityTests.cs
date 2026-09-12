@@ -39,7 +39,7 @@ public class JwtConfigParityTests
         Assert.Equal(apiJwt.GetProperty("Audience").GetString(), webJwt.GetProperty("Audience").GetString());
     }
 
-    /// #218's actual bug was two hand-written TokenValidationParameters (AuthServiceExtensions' AddJwtBearer and JwtTokenProvider.ValidateToken) drifting apart in a field appsettings.json never covers (ClockSkew). Both now build from JwtTokenProvider.BuildValidationParameters, so this locks in that single factory's contract rather than comparing two copies.
+    /// The actual bug was two hand-written TokenValidationParameters (AuthServiceExtensions' AddJwtBearer and JwtTokenProvider.ValidateToken) drifting apart in a field appsettings.json never covers (ClockSkew). Both now build from JwtTokenProvider.BuildValidationParameters, so this locks in that single factory's contract rather than comparing two copies.
     [Fact]
     public void BuildValidationParameters_HasTheExpectedValidationFlags()
     {

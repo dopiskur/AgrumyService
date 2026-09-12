@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Horticulture Catalog";
     var type = (Agrumy.Shared.Models.HorticultureCatalogType)ViewBag.CatalogType;
-    // Roadmap #509 - a Tenant admin browses this shared, cross-tenant catalog the same read-only way a Global reader does; only a Global admin ever edits it.
+    // A Tenant admin browses this shared, cross-tenant catalog the same read-only way a Global reader does; only a Global admin ever edits it.
     bool isReadOnly = ViewBag.IsReadOnly is true || User.IsInRole(RoleNames.TenantAdmin);
 }
 

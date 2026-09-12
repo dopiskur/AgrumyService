@@ -222,7 +222,7 @@ public class UserProfileTests
     public async Task DevicePinGenerate_StoresAndReturns_FreshPin_WithExpiry()
     {
         _repo.Setup(r => r.UserGetAsync(null, "me@x.com", null)).ReturnsAsync(new User { IDUser = 5, Email = "me@x.com" });
-        // Roadmap #372: validity is now ServerConfig.DevicePinValidMinutes, not the old hardcoded 24h constant.
+        // Validity is now ServerConfig.DevicePinValidMinutes, not the old hardcoded 24h constant.
         _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { DevicePinValidMinutes = 120 });
 
         string? storedPin = null;
@@ -283,7 +283,7 @@ public class UserProfileTests
             new UserSetPassword { OldPassword = "wrong-pw", NewPassword = "New-Password-123" });
 
         var obj = Assert.IsType<ObjectResult>(result.Result);
-        // 403, not 401 - a wrong OldPassword is a business check, not an auth-pipeline failure (roadmap #278/#279).
+        // 403, not 401 - a wrong OldPassword is a business check, not an auth-pipeline failure.
         Assert.Equal(403, obj.StatusCode);
         // MockBehavior.Strict: an un-set-up UserSetPasswordAsync call would already have thrown.
 

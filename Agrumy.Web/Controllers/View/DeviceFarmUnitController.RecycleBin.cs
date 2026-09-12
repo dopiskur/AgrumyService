@@ -12,7 +12,7 @@ namespace Agrumy.Web.Controllers.View
 {
     public partial class DeviceFarmUnitController
     {
-        // ---- Recycle Bin (roadmap #409/#427) --------------------------------
+        // ---- Recycle Bin --------------------------------
 
         [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> RecycleBin()
@@ -46,7 +46,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(RecycleBin));
         }
 
-        // Global Admin-only, confirmation-phrase-gated (roadmap #427) - JSON round trip like ServerConfigController's DataMaintenancePurge*, not a redirecting form POST, since the JS needs the result to update the page without a full reload.
+        // Global Admin-only, confirmation-phrase-gated - JSON round trip like ServerConfigController's DataMaintenancePurge*, not a redirecting form POST, since the JS needs the result to update the page without a full reload.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]

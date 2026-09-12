@@ -53,7 +53,7 @@ public class ApiControllerTests
     private DeviceCommandApiController NewDeviceCommandController() =>
         new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()));
 
-    /// UserApiController enqueues notification jobs instead of dispatching them inline (roadmap #305) - this runs the one job a test expects to have been queued against a fake scope resolving the same mocks, then lets the test assert on _notifications/_repo as before.
+    /// UserApiController enqueues notification jobs instead of dispatching them inline - this runs the one job a test expects to have been queued against a fake scope resolving the same mocks, then lets the test assert on _notifications/_repo as before.
     private async Task RunOneQueuedJobAsync()
     {
         Assert.True(_jobQueue.Reader.TryRead(out var job), "Expected a background job to have been enqueued.");
@@ -288,7 +288,7 @@ public class ApiControllerTests
     [Fact]
     public async Task GetUserSelf_TenantDataReaderOnly_StillAllowed()
     {
-        // Viewing one's OWN account is not "reading user accounts" in the roadmap #282 sense.
+        // Viewing one's OWN account is not "reading user accounts" in the role-matrix sense.
         _repo.Setup(r => r.UserGetAsync(null, "reader@test.local", null)).ReturnsAsync(new User { IDUser = 9, Email = "reader@test.local" });
 
         var controller = NewUserController();
@@ -403,7 +403,7 @@ public class ApiControllerTests
         _cache.Verify(c => c.SetItemAsync(It.IsAny<string>(), It.IsAny<DeviceCache>()), Times.Never);
     }
 
-    // Roadmap #288: UtcOffsetSeconds/SkipWaterPumpForRain are recomputed fresh on every BuildAsync call but never bump ConfigVersion, so a matching version alone must not be enough to skip a device that hasn't had a full send in longer than ConfigHeartbeatHours.
+    // UtcOffsetSeconds/SkipWaterPumpForRain are recomputed fresh on every BuildAsync call but never bump ConfigVersion, so a matching version alone must not be enough to skip a device that hasn't had a full send in longer than ConfigHeartbeatHours.
     [Fact]
     public async Task GetConfig_VersionMatches_ButHeartbeatWindowElapsed_StillSendsFullConfig()
     {
@@ -453,7 +453,7 @@ public class ApiControllerTests
     [InlineData(null, 1800)]    // no SleepSeconds on record - 30-min floor
     [InlineData(60, 1800)]      // short poll - 2x60=120s would be far too short, floor applies
     [InlineData(3600, 7200)]    // 1h sleep - 2x
-    [InlineData(86400, 172800)] // 24h, the #89 dropdown's max option - 2x
+    [InlineData(86400, 172800)] // 24h, the dropdown's max option - 2x
     public async Task Authenticate_SizesSessionTtlToDeviceSleepInterval(int? sleepSeconds, int expectedTtlSeconds)
     {
         var controller = NewDeviceController();
@@ -707,7 +707,7 @@ public class ApiControllerTests
         captured = () => c;
     }
 
-    // Roadmap #406 - a device registered under a genuinely tenant-less user must stay tenant-less
+    // A device registered under a genuinely tenant-less user must stay tenant-less
     // itself, not get silently collapsed into the TenantID=0 bootstrap tenant's identity.
     [Fact]
     public async Task DeviceRegistration_OwnerHasNoTenant_NewDeviceAlsoHasNoTenant()
@@ -798,7 +798,7 @@ public class ApiControllerTests
         Assert.Equal("Provisioned Greenhouse", captured()!.DeviceName);
     }
 
-    /// UserRegistration now delegates tenant-create + user-add + activation-token + starting-role to one transactional Repo.RegisterUserAsync (roadmap #293) - this stubs it to capture what a test needs and mutate `user.TenantID` the same way the real method does, since UserRegistration's own `return Ok(user)` reflects that mutation.
+    /// UserRegistration now delegates tenant-create + user-add + activation-token + starting-role to one transactional Repo.RegisterUserAsync - this stubs it to capture what a test needs and mutate `user.TenantID` the same way the real method does, since UserRegistration's own `return Ok(user)` reflects that mutation.
     private void StubRegisterUser(int idUser, Action<User, int?, string?, IReadOnlyList<string>>? capture = null)
     {
         _repo.Setup(r => r.RegisterUserAsync(It.IsAny<User>(), It.IsAny<UserSecret>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<IEnumerable<string>>(), It.IsAny<Func<int?, Task<string?>>?>()))
@@ -1932,7 +1932,7 @@ public class ApiControllerTests
         // Strict mock: AddOutboxItemAsync was never set up - a call to it here would throw.
     }
 
-    /// Roadmap #395 finding 3 / #401 - generates a fresh key and audits the rotation, without ever putting the key itself in the audit trail.
+    /// Generates a fresh key and audits the rotation, without ever putting the key itself in the audit trail.
     [Fact]
     public async Task LoRaPrivateKeyGenerate_GeneratesKey_AndWritesAudit()
     {
@@ -2043,7 +2043,7 @@ public class ApiControllerTests
         Assert.False(result.Value);
     }
 
-    /// Roadmap #395 finding (2): plain HTTP has no integrity protection, so a MITM could otherwise spoof this response wholesale and trigger a factory wipe - never confirm the flag outside HTTPS, even when it's genuinely set.
+    /// Plain HTTP has no integrity protection, so a MITM could otherwise spoof this response wholesale and trigger a factory wipe - never confirm the flag outside HTTPS, even when it's genuinely set.
     [Fact]
     public async Task HardResetPending_PlainHttp_ReturnsFalse_EvenWhenFlagIsSet()
     {
@@ -2139,7 +2139,7 @@ public class ApiControllerTests
         _repo.Verify(r => r.TenantEmergencyStopSetAsync(5, true), Times.Once);
     }
 
-    /// Confirms the actual roadmap #395(4) wiring - EmergencyStopActivate must not just write the DB flag, it must nudge every device in the tenant so the flag reaches them before their next scheduled poll.
+    /// Confirms the actual wiring - EmergencyStopActivate must not just write the DB flag, it must nudge every device in the tenant so the flag reaches them before their next scheduled poll.
     [Fact]
     public async Task EmergencyStopActivate_NudgesEveryDeviceInTheTenant_NotJustTheDbFlag()
     {
@@ -2222,7 +2222,7 @@ public class ApiControllerTests
     }
 
 
-    /// Write-only, roadmap #395(5) - the repo returns the real (decrypted) Mqtt/Email passwords so internal senders can authenticate, but this GET must never echo either one back to the edit form. Roadmap #209's ArchivePassword joins the same redaction.
+    /// Write-only - the repo returns the real (decrypted) Mqtt/Email passwords so internal senders can authenticate, but this GET must never echo either one back to the edit form. The ArchivePassword joins the same redaction.
     [Fact]
     public async Task ServerConfigGet_NeverReturnsMqttOrEmailOrArchivePassword()
     {
@@ -2526,7 +2526,7 @@ public class ApiControllerTests
         Assert.Equal("email channel disabled or missing Host/FromAddress", badRequest.Value);
     }
 
-    /// Roadmap #209 - these only cover the validation short-circuits (missing fields, bad port) that return before ArchiveDbConnectionTester ever attempts a real network connection; the connection itself is untestable here, same status as MqttCommandPublisherTests' own network call.
+    /// These only cover the validation short-circuits (missing fields, bad port) that return before ArchiveDbConnectionTester ever attempts a real network connection; the connection itself is untestable here, same status as MqttCommandPublisherTests' own network call.
     [Fact]
     public async Task TestArchiveDatabase_MissingHost_Returns400_NeverAttemptsConnection()
     {
@@ -3126,7 +3126,7 @@ public class ApiControllerTests
         // Strict mock: an un-set-up TenantGetByIdAsync/AuditLogAddAsync call would throw, proving the export never ran.
     }
 
-    /// #253: export is now a ZIP (same repackaging #124 already applies to the firmware catalog) - proves the download is a real archive with the one export.json entry TenantController.Import/LoginController.ImportSentinel expect, and that it round-trips back into an equal TenantExport.
+    /// Export is now a ZIP (same repackaging already applies to the firmware catalog) - proves the download is a real archive with the one export.json entry TenantController.Import/LoginController.ImportSentinel expect, and that it round-trips back into an equal TenantExport.
     [Fact]
     public async Task TenantExport_ProducesZip_WithExportJsonEntry_ThatRoundTrips()
     {
@@ -3152,7 +3152,7 @@ public class ApiControllerTests
         Assert.Equal(TenantExport.CurrentFormatVersion, roundTripped.FormatVersion);
     }
 
-    // Roadmap #294: IssueCommand's CreatedCommandIds had no way to check on afterward short of direct DB access.
+    // IssueCommand's CreatedCommandIds had no way to check on afterward short of direct DB access.
     [Fact]
     public async Task GetCommand_OwnTenant_ReturnsStatus()
     {
@@ -3167,7 +3167,7 @@ public class ApiControllerTests
         Assert.Equal(CommandStatus.Pending, ((DeviceCommand)ok.Value!).Status);
     }
 
-    /// #372: ProvisionDevice's payload carries a WiFi password/registration PIN/username in plaintext - fully redacted here, never partially masked like an apiKey.
+    /// ProvisionDevice's payload carries a WiFi password/registration PIN/username in plaintext - fully redacted here, never partially masked like an apiKey.
     [Fact]
     public async Task GetCommand_ProvisionDevicePayload_RedactsSensitiveFields()
     {

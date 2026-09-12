@@ -44,7 +44,7 @@ namespace Agrumy.Api.BackgroundWorkers
             int utcOffsetSeconds = TimeZoneHelper.GetUtcOffsetSeconds(DateTime.UtcNow, tenant.ScheduleTimeZone);
             DateTime utcNow = DateTime.UtcNow;
 
-            // Roadmap #398(2) - lets a Notification rule use a real sunrise/sunset window (e.g. "CO2 low" only during daytime) instead of a fixed Schedule approximation; same cascade/resolver DeviceConfigBuilder already uses for Relay rules (roadmap #396(6)), a rule that can't resolve today (no location set) is dropped, not sent through with a broken node.
+            // Lets a Notification rule use a real sunrise/sunset window (e.g. "CO2 low" only during daytime) instead of a fixed Schedule approximation; same cascade/resolver DeviceConfigBuilder already uses for Relay rules, a rule that can't resolve today (no location set) is dropped, not sent through with a broken node.
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
             double? lat = tenant.Latitude ?? serverConfig.WeatherLocationLat;
             double? lon = tenant.Longitude ?? serverConfig.WeatherLocationLon;
@@ -67,7 +67,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     continue;
                 }
                 var unitScoped = notificationRules.Where(r => r.DeviceFarmUnitID == unitId).ToList();
-                // Farm rules only apply when this Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules (roadmap #384).
+                // Farm rules only apply when this Unit is actually assigned to one - a Farm-less Unit sees no Farm-scope rules.
                 var farmScoped = unit.DeviceFarmID is int unitFarmId
                     ? notificationRules.Where(r => r.DeviceFarmID == unitFarmId).ToList()
                     : [];
@@ -184,7 +184,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 return;
             }
 
-            // Fixed-point resolution for RuleTriggered chaining (roadmap #212): "referenced rule fired" means
+            // Fixed-point resolution for RuleTriggered chaining: "referenced rule fired" means
             // "fired in ANY zone it applies to, this tick" - a deliberate simplification, not per-zone dependency
             // tracking. firedThisTick only grows, so repeating settles within a bounded number of rounds; a
             // dependency that never resolves (missing/circular reference) just evaluates false for that

@@ -104,12 +104,12 @@ namespace Agrumy.Api.Dal
 
         public async Task<DeviceFarmUnitZoneDashboard?> DeviceFarmUnitZoneDashboardForDisplayGetAsync(int idDeviceFarmUnitZone)
         {
-            // Dirty reads are fine for a display snapshot - same reasoning as SensorDataExportGetAsync (#253); Postgres treats this as ReadCommitted regardless (MVCC readers never block writers there).
+            // Dirty reads are fine for a display snapshot - same reasoning as SensorDataExportGetAsync; Postgres treats this as ReadCommitted regardless (MVCC readers never block writers there).
             await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadUncommitted);
             return await BuildZoneDashboardAsync(idDeviceFarmUnitZone);
         }
 
-        /// Shared by both isolation-level variants above (roadmap #410) - the query shape itself never differs, only which transaction (if any) wraps it.
+        /// Shared by both isolation-level variants above - the query shape itself never differs, only which transaction (if any) wraps it.
         private async Task<DeviceFarmUnitZoneDashboard?> BuildZoneDashboardAsync(int idDeviceFarmUnitZone)
         {
             var zone = await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idDeviceFarmUnitZone);

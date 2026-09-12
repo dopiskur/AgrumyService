@@ -5,7 +5,7 @@ using Agrumy.Shared.Utils;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// A calibrated zone's fill percent (Agrumy.Shared.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold (or its tenant's own TenantAlertConfig override, roadmap #509) fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
+    /// A calibrated zone's fill percent (Agrumy.Shared.Utils.TankCalculator) crossing ServerConfig.TankRefillThreshold (or its tenant's own TenantAlertConfig override) fires one alert per low-tank streak, dead-zone-latched against TankRefillHysteresis - same shape as LowBatteryAlertEvaluator, scoped to zones instead of devices.
     public sealed class TankRefillAlertEvaluator(
         IDeviceFarmUnitRepository deviceFarmUnitRepo, IUserRepository userRepo, ITenantRepository tenantRepo, IServerConfigRepository serverConfigRepo, INotificationDispatcher dispatcher)
     {

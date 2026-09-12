@@ -139,7 +139,7 @@ public class AuthenticationProviderTests
 
 public class JwtTokenProviderTests
 {
-    // Same appsettings.json TestConfig binds elsewhere - issuer/audience/secureKey are now explicit parameters (roadmap #397(3)), not read from any static state.
+    // Same appsettings.json TestConfig binds elsewhere - issuer/audience/secureKey are now explicit parameters, not read from any static state.
     private const string SigningKey = "unit-test-signing-key-not-a-secret-0123456789ABCDEF";
     private static readonly string? Issuer = TestConfig.Settings.JwtIssuer;
     private static readonly string? Audience = TestConfig.Settings.JwtAudience;
@@ -295,7 +295,7 @@ public class FieldValidatorTests
     }
 }
 
-/// At-rest encryption for DB-stored secrets (roadmap #395(5)/(6)) - Mqtt/Email/WiFi passwords.
+/// At-rest encryption for DB-stored secrets (/(6)) - Mqtt/Email/WiFi passwords.
 public class SecretProtectorTests
 {
     private static ISecretProtector NewProtector() =>

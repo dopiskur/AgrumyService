@@ -11,7 +11,7 @@ namespace Agrumy.Api.Migration
         // Human-readable (WriteIndented) - same convention as DeviceFarmUnitZoneRule.ConditionConfig - an admin may open this JSON to sanity-check it before importing elsewhere.
         private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-        /// Packages ExportAsync's snapshot into a ZIP (single export.json entry) - same repackaging #124 already applies to the firmware catalog, so a tenant export behaves like every other admin download/upload pair instead of being the one plain-JSON exception.
+        /// Packages ExportAsync's snapshot into a ZIP (single export.json entry) - same repackaging already applies to the firmware catalog, so a tenant export behaves like every other admin download/upload pair instead of being the one plain-JSON exception.
         public async Task<(Stream Content, string FileName)> BuildExportZipAsync(int tenantId, bool includeSensorData, DateTime? sensorDataSinceUtc, CancellationToken cancellationToken = default)
         {
             TenantExport export = await ExportAsync(tenantId, includeSensorData, sensorDataSinceUtc);

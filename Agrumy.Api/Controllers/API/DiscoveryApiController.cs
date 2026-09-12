@@ -234,7 +234,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound($"No scan report found for {request.DiscoveredApMac}.");
             }
-            // Roadmap #406 - the scanning device's own tenant is where a saved WiFi config would live; a genuinely tenant-less scanner has nowhere to save one and can't register a new device into a tenant it doesn't have.
+            // The scanning device's own tenant is where a saved WiFi config would live; a genuinely tenant-less scanner has nowhere to save one and can't register a new device into a tenant it doesn't have.
             if (winner.TenantID is not int winnerTenantId)
             {
                 return BadRequest("The scanning device has no tenant.");

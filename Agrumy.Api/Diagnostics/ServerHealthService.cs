@@ -7,7 +7,7 @@ namespace Agrumy.Api.Diagnostics
 {
     public interface IServerHealthService
     {
-        /// Only includes an entry for a dependency that is actually configured/enabled right now (roadmap #419) - e.g. no MQTT row when MqttTransportEnabled is false, so a deliberately-off integration never reads as a false alarm.
+        /// Only includes an entry for a dependency that is actually configured/enabled right now - e.g. no MQTT row when MqttTransportEnabled is false, so a deliberately-off integration never reads as a false alarm.
         Task<IReadOnlyList<ServerHealthEntry>> GetStatusesAsync(CancellationToken ct = default);
     }
 

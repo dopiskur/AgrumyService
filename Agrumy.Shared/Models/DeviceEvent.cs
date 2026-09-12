@@ -27,7 +27,7 @@ namespace Agrumy.Shared.Models
         SensorStale = 16,
         // ESP.getFreeHeap() dropped below the device's own reboot threshold, replacing the old raw-failed-config-cycle-count trigger.
         LowMemoryReboot = 17,
-        // LoRaGatewayEnabled was requested but radio.begin() failed - no LoRa chip physically present/wired (roadmap #383).
+        // LoRaGatewayEnabled was requested but radio.begin() failed - no LoRa chip physically present/wired.
         LoRaHardwareNotDetected = 18,
         // Moisture sensor reading 0 - SensorController's own likely-disconnected heuristic.
         SensorMissing = 19,

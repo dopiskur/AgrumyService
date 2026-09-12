@@ -235,7 +235,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idDevice });
         }
 
-        /// Roadmap #401 - the raw key is shown exactly once, right after generation (TempData, gone on the next real page load); AgrumyService itself never returns it again, so this is the admin's only chance to copy it into the node's loraPrivateRegistration.json.
+        /// The raw key is shown exactly once, right after generation (TempData, gone on the next real page load); AgrumyService itself never returns it again, so this is the admin's only chance to copy it into the node's loraPrivateRegistration.json.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -418,7 +418,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { idDevice = deviceView.Device!.IDDevice });
         }
 
-        /// Roadmap #403 - reached only from a simulation session's own Details page now (Device Details no longer links here directly), idSimulationSession just carries the "where to go back to" context through the round trip.
+        /// Reached only from a simulation session's own Details page now (Device Details no longer links here directly), idSimulationSession just carries the "where to go back to" context through the round trip.
         [Authorize(Roles = RoleNames.SimulationManagersOrGlobalReader)]
         public async Task<ActionResult> Simulation(int? idDevice, int? idSimulationSession)
         {

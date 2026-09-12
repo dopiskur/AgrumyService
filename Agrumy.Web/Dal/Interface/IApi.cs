@@ -124,7 +124,7 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/Device/Simulation/{idDevice}")]
         Task DeviceSimulationSet(int idDevice, [Body] DeviceSimulation value);
 
-        // ---- Simulation sessions (roadmap #403) ----------------------------
+        // ---- Simulation sessions ----------------------------
 
         [Post("/api/Simulation/Session")]
         Task<SimulationSession> SimulationSessionCreate([Body] SimulationSessionCreateRequest request);
@@ -201,7 +201,7 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/Gateway/DeviceMapping")]
         Task GatewayDeviceMappingDelete(int idGatewayDeviceMapping, int idGatewayDevice);
 
-        // ---- Farm (roadmap #384) --------------------------
+        // ---- Farm --------------------------
 
         [Get("/api/DeviceFarmUnit/Farm/All")]
         Task<IList<DeviceFarm>> DeviceFarmsGet();
@@ -222,7 +222,7 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Farm")]
         Task DeviceFarmDelete(int? idDeviceFarm);
 
-        // ---- Recycle Bin (roadmap #409) --------------------------
+        // ---- Recycle Bin --------------------------
 
         [Get("/api/RecycleBin/Device")]
         Task<IList<DeviceDto>> RecycleBinDevicesGet();
@@ -242,7 +242,7 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/RecycleBin/Farm/PendingPurge")]
         Task<IList<DeviceFarm>> RecycleBinFarmsPendingPurgeGet();
 
-        // ---- Recycle Bin permanent delete (roadmap #427) ----------
+        // ---- Recycle Bin permanent delete ----------
 
         [Post("/api/RecycleBin/Device/{idDevice}/PurgeNow")]
         Task RecycleBinDevicePurgeNow(int idDevice, [Body] RecycleBinPurgeRequest request);
@@ -292,7 +292,7 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate")]
         Task DeviceFarmUnitZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
 
-        // Roadmap #238 - saves independently of DeviceFarmUnitZoneUpdate above.
+        // Saves independently of DeviceFarmUnitZoneUpdate above.
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets")]
         Task DeviceFarmUnitZoneWidgetsSet(int idDeviceFarmUnitZone, [Body] List<DashboardWidget> widgets);
 
@@ -300,7 +300,7 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/GridColumns")]
         Task DeviceFarmUnitZoneGridColumnsSet(int idDeviceFarmUnitZone, [Body] int columns);
 
-        // ---- Rules (Zone/Unit/Global scope, roadmap #212) ------
+        // ---- Rules (Zone/Unit/Global scope) ------
 
         [Get("/api/DeviceFarmUnit/Zone/Rule")]
         Task<IList<DeviceFarmUnitZoneRule>> DeviceFarmUnitZoneRulesGet(int? idDeviceFarmUnitZone);
@@ -600,7 +600,7 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/DeviceFarmUnit/Dashboard/AlertStatus")]
         Task<DashboardAlertStatus> DeviceFarmUnitDashboardAlertStatusGet(NotificationEventType eventType, HierarchyNodeKind level, int levelId);
 
-        // ---- Manual actuate (roadmap #219) ---------------------
+        // ---- Manual actuate ---------------------
 
         [Post("/api/DeviceFarmUnit/Zone/ManualActuate")]
         Task<IReadOnlyList<int>> DeviceFarmUnitZoneManualActuateStart(int idDeviceFarmUnitZone, [Body] ManualActuateRequest request);
@@ -797,7 +797,7 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/ServerConfig")]
         Task<ServerConfig> ServerConfigGet();
 
-        /// Roadmap #419 - Server Health card, polled on an interval by Agrumy.Web's ServerConfigController.Health (live-refresh.js), not an on-demand button - see ServerConfigApiController.GetHealth.
+        /// Server Health card, polled on an interval by Agrumy.Web's ServerConfigController.Health (live-refresh.js), not an on-demand button - see ServerConfigApiController.GetHealth.
         [Get("/api/ServerConfig/Health")]
         Task<IReadOnlyList<ServerHealthEntry>> ServerConfigGetHealth();
 

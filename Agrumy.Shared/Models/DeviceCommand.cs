@@ -76,14 +76,14 @@ namespace Agrumy.Shared.Models
         public string WifiPassword { get; set; } = "";
     }
 
-    /// Body of POST /api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate (roadmap #411) - same Ssid/WifiPassword as the single-device request, applied to every device under the unit.
+    /// Body of POST /api/DeviceFarmUnit/{idDeviceFarmUnit}/WifiUpdate - same Ssid/WifiPassword as the single-device request, applied to every device under the unit.
     public class UnitWifiUpdateRequest
     {
         public string Ssid { get; set; } = "";
         public string WifiPassword { get; set; } = "";
     }
 
-    /// One device's outcome from a unit-wide WiFi switch - Issued means the UpdateWifiCredentials command was queued (same #355 verify-then-persist mechanism then runs on the device itself, not tracked further here); Issued=false with Message set means IssueWifiUpdateCommandAsync's own dedup rejected it (already had one pending).
+    /// One device's outcome from a unit-wide WiFi switch - Issued means the UpdateWifiCredentials command was queued (same verify-then-persist mechanism then runs on the device itself, not tracked further here); Issued=false with Message set means IssueWifiUpdateCommandAsync's own dedup rejected it (already had one pending).
     public class UnitWifiUpdateDeviceResult
     {
         public int IDDevice { get; set; }

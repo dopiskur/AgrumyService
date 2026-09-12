@@ -89,7 +89,7 @@ public class SimulatedRelayEvaluatorTests
     [Fact]
     public void DerivedMetric_DewPointSpread_ReadableInSimulation()
     {
-        // Roadmap #396(4) - a Comparison node can now read a DERIVED metric too, computed on-the-fly from temperature+humidity.
+        // A Comparison node can now read a DERIVED metric too, computed on-the-fly from temperature+humidity.
         var rules = new List<DeviceFarmUnitZoneRule> { Rule(RelayFunction.Ventilation, Comparison(SensorMetric.DewPointSpread, ComparisonOperator.LessThan, 3)) };
         // High humidity + moderate temp narrows the spread well below 3.
         int percent = SimulatedRelayEvaluator.EvaluatePercent(RelayFunction.Ventilation, rules, wasOn: false, Reading(humidity: 95, temperature: 20), DateTime.UtcNow, 0);

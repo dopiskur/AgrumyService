@@ -7,7 +7,7 @@ namespace Agrumy.Shared.Models
         public string? ConfirmationPhrase { get; set; }
     }
 
-    /// Result of POST /api/RecycleBin/Empty - counts marked for purge, not yet actually removed (roadmap #427 - that happens later, when the purge cycle reaps them).
+    /// Result of POST /api/RecycleBin/Empty - counts marked for purge, not yet actually removed (that happens later, when the purge cycle reaps them).
     public class RecycleBinEmptyResult
     {
         public int DevicesMarked { get; set; }

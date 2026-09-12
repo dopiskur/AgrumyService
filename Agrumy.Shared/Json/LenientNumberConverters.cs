@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Agrumy.Shared.Json
 {
-    /// Accepts a JSON number, a numeric string, or null - legacy Arduino-String-based firmware (pre roadmap #326) still sends measurement fields as strings.
+    /// Accepts a JSON number, a numeric string, or null - legacy Arduino-String-based firmware still sends measurement fields as strings.
     public sealed class LenientDoubleConverter : JsonConverter<double?>
     {
         public override double? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

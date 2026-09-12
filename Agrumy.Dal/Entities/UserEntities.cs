@@ -13,10 +13,10 @@ namespace Agrumy.Dal.Entities
         public bool EmergencyStopActive { get; set; } // See Agrumy.Shared.Models.Tenant.EmergencyStopActive.
         public DateTimeOffset? DateCreated { get; set; }
 
-        // Roadmap #427 - per-tenant override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
+        // Per-tenant override, same "null falls back to ServerConfig's server-wide default" convention as ScheduleTimeZone/Latitude/Longitude above.
         public int? RecycleBinRetentionDays { get; set; }
 
-        // Roadmap #509 - per-tenant alert override, same cascade convention as RecycleBinRetentionDays above; see Agrumy.Shared.Models.TenantAlertConfig.
+        // Per-tenant alert override, same cascade convention as RecycleBinRetentionDays above; see Agrumy.Shared.Models.TenantAlertConfig.
         public bool? ProblemEventAlertsEnabled { get; set; }
         public int? ProblemEventExpiryHours { get; set; }
         public double? BatteryLowThreshold { get; set; }
@@ -172,10 +172,10 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? FirmwareLastRefreshedAtUtc { get; set; }
         public int? SensorDataRetentionDays { get; set; }
 
-        // Roadmap #409 - how long a soft-deleted Farm/Device stays restorable from the Recycle Bin, 0-90; default 30 applied where the column reads NULL (fresh row, or a pre-#409 install).
+        // How long a soft-deleted Farm/Device stays restorable from the Recycle Bin, 0-90; default 30 applied where the column reads NULL (fresh row, or a pre- install).
         public int? RecycleBinRetentionDays { get; set; }
         public int? SatelliteRasterRetentionDays { get; set; }
-        // Roadmap #409 - PurgeOrphanedSensorDataBackgroundService only runs when this is true (manual "Purge orphaned sensor data" trigger is always available regardless).
+        // PurgeOrphanedSensorDataBackgroundService only runs when this is true (manual "Purge orphaned sensor data" trigger is always available regardless).
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
