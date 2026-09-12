@@ -500,6 +500,9 @@ namespace Agrumy.Web.Dal.Interface
         [Put("/api/FarmOpenfield/Parcel")]
         Task ParcelUpdate([Body] FarmParcelZone parcel);
 
+        [Post("/api/FarmOpenfield/Parcel/ReadyForSeason")]
+        Task ParcelReadyForSeasonSet(int idFarmParcelZone, bool ready);
+
         [Delete("/api/FarmOpenfield/Parcel")]
         Task ParcelDelete(int? idFarmParcelZone);
 

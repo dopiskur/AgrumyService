@@ -47,6 +47,8 @@ namespace Agrumy.Dal.Entities
         public string? FarmParcelZoneName { get; set; }
         public bool IsWholeParcel { get; set; }
         public int? CurrentSowingID { get; set; }
+        // Resets to false whenever SowingStartAsync occupies this zone with a new sowing - pre-season field prep (ploughing/discing/fertilizing) has to be redone/re-confirmed each season.
+        public bool ReadyForSeason { get; set; }
 
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }

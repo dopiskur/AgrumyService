@@ -63,6 +63,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone) => farmParcelRepository.FarmParcelZoneConfigVersionBumpAsync(idFarmParcelZone);
 
+        public Task FarmParcelZoneReadyForSeasonSetAsync(int idFarmParcelZone, bool ready) => farmParcelRepository.FarmParcelZoneReadyForSeasonSetAsync(idFarmParcelZone, ready);
+
         public Task<IList<FarmParcelZone>> FarmParcelZoneSplitAsync(int idFarmParcelZone, IReadOnlyList<string> newZoneNames, Func<Task<string?>>? quotaCheckAsync = null) => farmParcelRepository.FarmParcelZoneSplitAsync(idFarmParcelZone, newZoneNames, quotaCheckAsync);
 
         public Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName) => farmParcelRepository.FarmParcelZoneMergeAsync(farmParcelZoneIds, mergedName);

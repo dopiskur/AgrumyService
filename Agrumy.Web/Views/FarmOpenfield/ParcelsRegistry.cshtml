@@ -1,0 +1,109 @@
+@model ParcelsRegistryViewModel
+@{
+    ViewData["Title"] = "Parcels";
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+}
+
+<h1 class="h3 mb-3">Parcels</h1>
+
+<p class="text-secondary">
+    Every Open-Field parcel (and each of its zones, if split) with its readiness for the current season.
+    A parcel starts a new season "Not ready" - confirm pre-season field prep (ploughing, discing,
+    fertilizing...) is done, then toggle it to Ready.
+</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-secondary">No parcels yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Farm</th>
+                    <th>Parcel</th>
+                    <th>Zone</th>
+                    <th>Occupancy</th>
+                    <th>Season readiness</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.FarmName</td>
+                        <td>@row.Parcel.FarmParcelName</td>
+                        <td>
+                            <a asp-action="Parcel" asp-route-idFarmParcelZone="@row.Zone.IDFarmParcelZone">@row.Zone.FarmParcelZoneName</a>
+                        </td>
+                        <td>
+                            @if (row.Zone.CurrentSowingID != null)
+                            {
+                                <span class="badge text-bg-success">occupied</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">free</span>
+                            }
+                        </td>
+                        <td>
+                            @if (canManage)
+                            {
+                                <div class="form-check form-switch mb-0 d-inline-flex align-items-center gap-2">
+                                    <input class="form-check-input parcel-ready-toggle" type="checkbox" role="switch"
+                                           data-id-farm-parcel-zone="@row.Zone.IDFarmParcelZone"
+                                           checked="@(row.Zone.ReadyForSeason ? "checked" : null)" />
+                                    <span class="badge @(row.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger") ready-badge">
+                                        @(row.Zone.ReadyForSeason ? "Ready" : "Not ready")
+                                    </span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge @(row.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger")">
+                                    @(row.Zone.ReadyForSeason ? "Ready" : "Not ready")
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<form id="antiForgeryHolder">@Html.AntiForgeryToken()</form>
+
+<div class="modal fade" id="readyForSeasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mark as ready</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Do you wish to populate preparation dates (ploughing, discing, fertilizing...) first?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="readyForSeasonSkip">Skip</button>
+                <button type="button" class="btn btn-primary" id="readyForSeasonYes">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/parcel-registry.js"></script>
+    <script nonce="@Context.CspNonce()">
+        document.addEventListener('DOMContentLoaded', function () {
+            initParcelReadyToggles({
+                setUrl: '@Url.Action("ParcelReadyForSeasonSet")',
+                parcelDetailsUrlTemplate: '@Url.Action("Parcel", new { idFarmParcelZone = "__ID__" })',
+                antiForgeryToken: document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '',
+            });
+        });
+    </script>
+}

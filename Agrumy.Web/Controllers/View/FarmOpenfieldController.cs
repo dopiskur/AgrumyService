@@ -15,33 +15,26 @@ namespace Agrumy.Web.Controllers.View
     {
         // ---- Root page (D1) --------------------------------------------
 
-        /// The dedicated Open-Field root page - every Open-Field farm with its parcels/zones (occupancy shown per zone) and sowings, replacing the old mixed Farms page's crop-cube section.
+        /// The Open-Field farm register only - name/satellite/add. Parcels (Registry) and Crop Seasons are their own pages now, not nested per-farm cards here.
         public async Task<ActionResult> Index()
         {
             IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
-            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
-            IList<Sowing> sowings = await api.CropsGet();
-            var farmModels = new List<FarmOpenfieldFarmViewModel>();
-            foreach (DeviceFarm farm in farms)
+            return View(new FarmOpenfieldIndexViewModel { Farms = farms });
+        }
+
+        // ---- Crop Seasons (every sowing across every Open-Field farm) --------------------------------------------
+
+        public async Task<ActionResult> CropSeasons()
+        {
+            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
+            List<int?> farmIds = farms.Select(f => f.IDDeviceFarm).ToList();
+            IList<Sowing> sowings = (await api.CropsGet()).Where(s => farmIds.Contains(s.FarmID)).ToList();
+            return View(new CropSeasonsIndexViewModel
             {
-                FarmOpenfield? openfield = openfields.FirstOrDefault(o => o.FarmID == farm.IDDeviceFarm);
-                var parcelModels = new List<FarmParcelWithZonesViewModel>();
-                if (openfield?.IDFarmOpenfield is int idFarmOpenfield)
-                {
-                    foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
-                    {
-                        parcelModels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
-                    }
-                }
-                farmModels.Add(new FarmOpenfieldFarmViewModel
-                {
-                    Farm = farm,
-                    Openfield = openfield,
-                    Parcels = parcelModels,
-                    Sowings = sowings.Where(s => s.FarmID == farm.IDDeviceFarm).ToList(),
-                });
-            }
-            return View(new FarmOpenfieldIndexViewModel { Farms = farmModels });
+                Farms = farms,
+                Sowings = sowings,
+                CatalogCrops = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop),
+            });
         }
 
         // ---- Parcel boundary + zone separations on a Leaflet+Geoman map (S-A) --------------------
@@ -152,12 +145,13 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard step 1 (D3/D9): crop (looked up/created in the catalog server-side by name) + variety + start date + expected duration. Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show.
+        /// Sjetva wizard step 1 (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show. No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, int expectedDurationDays)
+        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly expectedEndDate)
         {
+            int expectedDurationDays = Math.Max(1, expectedEndDate.DayNumber - startDate.DayNumber);
             Sowing added = await api.CropAdd(new Sowing
             {
                 FarmID = idFarm,
@@ -350,6 +344,47 @@ namespace Agrumy.Web.Controllers.View
                 EarliestHarvestDate = await api.EarliestHarvestDateGet(idSowing),
                 NitrogenBalanceKgPerHa = await api.NitrogenBalanceGet(idSowing),
             });
+        }
+
+        // ---- Parcels registry (Fleet-style, every parcel/zone across every Open-Field farm) -----------------------------------
+
+        public async Task<ActionResult> ParcelsRegistry()
+        {
+            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
+            IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
+            var rows = new List<ParcelRegistryRowViewModel>();
+            foreach (DeviceFarm farm in farms)
+            {
+                if (openfields.FirstOrDefault(o => o.FarmID == farm.IDDeviceFarm)?.IDFarmOpenfield is not int idFarmOpenfield)
+                {
+                    continue;
+                }
+                foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
+                {
+                    foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
+                    {
+                        rows.Add(new ParcelRegistryRowViewModel { FarmName = farm.DeviceFarmName ?? "", Parcel = parcel, Zone = zone });
+                    }
+                }
+            }
+            return View(new ParcelsRegistryViewModel { Rows = rows });
+        }
+
+        /// The registry's own toggle - "ready" flips straight through, the "populate prep dates first" dialog lives client-side (parcel-registry.js) and just decides whether to detour through the Parcel detail page before/instead of calling this.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelReadyForSeasonSet(int idFarmParcelZone, bool ready)
+        {
+            try
+            {
+                await api.ParcelReadyForSeasonSet(idFarmParcelZone, ready);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode == 0 ? 500 : ex.StatusCode, ex.Body);
+            }
         }
 
         // ---- FarmParcel / FarmParcelZone CRUD (D2/D3/D4) -----------------------------------

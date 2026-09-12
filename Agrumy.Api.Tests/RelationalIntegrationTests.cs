@@ -3925,6 +3925,26 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Null(refetchedZone!.CurrentSowingID);
     }
 
+    /// Open-Field UI restructure - a zone starts a new season "Not ready" even if it was marked Ready before its PREVIOUS sowing (SowingStartAsync resets the flag), and the plain toggle round-trips independently of any sowing.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelZoneReadyForSeason_TogglesIndependently_ButResetsWhenANewSowingStarts(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, openfield) = await _repo.FarmOpenfieldCreateAsync("Openfield_" + U(), tenantId);
+        var (_, zone) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmOpenfieldID = openfield.IDFarmOpenfield!.Value, FarmParcelName = "Parcel_" + U() });
+        Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
+
+        await _repo.FarmParcelZoneReadyForSeasonSetAsync(zone.IDFarmParcelZone!.Value, true);
+        Assert.True((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
+
+        var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
+        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = openfield.FarmID, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.SowingStartAsync(sowing.IDSowing!.Value, [zone.IDFarmParcelZone!.Value]);
+
+        Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
+    }
+
     /// #585 - TenantExportService/TenantImportService used to have zero references to sowing/farmParcel/farmParcelZone/fieldLogEntry/fieldLogAttachment/harvestResult/zonePlanting, silently dropping the whole R-restructure layer on export.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task TenantExportImport_RoundTrip_PreservesSowingDnevnikAndHarvestRows(DbProviderKind provider)

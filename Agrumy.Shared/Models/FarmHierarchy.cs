@@ -137,6 +137,8 @@ namespace Agrumy.Shared.Models
         public bool IsWholeParcel { get; set; }
         // D4 - set for as long as a sowing holds this zone; DeviceConfigBuilder/RuleHierarchyResolver read it to build the Sowing tier, split/merge is blocked while it's set.
         public int? CurrentSowingID { get; set; }
+        // Pre-season field prep (ploughing/discing/fertilizing) confirmed done - resets to false every time SowingStartAsync occupies this zone with a new sowing, since prep has to be redone each season.
+        public bool ReadyForSeason { get; set; }
 
         public int? WaterPumpMaxRunSeconds { get; set; }
         public int? WaterPumpCooldownSeconds { get; set; }

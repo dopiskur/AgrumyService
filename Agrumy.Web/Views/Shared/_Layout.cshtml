@@ -3,7 +3,9 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     Func<string, string> navActive = c => string.Equals(c, currentController, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    Func<string, string, string> navActiveAction = (c, a) => string.Equals(c, currentController, StringComparison.OrdinalIgnoreCase) && string.Equals(a, currentAction, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var currentUserEmail = User.Identity?.Name;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool isGlobalReader = User.IsInRole(RoleNames.GlobalReader);
@@ -163,13 +165,25 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="Index" class="nav-link @navActive("FarmOpenfield")">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="Index" class="nav-link @navActiveAction("FarmOpenfield", "Index")">
                                 <i class="nav-icon bi bi-flower1"></i>
                                 <p>@Localizer["Open-Field farming"]</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="CropSeasons" class="nav-link @navActiveAction("FarmOpenfield", "CropSeasons")">
+                                <i class="nav-icon bi bi-calendar3"></i>
+                                <p>@Localizer["Crop Seasons"]</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
+                                <i class="nav-icon bi bi-map"></i>
+                                <p>@Localizer["Parcels"]</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                                 <i class="nav-icon bi bi-house-door"></i>
                                 <p>@Localizer["Greenhouse"]</p>
                             </a>

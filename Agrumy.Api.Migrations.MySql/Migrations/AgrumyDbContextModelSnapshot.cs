@@ -1647,6 +1647,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("ReadyForSeason")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<DateTimeOffset?>("SatelliteBackfillCompletedUtc")
                         .HasColumnType("datetime(6)");
 

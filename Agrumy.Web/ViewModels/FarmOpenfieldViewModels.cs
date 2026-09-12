@@ -9,19 +9,33 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmParcelZone> Zones { get; init; } = [];
     }
 
-    /// One Open-Field farm's full picture - its parcels+zones and its sowings - drives one farm card on FarmOpenfield/Index.cshtml (D1/D2).
-    public class FarmOpenfieldFarmViewModel
-    {
-        public required DeviceFarm Farm { get; init; }
-        public FarmOpenfield? Openfield { get; init; }
-        public IList<FarmParcelWithZonesViewModel> Parcels { get; init; } = [];
-        public IList<Sowing> Sowings { get; init; } = [];
-    }
-
-    /// Drives FarmOpenfield/Index.cshtml - the dedicated Open-Field root page (D1), replacing the old mixed Farms page's crop-cube section for everything this session builds.
+    /// Drives FarmOpenfield/Index.cshtml - the Open-Field farm register only (name/satellite/add); parcels and sowings moved to their own pages (Parcels registry, Crop Seasons) so this block no longer mixes all three.
     public class FarmOpenfieldIndexViewModel
     {
-        public IList<FarmOpenfieldFarmViewModel> Farms { get; init; } = [];
+        public IList<DeviceFarm> Farms { get; init; } = [];
+    }
+
+    /// One row on FarmOpenfield/ParcelsRegistry.cshtml - a parcel (or one of its split zones) plus which farm it belongs to, since the registry flattens every farm into one list.
+    public class ParcelRegistryRowViewModel
+    {
+        public required string FarmName { get; init; }
+        public required FarmParcel Parcel { get; init; }
+        public required FarmParcelZone Zone { get; init; }
+    }
+
+    /// Drives FarmOpenfield/ParcelsRegistry.cshtml - the Fleet-style overview of every parcel/zone across every Open-Field farm, separated from the farm register (Index) and Crop Seasons.
+    public class ParcelsRegistryViewModel
+    {
+        public IList<ParcelRegistryRowViewModel> Rows { get; init; } = [];
+    }
+
+    /// Drives FarmOpenfield/CropSeasons.cshtml - every sowing across every Open-Field farm, plus what "New sowing" needs to build one (farm picker, catalog-driven crop/variety picker).
+    public class CropSeasonsIndexViewModel
+    {
+        public IList<DeviceFarm> Farms { get; init; } = [];
+        public IList<Sowing> Sowings { get; init; } = [];
+        /// HorticultureCatalogType.Crop entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
+        public IList<HorticultureCatalogEntry> CatalogCrops { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/Parcels.cshtml - one Sowing's own detail/lifecycle page (Sowing Details, D9), the Open-Field mirror of UnitZonesViewModel.

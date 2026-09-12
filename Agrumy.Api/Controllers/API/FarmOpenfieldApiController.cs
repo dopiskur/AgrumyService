@@ -487,6 +487,21 @@ namespace Agrumy.Api.Controllers.API
             return Ok(zone);
         }
 
+        /// The Parcels registry's Ready/Not-ready toggle - independent of ParcelUpdate's own safety-limit fields, a plain confirm-or-revert flip an admin can use any time, not just right after SowingStartAsync's own reset-to-false.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Parcel/ReadyForSeason")]
+        public async Task<ActionResult<bool>> ParcelReadyForSeasonSet(int idFarmParcelZone, bool ready)
+        {
+            var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await farmParcelRepo.FarmParcelZoneReadyForSeasonSetAsync(idFarmParcelZone, ready);
+            await WriteAuditAsync("FarmParcelZone.ReadyForSeasonSet", parcel!.TenantID, "FarmParcelZone", idFarmParcelZone.ToString(), ready.ToString());
+            return true;
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPut("Parcel")]
         public async Task<ActionResult<bool>> ParcelUpdate([FromBody] FarmParcelZone parcel)

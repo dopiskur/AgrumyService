@@ -178,6 +178,7 @@ PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Te
 PUT,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/FarmParcel/{idFarmParcel}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Parcel/ReadyForSeason,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device

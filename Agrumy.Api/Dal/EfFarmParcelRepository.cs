@@ -111,6 +111,9 @@ namespace Agrumy.Api.Dal
             await FarmParcelZoneConfigVersionBumpAsync(row.IDFarmParcelZone);
         }
 
+        public async Task FarmParcelZoneReadyForSeasonSetAsync(int idFarmParcelZone, bool ready) =>
+            await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone).ExecuteUpdateAsync(set => set.SetProperty(z => z.ReadyForSeason, ready));
+
         public async Task FarmParcelZoneGeometrySetAsync(int idFarmParcelZone, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon) =>
             await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone).ExecuteUpdateAsync(set => set
                 .SetProperty(z => z.GeometryGeoJson, geometryGeoJson)
@@ -347,6 +350,7 @@ namespace Agrumy.Api.Dal
             FarmParcelZoneName = z.FarmParcelZoneName,
             IsWholeParcel = z.IsWholeParcel,
             CurrentSowingID = z.CurrentSowingID,
+            ReadyForSeason = z.ReadyForSeason,
             WaterPumpMaxRunSeconds = z.WaterPumpMaxRunSeconds,
             WaterPumpCooldownSeconds = z.WaterPumpCooldownSeconds,
             SkipWaterPumpWhenRainPredicted = z.SkipWaterPumpWhenRainPredicted,

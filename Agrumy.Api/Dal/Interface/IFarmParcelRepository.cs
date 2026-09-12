@@ -28,6 +28,9 @@ namespace Agrumy.Api.Dal.Interface
         /// S-A - sets one zone's subdivision polygon within its parcel's outer boundary.
         Task FarmParcelZoneGeometrySetAsync(int idFarmParcelZone, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon);
 
+        /// Pre-season field prep confirmed done (or reverted) - independent of SowingStartAsync's own reset-to-false, an admin can flip this either direction any time.
+        Task FarmParcelZoneReadyForSeasonSetAsync(int idFarmParcelZone, bool ready);
+
         /// Bumps ConfigVersion for every device in the zone - mirrors DeviceFarmUnitZoneConfigVersionBumpAsync.
         Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone);
 

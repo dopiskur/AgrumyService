@@ -72,16 +72,18 @@ namespace Agrumy.Api.Dal
             }
             await QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                var zones = await db.FarmParcelZones.Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
+                var zones = await db.FarmParcelZones.AsNoTracking().Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
                 if (zones.Any(z => z.CurrentSowingID != null))
                 {
                     throw new InvalidOperationException("One or more zones already have an active sowing.");
                 }
                 DateTimeOffset now = DateTimeOffset.UtcNow;
-                foreach (FarmParcelZoneRow zone in zones)
+                // ExecuteUpdateAsync, not tracked mutation - a zone entity added earlier in this DbContext's life (e.g. FarmParcelAddAsync) can still be tracked with a stale ReadyForSeason snapshot, which would make EF see no change and skip the column entirely.
+                await db.FarmParcelZones.Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone))
+                    .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, idSowing).SetProperty(z => z.ReadyForSeason, false));
+                foreach (int zoneId in farmParcelZoneIds)
                 {
-                    zone.CurrentSowingID = idSowing;
-                    db.SowingFarmParcelZones.Add(new SowingFarmParcelZoneRow { SowingID = idSowing, FarmParcelZoneID = zone.IDFarmParcelZone, AssignedUtc = now });
+                    db.SowingFarmParcelZones.Add(new SowingFarmParcelZoneRow { SowingID = idSowing, FarmParcelZoneID = zoneId, AssignedUtc = now });
                 }
                 await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteUpdateAsync(set => set.SetProperty(s => s.Status, (int)GrowingCycleStatus.Active));
                 await db.SaveChangesAsync();

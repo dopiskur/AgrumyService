@@ -1,0 +1,112 @@
+@model CropSeasonsIndexViewModel
+@{
+    ViewData["Title"] = "Crop Seasons";
+    Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+}
+
+<h1 class="h3 mb-3">Crop Seasons</h1>
+
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
+
+@if (canManage)
+{
+    @if (Model.Farms.Count == 0)
+    {
+        <p class="text-secondary">
+            No Open-Field farms yet - <a asp-action="Index">add one</a> before starting a sowing.
+        </p>
+    }
+    else if (Model.CatalogCrops.Count == 0)
+    {
+        <p class="text-secondary">
+            No crops in the Horticulture Catalog yet - a Global Admin needs to add at least one (wheat/corn
+            variety) before a new sowing can be started.
+        </p>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-header"><h3 class="card-title mb-0">New sowing</h3></div>
+            <div class="card-body">
+                <form asp-action="CropAdd" method="post" class="row g-3">
+                    @if (Model.Farms.Count > 1)
+                    {
+                        <div class="col-md-4">
+                            <label class="form-label">Farm</label>
+                            <select name="idFarm" class="form-select" required>
+                                @foreach (var farm in Model.Farms)
+                                {
+                                    <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="idFarm" value="@Model.Farms[0].IDDeviceFarm" />
+                    }
+                    <div class="col-md-4">
+                        <label class="form-label">Crop / variety</label>
+                        <select name="farmOpenfieldCropName" class="form-select" required>
+                            @foreach (var crop in Model.CatalogCrops.OrderBy(c => c.Name))
+                            {
+                                <option value="@crop.Name">@crop.Name@(string.IsNullOrEmpty(crop.ClassCode) ? "" : $" ({crop.ClassCode})")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Variety note (optional)</label>
+                        <input type="text" name="variety" class="form-control" placeholder="e.g. own seed lot" maxlength="100" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Start date</label>
+                        <input type="date" name="startDate" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expected end date</label>
+                        <input type="date" name="expectedEndDate" class="form-control" required />
+                        <div class="form-text">An estimate, not a hard deadline - closing the sowing is a separate step whenever harvest actually happens.</div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Start planning this sowing</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+}
+
+@if (Model.Sowings.Count == 0)
+{
+    <p class="text-secondary">No crop seasons yet.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var s in Model.Sowings.OrderByDescending(s => s.StartDate))
+        {
+            string badge = s.Status switch
+            {
+                GrowingCycleStatus.Planned => "text-bg-secondary",
+                GrowingCycleStatus.Active => "text-bg-success",
+                _ => "text-bg-dark",
+            };
+            string farmName = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == s.FarmID)?.DeviceFarmName ?? "";
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <a asp-action="Parcels" asp-route-idSowing="@s.IDSowing">@s.SowingName</a>
+                    <span class="text-secondary small ms-2">@farmName</span>
+                </span>
+                <span class="badge @badge">@s.Status</span>
+            </li>
+        }
+    </ul>
+}
