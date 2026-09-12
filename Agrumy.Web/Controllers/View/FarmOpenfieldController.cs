@@ -353,12 +353,14 @@ namespace Agrumy.Web.Controllers.View
             IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
             IList<FarmOpenfield> openfields = await api.FarmOpenfieldsGet();
             var rows = new List<ParcelRegistryRowViewModel>();
+            var farmOptions = new List<ParcelRegistryFarmOptionViewModel>();
             foreach (DeviceFarm farm in farms)
             {
                 if (openfields.FirstOrDefault(o => o.FarmID == farm.IDDeviceFarm)?.IDFarmOpenfield is not int idFarmOpenfield)
                 {
                     continue;
                 }
+                farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarmOpenfield = idFarmOpenfield });
                 foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarmOpenfield))
                 {
                     foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
@@ -367,7 +369,7 @@ namespace Agrumy.Web.Controllers.View
                     }
                 }
             }
-            return View(new ParcelsRegistryViewModel { Rows = rows });
+            return View(new ParcelsRegistryViewModel { Rows = rows, Farms = farmOptions });
         }
 
         /// The registry's own toggle - "ready" flips straight through, the "populate prep dates first" dialog lives client-side (parcel-registry.js) and just decides whether to detour through the Parcel detail page before/instead of calling this.
@@ -395,7 +397,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> FarmParcelAdd(int idFarmOpenfield, string farmParcelName)
         {
             await api.FarmParcelAdd(idFarmOpenfield, farmParcelName);
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         /// D3/D4 - blocked server-side (409) while the zone has an active sowing; the form only offers this on free zones, so a conflict here means someone else started a sowing on it in the meantime.

@@ -5,13 +5,50 @@
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
 }
 
-<h1 class="h3 mb-3">Parcels</h1>
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-warning">@error</div>
+}
 
 <p class="text-secondary">
     Every Open-Field parcel (and each of its zones, if split) with its readiness for the current season.
     A parcel starts a new season "Not ready" - confirm pre-season field prep (ploughing, discing,
     fertilizing...) is done, then toggle it to Ready.
 </p>
+
+@if (canManage)
+{
+    @if (Model.Farms.Count == 0)
+    {
+        <p class="text-secondary">
+            No Open-Field farms yet - <a asp-action="Index">add one</a> before adding a parcel.
+        </p>
+    }
+    else
+    {
+        <form asp-action="FarmParcelAdd" method="post" class="d-flex gap-2 mb-3 flex-wrap">
+            @if (Model.Farms.Count > 1)
+            {
+                <select name="idFarmOpenfield" class="form-select form-select-sm" style="max-width:16rem" required>
+                    @foreach (var farm in Model.Farms)
+                    {
+                        <option value="@farm.IdFarmOpenfield">@farm.FarmName</option>
+                    }
+                </select>
+            }
+            else
+            {
+                <input type="hidden" name="idFarmOpenfield" value="@Model.Farms[0].IdFarmOpenfield" />
+            }
+            <input type="text" name="farmParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>
+        </form>
+    }
+}
 
 @if (Model.Rows.Count == 0)
 {
@@ -25,6 +62,7 @@ else
                 <tr>
                     <th>Farm</th>
                     <th>Parcel</th>
+                    <th>Boundary</th>
                     <th>Zone</th>
                     <th>Occupancy</th>
                     <th>Season readiness</th>
@@ -36,6 +74,19 @@ else
                     <tr>
                         <td>@row.FarmName</td>
                         <td>@row.Parcel.FarmParcelName</td>
+                        <td>
+                            <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@row.Parcel.IDFarmParcel" title="Boundary and zone map">
+                                <i class="bi bi-map"></i>
+                                @if (row.Parcel.AreaHectares is double ha)
+                                {
+                                    <text>@ha.ToString("0.##") ha</text>
+                                }
+                                else
+                                {
+                                    <text>draw boundary</text>
+                                }
+                            </a>
+                        </td>
                         <td>
                             <a asp-action="Parcel" asp-route-idFarmParcelZone="@row.Zone.IDFarmParcelZone">@row.Zone.FarmParcelZoneName</a>
                         </td>
