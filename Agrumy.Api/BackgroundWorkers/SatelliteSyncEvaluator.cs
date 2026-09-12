@@ -5,7 +5,7 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Daily per-tenant satellite sync (Detaljni dizajn S, B3) - backfills a zone's whole archive once (Statistical API, stats only), then incrementally ingests new scenes since the last one (Process API, raw grid for scalar indices). One tenant's failure/quota-pause never blocks another (D1/D12).
+    /// Daily per-tenant satellite sync (Detaljni dizajn S, B3) - backfills a zone's whole archive once (Statistical API, stats only), then incrementally ingests new scenes since the last one (Process API, raw grid for scalar indices). One tenant's failure/quota-pause never blocks another (D1/D12). The external tick (SatelliteSyncBackgroundService) still fires once a day; a tenant with SyncIntervalDays &gt; 1 just gets skipped on the ticks it isn't due for yet.
     public sealed class SatelliteSyncEvaluator(
         ISatelliteConfigRepository configRepo, IFarmParcelRepository farmParcelRepo, ISatelliteSceneRepository sceneRepo,
         ISatelliteImagerySourceFactory sourceFactory, IUserRepository userRepo, INotificationDispatcher dispatcher,
@@ -16,7 +16,8 @@ namespace Agrumy.Api.BackgroundWorkers
         // The daily tick and a SyncNow enqueue can overlap - two runs backfilling the same zone race on the scene unique index and one of them dies mid-zone, so a second trigger queues behind the first.
         private static readonly SemaphoreSlim RunLock = new(1, 1);
 
-        public async Task RunOnceAsync(CancellationToken ct = default)
+        /// isManualTrigger (FarmOpenfieldApiController.SatelliteMapSyncNow) bypasses every tenant's own SyncIntervalDays gate entirely and never touches LastAutoSyncUtc - the daily background tick is the only writer of that field, so a manual sync can never shift or reset it.
+        public async Task RunOnceAsync(bool isManualTrigger = false, CancellationToken ct = default)
         {
             await RunLock.WaitAsync(ct);
             try
@@ -25,6 +26,11 @@ namespace Agrumy.Api.BackgroundWorkers
                 foreach (TenantSatelliteConfig config in configs)
                 {
                     ct.ThrowIfCancellationRequested();
+                    if (!isManualTrigger && config.LastAutoSyncUtc is DateTimeOffset lastAutoSync
+                        && DateTimeOffset.UtcNow - lastAutoSync < TimeSpan.FromDays(config.SyncIntervalDays))
+                    {
+                        continue; // this tenant's own interval hasn't elapsed since the last automatic run
+                    }
                     try
                     {
                         await RunForTenantAsync(config, ct);
@@ -35,6 +41,13 @@ namespace Agrumy.Api.BackgroundWorkers
                         logger.LogWarning(ex, "Satellite sync failed for tenant {TenantId}.", config.IDTenant);
                         await NotifyAsync(config.IDTenant, NotificationEventType.SatelliteSyncFailed, "Agrumy: satellite sync failed",
                             $"The satellite sync job failed for your tenant: {ex.Message}. It will retry on the next scheduled run.", ct);
+                    }
+                    finally
+                    {
+                        if (!isManualTrigger)
+                        {
+                            await configRepo.SatelliteConfigLastAutoSyncSetAsync(config.IDTenant, DateTimeOffset.UtcNow);
+                        }
                     }
                 }
             }

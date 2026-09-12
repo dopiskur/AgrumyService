@@ -339,6 +339,8 @@ namespace Agrumy.Dal
                 // Same 512 ciphertext-column reasoning as TenantWifiConfigRow.Password above.
                 e.Property(x => x.ClientSecretEncrypted).HasMaxLength(512);
                 e.Property(x => x.CommercialCollectionId).HasMaxLength(80);
+                // Without this, EF's own migration default is the CLR default (0) rather than the DTO's "= 1" initializer - an existing tenant's ALTER TABLE backfill would land on an invalid, out-of-{1..7,30} value.
+                e.Property(x => x.SyncIntervalDays).HasDefaultValue(1);
             });
 
             modelBuilder.Entity<FarmParcelZoneSatelliteSceneRow>(e =>

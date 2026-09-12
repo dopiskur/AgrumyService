@@ -43,6 +43,7 @@ namespace Agrumy.Api.Dal
             row.MinValidPixelPercent = config.MinValidPixelPercent;
             row.Enabled = config.Enabled;
             row.RasterRetentionDaysOverride = config.RasterRetentionDaysOverride;
+            row.SyncIntervalDays = config.SyncIntervalDays;
 
             if (isNew)
             {
@@ -69,6 +70,9 @@ namespace Agrumy.Api.Dal
         public async Task SatelliteConfigQuotaPausedNotifiedAsync(int tenantId, DateTimeOffset? notifiedAtUtc) =>
             await db.TenantSatelliteConfigs.Where(c => c.TenantID == tenantId).ExecuteUpdateAsync(set => set.SetProperty(c => c.QuotaPausedNotifiedAtUtc, notifiedAtUtc));
 
+        public async Task SatelliteConfigLastAutoSyncSetAsync(int tenantId, DateTimeOffset lastAutoSyncUtc) =>
+            await db.TenantSatelliteConfigs.Where(c => c.TenantID == tenantId).ExecuteUpdateAsync(set => set.SetProperty(c => c.LastAutoSyncUtc, lastAutoSyncUtc));
+
         private static TenantSatelliteConfig ToDto(TenantSatelliteConfigRow r) => new()
         {
             IDTenant = r.TenantID,
@@ -87,6 +91,8 @@ namespace Agrumy.Api.Dal
             QuotaPausedUntilUtc = r.QuotaPausedUntilUtc,
             RasterRetentionDaysOverride = r.RasterRetentionDaysOverride,
             QuotaPausedNotifiedAtUtc = r.QuotaPausedNotifiedAtUtc,
+            SyncIntervalDays = r.SyncIntervalDays,
+            LastAutoSyncUtc = r.LastAutoSyncUtc,
         };
     }
 }

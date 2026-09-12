@@ -285,6 +285,8 @@ namespace Agrumy.Api.Controllers.API
 
         #region Satellite module config (Detaljni dizajn S, D1/D8/D11/D12)
 
+        private static readonly int[] AllowedSyncIntervalDays = [1, 2, 3, 4, 5, 6, 7, 30];
+
         /// idTenant defaults to the caller's own tenant - same optional-query-param shape as EmergencyStopActivate above, so a Tenant admin's plain GET/PUT "just works" for their own tenant while a Global admin can still target any tenant explicitly.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet("Satellite")]
@@ -316,6 +318,10 @@ namespace Agrumy.Api.Controllers.API
             if (config.MinValidPixelPercent is < 0 or > 100)
             {
                 return BadRequest("MinValidPixelPercent must be 0-100.");
+            }
+            if (!AllowedSyncIntervalDays.Contains(config.SyncIntervalDays))
+            {
+                return BadRequest($"SyncIntervalDays must be one of: {string.Join(", ", AllowedSyncIntervalDays)}.");
             }
             config.IDTenant = targetTenantId;
             TenantSatelliteConfig saved = await satelliteConfigRepo.SatelliteConfigUpsertAsync(config);

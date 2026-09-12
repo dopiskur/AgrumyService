@@ -19,6 +19,8 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? QuotaPausedUntilUtc { get; set; }
         public int? RasterRetentionDaysOverride { get; set; }
         public DateTimeOffset? QuotaPausedNotifiedAtUtc { get; set; }
+        public int SyncIntervalDays { get; set; } = 1;
+        public DateTimeOffset? LastAutoSyncUtc { get; set; }
     }
 
     /// See Agrumy.Shared.Models.FarmParcelZoneSatelliteScene.

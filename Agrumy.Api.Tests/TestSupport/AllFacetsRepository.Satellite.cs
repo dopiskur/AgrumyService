@@ -22,6 +22,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task SatelliteConfigQuotaPausedNotifiedAsync(int tenantId, DateTimeOffset? notifiedAtUtc) => satelliteConfigRepository.SatelliteConfigQuotaPausedNotifiedAsync(tenantId, notifiedAtUtc);
 
+        public Task SatelliteConfigLastAutoSyncSetAsync(int tenantId, DateTimeOffset lastAutoSyncUtc) => satelliteConfigRepository.SatelliteConfigLastAutoSyncSetAsync(tenantId, lastAutoSyncUtc);
+
         // ---- ISatelliteSceneRepository ----
 
         public Task<FarmParcelZoneSatelliteScene?> SceneGetBySourceIdAsync(int farmParcelZoneId, string sourceSceneId) => satelliteSceneRepository.SceneGetBySourceIdAsync(farmParcelZoneId, sourceSceneId);

@@ -80,6 +80,26 @@
                     <label class="form-label">Raster retention override (days)</label>
                     <input type="number" name="RasterRetentionDaysOverride" class="form-control" value="@Model.RasterRetentionDaysOverride" min="0" disabled="@(!canManage)" />
                 </div>
+                <div class="col-md-3">
+                    <label class="form-label">Auto-sync interval</label>
+                    <select name="SyncIntervalDays" class="form-select" disabled="@(!canManage)">
+                        @foreach (int days in new[] { 1, 2, 3, 4, 5, 6, 7, 30 })
+                        {
+                            <option value="@days" selected="@(Model.SyncIntervalDays == days)">@(days == 1 ? "Daily" : days == 30 ? "Monthly (30 days)" : $"Every {days} days")</option>
+                        }
+                    </select>
+                    <p class="form-text">
+                        How often the daily background tick actually syncs this tenant - "Sync now" always runs immediately regardless of this setting.
+                        @if (Model.LastAutoSyncUtc is DateTimeOffset lastAutoSync)
+                        {
+                            <text>Last automatic sync: @lastAutoSync.ToString("yyyy-MM-dd HH:mm") UTC.</text>
+                        }
+                        else
+                        {
+                            <text>Never run automatically yet.</text>
+                        }
+                    </p>
+                </div>
 
                 <div class="col-12">
                     <label class="form-label">Default indices</label>

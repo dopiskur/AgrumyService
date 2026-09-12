@@ -1033,7 +1033,7 @@ namespace Agrumy.Api.Controllers.API
                 return StatusCode(429, "A sync was already requested for this tenant in the last 5 minutes.");
             }
             await Cache.SetAsync(cooldownKey, "1", TimeSpan.FromMinutes(5));
-            jobQueue.Enqueue((services, ct) => services.GetRequiredService<Agrumy.Api.BackgroundWorkers.SatelliteSyncEvaluator>().RunOnceAsync(ct));
+            jobQueue.Enqueue((services, ct) => services.GetRequiredService<Agrumy.Api.BackgroundWorkers.SatelliteSyncEvaluator>().RunOnceAsync(isManualTrigger: true, ct: ct));
             await WriteAuditAsync("Satellite.SyncNowRequested", tenantId, scope.ToString(), id.ToString(), null);
             return Ok();
         }

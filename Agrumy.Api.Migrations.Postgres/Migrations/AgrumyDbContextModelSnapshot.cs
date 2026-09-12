@@ -3101,6 +3101,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<bool>("Enabled")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("LastAutoSyncUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastQuotaSnapshotJson")
                         .HasColumnType("text");
 
@@ -3127,6 +3130,11 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<int?>("RasterRetentionDaysOverride")
                         .HasColumnType("integer");
+
+                    b.Property<int>("SyncIntervalDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.HasKey("TenantID");
 

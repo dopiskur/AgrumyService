@@ -21,5 +21,8 @@ namespace Agrumy.Api.Dal.Interface
         Task SatelliteConfigQuotaSnapshotSetAsync(int tenantId, string quotaSnapshotJson, DateTimeOffset? pausedUntilUtc);
 
         Task SatelliteConfigQuotaPausedNotifiedAsync(int tenantId, DateTimeOffset? notifiedAtUtc);
+
+        /// The only writer of LastAutoSyncUtc - called exclusively by SatelliteSyncEvaluator's automatic (non-manual-trigger) path.
+        Task SatelliteConfigLastAutoSyncSetAsync(int tenantId, DateTimeOffset lastAutoSyncUtc);
     }
 }

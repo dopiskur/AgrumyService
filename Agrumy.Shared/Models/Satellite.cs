@@ -54,6 +54,10 @@ namespace Agrumy.Shared.Models
         public int? RasterRetentionDaysOverride { get; set; }
         /// Dedup for the SatelliteQuotaPaused notification - cleared once QuotaPausedUntilUtc passes, same "notified until it clears" shape as DeviceRow.OfflineNotifiedAt.
         public DateTimeOffset? QuotaPausedNotifiedAtUtc { get; set; }
+        /// How often the daily tick actually syncs this tenant (1-7, or 30) - the external tick still runs once a day (SatelliteSyncBackgroundService.Interval), SatelliteSyncEvaluator just skips a tenant whose LastAutoSyncUtc is more recent than this many days. Manual "Sync now" (FarmOpenfieldApiController.SatelliteMapSyncNow) ignores this entirely.
+        public int SyncIntervalDays { get; set; } = 1;
+        /// Written only by the automatic daily tick, never by manual "Sync now" - the field this feature's interval check reads, so a manual sync can never shift the next automatic run.
+        public DateTimeOffset? LastAutoSyncUtc { get; set; }
     }
 
     /// One ingested scene for one zone (D9) - UNIQUE(FarmParcelZoneID, SourceSceneId) makes the daily job idempotent against re-processing the same scene.
