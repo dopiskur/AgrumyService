@@ -282,7 +282,7 @@ namespace Agrumy.Dal
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
-            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): farmOpenfield is Farm's 1:1 type-extension row; crop is a global-or-organization catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone); sowing is the mid-level rule scope, FK straight to deviceFarm (not routed through farmOpenfield) since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
+            // Open-Field's parallel hierarchy, restructured by roadmap R (Detaljni dizajn R): farmOpenfield is Farm's 1:1 type-extension row; crop is a global-or-organization catalog; farmParcel (container) holds one-or-more farmParcelZone (unit of work, mirrors farmGreenhouseUnitZone); farmSowing is the mid-level rule scope, FK straight to deviceFarm (not routed through farmOpenfield, same "skip the 1:1 extension row" naming as farmParcel itself) since D5's cascade is Farm>Sowing>FarmParcelZone. No manual PK sentinel dance (unlike DeviceFarmUnit/Zone) - no legacy sentinel row to protect here, plain AUTO_INCREMENT throughout.
             modelBuilder.Entity<FarmOpenfieldRow>(e =>
             {
                 e.ToTable("farmOpenfield");
@@ -356,16 +356,16 @@ namespace Agrumy.Dal
 
             modelBuilder.Entity<ParcelSatelliteIndexRow>(e =>
             {
-                e.ToTable("parcelSatelliteIndex");
+                e.ToTable("farmParcelZoneSatelliteSceneIndex");
                 e.HasKey(x => x.IDParcelSatelliteIndex);
                 e.Property(x => x.IDParcelSatelliteIndex).ValueGeneratedOnAdd();
                 e.HasOne<FarmParcelZoneSatelliteSceneRow>().WithMany().HasForeignKey(x => x.SceneID).OnDelete(DeleteBehavior.NoAction);
-                e.HasIndex(x => new { x.SceneID, x.Index }).IsUnique().HasDatabaseName("ux_parcelSatelliteIndex_scene_index");
+                e.HasIndex(x => new { x.SceneID, x.Index }).IsUnique().HasDatabaseName("ux_farmParcelZoneSatelliteSceneIndex_scene_index");
             });
 
             modelBuilder.Entity<SowingRow>(e =>
             {
-                e.ToTable("sowing");
+                e.ToTable("farmSowing");
                 e.HasKey(x => x.IDSowing);
                 e.Property(x => x.IDSowing).ValueGeneratedOnAdd();
                 e.Property(x => x.Variety).HasMaxLength(100);
@@ -373,14 +373,14 @@ namespace Agrumy.Dal
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.FarmID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<CropRow>().WithMany().HasForeignKey(x => x.CropID).OnDelete(DeleteBehavior.NoAction);
-                e.HasIndex(x => x.FarmID).HasDatabaseName("ix_sowing_farm");
-                e.HasIndex(x => x.TenantID).HasDatabaseName("ix_sowing_tenant");
+                e.HasIndex(x => x.FarmID).HasDatabaseName("ix_farmSowing_farm");
+                e.HasIndex(x => x.TenantID).HasDatabaseName("ix_farmSowing_tenant");
                 e.HasQueryFilter(x => !x.Deleted);
             });
 
             modelBuilder.Entity<SowingFarmParcelZoneRow>(e =>
             {
-                e.ToTable("sowingFarmParcelZone");
+                e.ToTable("farmParcelZoneSowing");
                 e.HasKey(x => new { x.SowingID, x.FarmParcelZoneID });
                 e.HasOne<SowingRow>().WithMany().HasForeignKey(x => x.SowingID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<FarmParcelZoneRow>().WithMany().HasForeignKey(x => x.FarmParcelZoneID).OnDelete(DeleteBehavior.NoAction);
@@ -391,26 +391,26 @@ namespace Agrumy.Dal
                             ? "(CASE WHEN \"ReleasedUtc\" IS NULL THEN \"FarmParcelZoneID\" ELSE NULL END)"
                             : "(CASE WHEN `ReleasedUtc` IS NULL THEN `FarmParcelZoneID` ELSE NULL END)",
                         stored: true);
-                e.HasIndex("ActiveFarmParcelZoneID").IsUnique().HasDatabaseName("ux_sowingFarmParcelZone_activeZone");
-                e.HasIndex(x => x.FarmParcelZoneID).HasDatabaseName("ix_sowingFarmParcelZone_zone");
+                e.HasIndex("ActiveFarmParcelZoneID").IsUnique().HasDatabaseName("ux_farmParcelZoneSowing_activeZone");
+                e.HasIndex(x => x.FarmParcelZoneID).HasDatabaseName("ix_farmParcelZoneSowing_zone");
             });
 
             modelBuilder.Entity<ZonePlantingRow>(e =>
             {
-                e.ToTable("zonePlanting");
+                e.ToTable("farmGreenhouseUnitZonePlanting");
                 e.HasKey(x => x.IDZonePlanting);
                 e.Property(x => x.IDZonePlanting).ValueGeneratedOnAdd();
                 e.Property(x => x.Status).HasDefaultValue(1); // GrowingCycleStatus.Planned (Agrumy.Shared) - Dal has no reference to Shared, mirrors the int-literal convention used for other Shared enums stored here
                 e.HasOne<DeviceFarmUnitZoneRow>().WithMany().HasForeignKey(x => x.DeviceFarmUnitZoneID).OnDelete(DeleteBehavior.NoAction);
                 e.HasOne<CropRow>().WithMany().HasForeignKey(x => x.CropID).OnDelete(DeleteBehavior.NoAction);
-                // D8 invariant "at most one Active cycle per zone" - same collapses-to-NULL trick as sowingFarmParcelZone.ActiveFarmParcelZoneID above.
+                // D8 invariant "at most one Active cycle per zone" - same collapses-to-NULL trick as farmParcelZoneSowing.ActiveFarmParcelZoneID above.
                 e.Property<int?>("ActiveDeviceFarmUnitZoneID")
                     .HasComputedColumnSql(
                         Database.IsNpgsql()
                             ? "(CASE WHEN \"Status\" = 2 THEN \"DeviceFarmUnitZoneID\" ELSE NULL END)" // 2 = GrowingCycleStatus.Active
                             : "(CASE WHEN `Status` = 2 THEN `DeviceFarmUnitZoneID` ELSE NULL END)",
                         stored: true);
-                e.HasIndex("ActiveDeviceFarmUnitZoneID").IsUnique().HasDatabaseName("ux_zonePlanting_activeZone");
+                e.HasIndex("ActiveDeviceFarmUnitZoneID").IsUnique().HasDatabaseName("ux_farmGreenhouseUnitZonePlanting_activeZone");
             });
 
             // Exactly one of the four scope FKs is set - enforced in the API layer, not the DB, same pattern as DeviceFarmUnitZoneRuleRow's scope FKs.
@@ -820,10 +820,10 @@ namespace Agrumy.Dal
 
             modelBuilder.Entity<EventDeviceRow>(e =>
             {
-                e.ToTable("eventDevice");
+                e.ToTable("deviceEvent");
                 e.HasKey(x => x.IDEventDevice);
                 e.Property(x => x.IDEventDevice).ValueGeneratedOnAdd();
-                e.HasIndex(x => new { x.DeviceID, x.Date }).HasDatabaseName("ix_eventDevice_device_date"); // Every device-events read/problem-alert scan filters DeviceID plus a Date range.
+                e.HasIndex(x => new { x.DeviceID, x.Date }).HasDatabaseName("ix_deviceEvent_device_date"); // Every device-events read/problem-alert scan filters DeviceID plus a Date range.
                 e.HasOne<EventTypeRow>().WithMany().HasForeignKey(x => x.EventID).OnDelete(DeleteBehavior.NoAction);
             });
 

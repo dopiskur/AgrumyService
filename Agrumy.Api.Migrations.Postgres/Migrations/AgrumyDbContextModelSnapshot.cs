@@ -1443,9 +1443,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasIndex("EventID");
 
                     b.HasIndex("DeviceID", "Date")
-                        .HasDatabaseName("ix_eventDevice_device_date");
+                        .HasDatabaseName("ix_deviceEvent_device_date");
 
-                    b.ToTable("eventDevice", (string)null);
+                    b.ToTable("deviceEvent", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.EventTypeRow", b =>
@@ -2250,9 +2250,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("SceneID", "Index")
                         .IsUnique()
-                        .HasDatabaseName("ux_parcelSatelliteIndex_scene_index");
+                        .HasDatabaseName("ux_farmParcelZoneSatelliteSceneIndex_scene_index");
 
-                    b.ToTable("parcelSatelliteIndex", (string)null);
+                    b.ToTable("farmParcelZoneSatelliteSceneIndex", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.RefreshTokenRow", b =>
@@ -2877,12 +2877,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("ActiveFarmParcelZoneID")
                         .IsUnique()
-                        .HasDatabaseName("ux_sowingFarmParcelZone_activeZone");
+                        .HasDatabaseName("ux_farmParcelZoneSowing_activeZone");
 
                     b.HasIndex("FarmParcelZoneID")
-                        .HasDatabaseName("ix_sowingFarmParcelZone_zone");
+                        .HasDatabaseName("ix_farmParcelZoneSowing_zone");
 
-                    b.ToTable("sowingFarmParcelZone", (string)null);
+                    b.ToTable("farmParcelZoneSowing", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.SowingRow", b =>
@@ -2945,12 +2945,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasIndex("CropID");
 
                     b.HasIndex("FarmID")
-                        .HasDatabaseName("ix_sowing_farm");
+                        .HasDatabaseName("ix_farmSowing_farm");
 
                     b.HasIndex("TenantID")
-                        .HasDatabaseName("ix_sowing_tenant");
+                        .HasDatabaseName("ix_farmSowing_tenant");
 
-                    b.ToTable("sowing", (string)null);
+                    b.ToTable("farmSowing", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantQuotaRow", b =>
@@ -3496,13 +3496,13 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.HasIndex("ActiveDeviceFarmUnitZoneID")
                         .IsUnique()
-                        .HasDatabaseName("ux_zonePlanting_activeZone");
+                        .HasDatabaseName("ux_farmGreenhouseUnitZonePlanting_activeZone");
 
                     b.HasIndex("CropID");
 
                     b.HasIndex("DeviceFarmUnitZoneID");
 
-                    b.ToTable("zonePlanting", (string)null);
+                    b.ToTable("farmGreenhouseUnitZonePlanting", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.ControllerDataExperimentRow", b =>
