@@ -1,14 +1,14 @@
 @model DeviceCommandButtonsViewModel
-<span class="btn-group" role="group">
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-device-command
+<span class="btn-group flex-shrink-0" role="group">
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.Reboot)">
         <i class="bi bi-arrow-clockwise"></i> Reboot
     </button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-device-command
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ForceOTA)">
         <i class="bi bi-cloud-arrow-down"></i> Force OTA Check
     </button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-device-command
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ForceConfigSync)">
         <i class="bi bi-arrow-repeat"></i> Force Config Sync
     </button>

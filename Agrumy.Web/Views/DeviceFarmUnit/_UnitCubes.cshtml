@@ -19,19 +19,6 @@ else
                     @if (canManage)
                     {
                         <i class="bi bi-grip-vertical unit-drag-handle me-1" title="Drag to reorder" style="cursor:grab"></i>
-                        <a asp-action="UnitAlertRules" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-bell"></i> Alert rules
-                        </a>
-                        <a asp-action="UnitManualActuate" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-hand-index-thumb"></i> Manual actuate
-                        </a>
-                        <a asp-action="UnitRules" asp-route-idDeviceFarmUnit="@u.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-diagram-3"></i> Automation rules
-                        </a>
-                        <form asp-action="ScanUnit" method="post" class="d-inline">
-                            <input type="hidden" name="UnitID" value="@u.IDDeviceFarmUnit" />
-                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
-                        </form>
                     }
                     @{ var otherFarms = Model.Farms.Where(f => f.IDDeviceFarm != u.DeviceFarmID).ToList(); }
                     @if (canManage && u.DeviceFarmID != null && otherFarms.Count > 0)

@@ -260,6 +260,11 @@ namespace Agrumy.Web.Controllers.View
                     ScopeId = idDeviceFarm, IsFarmLevel = true, RelayFunction = RelayFunction.WaterPump, Label = "Irrigation",
                     AllowedTargetMetrics = [SensorMetric.Moisture],
                 },
+                Screen = new ManualActuateFunctionViewModel
+                {
+                    ScopeId = idDeviceFarm, IsFarmLevel = true, RelayFunction = RelayFunction.Screen, Label = "Screen",
+                    AllowedTargetMetrics = [SensorMetric.Light],
+                },
             });
         }
 

@@ -26,12 +26,11 @@
     class RuleTreeBuilder {
         constructor(root) {
             this.root = root;
-            this.simpleMode = root.dataset.simpleMode === 'true';
             const allMetrics = JSON.parse(root.dataset.metrics || '[]');
             this.referenceableRules = JSON.parse(root.dataset.referenceableRules || '[]');
             this.isNotification = root.dataset.notification === 'true';
-            // Simple mode hides derived metrics (VPD/DewPoint/DewPointSpread) - computed values, not something a beginner reads off a sensor. Outdoor* metrics are live weather data, not a device reading - a Relay rule's tree would always evaluate them false (DeviceFarmUnitZoneRule.Validate() rejects them there outright), so they're hidden from that tree's picker rather than offered and silently broken.
-            this.metrics = allMetrics.filter(m => (!this.simpleMode || !m.derived) && (this.isNotification || !m.outdoor));
+            // Outdoor* metrics are live weather data, not a device reading - a Relay rule's tree would always evaluate them false (DeviceFarmUnitZoneRule.Validate() rejects them there outright), so they're hidden from that tree's picker rather than offered and silently broken.
+            this.metrics = allMetrics.filter(m => this.isNotification || !m.outdoor);
             this.treeContainer = root.querySelector('.rule-tree-container');
             this.hiddenInput = root.querySelector('input[name="RootConditionJson"]');
             const addRow = document.createElement('div');
@@ -58,10 +57,6 @@
         }
 
         allowedTypes() {
-            // Simple mode - a rule is one flat "if metric compares to value" comparison, no grouping/schedule/astronomical/rate-of-change/other node types.
-            if (this.simpleMode) {
-                return NODE_TYPES.filter(([value]) => value === 'comparison');
-            }
             return NODE_TYPES.filter(([value]) => {
                 // Astronomical is now valid on both action types (AstronomicalRuleResolver runs on both paths), ruleTriggered/rateOfChange/difDisruption stay Notification-only.
                 if (value === 'ruleTriggered' || value === 'rateOfChange' || value === 'difDisruption') return this.isNotification;
@@ -70,8 +65,8 @@
         }
 
         // isGroupChild: true for a node living inside a group's .rt-children - only those get a drag handle
-        // and swap-with-sibling arrows, since a lone top-level node (Simple mode's single condition, or a
-        // fresh root before it's wrapped in a group) has no siblings to rearrange against.
+        // and swap-with-sibling arrows, since a lone top-level node (a fresh root before it's wrapped in a
+        // group) has no siblings to rearrange against.
         buildNodeEl(type, isGroupChild = false) {
             const el = document.createElement('div');
             el.className = 'rt-node border rounded p-2 mb-2';
@@ -118,10 +113,7 @@
                 const replacement = this.buildNodeEl(typeSelect.value, isGroupChild);
                 el.replaceWith(replacement);
             });
-            // Simple mode only ever allows one type - a single-option dropdown is just clutter, not a real choice.
-            if (!this.simpleMode) {
-                header.appendChild(typeSelect);
-            }
+            header.appendChild(typeSelect);
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';

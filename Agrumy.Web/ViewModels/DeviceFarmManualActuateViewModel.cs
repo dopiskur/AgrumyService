@@ -7,5 +7,6 @@ namespace Agrumy.Web.ViewModels
         public required ManualActuateFunctionViewModel Heating { get; init; }
         public required ManualActuateFunctionViewModel Ventilation { get; init; }
         public required ManualActuateFunctionViewModel Irrigation { get; init; }
+        public required ManualActuateFunctionViewModel Screen { get; init; }
     }
 }

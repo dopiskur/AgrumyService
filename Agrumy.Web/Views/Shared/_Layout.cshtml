@@ -34,9 +34,6 @@
     }
     catch (Agrumy.Web.Utils.ApiException) { }
 
-    // A user's own display preference - hides a handful of Advanced-only nav items for a hobby user who never opted into the fuller UI. Never itself an authorization check - every hidden route still enforces its own role/organization rules regardless of this flag.
-    bool simpleUIMode = User.GetUIMode() == UIMode.Simple;
-
     bool canEmergencyStop = hasAnyRole(RoleNames.DeviceManagers);
     bool emergencyStopActive = false;
     if (canEmergencyStop)
@@ -105,9 +102,6 @@
                     }
                     <li class="nav-item me-2">
                         <partial name="_LanguageSwitcher" />
-                    </li>
-                    <li class="nav-item me-2">
-                        <partial name="_UIModeToggle" />
                     </li>
                     @if (!string.IsNullOrEmpty(currentUserEmail))
                     {
@@ -222,7 +216,7 @@
                                 </a>
                             </li>
                         }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers) && !simpleUIMode)
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="Experiment" asp-action="Index" class="nav-link @navActive("Experiment")">
@@ -300,7 +294,7 @@
                                 </li>
                             }
                         }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers) && !simpleUIMode)
+                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
                             <li class="nav-item">
                                 <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">

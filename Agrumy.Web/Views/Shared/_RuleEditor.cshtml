@@ -12,9 +12,8 @@
         (Agrumy.Shared.Models.RelayFunction.Ventilation, "Ventilation"),
         (Agrumy.Shared.Models.RelayFunction.Light, "Light"),
         (Agrumy.Shared.Models.RelayFunction.Heating, "Heating"),
-        (Agrumy.Shared.Models.RelayFunction.WaterPump, "Water pump"),
+        (Agrumy.Shared.Models.RelayFunction.WaterPump, "Irrigation"),
         (Agrumy.Shared.Models.RelayFunction.Screen, "Screen"),
-        (Agrumy.Shared.Models.RelayFunction.Vent, "Vent"),
     ];
     (Agrumy.Shared.Models.SensorMetric Value, string Label)[] metrics =
     [
@@ -30,11 +29,10 @@
         (Agrumy.Shared.Models.SensorMetric.OutdoorTemperature, "Outdoor temperature"), (Agrumy.Shared.Models.SensorMetric.OutdoorHumidity, "Outdoor humidity"),
         (Agrumy.Shared.Models.SensorMetric.OutdoorWind, "Outdoor wind"),
     ];
-    // Computed from other readings, not a raw sensor value - hidden from the metric picker in Simple mode along with every non-comparison node type (see rule-builder.js's allowedTypes()).
+    // Computed from other readings, not a raw sensor value - hidden from the Relay tree's metric picker (see rule-builder.js's metrics filter); still offered on a Notification rule.
     HashSet<Agrumy.Shared.Models.SensorMetric> derivedMetrics = [Agrumy.Shared.Models.SensorMetric.Vpd, Agrumy.Shared.Models.SensorMetric.DewPoint, Agrumy.Shared.Models.SensorMetric.DewPointSpread];
     // Live weather data, not a device reading - only valid on a Notification-action rule (DeviceFarmUnitZoneRule.Validate() rejects it on Relay), hidden from the Relay tree's metric picker (see rule-builder.js's metrics filter).
     HashSet<Agrumy.Shared.Models.SensorMetric> outdoorMetrics = [Agrumy.Shared.Models.SensorMetric.OutdoorTemperature, Agrumy.Shared.Models.SensorMetric.OutdoorHumidity, Agrumy.Shared.Models.SensorMetric.OutdoorWind];
-    bool simpleUIMode = User.GetUIMode() == UIMode.Simple;
     bool isReadOnly = ViewBag.IsReadOnly is true;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
@@ -74,7 +72,7 @@
         string metricsJson = JsonSerializer.Serialize(metrics.Select(m => new { value = (int)m.Value, label = m.Label, derived = derivedMetrics.Contains(m.Value), outdoor = outdoorMetrics.Contains(m.Value) }), jsonOpts).Replace("\"", "&quot;");
         string rulesJson = JsonSerializer.Serialize(referenceable.Select(r => new { id = r.IDDeviceFarmUnitZoneRule, name = r.Name }), jsonOpts).Replace("\"", "&quot;");
         var html = $"""
-        <div class="rule-tree-builder" data-metrics="{metricsJson}" data-referenceable-rules="{rulesJson}" data-notification="{(isNotification ? "true" : "false")}" data-simple-mode="{(simpleUIMode ? "true" : "false")}">
+        <div class="rule-tree-builder" data-metrics="{metricsJson}" data-referenceable-rules="{rulesJson}" data-notification="{(isNotification ? "true" : "false")}">
             <input type="hidden" name="RootConditionJson" />
             <div class="rule-tree-container mb-2"></div>
         </div>
@@ -91,18 +89,10 @@
     </div>
     <div class="card-body">
         <p class="text-secondary small">
-            A function may have several rules - any rule that evaluates "on" wins (OR). Screen/Vent are
+            A function may have several rules - any rule that evaluates "on" wins (OR). Screen is
             positional instead: the highest target percent among the currently-true rules wins. A safety
             rule always survives being overridden by a more specific scope.
         </p>
-        @if (simpleUIMode)
-        {
-            <p class="text-secondary small">
-                <i class="bi bi-info-circle"></i> Simple mode - new rules are a single "if metric compares to
-                value" condition. <a asp-controller="Profile" asp-action="Index">Switch to Advanced</a> for
-                condition groups, derived metrics, schedules, and more.
-            </p>
-        }
         @foreach (var (function, label) in functions)
         {
             var rules = rulesByFunction.GetValueOrDefault(function, []);
@@ -227,14 +217,6 @@
             in this same scope from this form (the API itself allows any Notification rule in the
             tenant, including cross-zone).
         </p>
-        @if (simpleUIMode)
-        {
-            <p class="text-secondary small">
-                <i class="bi bi-info-circle"></i> Simple mode - new rules are a single "if metric compares to
-                value" condition. <a asp-controller="Profile" asp-action="Index">Switch to Advanced</a> for
-                condition groups, derived metrics, schedules, and more.
-            </p>
-        }
         @if (notificationRules.Count > 0)
         {
             <ul class="list-group list-group-flush mb-2">

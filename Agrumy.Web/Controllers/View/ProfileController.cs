@@ -30,7 +30,7 @@ namespace Agrumy.Web.Controllers.View
                 return View(await RestoreDisplayFieldsAsync(value));
             }
 
-            // UIMode now moves exclusively through ToggleUIMode (header button) - this form no longer posts it, so keep the existing value instead of letting it bind to the default.
+            // This form no longer posts UIMode - keep the existing value instead of letting it bind to the default.
             value.Profile.UIMode = User.GetUIMode();
 
             try
@@ -47,23 +47,6 @@ namespace Agrumy.Web.Controllers.View
             await RefreshTimeZoneClaimAsync(value.Profile.TimeZone);
             TempData["ProfileMessage"] = "Profile saved.";
             return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ToggleUIMode(string? returnUrl)
-        {
-            User self = await api.UserGetSelf();
-            UIMode newMode = self.UIMode == UIMode.Simple ? UIMode.Advanced : UIMode.Simple;
-            await api.UserProfileSet(new UserProfileUpdate
-            {
-                FirstName = self.FirstName,
-                LastName = self.LastName,
-                TimeZone = self.TimeZone,
-                UIMode = newMode,
-            });
-            await RefreshUIModeClaimAsync(newMode);
-            return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/");
         }
 
         [HttpPost]
@@ -166,22 +149,6 @@ namespace Agrumy.Web.Controllers.View
             {
                 claims.Add(new Claim(UserClaims.TimeZone, timeZone));
             }
-
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)), auth.Properties);
-        }
-
-        // Same "re-issue the cookie right now" reasoning as RefreshTimeZoneClaimAsync above - the nav menu and rule builder read this claim on every page render, not just after the next token refresh.
-        private async Task RefreshUIModeClaimAsync(UIMode uiMode)
-        {
-            var auth = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            if (!auth.Succeeded || auth.Principal is null || auth.Properties is null)
-            {
-                return;
-            }
-
-            var claims = auth.Principal.Claims.Where(c => c.Type != UserClaims.UIMode).ToList();
-            claims.Add(new Claim(UserClaims.UIMode, uiMode.ToString()));
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)), auth.Properties);

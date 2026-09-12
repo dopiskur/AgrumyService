@@ -36,7 +36,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Farms</a></li>
+        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Greenhouse</a></li>
         @if (Model.Crop is { } crop)
         {
             <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idSowing="@crop.IDSowing">@crop.SowingName</a></li>

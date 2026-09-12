@@ -29,6 +29,12 @@
         MaxRunSeconds = Model.Zone.WaterPumpMaxRunSeconds, AllowedTargetMetrics = [SensorMetric.Moisture],
         Active = ActiveFor(RelayFunction.WaterPump), DisplayTimeZone = Model.DisplayTimeZone,
     };
+    var screenModel = new ManualActuateFunctionViewModel
+    {
+        ScopeId = idZone, RelayFunction = RelayFunction.Screen, Label = "Screen",
+        AllowedTargetMetrics = [SensorMetric.Light],
+        Active = ActiveFor(RelayFunction.Screen), DisplayTimeZone = Model.DisplayTimeZone,
+    };
 }
 
 <partial name="_RuleEditor" model="ruleEditorModel" />
@@ -81,7 +87,7 @@
     (RelayFunction Value, string Label)[] presetFunctions =
     [
         (RelayFunction.Heating, "Heating"), (RelayFunction.Ventilation, "Ventilation"),
-        (RelayFunction.Light, "Light"), (RelayFunction.WaterPump, "Water pump"),
+        (RelayFunction.Light, "Light"), (RelayFunction.WaterPump, "Irrigation"),
     ];
     (SensorMetric Value, string Label)[] presetMetrics =
     [
@@ -175,6 +181,7 @@
         <partial name="_ManualActuateFunction" model="heatingModel" />
         <partial name="_ManualActuateFunction" model="ventilationModel" />
         <partial name="_ManualActuateFunction" model="irrigationModel" />
+        <partial name="_ManualActuateFunction" model="screenModel" />
     </div>
 </div>
 
