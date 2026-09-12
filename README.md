@@ -118,7 +118,9 @@ simulation/experiment, empty otherwise. A Notification-action rule
 can also fire on another Notification rule's own result ("another rule fired")
 for simple chaining. Threshold's metric/direction is still implicit per relay
 function; a Notification rule picks an explicit sensor metric instead, since
-there's no relay to imply one. Arbitrary nested boolean logic spanning
+there's no relay to imply one - including a few PSEUDO metrics with no device
+sensor behind them at all (live outdoor temperature/humidity/wind from the
+configured weather provider, for a climate-mirroring alert). Arbitrary nested boolean logic spanning
 different metrics/functions in one condition still needs to be added in C#,
 not configured through the rule editor.
 
@@ -128,6 +130,13 @@ sensor value is reached (Heating/Ventilation/WaterPump only, matched to a
 sensible metric per function), capped by the same max-run-seconds safety limit
 the rule engine itself respects, and expiring on its own without needing a
 second call to turn it back off.
+
+Two relay functions (Screen, Vent) are positional rather than plain on/off - a
+rule for either carries a `TargetPercent` instead of just turning "on", and
+several true rules for the same function MAX-fold their percentages together
+instead of a plain OR. Every other relay function still resolves to the same
+0/100 shape underneath, so the fold is one engine, not a special case for the
+positional functions.
 
 ## Quickstart
 
@@ -384,6 +393,8 @@ CRUD/reorder/delete/recycle-bin here is shared by both branches.
 | `GET .../Zone/Rule`, `GET .../Unit/Rule`, `GET .../Farm/Rule`, `GET .../Global/Rule`, `GET .../Crop/Rule`, `GET .../Parcel/Rule` | JWT | A zone/unit/farm/account's (or crop's/parcel's, for an Open-Field farm) automation rules - see "Automation rule engine" above for the full scope precedence |
 | `POST/DELETE` on the same six routes | DeviceManagers | Add / remove one rule - up to 8 conditions each, see "Automation rule engine"; delete returns 409 if another rule's RuleTriggered condition still references it |
 | `POST /api/DeviceFarmUnit/Zone/ManualActuate`, `POST .../Zone/ManualActuate/Stop`, `POST .../Unit/ManualActuate`, `GET .../Zone/ManualActuate` | JWT (POST DeviceManagers) | Start / stop / check a Manual Actuate override for a zone or unit - see "Automation rule engine" |
+| `POST /api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog` | DeviceManagers | Turn a chosen Horticulture Catalog entry into a starter set of threshold rules for a zone, skipping any that don't fit under its rule-count cap |
+| `POST /api/DeviceFarmUnit/Zone/ApplyDayNightPreset` | DeviceManagers | Add one day-threshold + one night-threshold rule pair for a plain on/off function (not Screen/Vent) |
 | `GET /api/DeviceFarmUnit/Dashboard`, `Dashboard/Zones`, `Dashboard/Zone` | JWT | Hierarchical dashboard rollups (per-unit, per-zone-list, per-zone) |
 
 **FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop/Parcel branch for an Open-Field
@@ -398,6 +409,27 @@ farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD and rules st
 | `POST/PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Create / update / delete a parcel - same safety-limit validation as a Zone |
 | `PUT /api/FarmOpenfield/Parcel/{id}/Migrate` | DeviceManagers | Move a parcel to a different crop within the same account |
 | `POST /api/FarmOpenfield/Assign`, `POST .../Unassign` | DeviceManagers | Place / remove a device from a parcel (one controller per parcel, same rule as a Zone) |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes`, `.../Series`, `.../MoistureSeries` | JWT | A zone's available satellite scenes / an index's value over time (NDVI/NDMI/NDWI/NDSI/SWIR-composite/natural-color) / the matching soil-moisture sensor series for the same dates, for the Zone-tab dual-axis chart |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}` | JWT | Rendered PNG (scalar indices as a UINT8-quantized grid, natural/SWIR as true color) for one scene |
+| `GET /api/FarmOpenfield/{scope}/{id}/Satellite`, `GET .../Satellite/Dates` | JWT | Map overlay + available dates at Farm/Sowing/Parcel/Zone scope - a zone with no scene yet at/before the requested date still draws, empty, rather than disappearing |
+| `POST /api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow` | DeviceManagers | Force an immediate scene sync for that scope instead of waiting for the daily background job |
+
+Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem, `ISatelliteImagerySource`/`ISatelliteImagerySourceFactory`) is opt-in per account (own CDSE client credentials, tested and saved together with a 24h health indicator) - an account with the module off or unconfigured simply has no scenes and every satellite endpoint above returns empty/no-data rather than an error.
+
+**HorticultureCatalog** (`HorticultureCatalogApiController`, `api/HorticultureCatalog`) - shared read-only agronomy reference data, every account browses the same catalog
+
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `GET /api/HorticultureCatalog`, `GET .../ById` | JWT | List a subcatalog (Crop/Fruit/Hydroponic/Perma) / fetch one entry, including its per-BBCH-growth-stage ranges for a Crop entry |
+| `POST/PUT/DELETE /api/HorticultureCatalog` | Global admin | Create / update / delete a catalog entry |
+
+**Arkod** (`ArkodApiController`, `api/Arkod`) - offline/manual-upload path for a local mirror of Croatia's public ARKOD land-parcel registry; the map's own parcel-geometry click-lookup talks to the government WMS service directly from the browser and never touches this controller
+
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `GET /api/Arkod/Lookup` | JWT | Look up a parcel's registry geometry by its JPAID from the local GeoPackage mirror (503 if none has been synced/uploaded yet) |
+| `POST /api/Arkod/GeoPackage/Upload` | Global admin | Manually upload a `.gpkg` mirror (offline-deployment fallback, up to ~1.2 GB) |
+| `POST /api/Arkod/GeoPackage/SyncNow` | Global admin | Run the daily sync job's HEAD-then-conditional-GET check immediately instead of waiting for its next tick |
 
 **Gateway** (`GatewayApiController`, `api/Gateway`) - lets one WiFi-connected device relay other devices' traffic instead of reporting its own sensors, so a fleet of LoRa-only nodes (or a WiFi repeater setup) needs no direct internet reach of their own
 
@@ -471,6 +503,7 @@ next step - not required today.
 | `GET /api/ServerConfig` | admin | The whole server-wide settings row (secrets redacted) - Global admin/reader only, applies across every account |
 | `GET`/`PUT /api/ServerConfig/{DeviceDefaults,Accounts,Alerts,Firmware,DataRetention,Weather,Gateway,Mqtt,Email,Webhook,OData,Arkod}` | admin | One domain section each; a PUT rewrites only that section's fields, so no save can blank a field its form never rendered. `POST /api/ServerConfig/ArchiveSettings` is the archiving section's own test-then-save |
 | `GET /api/ServerConfig/Public` | no auth | The subset of server config safe to expose pre-login (e.g. registration open/closed) |
+| `GET /api/ServerConfig/Health` | admin | Per-dependency Server Health card (MQTT/Email/Firmware source/Weather/Gateway/background workers) - only lists a dependency currently enabled/configured, polled by the Web page on an interval rather than an on-demand test button |
 
 **DataMaintenance** (`DataMaintenanceApiController`, `api/DataMaintenance`)
 
@@ -486,6 +519,14 @@ next step - not required today.
 | `GET /api/SensorData` | JWT | Sensor readings for a device over a time range |
 | `POST /api/SensorData` | rate-limited | Device telemetry push (includes `Battery`) |
 | `DELETE /api/SensorData` | JWT admin | Bulk-delete sensor data for a device/time range |
+
+**Observability** (`Agrumy.Api/Diagnostics`, `Agrumy.Api/Startup/ObservabilityServiceExtensions.cs`)
+
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `GET /api/health` | no auth | Liveness probe (DB + cache-backend checks) for a load balancer or an auto-update rollback step; reports the deployed build's version and commit |
+| `GET /api/metrics` | Metrics readers (Global admin/reader, or an account's own data-reader role) | Per-route+method request count/error count/avg/min/max duration, from an in-memory aggregate |
+| `GET /api/metrics/prometheus` | Metrics readers | The same counters exposed as a Prometheus scrape endpoint (OpenTelemetry exporter on the same `Agrumy.Api` meter) |
 
 ## Practical advantages
 
@@ -517,16 +558,26 @@ things that make Agrumy easier to trust and run day-to-day:
   Latitude/Longitude override lets a demo device appear anywhere on the map
   without touching its real GPS/manual location, reverting automatically the
   moment the simulation is disabled.
-- **13 native firmware unit tests in CI**, no hardware required
+- **25 native firmware unit tests in CI**, no hardware required
   (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
-  AND-OR-fold/discovery/LoRa/manual-override logic is regression-tested on
-  every push, not just checked by hand on a bench; the threshold-evaluation
-  suite runs against a `threshold_vectors.csv` shared verbatim between this
-  repo and `AgrumyFirmware`, so both sides agree on the same inputs/outputs.
+  AND-OR-fold/discovery/LoRa/manual-override/PID/output-kind-dispatch logic is
+  regression-tested on every push, not just checked by hand on a bench; the
+  threshold-evaluation suite runs against a `threshold_vectors.csv` shared
+  verbatim between this repo and `AgrumyFirmware`, so both sides agree on the
+  same inputs/outputs.
 - **Contract-first device↔API.** Every device request/response shape is a JSON
   Schema in `contracts/device-api/`, checked against both the firmware and the
   API's actual field usage (`AgrumyFirmware/tools/contract-check`) - firmware and
   server can't silently drift apart on wire format.
+- **Account export/import and a one-click Emergency Stop.** An account admin can
+  export their whole farm hierarchy (users, devices, rules, optionally sensor
+  history) as a portable ZIP and bring it back in under a different name -
+  useful for migrating between servers or standing up a demo from real data,
+  without server-side access. Emergency Stop forces every actuator in an
+  account off ahead of any rule, pushed immediately rather than waiting for the
+  next config poll, and stays off until explicitly cleared - deliberately a
+  single click with no confirmation step, since hesitation is the wrong default
+  for a safety control.
 - **OTA plus fully offline firmware distribution.** The same firmware catalog
   that drives normal OTA updates also supports offline USB installs and
   Local/Custom repository sources - useful anywhere internet access to GitHub
@@ -550,9 +601,15 @@ things that make Agrumy easier to trust and run day-to-day:
 - **A clear vertical focus.** Agrumy isn't trying to be a general home-automation
   hub - every model and rule is shaped around greenhouse/citrus micro-climate
   and irrigation specifically, not a generic "IoT platform."
-- **Crop-specific configuration templates are planned, not yet built** - the
-  goal is that setting up a new zone eventually starts from agronomy know-how
-  already built into the product, not a blank set of thresholds to guess at.
+- **Crop-specific configuration templates.** A Horticulture Catalog (Crop/Fruit/
+  Hydroponic/Perma entries, each a recommended AirTemp/SoilTemp/Humidity/
+  Moisture/Light range, and Crop entries additionally broken down by BBCH
+  growth stage) lets a new zone start from agronomy know-how already built
+  into the product - `POST .../Zone/ApplyHorticultureCatalog` turns a chosen
+  catalog entry straight into a starter set of threshold rules, skipping any
+  that don't fit under the zone's rule-count cap rather than failing outright.
+  A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
+  day threshold + one night threshold for a plain on/off function.
 
 ## Self-hosted install
 
