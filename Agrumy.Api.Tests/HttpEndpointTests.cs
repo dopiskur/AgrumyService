@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Agrumy.Api.Security;
 using Agrumy.Dal;
@@ -110,6 +111,10 @@ public sealed class HttpEndpointTests : IClassFixture<ApiWebApplicationFactory>
 
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        // Keys must exist even when null (no -p:SourceRevisionId on this test build), so a monitor can tell "unstamped build" apart from "field doesn't exist".
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("version", out _));
+        Assert.True(body.TryGetProperty("commit", out _));
     }
 
     /// Role check passes, so the request reaches the controller action and its DB call fails against
