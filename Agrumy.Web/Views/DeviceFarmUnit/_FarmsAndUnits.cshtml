@@ -23,10 +23,6 @@
             }
         </div>
         <div class="card-body">
-            <p class="text-secondary small">
-                Click a unit to see its zones. For a flat, fast-triage list of every device instead,
-                see <a asp-controller="Device" asp-action="Fleet">Fleet</a>.
-            </p>
             @if (canManage && Model.Farms.Count == 1 && unassigned.Count > 0)
             {
                 <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
