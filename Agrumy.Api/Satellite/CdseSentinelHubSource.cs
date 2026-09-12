@@ -13,7 +13,6 @@ namespace Agrumy.Api.Satellite
         private const string CatalogUrl = "https://sh.dataspace.copernicus.eu/catalog/v1/search";
         private const string ProcessUrl = "https://sh.dataspace.copernicus.eu/process/v1";
         private const string StatisticsUrl = "https://sh.dataspace.copernicus.eu/statistics/v1";
-        private const int TargetResolutionMeters = 10;
 
         public SatelliteCapabilities GetCapabilities(SatelliteCollection collection) => collection switch
         {
@@ -108,7 +107,8 @@ namespace Agrumy.Api.Satellite
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
             Evalscripts.Definition def = EvalscriptsFor(collection)[index];
-            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, TargetResolutionMeters, TargetResolutionMeters);
+            double resolutionMeters = GetCapabilities(collection).ResolutionMeters;
+            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, resolutionMeters, resolutionMeters);
             var body = new JsonObject
             {
                 ["input"] = new JsonObject
@@ -127,7 +127,7 @@ namespace Agrumy.Api.Satellite
                         },
                     }),
                 },
-                // Live-verified against CDSE (2026-09): resx/resy alone silently renders a 1x1 image against a CRS84 (geographic, not metric) geometry bounds - explicit pixel width/height is the only thing that actually works, so TargetResolutionMeters is applied here instead, not sent on the wire.
+                // Live-verified against CDSE (2026-09): resx/resy alone silently renders a 1x1 image against a CRS84 (geographic, not metric) geometry bounds - explicit pixel width/height is derived from the collection's own ResolutionMeters instead, not sent on the wire.
                 ["output"] = new JsonObject
                 {
                     ["width"] = pixelWidth,
@@ -180,7 +180,8 @@ namespace Agrumy.Api.Satellite
                 return [];
             }
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
-            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, TargetResolutionMeters, TargetResolutionMeters);
+            double resolutionMeters = GetCapabilities(collection).ResolutionMeters;
+            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, resolutionMeters, resolutionMeters);
 
             var body = new JsonObject
             {
@@ -337,7 +338,7 @@ namespace Agrumy.Api.Satellite
 
         // CDSE's Process API render needs explicit pixel width/height (see RenderIndexAsync's own remarks) - derived here from the polygon's geographic extent and a target meters-per-pixel, since CRS84 is degrees, not meters. Clamped to [1, MaxRenderPixels] both ways: a degenerate/near-zero polygon still gets a real request, and a huge polygon can't blow past CDSE's own per-request pixel cap.
         private const int MaxRenderPixels = 2500;
-        internal static (int Width, int Height) ComputePixelDimensions(string geoJsonPolygon, int resxMeters, int resyMeters)
+        internal static (int Width, int Height) ComputePixelDimensions(string geoJsonPolygon, double resxMeters, double resyMeters)
         {
             var coords = new List<(double Lon, double Lat)>();
             void Collect(JsonNode? node)
