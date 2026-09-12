@@ -5,6 +5,8 @@ namespace Agrumy.Shared.Models
     {
         Greenhouse = 1,
         OpenField = 2,
+        /// Not yet a buildable farm type - no creation flow sets this. Reserved for the future Fruit Plantation module (see FarmGroup's own Fruit section).
+        Fruit = 3,
     }
 
     /// Replaces ExperimentScope/SimulationGroupScope/DashboardAggregationLevel - one scope enum every hierarchy-aware subsystem shares. Farm/Unit/Zone values are numerically unchanged from ExperimentScope/DashboardAggregationLevel on purpose; Sowing/FarmParcelZone (formerly Crop/Parcel) keep their prior numeric values too - restructure R1 renamed the concept, not the wire value.

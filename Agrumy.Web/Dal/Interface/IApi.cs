@@ -222,6 +222,20 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Farm")]
         Task DeviceFarmDelete(int? idDeviceFarm);
 
+        // ---- Farm Group --------------------------
+
+        [Get("/api/FarmGroup/All")]
+        Task<IList<FarmGroup>> FarmGroupsGet();
+
+        [Post("/api/FarmGroup")]
+        Task<FarmGroup> FarmGroupCreate([Body] string? name);
+
+        [Delete("/api/FarmGroup")]
+        Task FarmGroupDelete(int idFarmGroup);
+
+        [Post("/api/FarmGroup/AssignFarm")]
+        Task FarmAssignToGroup(int idFarm, int? idFarmGroup);
+
         // ---- Recycle Bin --------------------------
 
         [Get("/api/RecycleBin/Device")]

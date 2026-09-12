@@ -51,6 +51,7 @@ namespace Agrumy.Api.Startup
             services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
             services.AddScoped<IDeviceRepository, EfDeviceRepository>();
             services.AddScoped<IDeviceFarmUnitRepository, EfDeviceFarmUnitRepository>();
+            services.AddScoped<IFarmGroupRepository, EfFarmGroupRepository>();
             services.AddScoped<ICropCatalogRepository, EfCropCatalogRepository>();
             services.AddScoped<IFarmParcelRepository, EfFarmParcelRepository>();
             services.AddScoped<ISowingRepository, EfSowingRepository>();

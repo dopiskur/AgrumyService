@@ -28,7 +28,8 @@ namespace Agrumy.Api.Tests.TestSupport
         IFieldLogRepository,
         IZonePlantingRepository,
         ISatelliteConfigRepository,
-        ISatelliteSceneRepository
+        ISatelliteSceneRepository,
+        IFarmGroupRepository
     {
     }
 }

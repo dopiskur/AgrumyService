@@ -29,6 +29,7 @@ namespace Agrumy.Dal
 
         public DbSet<DeviceRow> Devices => Set<DeviceRow>();
         public DbSet<DeviceFarmRow> DeviceFarms => Set<DeviceFarmRow>();
+        public DbSet<FarmGroupRow> FarmGroups => Set<FarmGroupRow>();
         public DbSet<DeviceFarmUnitRow> DeviceFarmUnits => Set<DeviceFarmUnitRow>();
         public DbSet<DeviceFarmUnitZoneRow> DeviceFarmUnitZones => Set<DeviceFarmUnitZoneRow>();
         public DbSet<CropRow> Crops => Set<CropRow>();
@@ -260,7 +261,19 @@ namespace Agrumy.Dal
                 e.Property(x => x.DisplayOrder).HasDefaultValue(0);
                 e.Property(x => x.Deleted).HasDefaultValue(false);
                 e.Property(x => x.Purged).HasDefaultValue(false);
+                e.HasOne<FarmGroupRow>().WithMany().HasForeignKey(x => x.FarmGroupID).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
                 // Every ordinary query sees only live farms; RecycleBinApiController/EfRecycleBinRepository explicitly IgnoreQueryFilters() for the recycle bin listing/restore.
+                e.HasQueryFilter(x => !x.Deleted);
+            });
+
+            modelBuilder.Entity<FarmGroupRow>(e =>
+            {
+                e.ToTable("farmGroup");
+                e.HasKey(x => x.IDFarmGroup);
+                e.Property(x => x.IDFarmGroup).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(100);
+                e.Property(x => x.Deleted).HasDefaultValue(false);
+                e.HasIndex(x => x.TenantID).HasDatabaseName("ix_farmGroup_tenant");
                 e.HasQueryFilter(x => !x.Deleted);
             });
 

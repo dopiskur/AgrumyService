@@ -409,6 +409,7 @@ namespace Agrumy.Api.Dal
             DeviceFarmName = f.DeviceFarmName,
             FarmType = (FarmType)f.FarmType,
             DisplayOrder = f.DisplayOrder,
+            FarmGroupID = f.FarmGroupID,
             DeletedAtUtc = f.DeletedAtUtc,
             PurgedAtUtc = f.PurgedAtUtc,
         };

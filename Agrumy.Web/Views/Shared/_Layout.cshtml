@@ -164,6 +164,12 @@
                                 <p>@Localizer["Dashboard"]</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="FarmGroup" asp-action="Index" class="nav-link @navActive("FarmGroup")">
+                                <i class="nav-icon bi bi-diagram-3"></i>
+                                <p>@Localizer["Farm Groups"]</p>
+                            </a>
+                        </li>
                         @{
                             bool openfieldSectionActive = string.Equals(currentController, "FarmOpenfield", StringComparison.OrdinalIgnoreCase)
                                 && !string.Equals(currentAction, "FarmSatellite", StringComparison.OrdinalIgnoreCase);

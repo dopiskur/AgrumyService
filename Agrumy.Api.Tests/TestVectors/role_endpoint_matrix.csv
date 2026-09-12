@@ -13,6 +13,7 @@ DELETE,api/DeviceFarmUnit/Zone/Planting/FieldLog,Global admin;Global Device;Tena
 DELETE,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/FarmGroup,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
@@ -119,6 +120,8 @@ POST,api/Discovery/WifiConfigs,Global admin;Global Device;Tenant admin;Tenant De
 POST,api/Experiment,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Experiment/{idExperiment}/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/Experiment/{idExperiment}/Stop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmGroup,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmGroup/AssignFarm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device

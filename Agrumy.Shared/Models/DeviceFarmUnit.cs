@@ -14,10 +14,22 @@ namespace Agrumy.Shared.Models
         public FarmType FarmType { get; set; } = FarmType.Greenhouse;
         // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
+        /// Null when not placed in any FarmGroup - at most one group per farm.
+        public int? FarmGroupID { get; set; }
         // Null unless this came from the Recycle Bin listing.
         public DateTimeOffset? DeletedAtUtc { get; set; }
         // Null unless this came from the pending-purge listing.
         public DateTimeOffset? PurgedAtUtc { get; set; }
+    }
+
+    /// Cross-cutting grouping ABOVE Farm, spanning FarmType (Greenhouse/Crop/Fruit) - see Agrumy.Dal.Entities.FarmGroupRow for the "why" on not merging FarmType exclusivity away instead.
+    public class FarmGroup
+    {
+        [HiddenInput(DisplayValue = true)]
+        public int? IDFarmGroup { get; set; }
+        public int? TenantID { get; set; }
+        public string? Name { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     /// A physical/logical space (e.g. a greenhouse) containing DeviceFarmUnitZones.

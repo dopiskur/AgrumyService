@@ -590,6 +590,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<int?>("FarmGroupID")
+                        .HasColumnType("int");
+
                     b.Property<int>("FarmType")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -607,6 +610,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("IDDeviceFarm");
+
+                    b.HasIndex("FarmGroupID");
 
                     b.ToTable("farm", (string)null);
                 });
@@ -1500,6 +1505,37 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasDatabaseName("ix_experiment_tenant_scope");
 
                     b.ToTable("experiment", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmGroupRow", b =>
+                {
+                    b.Property<int>("IDFarmGroup")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmGroup"));
+
+                    b.Property<bool>("Deleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int?>("TenantID")
+                        .HasColumnType("int");
+
+                    b.HasKey("IDFarmGroup");
+
+                    b.HasIndex("TenantID")
+                        .HasDatabaseName("ix_farmGroup_tenant");
+
+                    b.ToTable("farmGroup", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
@@ -3700,6 +3736,14 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasForeignKey("ScanningDeviceID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmGroupRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmGroupID")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.DeviceFarmUnitRow", b =>

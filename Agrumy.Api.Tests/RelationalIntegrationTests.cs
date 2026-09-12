@@ -147,7 +147,8 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             new EfFieldLogRepository(db),
             new EfZonePlantingRepository(db),
             new EfSatelliteConfigRepository(db, secretProtector),
-            new EfSatelliteSceneRepository(db));
+            new EfSatelliteSceneRepository(db),
+            new EfFarmGroupRepository(db));
     }
 
     private sealed class NullCache : ICache
@@ -4335,5 +4336,37 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
 
         Assert.Single(parcelsForA);
         Assert.All(parcelsForA, p => Assert.Equal(tenantA, p.TenantID));
+    }
+
+    // ---- FarmGroup - cross-cutting overview above Farm, spanning FarmType ----
+
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmGroup_AssignAndRemoveFarms_ThenDelete_DetachesRemainingMemberInsteadOfDeletingIt(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        DeviceFarm greenhouse = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Greenhouse_" + U(), FarmType = FarmType.Greenhouse });
+        DeviceFarm openfield = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Openfield_" + U(), FarmType = FarmType.OpenField });
+        FarmGroup group = await _repo.FarmGroupCreateAsync("Group_" + U(), tenantId);
+
+        await _repo.FarmAssignToGroupAsync(greenhouse.IDDeviceFarm!.Value, group.IDFarmGroup);
+        await _repo.FarmAssignToGroupAsync(openfield.IDDeviceFarm!.Value, group.IDFarmGroup);
+
+        IList<DeviceFarm> farmsAfterAssign = await _repo.DeviceFarmsGetAsync(tenantId);
+        Assert.Equal(group.IDFarmGroup, farmsAfterAssign.Single(f => f.IDDeviceFarm == greenhouse.IDDeviceFarm).FarmGroupID);
+        Assert.Equal(group.IDFarmGroup, farmsAfterAssign.Single(f => f.IDDeviceFarm == openfield.IDDeviceFarm).FarmGroupID);
+
+        await _repo.FarmAssignToGroupAsync(openfield.IDDeviceFarm!.Value, null);
+        IList<DeviceFarm> farmsAfterRemove = await _repo.DeviceFarmsGetAsync(tenantId);
+        Assert.Null(farmsAfterRemove.Single(f => f.IDDeviceFarm == openfield.IDDeviceFarm).FarmGroupID);
+        Assert.Equal(group.IDFarmGroup, farmsAfterRemove.Single(f => f.IDDeviceFarm == greenhouse.IDDeviceFarm).FarmGroupID);
+
+        await _repo.FarmGroupDeleteAsync(group.IDFarmGroup!.Value);
+
+        IList<FarmGroup> groupsAfterDelete = await _repo.FarmGroupsGetAsync(tenantId);
+        Assert.DoesNotContain(groupsAfterDelete, g => g.IDFarmGroup == group.IDFarmGroup);
+        IList<DeviceFarm> farmsAfterGroupDelete = await _repo.DeviceFarmsGetAsync(tenantId);
+        DeviceFarm remainingGreenhouse = farmsAfterGroupDelete.Single(f => f.IDDeviceFarm == greenhouse.IDDeviceFarm);
+        Assert.Null(remainingGreenhouse.FarmGroupID);
     }
 }

@@ -9,6 +9,8 @@ namespace Agrumy.Dal.Entities
         // See Agrumy.Shared.Models.FarmType - stored as the enum's int value, same convention as Device.LocationSource.
         public int FarmType { get; set; }
         public int DisplayOrder { get; set; }
+        // Optional - a farm not yet placed in any FarmGroup has this null; at most one group per farm.
+        public int? FarmGroupID { get; set; }
 
         // Soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
@@ -17,6 +19,16 @@ namespace Agrumy.Dal.Entities
         // Still restorable while only Purged (nothing physically removed yet); becomes irreversible once the purge cycle actually reaps it (EfDeviceFarmUnitRepository.DeviceFarmRecycleBinPurgeAsync).
         public bool Purged { get; set; }
         public DateTimeOffset? PurgedAtUtc { get; set; }
+    }
+
+    /// Cross-cutting grouping ABOVE Farm, spanning FarmType - a real site with both a greenhouse and open fields is two Farm rows placed in the same FarmGroup, rather than merging FarmType exclusivity away.
+    public class FarmGroupRow
+    {
+        public int IDFarmGroup { get; set; }
+        public int? TenantID { get; set; }
+        public string? Name { get; set; }
+        public bool Deleted { get; set; }
+        public DateTimeOffset? DeletedAtUtc { get; set; }
     }
 
     public class DeviceFarmUnitRow

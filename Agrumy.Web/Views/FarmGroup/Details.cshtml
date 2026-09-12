@@ -1,0 +1,128 @@
+@model FarmGroupDetailsViewModel
+@{
+    ViewData["Title"] = Model.Group.Name;
+    bool canManage = RoleNames.DeviceManagers.Split(',').Any(User.IsInRole);
+}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Farm Groups</a>
+    @if (canManage)
+    {
+        <form asp-action="Delete" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="ms-auto">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this farm group? Member farms are not deleted, only unassigned.');">
+                <i class="bi bi-trash"></i> Delete Group
+            </button>
+        </form>
+    }
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-house-door me-1"></i> Greenhouse</h5></div>
+            <div class="card-body">
+                @if (canManage)
+                {
+                    @if (Model.UngroupedGreenhouseFarms.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic">No ungrouped Greenhouse farms to add.</p>
+                    }
+                    else
+                    {
+                        <form asp-action="AddFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-3">
+                            <select name="idFarm" class="form-select form-select-sm" required>
+                                @foreach (var farm in Model.UngroupedGreenhouseFarms)
+                                {
+                                    <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                        </form>
+                    }
+                }
+                @if (Model.GreenhouseFarms.Count == 0)
+                {
+                    <p class="text-secondary small">No Greenhouse farms in this group.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var farm in Model.GreenhouseFarms)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a asp-controller="DeviceFarmUnit" asp-action="Farms">@farm.DeviceFarmName</a>
+                                @if (canManage)
+                                {
+                                    <form asp-action="RemoveFarm" asp-route-id="@Model.Group.IDFarmGroup" asp-route-idFarm="@farm.IDDeviceFarm" method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove from group"><i class="bi bi-x-lg"></i></button>
+                                    </form>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-flower1 me-1"></i> Crop</h5></div>
+            <div class="card-body">
+                @if (canManage)
+                {
+                    @if (Model.UngroupedCropFarms.Count == 0)
+                    {
+                        <p class="text-secondary small fst-italic">No ungrouped Crop farms to add.</p>
+                    }
+                    else
+                    {
+                        <form asp-action="AddFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-3">
+                            <select name="idFarm" class="form-select form-select-sm" required>
+                                @foreach (var farm in Model.UngroupedCropFarms)
+                                {
+                                    <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                        </form>
+                    }
+                }
+                @if (Model.CropFarms.Count == 0)
+                {
+                    <p class="text-secondary small">No Crop farms in this group.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var farm in Model.CropFarms)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@farm.DeviceFarmName</span>
+                                <span>
+                                    <a asp-controller="FarmOpenfield" asp-action="CropSeasons" class="small me-2">Crop Seasons</a>
+                                    <a asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="small me-2">Parcels</a>
+                                    @if (canManage)
+                                    {
+                                        <form asp-action="RemoveFarm" asp-route-id="@Model.Group.IDFarmGroup" asp-route-idFarm="@farm.IDDeviceFarm" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove from group"><i class="bi bi-x-lg"></i></button>
+                                        </form>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-apple me-1"></i> Fruit</h5></div>
+            <div class="card-body">
+                <p class="text-secondary small fst-italic">Fruit Plantation module isn't built yet.</p>
+            </div>
+        </div>
+    </div>
+</div>
