@@ -13,24 +13,34 @@ namespace Agrumy.Api.BackgroundWorkers
     {
         private static readonly DateOnly ArchiveStartDate = new(2017, 1, 1);
         private const double QuotaPauseThresholdPercent = 90.0;
+        // The daily tick and a SyncNow enqueue can overlap - two runs backfilling the same zone race on the scene unique index and one of them dies mid-zone, so a second trigger queues behind the first.
+        private static readonly SemaphoreSlim RunLock = new(1, 1);
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
-            IList<TenantSatelliteConfig> configs = await configRepo.SatelliteConfigsGetEnabledAsync();
-            foreach (TenantSatelliteConfig config in configs)
+            await RunLock.WaitAsync(ct);
+            try
             {
-                ct.ThrowIfCancellationRequested();
-                try
+                IList<TenantSatelliteConfig> configs = await configRepo.SatelliteConfigsGetEnabledAsync();
+                foreach (TenantSatelliteConfig config in configs)
                 {
-                    await RunForTenantAsync(config, ct);
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        await RunForTenantAsync(config, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        // A token/auth failure (or any other tenant-level error) stops THIS tenant's tick, never the whole job.
+                        logger.LogWarning(ex, "Satellite sync failed for tenant {TenantId}.", config.IDTenant);
+                        await NotifyAsync(config.IDTenant, NotificationEventType.SatelliteSyncFailed, "Agrumy: satellite sync failed",
+                            $"The satellite sync job failed for your tenant: {ex.Message}. It will retry on the next scheduled run.", ct);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    // A token/auth failure (or any other tenant-level error) stops THIS tenant's tick, never the whole job.
-                    logger.LogWarning(ex, "Satellite sync failed for tenant {TenantId}.", config.IDTenant);
-                    await NotifyAsync(config.IDTenant, NotificationEventType.SatelliteSyncFailed, "Agrumy: satellite sync failed",
-                        $"The satellite sync job failed for your tenant: {ex.Message}. It will retry on the next scheduled run.", ct);
-                }
+            }
+            finally
+            {
+                RunLock.Release();
             }
         }
 
@@ -88,7 +98,7 @@ namespace Agrumy.Api.BackgroundWorkers
                     var bbox = new BoundingBox(minLat, minLon, maxLat, maxLon);
                     if (zone.SatelliteBackfillCompletedUtc == null)
                     {
-                        await BackfillZoneAsync(source, config.IDTenant, config.Collection, config.CommercialCollectionId, idZone, bbox, geometry, indices, config.MaxCloudPercent, ct);
+                        await BackfillZoneAsync(source, config.IDTenant, config.Collection, config.CommercialCollectionId, idZone, bbox, geometry, indices, config.MaxCloudPercent, config.MinValidPixelPercent, ct);
                     }
                     else
                     {
@@ -111,7 +121,7 @@ namespace Agrumy.Api.BackgroundWorkers
             _ => new Dictionary<SatelliteIndex, Evalscripts.Definition>(), // Pleiades - no evalscripts wired up yet (capabilities-only, see CdseSentinelHubSource's own doc comment); an empty map means the indices.Where(...) filters below simply skip every index for it.
         };
 
-        private async Task BackfillZoneAsync(ISatelliteImagerySource source, int tenantId, SatelliteCollection collection, string? commercialCollectionId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, CancellationToken ct)
+        private async Task BackfillZoneAsync(ISatelliteImagerySource source, int tenantId, SatelliteCollection collection, string? commercialCollectionId, int zoneId, BoundingBox bbox, string geometry, IReadOnlyList<SatelliteIndex> indices, int maxCloudPercent, int minValidPixelPercent, CancellationToken ct)
         {
             IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> evalscripts = EvalscriptDefinitionsFor(collection);
             foreach (SatelliteIndex index in indices.Where(i => evalscripts.TryGetValue(i, out var d) && d.HasStatistics))
@@ -127,7 +137,7 @@ namespace Agrumy.Api.BackgroundWorkers
                             SourceSceneId = entry.SourceSceneId,
                             CloudPercent = entry.CloudPercent,
                             ValidPixelPercent = entry.ValidPixelPercent,
-                            Reliable = entry.ValidPixelPercent >= 0, // threshold applied by caller via MinValidPixelPercent when it matters for display; backfill keeps every interval so the historical series has no gaps
+                            Reliable = entry.ValidPixelPercent >= minValidPixelPercent,
                         });
                     await sceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex
                     {
@@ -155,7 +165,9 @@ namespace Agrumy.Api.BackgroundWorkers
             IReadOnlyDictionary<SatelliteIndex, Evalscripts.Definition> evalscripts = EvalscriptDefinitionsFor(collection);
 
             IReadOnlyList<SceneCandidate> candidates = await source.FindScenesAsync(tenantId, collection, commercialCollectionId, bbox, fromDate, toDate, maxCloudPercent, ct);
-            foreach (SceneCandidate candidate in candidates)
+            // Overlapping Sentinel-2 tiles list the same acquisition date twice - one render per date is all the map/series can use, so keep the clearer one.
+            IEnumerable<SceneCandidate> oneScenePerDate = candidates.GroupBy(c => c.SceneDateUtc).Select(g => g.OrderBy(c => c.CloudPercent).First()).OrderBy(c => c.SceneDateUtc);
+            foreach (SceneCandidate candidate in oneScenePerDate)
             {
                 if (await sceneRepo.SceneGetBySourceIdAsync(zoneId, candidate.SourceSceneId) != null)
                 {

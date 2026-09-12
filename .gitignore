@@ -397,3 +397,7 @@ Agrumy.Shared/bin/
 Agrumy.Shared/obj/
 # Roadmap #94: the Local firmware repository store (Firmware:LocalPath default) - runtime data, never committed.
 firmware-store/
+arkod-store/
+tile-store/
+fieldlog-store/
+satellite-store/

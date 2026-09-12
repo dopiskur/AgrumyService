@@ -905,7 +905,8 @@ namespace Agrumy.Api.Controllers.API
                 IndexRender rendered = await source.RenderIndexAsync(zone.TenantID ?? 0, satConfig?.Collection ?? SatelliteCollection.Sentinel2, satConfig?.CommercialCollectionId, new SceneCandidate(scene.SourceSceneId, scene.SceneDateUtc, scene.CloudPercent), zone.GeometryGeoJson, index, renderPng: true, renderGrid: isScalar, HttpContext.RequestAborted);
                 if (isScalar && rendered.GridRaw != null)
                 {
-                    await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = rendered.StatsJson });
+                    // A backfilled scene already carries the Statistical API's numbers - the render's quantized stats only fill in when nothing better exists.
+                    await satelliteSceneRepo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = idScene, Index = index, GridBase64 = Convert.ToBase64String(rendered.GridRaw), BoundsJson = rendered.BoundsJson, StatsJson = indexRow?.StatsJson ?? rendered.StatsJson });
                     png = SatellitePaletteRenderer.RenderPng(rendered.GridRaw, index);
                 }
                 else if (rendered.PngBytes != null)
@@ -980,16 +981,17 @@ namespace Agrumy.Api.Controllers.API
                     continue;
                 }
                 ParcelSatelliteIndex? indexRow = await satelliteSceneRepo.IndexGetAsync(scene.IDFarmParcelZoneSatelliteScene, index);
+                bool hasData = indexRow != null || !Evalscripts.All[index].HasStatistics; // composites store no index row at all - any ingested scene renders them on first view
                 zoneEntries.Add(new SatelliteMapZoneEntry
                 {
                     ZoneId = idZone,
                     ZoneName = zone.FarmParcelZoneName,
                     ParcelId = zone.FarmParcelID,
                     GeometryGeoJson = zone.GeometryGeoJson,
-                    HasData = indexRow != null,
+                    HasData = hasData,
                     SceneDateUtc = scene.SceneDateUtc,
                     Reliable = scene.Reliable,
-                    SceneId = indexRow == null ? null : scene.IDFarmParcelZoneSatelliteScene,
+                    SceneId = hasData ? scene.IDFarmParcelZoneSatelliteScene : null,
                     StatsJson = indexRow?.StatsJson,
                 });
             }

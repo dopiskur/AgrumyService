@@ -45,7 +45,8 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        public async Task FarmParcelGeometrySetAsync(int idFarmParcel, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon, string? arkodParcelId) =>
+        public async Task FarmParcelGeometrySetAsync(int idFarmParcel, string geometryGeoJson, double areaHectares, double bboxMinLat, double bboxMinLon, double bboxMaxLat, double bboxMaxLon, string? arkodParcelId)
+        {
             await db.FarmParcels.Where(p => p.IDFarmParcel == idFarmParcel).ExecuteUpdateAsync(set => set
                 .SetProperty(p => p.GeometryGeoJson, geometryGeoJson)
                 .SetProperty(p => p.AreaHectares, areaHectares)
@@ -54,6 +55,15 @@ namespace Agrumy.Api.Dal
                 .SetProperty(p => p.BboxMaxLat, bboxMaxLat)
                 .SetProperty(p => p.BboxMaxLon, bboxMaxLon)
                 .SetProperty(p => p.ArkodParcelId, arkodParcelId));
+            // The whole-parcel zone IS the parcel - it follows the outer boundary, otherwise the zone-driven satellite sync never sees a parcel drawn only at parcel level.
+            await db.FarmParcelZones.Where(z => z.FarmParcelID == idFarmParcel && z.IsWholeParcel).ExecuteUpdateAsync(set => set
+                .SetProperty(z => z.GeometryGeoJson, geometryGeoJson)
+                .SetProperty(z => z.AreaHectares, areaHectares)
+                .SetProperty(z => z.BboxMinLat, bboxMinLat)
+                .SetProperty(z => z.BboxMinLon, bboxMinLon)
+                .SetProperty(z => z.BboxMaxLat, bboxMaxLat)
+                .SetProperty(z => z.BboxMaxLon, bboxMaxLon));
+        }
 
         public async Task FarmParcelDeleteAsync(int idFarmParcel)
         {
@@ -345,6 +355,7 @@ namespace Agrumy.Api.Dal
             BboxMinLon = z.BboxMinLon,
             BboxMaxLat = z.BboxMaxLat,
             BboxMaxLon = z.BboxMaxLon,
+            SatelliteBackfillCompletedUtc = z.SatelliteBackfillCompletedUtc,
             DeletedAtUtc = z.DeletedAtUtc,
         };
     }

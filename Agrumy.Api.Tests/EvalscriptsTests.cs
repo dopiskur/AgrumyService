@@ -63,5 +63,46 @@ public class EvalscriptsTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public void ScalarIndices_RenderAsUint8ButAggregateAsFloat32()
+    {
+        foreach ((SatelliteIndex index, Evalscripts.Definition def) in Evalscripts.All.Concat(Evalscripts.PlanetScope))
+        {
+            Assert.DoesNotContain("FLOAT32", def.RenderScript);
+            if (def.HasStatistics)
+            {
+                Assert.Contains("sampleType: \"FLOAT32\"", def.Script);
+                Assert.Contains($"Math.min({Evalscripts.QuantizedMax},", def.RenderScript);
+            }
+            else
+            {
+                Assert.Same(def.Script, def.RenderScript);
+            }
+        }
+        Assert.Equal(-1, Evalscripts.Dequantize(0));
+        Assert.Equal(1, Evalscripts.Dequantize(Evalscripts.QuantizedMax));
+    }
+
+    [Fact]
+    public void RenderChecksums_MatchTheLastReviewedVersion()
+    {
+        var expected = new Dictionary<SatelliteIndex, string>
+        {
+            [SatelliteIndex.Ndvi] = "DB7006447AAFA29C5C6CDFD9AC01695887F1BBC7D8C1AD811A880F78913B55B4",
+            [SatelliteIndex.Ndmi] = "9A07C4753598127BC98BF3F9C5DA33D3B2A8923EBB4B04F09B14BA83FE5344BB",
+            [SatelliteIndex.Ndwi] = "8170382AE1AF032C8763AD52621AC6B4B62C75C8736BE24F841FA137B6D0783F",
+            [SatelliteIndex.Ndsi] = "F6BB2B2F3F1DAED30E955B9C25AEF0C3710475B6108FBE206372D9E2978304C6",
+            [SatelliteIndex.SwirComposite] = "AF6D2D5501DD00F2B65EA06837E6C92A5B2CEC3CE9A7EF7D7005715961CDAD87",
+            [SatelliteIndex.NaturalColor] = "E1FE88131F48EE76F32A05AEA4FD46C11E84382E24A7B8507F37F47A9D8D7DED",
+        };
+
+        Dictionary<SatelliteIndex, string> actual = Evalscripts.All.ToDictionary(kv => kv.Key, kv => Sha256(kv.Value.RenderScript));
+        foreach ((SatelliteIndex index, string hash) in actual)
+        {
+            output.WriteLine($"render {index}: {hash}");
+        }
+        Assert.Equal(expected, actual);
+    }
+
     private static string Sha256(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 }

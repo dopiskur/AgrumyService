@@ -13,6 +13,7 @@ namespace Agrumy.Api.Satellite
         private const string CatalogUrl = "https://sh.dataspace.copernicus.eu/catalog/v1/search";
         private const string ProcessUrl = "https://sh.dataspace.copernicus.eu/process/v1";
         private const string StatisticsUrl = "https://sh.dataspace.copernicus.eu/statistics/v1";
+        private const int TargetResolutionMeters = 10;
 
         public SatelliteCapabilities GetCapabilities(SatelliteCollection collection) => collection switch
         {
@@ -107,7 +108,6 @@ namespace Agrumy.Api.Satellite
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
 
             Evalscripts.Definition def = EvalscriptsFor(collection)[index];
-            const int TargetResolutionMeters = 10;
             (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, TargetResolutionMeters, TargetResolutionMeters);
             var body = new JsonObject
             {
@@ -136,7 +136,7 @@ namespace Agrumy.Api.Satellite
                         new JsonObject { ["identifier"] = "default", ["format"] = new JsonObject { ["type"] = "image/png" } },
                         new JsonObject { ["identifier"] = "dataMask", ["format"] = new JsonObject { ["type"] = "image/png" } }),
                 },
-                ["evalscript"] = def.Script,
+                ["evalscript"] = def.RenderScript,
             };
 
             using var request = NewRequest(HttpMethod.Post, ProcessUrl, token, body);
@@ -162,7 +162,9 @@ namespace Agrumy.Api.Satellite
             string statsJson = def.HasStatistics ? BuildStatsJson(valuePixels, maskPixels) : "{}";
             string boundsJson = geoJsonPolygon;
 
-            return new IndexRender(renderPng ? defaultPng : null, boundsJson, statsJson, validPercent, grid);
+            // Composites are served as-is, so masked pixels (outside the polygon, clouds) get alpha 0 here rather than rendering as opaque black on the map.
+            byte[]? png = !renderPng ? null : def.HasStatistics ? defaultPng : ApplyMaskAsAlpha(valuePixels, maskPixels);
+            return new IndexRender(png, boundsJson, statsJson, validPercent, grid);
         }
 
         public async Task<IReadOnlyList<SceneStatEntry>> BackfillStatisticsAsync(int tenantId, SatelliteCollection collection, string? commercialCollectionId, BoundingBox bbox, string geoJsonPolygon, DateOnly fromUtc, DateOnly toUtc, SatelliteIndex index, int maxCloudPercent, CancellationToken ct)
@@ -178,6 +180,7 @@ namespace Agrumy.Api.Satellite
                 return [];
             }
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
+            (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, TargetResolutionMeters, TargetResolutionMeters);
 
             var body = new JsonObject
             {
@@ -198,8 +201,9 @@ namespace Agrumy.Api.Satellite
                 {
                     ["timeRange"] = new JsonObject { ["from"] = $"{fromUtc:yyyy-MM-dd}T00:00:00Z", ["to"] = $"{toUtc:yyyy-MM-dd}T23:59:59Z" },
                     ["aggregationInterval"] = new JsonObject { ["of"] = "P1D" },
-                    ["resx"] = 10,
-                    ["resy"] = 10,
+                    // Live-verified against CDSE (2026-09): resx/resy are taken in CRS84 degrees here too, collapsing a whole parcel into sampleCount=1 - explicit pixel width/height is what actually samples at 10 m.
+                    ["width"] = pixelWidth,
+                    ["height"] = pixelHeight,
                     ["evalscript"] = evalscripts[index].Script,
                 },
                 ["calculations"] = new JsonObject { ["default"] = new JsonObject() },
@@ -226,9 +230,13 @@ namespace Agrumy.Api.Satellite
                 {
                     continue; // interval with no valid observation (cloud/no scene) - Statistical API still emits the interval, just with no stats
                 }
-                double sampleCount = bandStats["sampleCount"]?.GetValue<double>() ?? 0;
-                double noDataCount = bandStats["noDataCount"]?.GetValue<double>() ?? 0;
+                double sampleCount = ReadDouble(bandStats["sampleCount"]) ?? 0;
+                double noDataCount = ReadDouble(bandStats["noDataCount"]) ?? 0;
                 double validPercent = sampleCount > 0 ? 100.0 * (sampleCount - noDataCount) / sampleCount : 0;
+                if (validPercent <= 0)
+                {
+                    continue; // every pixel masked (cloud/shadow) - the stats come back as the string "NaN", nothing to plot or render for this day
+                }
 
                 results.Add(new SceneStatEntry(
                     SourceSceneId: $"stat-{dt:yyyy-MM-dd}",
@@ -237,10 +245,10 @@ namespace Agrumy.Api.Satellite
                     ValidPixelPercent: validPercent,
                     Stats: new SatelliteIndexStats
                     {
-                        Mean = bandStats["mean"]?.GetValue<double>(),
-                        Min = bandStats["min"]?.GetValue<double>(),
-                        Max = bandStats["max"]?.GetValue<double>(),
-                        StdDev = bandStats["stDev"]?.GetValue<double>(),
+                        Mean = ReadDouble(bandStats["mean"]),
+                        Min = ReadDouble(bandStats["min"]),
+                        Max = ReadDouble(bandStats["max"]),
+                        StdDev = ReadDouble(bandStats["stDev"]),
                         SampleCount = (int)sampleCount,
                     }));
             }
@@ -270,6 +278,9 @@ namespace Agrumy.Api.Satellite
             }
             return new QuotaSnapshot(0, JsonSerializer.Serialize(new { note = "No rate-limit headers on this response.", checkedAtUtc = DateTimeOffset.UtcNow }));
         }
+
+        // CDSE serializes NaN/Infinity stats as JSON strings, which GetValue<double> throws on.
+        private static double? ReadDouble(JsonNode? node) => node is JsonValue value && value.TryGetValue(out double d) ? d : null;
 
         private static HttpRequestMessage NewRequest(HttpMethod method, string url, string token, JsonObject body)
         {
@@ -366,7 +377,22 @@ namespace Agrumy.Api.Satellite
             return 100.0 * valid / maskPixels.Length;
         }
 
-        /// Only called for scalar indices (HasStatistics=true) - composites reuse their rendered PNG directly, they have no per-pixel scalar to store a time series against. Grid format: 4-byte width + 4-byte height (little-endian) header, then one byte per pixel (the evalscript's own 0-255 quantization), 0xFF (-1 as signed int8) marking an invalid/masked pixel - see SatellitePaletteRenderer.Decode for the reader.
+        private static byte[] ApplyMaskAsAlpha(MinimalPng.Decoded value, MinimalPng.Decoded mask)
+        {
+            int pixelCount = value.Width * value.Height;
+            var rgba = new byte[pixelCount * 4];
+            for (int i = 0; i < pixelCount; i++)
+            {
+                int src = i * value.BytesPerPixel;
+                rgba[i * 4] = value.Pixels[src];
+                rgba[(i * 4) + 1] = value.BytesPerPixel >= 3 ? value.Pixels[src + 1] : value.Pixels[src];
+                rgba[(i * 4) + 2] = value.BytesPerPixel >= 3 ? value.Pixels[src + 2] : value.Pixels[src];
+                rgba[(i * 4) + 3] = i < mask.Pixels.Length && mask.Pixels[i] != 0 ? (byte)255 : (byte)0;
+            }
+            return MinimalPng.EncodeRgba8(value.Width, value.Height, rgba);
+        }
+
+        /// Only called for scalar indices (HasStatistics=true) - composites reuse their rendered PNG directly, they have no per-pixel scalar to store a time series against. Grid format: 4-byte width + 4-byte height (little-endian) header, then one byte per pixel (RenderScript's 0..Evalscripts.QuantizedMax quantization), 0xFF marking an invalid/masked pixel - see SatellitePaletteRenderer.Decode for the reader.
         private static byte[] BuildQuantizedGrid(MinimalPng.Decoded value, MinimalPng.Decoded mask)
         {
             var grid = new byte[8 + value.Pixels.Length];
@@ -387,7 +413,7 @@ namespace Agrumy.Api.Satellite
             {
                 if (mask.Pixels[i] != 0)
                 {
-                    validValues.Add(value.Pixels[i]);
+                    validValues.Add(Evalscripts.Dequantize(value.Pixels[i])); // same [-1,1] domain as the Statistical API's backfill stats, so one series never mixes scales
                 }
             }
             if (validValues.Count == 0)
