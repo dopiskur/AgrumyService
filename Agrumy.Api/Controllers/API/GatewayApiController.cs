@@ -37,16 +37,16 @@ namespace Agrumy.Api.Controllers.API
             }
             if (gateway.IsGateway != true && gateway.LoRaGatewayEnabled != true)
             {
-                return (null, StatusCode(403, "This device is not registered as a Gateway."));
+                return (null, ForbidWith("This device is not registered as a Gateway."));
             }
             ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
             if (!serverConfig.GatewayEnabled)
             {
-                return (null, StatusCode(403, "Gateway support is disabled server-wide (Server Settings -> Gateway)."));
+                return (null, ForbidWith("Gateway support is disabled server-wide (Server Settings -> Gateway)."));
             }
             if (!await quotaEnforcer.IsGatewayAllowedAsync(gateway.TenantID))
             {
-                return (null, StatusCode(403, Agrumy.Api.Quota.TenantQuotaEnforcer.LimitMessage));
+                return (null, ForbidWith(Agrumy.Api.Quota.TenantQuotaEnforcer.LimitMessage));
             }
             return (gateway, null);
         }

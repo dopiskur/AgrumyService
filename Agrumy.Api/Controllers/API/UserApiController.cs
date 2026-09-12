@@ -67,7 +67,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 if (!serverConfig.AllowSelfServiceTenantCreation)
                 {
-                    return StatusCode(403, "Unknown tenant name, and self-service tenant creation is disabled.");
+                    return ForbidWith("Unknown tenant name, and self-service tenant creation is disabled.");
                 }
                 if ((value.TenantName?.Length ?? 0) < MinTenantNameLength)
                 {
@@ -111,7 +111,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
 
             SendActivationEmail(user.Email, plaintext);
@@ -225,7 +225,7 @@ namespace Agrumy.Api.Controllers.API
             // EmailVerified is an internal tracking flag only, not an independent gate - Activate() turns it into Enabled (directly, or via admin approval), so one Enabled check covers both "not verified" and "awaiting approval".
             if (user.Enabled != true)
             {
-                return StatusCode(403, "Account not yet enabled - check your inbox for the activation link, or contact your administrator.");
+                return ForbidWith("Account not yet enabled - check your inbox for the activation link, or contact your administrator.");
             }
             // 428 Precondition Required - a real status the Web layer can branch on without parsing message text (unlike the plain-403 check above).
             if (user.MustChangePassword)
@@ -267,7 +267,7 @@ namespace Agrumy.Api.Controllers.API
 
             if (user.Enabled != true)
             {
-                return StatusCode(403, "Account not yet enabled - check your inbox for the activation link, or contact your administrator.");
+                return ForbidWith("Account not yet enabled - check your inbox for the activation link, or contact your administrator.");
             }
             var (loginResult, error2) = await IssueLoginResultAsync(user);
             return error2 != null ? error2 : Ok(loginResult);
@@ -320,7 +320,7 @@ namespace Agrumy.Api.Controllers.API
             // A refresh must not silently keep a since-disabled account logged in.
             if (user.Enabled != true)
             {
-                return StatusCode(403, "Account is not active.");
+                return ForbidWith("Account is not active.");
             }
 
             IReadOnlyList<string> tokenRoles = await ResolveCallerTokenRolesAsync(user);
@@ -377,7 +377,7 @@ namespace Agrumy.Api.Controllers.API
 
             return await userRepository.BootstrapAdminSetPasswordAsync(secret, value.SetupSecret!)
                 ? Ok()
-                : StatusCode(403, "No pending bootstrap admin, or the setup secret was wrong.");
+                : ForbidWith("No pending bootstrap admin, or the setup secret was wrong.");
         }
 
         /// Identity comes ONLY from the JWT, never a Login field in the body - a body-supplied Login would turn this into an unauthenticated password-guessing oracle via the 401-vs-403 response split.
@@ -396,7 +396,7 @@ namespace Agrumy.Api.Controllers.API
 
             if (value.OldPassword == value.NewPassword)
             {
-                return StatusCode(403, "The new password must be different from the old password");
+                return ForbidWith("The new password must be different from the old password");
             }
             if (PasswordPolicy.Validate(value.NewPassword, await serverConfigRepo.ServerConfigGetAsync(1)) is string passwordError)
             {
@@ -408,7 +408,7 @@ namespace Agrumy.Api.Controllers.API
                 !AuthenticationProvider.VerifyHash(secret.PwdHash, secret.PwdSalt, value.OldPassword))
             {
                 // 403, not 401 - caller is already authenticated, this is a failed OldPassword check, not an auth-pipeline failure.
-                return StatusCode(403, "Wrong password");
+                return ForbidWith("Wrong password");
             }
 
             secret.PwdSalt = AuthenticationProvider.GetSalt();
@@ -416,7 +416,7 @@ namespace Agrumy.Api.Controllers.API
 
             return await userRepository.UserSetPasswordAsync(user.Email, secret)
                 ? Ok("Password changed successfully for: " + user.Email)
-                : StatusCode(403, "Password change failed for: " + user.Email);
+                : ForbidWith("Password change failed for: " + user.Email);
         }
 
         // ---- read ----------------------------------------------------------------
@@ -428,7 +428,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view user accounts.");
+                return ForbidWith("Data Reader role cannot view user accounts.");
             }
             IList<User> users = CallerReadsUsersGlobally ? await userRepository.UsersGetAllAsync() : await userRepository.UsersGetAsync(CallerTenantId);
             // DevicePin is a live credential, not a profile field - only its owner (GetUserSelf) should see it, not this list.
@@ -572,7 +572,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view user accounts.");
+                return ForbidWith("Data Reader role cannot view user accounts.");
             }
             User? user = await userRepository.UserGetAsync(idUser, null, null);
             if (user is null)
@@ -581,7 +581,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (user.TenantID != CallerTenantId && !CallerReadsUsersGlobally)
             {
-                return StatusCode(403, "Target user belongs to a different tenant");
+                return ForbidWith("Target user belongs to a different tenant");
             }
 
             // Same reasoning as UsersGet - not the caller viewing themselves, so their live DevicePin stays hidden.
@@ -630,7 +630,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
 
             User? added = await userRepository.UserGetAsync(null, value.Email, null);
@@ -657,7 +657,7 @@ namespace Agrumy.Api.Controllers.API
             HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();
             string? disallowed = wanted.FirstOrDefault(r => !allowed.Contains(r));
             return disallowed != null
-                ? (null, StatusCode(403, $"Not allowed to assign role \"{disallowed}\"."))
+                ? (null, ForbidWith($"Not allowed to assign role \"{disallowed}\"."))
                 : (wanted, null);
         }
 
@@ -675,11 +675,11 @@ namespace Agrumy.Api.Controllers.API
 
             if (!CallerManagesUsers(user.TenantID))
             {
-                return StatusCode(403, "Target user belongs to a different tenant");
+                return ForbidWith("Target user belongs to a different tenant");
             }
             if (!CallerOutranksTarget(await userRepository.UserRoleNamesGetAsync(user.IDUser!.Value)))
             {
-                return StatusCode(403, "Not allowed to manage a user with equal or higher privilege.");
+                return ForbidWith("Not allowed to manage a user with equal or higher privilege.");
             }
 
             bool? enabledBefore = user.Enabled;
@@ -711,7 +711,7 @@ namespace Agrumy.Api.Controllers.API
                 // A tenant can never be left with zero users via migration - deleting the whole tenant (TenantApiController.TenantDelete) is the only way to empty one out.
                 if (user.TenantID != null && (await userRepository.UsersGetAsync(user.TenantID)).Count <= 1)
                 {
-                    return StatusCode(403, "Cannot migrate the last user of a tenant - delete the tenant instead.");
+                    return ForbidWith("Cannot migrate the last user of a tenant - delete the tenant instead.");
                 }
                 user.TenantID = value.TenantID;
             }
@@ -735,7 +735,7 @@ namespace Agrumy.Api.Controllers.API
                 string? disallowed = value.RoleNames.FirstOrDefault(r => !allowed.Contains(r));
                 if (disallowed != null)
                 {
-                    return StatusCode(403, $"Not allowed to assign role \"{disallowed}\".");
+                    return ForbidWith($"Not allowed to assign role \"{disallowed}\".");
                 }
                 IReadOnlyList<string> rolesBefore = await userRepository.UserRoleNamesGetAsync(user.IDUser!.Value);
                 await userRepository.UserRolesSetAsync(user.IDUser!.Value, value.RoleNames);
@@ -762,16 +762,16 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesUsers(targetUser.TenantID))
             {
-                return StatusCode(403, "Target user belongs to a different tenant");
+                return ForbidWith("Target user belongs to a different tenant");
             }
             if (!CallerOutranksTarget(await userRepository.UserRoleNamesGetAsync(targetUser.IDUser!.Value)))
             {
-                return StatusCode(403, "Not allowed to manage a user with equal or higher privilege.");
+                return ForbidWith("Not allowed to manage a user with equal or higher privilege.");
             }
             // The last user of a tenant can't just be deleted, leaving the tenant a dangling shell - delete the tenant itself instead (optionally cascading, TenantApiController.TenantDelete).
             if (targetUser.TenantID != null && (await userRepository.UsersGetAsync(targetUser.TenantID)).Count <= 1)
             {
-                return StatusCode(403, "Cannot delete the last user of a tenant - delete the tenant instead.");
+                return ForbidWith("Cannot delete the last user of a tenant - delete the tenant instead.");
             }
 
             bool deleted = await userRepository.UserDeleteAsync(idUser);
@@ -806,7 +806,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesUsers(target.TenantID))
             {
-                return StatusCode(403, "Target user belongs to a different tenant");
+                return ForbidWith("Target user belongs to a different tenant");
             }
             return Ok(await userRepository.UserRoleNamesGetAsync(idUser));
         }
@@ -823,14 +823,14 @@ namespace Agrumy.Api.Controllers.API
             }
             if (target.TenantID != CallerTenantId && !CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Target user belongs to a different tenant");
+                return ForbidWith("Target user belongs to a different tenant");
             }
 
             HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();
             string? disallowed = value.RoleNames.FirstOrDefault(r => !allowed.Contains(r));
             if (disallowed != null)
             {
-                return StatusCode(403, $"Not allowed to assign role \"{disallowed}\".");
+                return ForbidWith($"Not allowed to assign role \"{disallowed}\".");
             }
 
             IReadOnlyList<string> rolesBefore = await userRepository.UserRoleNamesGetAsync(value.IDUser);

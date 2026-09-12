@@ -74,7 +74,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesDevices(device.TenantID))
             {
-                return StatusCode(403, "Device belongs to a different tenant");
+                return ForbidWith("Device belongs to a different tenant");
             }
 
             await simulationRepo.VirtualDeviceDeleteAsync(idDevice, device.TenantID);
@@ -106,7 +106,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             await WriteAuditAsync("Simulation.SessionCreated", created.TenantID, "SimulationSession", created.IDSimulationSession.ToString()!, created.Name);
             return Ok(created);
@@ -129,7 +129,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally && !CallerHasRole(RoleNames.GlobalReader))
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
             return Ok(session);
         }
@@ -150,7 +150,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
             bool isRunning = session.StartedAtUtc != null && session.StoppedAtUtc == null && session.ExpiresAtUtc > DateTimeOffset.UtcNow;
             if (isRunning)
@@ -175,7 +175,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
 
             IList<int> virtualIds = await simulationRepo.VirtualDeviceIdsGetAsync(session.TenantID);
@@ -203,7 +203,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
 
             IList<int> virtualIds = await simulationRepo.VirtualDeviceIdsGetAsync(session.TenantID);
@@ -235,7 +235,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
             if (session.StoppedAtUtc != null || session.ExpiresAtUtc <= DateTimeOffset.UtcNow)
             {
@@ -248,7 +248,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesDevices(device.TenantID))
             {
-                return StatusCode(403, "Device belongs to a different tenant");
+                return ForbidWith("Device belongs to a different tenant");
             }
 
             bool added = await simulationRepo.SimulationSessionDeviceAddAsync(idSimulationSession, idDevice);
@@ -280,7 +280,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (session.TenantID != CallerTenantId && !CallerManagesUsersGlobally)
             {
-                return StatusCode(403, "Session belongs to a different tenant");
+                return ForbidWith("Session belongs to a different tenant");
             }
 
             await simulationRepo.SimulationSessionDeviceRemoveAsync(idSimulationSession, idDevice);
@@ -305,7 +305,7 @@ namespace Agrumy.Api.Controllers.API
             bool crossTenantAllowed = CallerManagesUsersGlobally || (!forWrite && CallerHasRole(RoleNames.GlobalReader));
             if (session.TenantID != CallerTenantId && !crossTenantAllowed)
             {
-                return (null, StatusCode(403, "Session belongs to a different tenant"));
+                return (null, ForbidWith("Session belongs to a different tenant"));
             }
             return (session, null);
         }
@@ -486,7 +486,7 @@ namespace Agrumy.Api.Controllers.API
                 return (null, NotFound("Unit not found."));
             }
             return unit.TenantID != CallerTenantId && !CallerManagesUsersGlobally
-                ? (null, StatusCode(403, "Unit belongs to a different tenant"))
+                ? (null, ForbidWith("Unit belongs to a different tenant"))
                 : (unit, null);
         }
 
@@ -498,7 +498,7 @@ namespace Agrumy.Api.Controllers.API
                 return (null, NotFound("Zone not found."));
             }
             return zone.TenantID != CallerTenantId && !CallerManagesUsersGlobally
-                ? (null, StatusCode(403, "Zone belongs to a different tenant"))
+                ? (null, ForbidWith("Zone belongs to a different tenant"))
                 : (zone, null);
         }
     }

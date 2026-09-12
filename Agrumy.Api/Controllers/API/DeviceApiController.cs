@@ -68,11 +68,11 @@ namespace Agrumy.Api.Controllers.API
 
             if (internalDevice.LoRaGatewayEnabled == true && await quotaEnforcer.CheckLoRaAllowedAsync(internalDevice.TenantID) is string loRaLimitError)
             {
-                return StatusCode(403, loRaLimitError);
+                return ForbidWith(loRaLimitError);
             }
             if (await quotaEnforcer.CheckMinSensorIntervalAsync(internalDevice.TenantID, internalDevice.SleepSeconds) is string intervalLimitError)
             {
-                return StatusCode(403, intervalLimitError);
+                return ForbidWith(intervalLimitError);
             }
 
             await deviceRepo.DeviceUpdateAsync(internalDevice);
@@ -103,7 +103,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view device configuration.");
+                return ForbidWith("Data Reader role cannot view device configuration.");
             }
             var (_, error) = await EnsureOwnedDeviceAsync(
                 () => deviceRepo.DeviceGetByDeviceConfigSensorIdAsync(deviceConfigSensorID), "Sensor config", forWrite: false);
@@ -122,7 +122,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view device configuration.");
+                return ForbidWith("Data Reader role cannot view device configuration.");
             }
             var (device, error) = await EnsureOwnedDeviceAsync(
                 () => deviceRepo.DeviceGetByIdAsync(idDevice), "Device", forWrite: false);
@@ -142,7 +142,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view device configuration.");
+                return ForbidWith("Data Reader role cannot view device configuration.");
             }
             var (_, error) = await EnsureOwnedDeviceAsync(
                 () => deviceRepo.DeviceGetByDeviceConfigControllerIdAsync(deviceConfigControllerID), "Controller config", forWrite: false);
@@ -217,7 +217,7 @@ namespace Agrumy.Api.Controllers.API
             if (deviceUpdate.Sensor != null
                 && await quotaEnforcer.CheckSensorFieldCountAsync(existing!.TenantID, deviceUpdate.Sensor.EnabledSensorCount()) is string limitError)
             {
-                return StatusCode(403, limitError);
+                return ForbidWith(limitError);
             }
 
             await deviceRepo.DeviceConfigSensorUpdateAsync(deviceUpdate.Device.IDDevice, deviceUpdate.Sensor);
@@ -244,7 +244,7 @@ namespace Agrumy.Api.Controllers.API
             if (deviceUpdate.Controller != null
                 && await quotaEnforcer.CheckControllerRelayCountAsync(existing!.TenantID, deviceUpdate.Controller.Relays.Count) is string limitError)
             {
-                return StatusCode(403, limitError);
+                return ForbidWith(limitError);
             }
 
             string? problem = await deviceRepo.DeviceConfigControllerUpdateAsync(deviceUpdate.Device.IDDevice, deviceUpdate.Controller);
@@ -543,7 +543,7 @@ namespace Agrumy.Api.Controllers.API
                 }
                 catch (Agrumy.Api.Quota.QuotaLimitExceededException ex)
                 {
-                    return StatusCode(403, ex.Message);
+                    return ForbidWith(ex.Message);
                 }
 
                 if (provision?.ZoneID is int zoneId)

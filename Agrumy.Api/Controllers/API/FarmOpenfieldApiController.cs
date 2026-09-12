@@ -29,7 +29,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             await WriteAuditAsync("DeviceFarm.Created", result.farm.TenantID, "DeviceFarm", result.farm.IDDeviceFarm.ToString()!, $"{result.farm.DeviceFarmName} (Open-Field)");
             return Ok(result.farm);
@@ -105,7 +105,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             Sowing added = await sowingRepo.SowingAddAsync(crop);
             await WriteAuditAsync("Sowing.Created", added.TenantID, "Sowing", added.IDSowing.ToString()!, added.SowingName);
@@ -473,7 +473,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             (FarmParcel parcel, FarmParcelZone zone) = await farmParcelRepo.FarmParcelAddAsync(new FarmParcel { TenantID = farm.TenantID, FarmOpenfieldID = idFarmOpenfield, FarmParcelName = farmParcelName });
             await WriteAuditAsync("FarmParcel.Created", parcel.TenantID, "FarmParcel", parcel.IDFarmParcel.ToString()!, parcel.FarmParcelName);
@@ -656,7 +656,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (device!.TenantID != parcel!.TenantID)
             {
-                return StatusCode(403, "Device and parcel belong to different tenants.");
+                return ForbidWith("Device and parcel belong to different tenants.");
             }
             if (device.DeviceControllerEnabled == true && await farmParcelRepo.FarmParcelZoneHasControllerAsync(body.IDFarmParcelZone))
             {
@@ -1023,7 +1023,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (CallerTenantId is not int tenantId)
             {
-                return StatusCode(403, "Caller has no tenant.");
+                return ForbidWith("Caller has no tenant.");
             }
             string cooldownKey = $"satellite-syncnow-cooldown:{tenantId}";
             if (await Cache.GetAsync<string>(cooldownKey) != null)

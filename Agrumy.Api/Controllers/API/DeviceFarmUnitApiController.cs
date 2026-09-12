@@ -48,7 +48,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             await WriteAuditAsync("DeviceFarm.Created", added.TenantID, "DeviceFarm", added.IDDeviceFarm.ToString()!, added.DeviceFarmName);
             return Ok(added);
@@ -142,7 +142,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             await WriteAuditAsync("DeviceFarmUnit.Created", added.TenantID, "DeviceFarmUnit", added.IDDeviceFarmUnit.ToString()!, added.DeviceFarmUnitName);
             return Ok(added);
@@ -291,7 +291,7 @@ namespace Agrumy.Api.Controllers.API
             }
             catch (QuotaLimitExceededException ex)
             {
-                return StatusCode(403, ex.Message);
+                return ForbidWith(ex.Message);
             }
             await WriteAuditAsync("DeviceFarmUnitZone.Created", added.TenantID, "DeviceFarmUnitZone", added.IDDeviceFarmUnitZone.ToString()!, added.DeviceFarmUnitZoneName);
             return Ok(added);
@@ -491,7 +491,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view zone rules.");
+                return ForbidWith("Data Reader role cannot view zone rules.");
             }
             var (zone, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: false);
             if (error != null)
@@ -507,7 +507,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view unit rules.");
+                return ForbidWith("Data Reader role cannot view unit rules.");
             }
             var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: false);
             if (error != null)
@@ -523,7 +523,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view farm rules.");
+                return ForbidWith("Data Reader role cannot view farm rules.");
             }
             var (farm, error) = await EnsureOwnedFarmAsync(idDeviceFarm, forWrite: false);
             if (error != null)
@@ -539,11 +539,11 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view global rules.");
+                return ForbidWith("Data Reader role cannot view global rules.");
             }
             if (CallerTenantId is not int tenantId)
             {
-                return StatusCode(403, "Caller has no tenant.");
+                return ForbidWith("Caller has no tenant.");
             }
             return Ok(await deviceFarmUnitRepo.RulesGetForTenantGlobalAsync(tenantId));
         }
@@ -554,7 +554,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view crop rules.");
+                return ForbidWith("Data Reader role cannot view crop rules.");
             }
             var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
             if (error != null)
@@ -570,7 +570,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerIsDataReaderOnly)
             {
-                return StatusCode(403, "Data Reader role cannot view parcel rules.");
+                return ForbidWith("Data Reader role cannot view parcel rules.");
             }
             var (parcel, error) = await EnsureOwnedParcelAsync(idFarmParcelZone, forWrite: false);
             if (error != null)
@@ -773,7 +773,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerTenantId is not int tenantId)
             {
-                return StatusCode(403, "Caller has no tenant.");
+                return ForbidWith("Caller has no tenant.");
             }
             rule.DeviceFarmUnitZoneID = null;
             rule.DeviceFarmUnitID = null;
@@ -878,7 +878,7 @@ namespace Agrumy.Api.Controllers.API
             }
             bool crossTenantAllowed = forWrite ? CallerManagesDevicesGlobally : CallerReadsDevicesGlobally;
             return rule.TenantID != CallerTenantId && !crossTenantAllowed
-                ? StatusCode(403, "Rule belongs to a different tenant")
+                ? ForbidWith("Rule belongs to a different tenant")
                 : null;
         }
 
@@ -1009,7 +1009,7 @@ namespace Agrumy.Api.Controllers.API
             // Unconditional, no exception for a caller who legitimately crosses tenants for the two ownership checks above - a device must never end up assigned into another tenant's zone, not even by a Global admin's mistake.
             if (device!.TenantID != zone!.TenantID)
             {
-                return StatusCode(403, "Device and zone belong to different tenants.");
+                return ForbidWith("Device and zone belong to different tenants.");
             }
 
             // A zone has at most one controller (not required, but capped at one).

@@ -20,7 +20,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
+                return ForbidWith("Server-wide data maintenance requires the Global admin role");
             }
             if (!DataMaintenanceThresholds.AllowedDays.Contains(request.OlderThanDays))
             {
@@ -51,7 +51,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
+                return ForbidWith("Server-wide data maintenance requires the Global admin role");
             }
             if (!DataMaintenanceThresholds.AllowedDays.Contains(request.OlderThanDays))
             {
@@ -88,7 +88,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide data maintenance requires the Global admin role");
+                return ForbidWith("Server-wide data maintenance requires the Global admin role");
             }
             if (request.ConfirmationPhrase != RecycleBinPurgeRequest.RequiredPhrase)
             {

@@ -123,10 +123,14 @@ namespace Agrumy.Api.Controllers.API
             bool crossTenantAllowed = forWrite ? CallerManagesDevicesGlobally : CallerReadsDevicesGlobally;
             if (tenantIdOf(entity) != CallerTenantId && !crossTenantAllowed)
             {
-                return (entity, StatusCode(403, $"{ownerLabel} belongs to a different tenant"));
+                return (entity, ForbidWith($"{ownerLabel} belongs to a different tenant"));
             }
             return (entity, null);
         }
+
+        /// Every 403 in the API goes through here so clients get one RFC 7807 ProblemDetails shape, with the reason in Detail.
+        protected ObjectResult ForbidWith(string reason) =>
+            Problem(detail: reason, statusCode: StatusCodes.Status403Forbidden, title: "Forbidden");
 
         /// Looks up the caller's IDUser by their JWT email rather than trusting a claim, since the token carries no user-id claim.
         protected async Task WriteAuditAsync(string action, int? targetTenantId, string targetType, string targetId, string? details)

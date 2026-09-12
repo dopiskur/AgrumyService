@@ -25,7 +25,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Firmware catalog changes require the Global admin role");
+                return ForbidWith("Firmware catalog changes require the Global admin role");
             }
             FirmwareSyncResult result = await catalog.SyncAsync(request.Mode, PublicBaseUrl, cancellationToken);
             await WriteAuditAsync("Firmware.Synced", null, "Firmware", request.Mode.ToString(), $"added {result.Added}, removed {result.Removed}, skipped {result.Skipped}");
@@ -38,7 +38,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Firmware catalog changes require the Global admin role");
+                return ForbidWith("Firmware catalog changes require the Global admin role");
             }
             FirmwareSyncResult result = await catalog.ImportFromDirectoryAsync(request.Path, PublicBaseUrl, cancellationToken);
             await WriteAuditAsync("Firmware.Imported", null, "Firmware", request.Path ?? "", $"added {result.Added}, skipped {result.Skipped}");
@@ -53,7 +53,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Firmware catalog changes require the Global admin role");
+                return ForbidWith("Firmware catalog changes require the Global admin role");
             }
             if (file == null || file.Length == 0)
             {
@@ -77,7 +77,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Firmware catalog changes require the Global admin role");
+                return ForbidWith("Firmware catalog changes require the Global admin role");
             }
             if (file == null || file.Length == 0)
             {
@@ -104,7 +104,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Firmware catalog changes require the Global admin role");
+                return ForbidWith("Firmware catalog changes require the Global admin role");
             }
             if (!await catalog.DeleteAsync(idDeviceFirmware))
             {

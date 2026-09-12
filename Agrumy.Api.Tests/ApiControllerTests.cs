@@ -165,7 +165,7 @@ public class ApiControllerTests
 
         var obj = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(403, obj.StatusCode);
-        Assert.Equal("Sensor config belongs to a different tenant", obj.Value);
+        Assert.Equal("Sensor config belongs to a different tenant", Assert.IsType<ProblemDetails>(obj.Value).Detail);
         _repo.Verify(r => r.DeviceConfigSensorGetAsync(It.IsAny<int?>()), Times.Never);
     }
 

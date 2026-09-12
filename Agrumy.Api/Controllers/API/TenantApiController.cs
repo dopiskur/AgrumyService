@@ -20,7 +20,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
-                return StatusCode(403, "Tenant Management requires the Global admin or Global reader role");
+                return ForbidWith("Tenant Management requires the Global admin or Global reader role");
             }
             return Ok(await tenantRepo.TenantsGetAllAsync());
         }
@@ -32,7 +32,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader) && idTenant != CallerTenantId)
             {
-                return StatusCode(403, "Tenant Management requires the Global admin or Global reader role");
+                return ForbidWith("Tenant Management requires the Global admin or Global reader role");
             }
             Tenant? tenant = await tenantRepo.TenantGetByIdAsync(idTenant);
             return tenant is null ? NotFound() : Ok(tenant);
@@ -44,7 +44,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Creating a tenant requires the Global admin role");
+                return ForbidWith("Creating a tenant requires the Global admin role");
             }
             if (string.IsNullOrWhiteSpace(tenant.TenantName))
             {
@@ -61,7 +61,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Renaming a tenant requires the Global admin role");
+                return ForbidWith("Renaming a tenant requires the Global admin role");
             }
             if (tenant.IDTenant is null)
             {
@@ -112,7 +112,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Deleting a tenant requires the Global admin role");
+                return ForbidWith("Deleting a tenant requires the Global admin role");
             }
             if (idTenant == 0)
             {
@@ -146,7 +146,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerTenantId is not int tenantId)
             {
-                return StatusCode(403, "Caller has no tenant.");
+                return ForbidWith("Caller has no tenant.");
             }
             return Ok(await tenantRepo.TenantAlertConfigGetAsync(tenantId));
         }
@@ -157,7 +157,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (CallerTenantId is not int tenantId)
             {
-                return StatusCode(403, "Caller has no tenant.");
+                return ForbidWith("Caller has no tenant.");
             }
             if (config.ProblemEventExpiryHours is int hours && hours is not (1 or 6 or 12 or 24 or 48))
             {
@@ -176,7 +176,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerReadsTenantConfig(targetTenantId))
             {
-                return StatusCode(403, "Not authorized to view this tenant's weather state.");
+                return ForbidWith("Not authorized to view this tenant's weather state.");
             }
             return Ok(await tenantRepo.TenantWeatherStateGetAsync(targetTenantId));
         }
@@ -191,7 +191,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerManagesDevices(targetTenantId))
             {
-                return StatusCode(403, "Emergency stop requires managing devices in this tenant.");
+                return ForbidWith("Emergency stop requires managing devices in this tenant.");
             }
             await tenantRepo.TenantEmergencyStopSetAsync(targetTenantId, true);
             await WriteAuditAsync("Tenant.EmergencyStopActivated", targetTenantId, "Tenant", targetTenantId.ToString(), null);
@@ -207,7 +207,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerManagesDevices(targetTenantId))
             {
-                return StatusCode(403, "Emergency stop requires managing devices in this tenant.");
+                return ForbidWith("Emergency stop requires managing devices in this tenant.");
             }
             await tenantRepo.TenantEmergencyStopSetAsync(targetTenantId, false);
             await WriteAuditAsync("Tenant.EmergencyStopCleared", targetTenantId, "Tenant", targetTenantId.ToString(), null);
@@ -223,7 +223,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerManagesDevices(targetTenantId))
             {
-                return StatusCode(403, "Emergency stop requires managing devices in this tenant.");
+                return ForbidWith("Emergency stop requires managing devices in this tenant.");
             }
             Tenant? tenant = await tenantRepo.TenantGetByIdAsync(targetTenantId);
             return Ok(tenant?.EmergencyStopActive ?? false);
@@ -238,7 +238,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin && !(CallerHasRole(RoleNames.TenantAdmin) && CallerTenantId == idTenant))
             {
-                return StatusCode(403, "Exporting a tenant requires being its Tenant admin, or Global admin.");
+                return ForbidWith("Exporting a tenant requires being its Tenant admin, or Global admin.");
             }
             (Stream content, string fileName) = await exportService.BuildExportZipAsync(idTenant, includeSensorData, sensorDataSinceUtc, cancellationToken);
             await WriteAuditAsync("Tenant.Exported", idTenant, "Tenant", idTenant.ToString(), $"includeSensorData={includeSensorData}");
@@ -252,7 +252,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Importing a tenant requires the Global admin role");
+                return ForbidWith("Importing a tenant requires the Global admin role");
             }
             if (value.Export is null)
             {
@@ -293,7 +293,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerReadsTenantConfig(targetTenantId))
             {
-                return StatusCode(403, "Not authorized to view this tenant's satellite config.");
+                return ForbidWith("Not authorized to view this tenant's satellite config.");
             }
             TenantSatelliteConfig config = await satelliteConfigRepo.SatelliteConfigGetAsync(targetTenantId) ?? new TenantSatelliteConfig { IDTenant = targetTenantId };
             config.ClientSecret = null; // write-only - HasSecret already tells the caller whether one is configured
@@ -307,7 +307,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerManagesTenantConfig(targetTenantId))
             {
-                return StatusCode(403, "Not authorized to change this tenant's satellite config.");
+                return ForbidWith("Not authorized to change this tenant's satellite config.");
             }
             if (config.MaxCloudPercent is < 0 or > 100)
             {
@@ -332,7 +332,7 @@ namespace Agrumy.Api.Controllers.API
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerManagesTenantConfig(targetTenantId))
             {
-                return StatusCode(403, "Not authorized to test this tenant's satellite config.");
+                return ForbidWith("Not authorized to test this tenant's satellite config.");
             }
             string? clientId = request.ClientId;
             string? clientSecret = request.ClientSecret;

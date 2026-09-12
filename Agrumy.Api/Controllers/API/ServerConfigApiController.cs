@@ -20,7 +20,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             // Write-only, same "blank keeps existing" convention as TenantWifiConfig.Password - the repo returns the real (decrypted) values for internal senders like MqttCommandPublisher/EmailNotificationChannel to actually authenticate with, but this API boundary never echoes them back.
             ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
@@ -37,7 +37,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
 
             // A Custom source with no manifest URL (or a non-http one) would leave every sync failing with a vague error.
@@ -213,7 +213,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             if (string.IsNullOrWhiteSpace(toEmail))
             {
@@ -241,7 +241,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
 
             INotificationChannel? webhook = notificationChannels.FirstOrDefault(c => c.Name == "webhook");
@@ -269,7 +269,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             if (string.IsNullOrWhiteSpace(request.Host) || string.IsNullOrWhiteSpace(request.DatabaseName) || string.IsNullOrWhiteSpace(request.Username))
             {
@@ -301,7 +301,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
 
             ServerConfig current = await serverConfigRepo.ServerConfigGetAsync(1);
@@ -364,7 +364,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader))
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             return Ok(await serverHealthService.GetStatusesAsync());
         }
@@ -374,7 +374,7 @@ namespace Agrumy.Api.Controllers.API
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<IReadOnlyList<SsrfAllowlistEntry>>> GetFirmwareSsrfAllowlist() =>
             !CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader)
-                ? StatusCode(403, "Server-wide settings require the Global admin role")
+                ? ForbidWith("Server-wide settings require the Global admin role")
                 : Ok(await ssrfAllowlistRepo.FirmwareAllowlistGetAllAsync());
 
         [HttpPost("FirmwareSsrfAllowlist")]
@@ -383,7 +383,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             string? error = await ValidateAllowlistEntryAsync(entry, await ssrfAllowlistRepo.FirmwareAllowlistGetAllAsync());
             if (error != null)
@@ -401,7 +401,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             await ssrfAllowlistRepo.FirmwareAllowlistDeleteAsync(id);
             await WriteAuditAsync("ServerConfig.FirmwareSsrfAllowlistEntryDeleted", null, "FirmwareSsrfAllowlistEntry", id.ToString(), null);
@@ -412,7 +412,7 @@ namespace Agrumy.Api.Controllers.API
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult<IReadOnlyList<SsrfAllowlistEntry>>> GetWebhookSsrfAllowlist() =>
             !CallerIsGlobalAdmin && !CallerHasRole(RoleNames.GlobalReader)
-                ? StatusCode(403, "Server-wide settings require the Global admin role")
+                ? ForbidWith("Server-wide settings require the Global admin role")
                 : Ok(await ssrfAllowlistRepo.WebhookAllowlistGetAllAsync());
 
         [HttpPost("WebhookSsrfAllowlist")]
@@ -421,7 +421,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             string? error = await ValidateAllowlistEntryAsync(entry, await ssrfAllowlistRepo.WebhookAllowlistGetAllAsync());
             if (error != null)
@@ -439,7 +439,7 @@ namespace Agrumy.Api.Controllers.API
         {
             if (!CallerIsGlobalAdmin)
             {
-                return StatusCode(403, "Server-wide settings require the Global admin role");
+                return ForbidWith("Server-wide settings require the Global admin role");
             }
             await ssrfAllowlistRepo.WebhookAllowlistDeleteAsync(id);
             await WriteAuditAsync("ServerConfig.WebhookSsrfAllowlistEntryDeleted", null, "WebhookSsrfAllowlistEntry", id.ToString(), null);

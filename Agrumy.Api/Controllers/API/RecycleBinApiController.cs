@@ -42,7 +42,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesDevices(device.TenantID))
             {
-                return StatusCode(403, "Device belongs to a different tenant");
+                return ForbidWith("Device belongs to a different tenant");
             }
 
             bool restored = await deviceRepo.DeviceRestoreAsync(idDevice, device.TenantID);
@@ -64,7 +64,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesDevices(farm.TenantID))
             {
-                return StatusCode(403, "Farm belongs to a different tenant");
+                return ForbidWith("Farm belongs to a different tenant");
             }
 
             bool restored = await deviceFarmUnitRepo.DeviceFarmRestoreAsync(idDeviceFarm, farm.TenantID);

@@ -45,7 +45,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerReadsDevicesGlobally && device.TenantID != CallerTenantId)
             {
-                return StatusCode(403, "Device belongs to a different tenant");
+                return ForbidWith("Device belongs to a different tenant");
             }
 
             return Ok(await controllerDataRepo.ControllerDataGetAsync(idDevice));

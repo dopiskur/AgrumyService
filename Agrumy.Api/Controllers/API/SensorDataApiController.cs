@@ -53,7 +53,7 @@ namespace Agrumy.Api.Controllers.API
             // Catches a device (compromised, buggy, or just ignoring its own configured sleepSeconds) pushing telemetry faster than its tenant's quota allows - separate from DeviceUpdate's CheckMinSensorIntervalAsync, which only gates the CONFIGURED value.
             if (await quotaEnforcer.CheckSensorPushIntervalAsync(device.TenantID, device.IDDevice!.Value) is string intervalLimitError)
             {
-                return StatusCode(403, intervalLimitError);
+                return ForbidWith(intervalLimitError);
             }
 
             await sensorDataRepo.SensorDataPushAsync(readings, device.IDDevice!.Value, device.TenantID ?? 0,
@@ -74,7 +74,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (!CallerManagesDevices(device.TenantID))
             {
-                return StatusCode(403, "Device belongs to a different tenant");
+                return ForbidWith("Device belongs to a different tenant");
             }
 
             await sensorDataRepo.SensorDataDeleteAsync(device.TenantID, deviceID, olderThan);

@@ -29,7 +29,7 @@ namespace Agrumy.Api.Controllers.API
             bool crossTenantAllowed = CallerManagesUsersGlobally || (!forWrite && CallerHasRole(RoleNames.GlobalReader));
             if (experiment.TenantID != CallerTenantId && !crossTenantAllowed)
             {
-                return (null, StatusCode(403, "Experiment belongs to a different tenant"));
+                return (null, ForbidWith("Experiment belongs to a different tenant"));
             }
             return (experiment, null);
         }
@@ -41,15 +41,15 @@ namespace Agrumy.Api.Controllers.API
                 case HierarchyNodeKind.Farm:
                     DeviceFarm? farm = await deviceFarmUnitRepo.DeviceFarmGetByIdAsync(scopeId);
                     if (farm is null) { return NotFound("Farm not found."); }
-                    return farm.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Farm belongs to a different tenant") : null;
+                    return farm.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? ForbidWith("Farm belongs to a different tenant") : null;
                 case HierarchyNodeKind.Unit:
                     DeviceFarmUnit? unit = await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(scopeId);
                     if (unit is null) { return NotFound("Unit not found."); }
-                    return unit.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Unit belongs to a different tenant") : null;
+                    return unit.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? ForbidWith("Unit belongs to a different tenant") : null;
                 case HierarchyNodeKind.Zone:
                     DeviceFarmUnitZone? zone = await deviceFarmUnitRepo.DeviceFarmUnitZoneGetByIdAsync(scopeId);
                     if (zone is null) { return NotFound("Zone not found."); }
-                    return zone.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? StatusCode(403, "Zone belongs to a different tenant") : null;
+                    return zone.TenantID != CallerTenantId && !CallerManagesUsersGlobally ? ForbidWith("Zone belongs to a different tenant") : null;
                 default:
                     return BadRequest("Unknown experiment scope.");
             }
