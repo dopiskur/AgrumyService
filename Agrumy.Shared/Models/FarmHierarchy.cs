@@ -193,6 +193,17 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? ReleasedUtc { get; set; }
     }
 
+    /// A named, reusable set of FarmParcels within one Open-Field farm (never mixes parcels from different farms) - the "New sowing" wizard's parcel-selection step can pick one of these instead of individual parcels/zones, expanding to every member parcel's zones on Start. A parcel currently in a group must be removed from it before it could move to a different farm (no such "move parcel to another farm" operation exists today).
+    public class FarmParcelGroupCrop
+    {
+        [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]
+        public int? IDFarmParcelGroupCrop { get; set; }
+        public int? TenantID { get; set; }
+        public int FarmID { get; set; }
+        public string? Name { get; set; }
+        public IList<int> MemberParcelIds { get; set; } = [];
+    }
+
     /// Greenhouse's equivalent of Sowing (Detaljni dizajn R, D8) - one planting cycle for one DeviceFarmUnitZone, same Planned/Active/Closed lifecycle, but 1:1 with its zone (no cross-zone spanning the way Sowing allows via D11).
     public class ZonePlanting
     {

@@ -50,6 +50,54 @@
     }
 }
 
+@if (canManage && Model.GroupSections.Any(s => s.Parcels.Count > 0))
+{
+    <div class="card mb-4">
+        <div class="card-header"><h3 class="card-title mb-0">Parcel Groups</h3></div>
+        <div class="card-body">
+            <p class="text-secondary small">
+                A named, reusable set of parcels within one farm - pick one from the "New sowing" wizard
+                to start a sowing on the whole group in one step instead of picking zones individually
+                each season.
+            </p>
+            @foreach (var farmSection in Model.GroupSections.Where(s => s.Parcels.Count > 0))
+            {
+                <h6>@farmSection.FarmName</h6>
+                @foreach (var group in farmSection.Groups)
+                {
+                    <details class="mb-2">
+                        <summary>
+                            @group.Name <span class="text-secondary small">(@group.MemberParcelIds.Count parcel(s))</span>
+                        </summary>
+                        <div class="ps-3 pt-2">
+                            @foreach (var parcel in farmSection.Parcels)
+                            {
+                                bool isMember = group.MemberParcelIds.Contains(parcel.IDFarmParcel!.Value);
+                                <form asp-action="@(isMember ? "ParcelGroupRemoveMember" : "ParcelGroupAddMember")" method="post" class="d-inline">
+                                    <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
+                                    <input type="hidden" name="idFarmParcel" value="@parcel.IDFarmParcel" />
+                                    <button type="submit" class="btn btn-sm @(isMember ? "btn-outline-success" : "btn-outline-secondary") mb-1">
+                                        <i class="bi @(isMember ? "bi-check-square" : "bi-square")"></i> @parcel.FarmParcelName
+                                    </button>
+                                </form>
+                            }
+                            <form asp-action="ParcelGroupDelete" method="post" class="d-inline ms-2">
+                                <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this parcel group?');"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </details>
+                }
+                <form asp-action="ParcelGroupAdd" method="post" class="d-flex gap-2 mb-3">
+                    <input type="hidden" name="idFarm" value="@farmSection.IdFarm" />
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="New group name" required maxlength="120" style="max-width:16rem" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel Group</button>
+                </form>
+            }
+        </div>
+    </div>
+}
+
 @if (Model.Rows.Count == 0)
 {
     <p class="text-secondary">No parcels yet.</p>

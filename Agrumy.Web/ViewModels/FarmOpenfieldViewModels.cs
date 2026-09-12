@@ -30,11 +30,21 @@ namespace Agrumy.Web.ViewModels
         public required int IdFarm { get; init; }
     }
 
+    /// One farm's Parcel Groups management block on ParcelsRegistry.cshtml - its own parcels (for the add-member picker) plus its existing FarmParcelGroupCrop groups.
+    public class ParcelGroupSectionViewModel
+    {
+        public required string FarmName { get; init; }
+        public required int IdFarm { get; init; }
+        public IList<FarmParcel> Parcels { get; init; } = [];
+        public IList<FarmParcelGroupCrop> Groups { get; init; } = [];
+    }
+
     /// Drives FarmOpenfield/ParcelsRegistry.cshtml - the Fleet-style overview of every parcel/zone across every Open-Field farm, separated from the farm register (Index) and Crop Seasons.
     public class ParcelsRegistryViewModel
     {
         public IList<ParcelRegistryRowViewModel> Rows { get; init; } = [];
         public IList<ParcelRegistryFarmOptionViewModel> Farms { get; init; } = [];
+        public IList<ParcelGroupSectionViewModel> GroupSections { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/CropSeasons.cshtml - every sowing across every Open-Field farm, plus what "New sowing" needs to build one (farm picker, catalog-driven crop/variety picker).
@@ -44,6 +54,9 @@ namespace Agrumy.Web.ViewModels
         public IList<Sowing> Sowings { get; init; } = [];
         /// HorticultureCatalogType.Crop entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
         public IList<HorticultureCatalogEntry> CatalogCrops { get; init; } = [];
+        /// Only populated when there's exactly one Open-Field farm (the common case) - the wizard's parcel-selection step, same shape as CropParcelsViewModel.AvailableParcels. Left empty for the rare multi-farm case, which keeps today's crop+dates-only wizard and assigns parcels afterward on the Sowing Details page.
+        public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
+        public IList<FarmParcelGroupCrop> ParcelGroups { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/Parcels.cshtml - one Sowing's own detail/lifecycle page (Sowing Details, D9), the Open-Field mirror of UnitZonesViewModel.

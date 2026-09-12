@@ -312,6 +312,81 @@ namespace Agrumy.Api.Dal
             return rows.Select(ToDtoZone).ToList();
         }
 
+        public async Task<IList<FarmParcelGroupCrop>> FarmParcelGroupCropsGetAsync(int idFarm)
+        {
+            var rows = await db.FarmParcelGroupCrops.AsNoTracking().Where(g => g.FarmID == idFarm).OrderBy(g => g.Name).ToListAsync();
+            var groupIds = rows.Select(r => r.IDFarmParcelGroupCrop).ToList();
+            var members = await db.FarmParcelGroupCropMembers.AsNoTracking().Where(m => groupIds.Contains(m.FarmParcelGroupCropID)).ToListAsync();
+            return rows.Select(r => ToDtoGroup(r, members.Where(m => m.FarmParcelGroupCropID == r.IDFarmParcelGroupCrop).Select(m => m.FarmParcelID).ToList())).ToList();
+        }
+
+        public async Task<FarmParcelGroupCrop?> FarmParcelGroupCropGetByIdAsync(int idFarmParcelGroupCrop)
+        {
+            var row = await db.FarmParcelGroupCrops.AsNoTracking().FirstOrDefaultAsync(g => g.IDFarmParcelGroupCrop == idFarmParcelGroupCrop);
+            if (row == null)
+            {
+                return null;
+            }
+            var memberIds = await db.FarmParcelGroupCropMembers.AsNoTracking().Where(m => m.FarmParcelGroupCropID == idFarmParcelGroupCrop).Select(m => m.FarmParcelID).ToListAsync();
+            return ToDtoGroup(row, memberIds);
+        }
+
+        public async Task<FarmParcelGroupCrop> FarmParcelGroupCropCreateAsync(FarmParcelGroupCrop group)
+        {
+            var row = new FarmParcelGroupCropRow { TenantID = group.TenantID, FarmID = group.FarmID, Name = group.Name };
+            db.FarmParcelGroupCrops.Add(row);
+            await db.SaveChangesAsync();
+            List<int> memberIds = group.MemberParcelIds.Distinct().ToList();
+            foreach (int idFarmParcel in memberIds)
+            {
+                db.FarmParcelGroupCropMembers.Add(new FarmParcelGroupCropMemberRow { FarmParcelGroupCropID = row.IDFarmParcelGroupCrop, FarmParcelID = idFarmParcel });
+            }
+            await db.SaveChangesAsync();
+            return ToDtoGroup(row, memberIds);
+        }
+
+        public async Task FarmParcelGroupCropRenameAsync(int idFarmParcelGroupCrop, string name) =>
+            await db.FarmParcelGroupCrops.Where(g => g.IDFarmParcelGroupCrop == idFarmParcelGroupCrop).ExecuteUpdateAsync(set => set.SetProperty(g => g.Name, name));
+
+        public async Task FarmParcelGroupCropDeleteAsync(int idFarmParcelGroupCrop)
+        {
+            await db.FarmParcelGroupCropMembers.Where(m => m.FarmParcelGroupCropID == idFarmParcelGroupCrop).ExecuteDeleteAsync();
+            await db.FarmParcelGroupCrops.Where(g => g.IDFarmParcelGroupCrop == idFarmParcelGroupCrop).ExecuteDeleteAsync();
+        }
+
+        public async Task FarmParcelGroupCropAddMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel)
+        {
+            bool exists = await db.FarmParcelGroupCropMembers.AsNoTracking().AnyAsync(m => m.FarmParcelGroupCropID == idFarmParcelGroupCrop && m.FarmParcelID == idFarmParcel);
+            if (exists)
+            {
+                return;
+            }
+            db.FarmParcelGroupCropMembers.Add(new FarmParcelGroupCropMemberRow { FarmParcelGroupCropID = idFarmParcelGroupCrop, FarmParcelID = idFarmParcel });
+            await db.SaveChangesAsync();
+        }
+
+        public async Task FarmParcelGroupCropRemoveMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel) =>
+            await db.FarmParcelGroupCropMembers.Where(m => m.FarmParcelGroupCropID == idFarmParcelGroupCrop && m.FarmParcelID == idFarmParcel).ExecuteDeleteAsync();
+
+        public async Task<IList<int>> FarmParcelGroupCropResolveZoneIdsAsync(int idFarmParcelGroupCrop)
+        {
+            var parcelIds = await db.FarmParcelGroupCropMembers.AsNoTracking().Where(m => m.FarmParcelGroupCropID == idFarmParcelGroupCrop).Select(m => m.FarmParcelID).ToListAsync();
+            if (parcelIds.Count == 0)
+            {
+                return [];
+            }
+            return await db.FarmParcelZones.AsNoTracking().Where(z => parcelIds.Contains(z.FarmParcelID)).Select(z => z.IDFarmParcelZone).ToListAsync();
+        }
+
+        private static FarmParcelGroupCrop ToDtoGroup(FarmParcelGroupCropRow g, IList<int> memberParcelIds) => new()
+        {
+            IDFarmParcelGroupCrop = g.IDFarmParcelGroupCrop,
+            TenantID = g.TenantID,
+            FarmID = g.FarmID,
+            Name = g.Name,
+            MemberParcelIds = memberParcelIds,
+        };
+
         public async Task FarmParcelZoneConfigVersionBumpAsync(int idFarmParcelZone)
         {
             List<int> deviceIds = await db.Devices.AsNoTracking().Where(d => d.FarmParcelZoneID == idFarmParcelZone).Select(d => d.IDDevice).ToListAsync();

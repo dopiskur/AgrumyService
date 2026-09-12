@@ -511,6 +511,28 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/FarmOpenfield/FarmParcel")]
         Task<FarmParcelZone> FarmParcelAdd(int idFarm, string farmParcelName);
 
+        [Get("/api/FarmOpenfield/ParcelGroup/All")]
+        Task<IList<FarmParcelGroupCrop>> ParcelGroupsGet(int idFarm);
+
+        [Post("/api/FarmOpenfield/ParcelGroup")]
+        Task<FarmParcelGroupCrop> ParcelGroupAdd([Body] FarmParcelGroupCrop group);
+
+        [Post("/api/FarmOpenfield/ParcelGroup/Rename")]
+        Task ParcelGroupRename(int idFarmParcelGroupCrop, string name);
+
+        [Delete("/api/FarmOpenfield/ParcelGroup")]
+        Task ParcelGroupDelete(int idFarmParcelGroupCrop);
+
+        [Post("/api/FarmOpenfield/ParcelGroup/AddMember")]
+        Task ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel);
+
+        [Post("/api/FarmOpenfield/ParcelGroup/RemoveMember")]
+        Task ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel);
+
+        /// The "New sowing" wizard resolves a picked group down to this list before calling SowingStart, same as any manually-picked zone list.
+        [Get("/api/FarmOpenfield/ParcelGroup/{idFarmParcelGroupCrop}/Zones")]
+        Task<IList<int>> ParcelGroupZonesGet(int idFarmParcelGroupCrop);
+
         [Put("/api/FarmOpenfield/Parcel")]
         Task ParcelUpdate([Body] FarmParcelZone parcel);
 

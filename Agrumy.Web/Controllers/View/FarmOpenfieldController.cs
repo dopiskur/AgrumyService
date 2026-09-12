@@ -26,14 +26,30 @@ namespace Agrumy.Web.Controllers.View
 
         public async Task<ActionResult> CropSeasons()
         {
-            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
+            List<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
             List<int?> farmIds = farms.Select(f => f.IDDeviceFarm).ToList();
             IList<Sowing> sowings = (await api.CropsGet()).Where(s => farmIds.Contains(s.FarmID)).ToList();
+
+            // Parcel/group picker only renders for the single-farm case - a multi-farm wizard would need the picker to swap per farm choice, not worth the extra JS for the rare case (keeps today's crop+dates-only flow there, zones get assigned afterward on the Sowing Details page).
+            var availableParcels = new List<FarmParcelWithZonesViewModel>();
+            IList<FarmParcelGroupCrop> parcelGroups = [];
+            if (farms.Count == 1)
+            {
+                int idFarm = farms[0].IDDeviceFarm!.Value;
+                foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarm))
+                {
+                    availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
+                }
+                parcelGroups = await api.ParcelGroupsGet(idFarm);
+            }
+
             return View(new CropSeasonsIndexViewModel
             {
                 Farms = farms,
                 Sowings = sowings,
                 CatalogCrops = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop),
+                AvailableParcels = availableParcels,
+                ParcelGroups = parcelGroups,
             });
         }
 
@@ -156,11 +172,11 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard step 1 (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). Creates a Planned sowing with no zones occupied yet - step 2 (the zone picker) lives on the Sowing Details page below, since a freshly created sowing has no zones of its own to show. No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form.
+        /// Sjetva wizard step 1 (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the single-farm picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection (multi-farm case, or nothing picked) keeps the old create-as-Planned behavior.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly expectedEndDate)
+        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly expectedEndDate, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
         {
             int expectedDurationDays = Math.Max(1, expectedEndDate.DayNumber - startDate.DayNumber);
             Sowing added = await api.CropAdd(new Sowing
@@ -171,6 +187,27 @@ namespace Agrumy.Web.Controllers.View
                 StartDate = startDate,
                 ExpectedDurationDays = expectedDurationDays,
             });
+
+            var zoneIds = new HashSet<int>(farmParcelZoneIds ?? []);
+            foreach (int idGroup in farmParcelGroupCropIds ?? [])
+            {
+                foreach (int idZone in await api.ParcelGroupZonesGet(idGroup))
+                {
+                    zoneIds.Add(idZone);
+                }
+            }
+            if (zoneIds.Count > 0)
+            {
+                try
+                {
+                    await api.SowingStart(new SowingStartRequest { IDSowing = added.IDSowing!.Value, FarmParcelZoneIds = zoneIds.ToList() });
+                    TempData["Message"] = "Sowing created and started.";
+                }
+                catch (ApiException ex)
+                {
+                    TempData["Error"] = ex.Body;
+                }
+            }
             return RedirectToAction(nameof(Parcels), new { idSowing = added.IDSowing });
         }
 
@@ -360,19 +397,66 @@ namespace Agrumy.Web.Controllers.View
             IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
             var rows = new List<ParcelRegistryRowViewModel>();
             var farmOptions = new List<ParcelRegistryFarmOptionViewModel>();
+            var groupSections = new List<ParcelGroupSectionViewModel>();
             foreach (DeviceFarm farm in farms)
             {
                 int idFarm = farm.IDDeviceFarm!.Value;
                 farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarm = idFarm });
-                foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarm))
+                IList<FarmParcel> parcels = await api.FarmParcelsGet(idFarm);
+                foreach (FarmParcel parcel in parcels)
                 {
                     foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
                     {
                         rows.Add(new ParcelRegistryRowViewModel { FarmName = farm.DeviceFarmName ?? "", Parcel = parcel, Zone = zone });
                     }
                 }
+                groupSections.Add(new ParcelGroupSectionViewModel
+                {
+                    FarmName = farm.DeviceFarmName ?? "",
+                    IdFarm = idFarm,
+                    Parcels = parcels,
+                    Groups = await api.ParcelGroupsGet(idFarm),
+                });
             }
-            return View(new ParcelsRegistryViewModel { Rows = rows, Farms = farmOptions });
+            return View(new ParcelsRegistryViewModel { Rows = rows, Farms = farmOptions, GroupSections = groupSections });
+        }
+
+        // ---- Parcel Groups (FarmParcelGroupCrop) management, from the ParcelsRegistry page -----------------------------------
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGroupAdd(int idFarm, string name, List<int>? memberParcelIds)
+        {
+            await api.ParcelGroupAdd(new FarmParcelGroupCrop { FarmID = idFarm, Name = name, MemberParcelIds = memberParcelIds ?? [] });
+            return RedirectToAction(nameof(ParcelsRegistry));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGroupDelete(int idFarmParcelGroupCrop)
+        {
+            await api.ParcelGroupDelete(idFarmParcelGroupCrop);
+            return RedirectToAction(nameof(ParcelsRegistry));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        {
+            await api.ParcelGroupAddMember(idFarmParcelGroupCrop, idFarmParcel);
+            return RedirectToAction(nameof(ParcelsRegistry));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        {
+            await api.ParcelGroupRemoveMember(idFarmParcelGroupCrop, idFarmParcel);
+            return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         /// The registry's own toggle - "ready" flips straight through, the "populate prep dates first" dialog lives client-side (parcel-registry.js) and just decides whether to detour through the Parcel detail page before/instead of calling this.

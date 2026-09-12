@@ -1538,6 +1538,46 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("farmGroup", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropMemberRow", b =>
+                {
+                    b.Property<int>("FarmParcelGroupCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FarmParcelID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("FarmParcelGroupCropID", "FarmParcelID");
+
+                    b.HasIndex("FarmParcelID");
+
+                    b.ToTable("farmParcelGroupCropMember", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropRow", b =>
+                {
+                    b.Property<int>("IDFarmParcelGroupCrop")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDFarmParcelGroupCrop"));
+
+                    b.Property<int>("FarmID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("TenantID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IDFarmParcelGroupCrop");
+
+                    b.HasIndex("FarmID");
+
+                    b.ToTable("farmParcelGroupCrop", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
                 {
                     b.Property<int>("IDFarmParcel")
@@ -3894,6 +3934,30 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.HasOne("Agrumy.Dal.Entities.EventTypeRow", null)
                         .WithMany()
                         .HasForeignKey("EventID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropMemberRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.FarmParcelGroupCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmParcelGroupCropID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Agrumy.Dal.Entities.FarmParcelRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmParcelID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.DeviceFarmRow", null)
+                        .WithMany()
+                        .HasForeignKey("FarmID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

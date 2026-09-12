@@ -37,6 +37,8 @@ namespace Agrumy.Dal
         public DbSet<FarmParcelZoneRow> FarmParcelZones => Set<FarmParcelZoneRow>();
         public DbSet<SowingRow> Sowings => Set<SowingRow>();
         public DbSet<SowingFarmParcelZoneRow> SowingFarmParcelZones => Set<SowingFarmParcelZoneRow>();
+        public DbSet<FarmParcelGroupCropRow> FarmParcelGroupCrops => Set<FarmParcelGroupCropRow>();
+        public DbSet<FarmParcelGroupCropMemberRow> FarmParcelGroupCropMembers => Set<FarmParcelGroupCropMemberRow>();
         public DbSet<ZonePlantingRow> ZonePlantings => Set<ZonePlantingRow>();
         public DbSet<FieldLogEntryRow> FieldLogEntries => Set<FieldLogEntryRow>();
         public DbSet<FieldLogAttachmentRow> FieldLogAttachments => Set<FieldLogAttachmentRow>();
@@ -405,6 +407,23 @@ namespace Agrumy.Dal
                         stored: true);
                 e.HasIndex("ActiveFarmParcelZoneID").IsUnique().HasDatabaseName("ux_farmParcelZoneSowing_activeZone");
                 e.HasIndex(x => x.FarmParcelZoneID).HasDatabaseName("ix_farmParcelZoneSowing_zone");
+            });
+
+            modelBuilder.Entity<FarmParcelGroupCropRow>(e =>
+            {
+                e.ToTable("farmParcelGroupCrop");
+                e.HasKey(x => x.IDFarmParcelGroupCrop);
+                e.Property(x => x.IDFarmParcelGroupCrop).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(120);
+                e.HasOne<DeviceFarmRow>().WithMany().HasForeignKey(x => x.FarmID).OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<FarmParcelGroupCropMemberRow>(e =>
+            {
+                e.ToTable("farmParcelGroupCropMember");
+                e.HasKey(x => new { x.FarmParcelGroupCropID, x.FarmParcelID });
+                e.HasOne<FarmParcelGroupCropRow>().WithMany().HasForeignKey(x => x.FarmParcelGroupCropID).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<FarmParcelRow>().WithMany().HasForeignKey(x => x.FarmParcelID).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ZonePlantingRow>(e =>

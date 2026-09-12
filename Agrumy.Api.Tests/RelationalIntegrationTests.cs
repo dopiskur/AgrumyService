@@ -3934,6 +3934,45 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
     }
 
+    /// FarmParcelGroupCrop - a named, reusable set of parcels within one farm; starting a sowing against the group's resolved zones occupies every member parcel's zone in one step, and removing a member / deleting the group doesn't orphan rows.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task FarmParcelGroupCrop_ResolvesToMemberZones_ForOneStepGroupSowing(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        DeviceFarm farm = await _repo.DeviceFarmAddAsync(new DeviceFarm { TenantID = tenantId, DeviceFarmName = "Farm_" + U(), FarmType = FarmType.OpenField });
+        var (parcel1, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, FarmParcelName = "P1_" + U() });
+        var (parcel2, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, FarmParcelName = "P2_" + U() });
+
+        FarmParcelGroupCrop group = await _repo.FarmParcelGroupCropCreateAsync(new FarmParcelGroupCrop
+        {
+            TenantID = tenantId,
+            FarmID = farm.IDDeviceFarm!.Value,
+            Name = "Group_" + U(),
+            MemberParcelIds = [parcel1.IDFarmParcel!.Value, parcel2.IDFarmParcel!.Value],
+        });
+        Assert.Equal(2, group.MemberParcelIds.Count);
+
+        List<int> zoneIds = (await _repo.FarmParcelGroupCropResolveZoneIdsAsync(group.IDFarmParcelGroupCrop!.Value)).ToList();
+        Assert.Equal(
+            new[] { zone1.IDFarmParcelZone!.Value, zone2.IDFarmParcelZone!.Value }.OrderBy(z => z),
+            zoneIds.OrderBy(z => z));
+
+        var crop = await _repo.CropAddAsync(new Crop { TenantID = tenantId, Name = "Crop_" + U() });
+        var sowing = await _repo.SowingAddAsync(new Sowing { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, CropID = crop.IDCrop!.Value, StartDate = DateOnly.FromDateTime(DateTime.UtcNow), ExpectedDurationDays = 90 });
+        await _repo.SowingStartAsync(sowing.IDSowing!.Value, zoneIds);
+
+        Assert.Equal(sowing.IDSowing, (await _repo.FarmParcelZoneGetByIdAsync(zone1.IDFarmParcelZone!.Value))!.CurrentSowingID);
+        Assert.Equal(sowing.IDSowing, (await _repo.FarmParcelZoneGetByIdAsync(zone2.IDFarmParcelZone!.Value))!.CurrentSowingID);
+
+        await _repo.FarmParcelGroupCropRemoveMemberAsync(group.IDFarmParcelGroupCrop!.Value, parcel2.IDFarmParcel!.Value);
+        FarmParcelGroupCrop? afterRemove = await _repo.FarmParcelGroupCropGetByIdAsync(group.IDFarmParcelGroupCrop!.Value);
+        Assert.Single(afterRemove!.MemberParcelIds);
+
+        await _repo.FarmParcelGroupCropDeleteAsync(group.IDFarmParcelGroupCrop!.Value);
+        Assert.Null(await _repo.FarmParcelGroupCropGetByIdAsync(group.IDFarmParcelGroupCrop!.Value));
+    }
+
     /// #585 - TenantExportService/TenantImportService used to have zero references to sowing/farmParcel/farmParcelZone/fieldLogEntry/fieldLogAttachment/harvestResult/zonePlanting, silently dropping the whole R-restructure layer on export.
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task TenantExportImport_RoundTrip_PreservesSowingDnevnikAndHarvestRows(DbProviderKind provider)

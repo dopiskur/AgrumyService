@@ -86,6 +86,22 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId) => farmParcelRepository.FarmParcelZonesWithGeometryGetAsync(tenantId);
 
+        public Task<IList<FarmParcelGroupCrop>> FarmParcelGroupCropsGetAsync(int idFarm) => farmParcelRepository.FarmParcelGroupCropsGetAsync(idFarm);
+
+        public Task<FarmParcelGroupCrop?> FarmParcelGroupCropGetByIdAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropGetByIdAsync(idFarmParcelGroupCrop);
+
+        public Task<FarmParcelGroupCrop> FarmParcelGroupCropCreateAsync(FarmParcelGroupCrop group) => farmParcelRepository.FarmParcelGroupCropCreateAsync(group);
+
+        public Task FarmParcelGroupCropRenameAsync(int idFarmParcelGroupCrop, string name) => farmParcelRepository.FarmParcelGroupCropRenameAsync(idFarmParcelGroupCrop, name);
+
+        public Task FarmParcelGroupCropDeleteAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropDeleteAsync(idFarmParcelGroupCrop);
+
+        public Task FarmParcelGroupCropAddMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel) => farmParcelRepository.FarmParcelGroupCropAddMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+
+        public Task FarmParcelGroupCropRemoveMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel) => farmParcelRepository.FarmParcelGroupCropRemoveMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+
+        public Task<IList<int>> FarmParcelGroupCropResolveZoneIdsAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropResolveZoneIdsAsync(idFarmParcelGroupCrop);
+
         // ---- ICropCatalogRepository ----
 
         public Task<IList<Crop>> CropsGetAsync(int? tenantID) => cropCatalogRepository.CropsGetAsync(tenantID);

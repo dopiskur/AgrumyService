@@ -95,6 +95,22 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? ReleasedUtc { get; set; }
     }
 
+    /// See Agrumy.Shared.Models.FarmParcelGroupCrop - always scoped to one Farm, never mixes parcels from different farms.
+    public class FarmParcelGroupCropRow
+    {
+        public int IDFarmParcelGroupCrop { get; set; }
+        public int? TenantID { get; set; }
+        public int FarmID { get; set; }
+        public string? Name { get; set; }
+    }
+
+    /// Static membership only (no assigned/released timestamps, unlike SowingFarmParcelZoneRow) - composite PK (FarmParcelGroupCropID, FarmParcelID).
+    public class FarmParcelGroupCropMemberRow
+    {
+        public int FarmParcelGroupCropID { get; set; }
+        public int FarmParcelID { get; set; }
+    }
+
     /// See Agrumy.Shared.Models.ZonePlanting - Greenhouse's equivalent of Sowing (D8), 1:1 with its DeviceFarmUnitZone.
     public class ZonePlantingRow
     {

@@ -482,6 +482,123 @@ namespace Agrumy.Api.Controllers.API
             return Ok(zone);
         }
 
+        #region Parcel Groups (FarmParcelGroupCrop - a named, reusable set of parcels within one farm, for one-step group sowings)
+
+        [Authorize]
+        [HttpGet("ParcelGroup/All")]
+        public async Task<ActionResult<IList<FarmParcelGroupCrop>>> ParcelGroupsGet(int idFarm)
+        {
+            var (_, error) = await EnsureOwnedFarmAsync(idFarm, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await farmParcelRepo.FarmParcelGroupCropsGetAsync(idFarm));
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("ParcelGroup")]
+        public async Task<ActionResult<FarmParcelGroupCrop>> ParcelGroupAdd([FromBody] FarmParcelGroupCrop group)
+        {
+            var (farm, error) = await EnsureOwnedFarmAsync(group.FarmID, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            if (group.MemberParcelIds.Count > 0)
+            {
+                var validIds = (await farmParcelRepo.FarmParcelsGetAsync(group.FarmID)).Select(p => p.IDFarmParcel!.Value).ToHashSet();
+                if (group.MemberParcelIds.Any(id => !validIds.Contains(id)))
+                {
+                    return BadRequest("Every parcel in the group must belong to the same farm.");
+                }
+            }
+            group.TenantID = farm!.TenantID;
+            FarmParcelGroupCrop added = await farmParcelRepo.FarmParcelGroupCropCreateAsync(group);
+            await WriteAuditAsync("FarmParcelGroupCrop.Created", added.TenantID, "FarmParcelGroupCrop", added.IDFarmParcelGroupCrop.ToString()!, added.Name);
+            return Ok(added);
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("ParcelGroup/Rename")]
+        public async Task<ActionResult<bool>> ParcelGroupRename(int idFarmParcelGroupCrop, string name)
+        {
+            var (group, error) = await EnsureOwnedFarmParcelGroupCropAsync(idFarmParcelGroupCrop, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await farmParcelRepo.FarmParcelGroupCropRenameAsync(idFarmParcelGroupCrop, name);
+            await WriteAuditAsync("FarmParcelGroupCrop.Renamed", group!.TenantID, "FarmParcelGroupCrop", idFarmParcelGroupCrop.ToString(), name);
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpDelete("ParcelGroup")]
+        public async Task<ActionResult<bool>> ParcelGroupDelete(int idFarmParcelGroupCrop)
+        {
+            var (group, error) = await EnsureOwnedFarmParcelGroupCropAsync(idFarmParcelGroupCrop, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await farmParcelRepo.FarmParcelGroupCropDeleteAsync(idFarmParcelGroupCrop);
+            await WriteAuditAsync("FarmParcelGroupCrop.Deleted", group!.TenantID, "FarmParcelGroupCrop", idFarmParcelGroupCrop.ToString(), group.Name);
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("ParcelGroup/AddMember")]
+        public async Task<ActionResult<bool>> ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        {
+            var (group, error) = await EnsureOwnedFarmParcelGroupCropAsync(idFarmParcelGroupCrop, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            var (parcel, parcelError) = await EnsureOwnedFarmParcelAsync(idFarmParcel, forWrite: false);
+            if (parcelError != null)
+            {
+                return parcelError;
+            }
+            if (parcel!.FarmID != group!.FarmID)
+            {
+                return BadRequest("Parcel must belong to the same farm as the group.");
+            }
+            await farmParcelRepo.FarmParcelGroupCropAddMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+            await WriteAuditAsync("FarmParcelGroupCrop.MemberAdded", group.TenantID, "FarmParcelGroupCrop", idFarmParcelGroupCrop.ToString(), parcel.FarmParcelName);
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("ParcelGroup/RemoveMember")]
+        public async Task<ActionResult<bool>> ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        {
+            var (group, error) = await EnsureOwnedFarmParcelGroupCropAsync(idFarmParcelGroupCrop, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await farmParcelRepo.FarmParcelGroupCropRemoveMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+            await WriteAuditAsync("FarmParcelGroupCrop.MemberRemoved", group!.TenantID, "FarmParcelGroupCrop", idFarmParcelGroupCrop.ToString(), idFarmParcel.ToString());
+            return true;
+        }
+
+        /// The "New sowing" wizard resolves a picked group down to this list, then starts the sowing on it same as any manually-picked zone list.
+        [Authorize]
+        [HttpGet("ParcelGroup/{idFarmParcelGroupCrop}/Zones")]
+        public async Task<ActionResult<IList<int>>> ParcelGroupZonesGet(int idFarmParcelGroupCrop)
+        {
+            var (_, error) = await EnsureOwnedFarmParcelGroupCropAsync(idFarmParcelGroupCrop, forWrite: false);
+            if (error != null)
+            {
+                return error;
+            }
+            return Ok(await farmParcelRepo.FarmParcelGroupCropResolveZoneIdsAsync(idFarmParcelGroupCrop));
+        }
+
+        #endregion
+
         /// The Parcels registry's Ready/Not-ready toggle - independent of ParcelUpdate's own safety-limit fields, a plain confirm-or-revert flip an admin can use any time, not just right after SowingStartAsync's own reset-to-false.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Parcel/ReadyForSeason")]
@@ -1185,6 +1302,9 @@ namespace Agrumy.Api.Controllers.API
 
         private Task<OwnedResult<FarmParcel>> EnsureOwnedFarmParcelAsync(int idFarmParcel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelGetByIdAsync(idFarmParcel), p => p.TenantID, "FarmParcel", forWrite);
+
+        private Task<OwnedResult<FarmParcelGroupCrop>> EnsureOwnedFarmParcelGroupCropAsync(int idFarmParcelGroupCrop, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => farmParcelRepo.FarmParcelGroupCropGetByIdAsync(idFarmParcelGroupCrop), g => g.TenantID, "ParcelGroup", forWrite);
 
         private Task<OwnedResult<Device>> EnsureOwnedDeviceAsync(Func<Task<Device?>> lookup, string ownerLabel, bool forWrite) =>
             EnsureOwnedDeviceEntityAsync(lookup, d => d.TenantID, ownerLabel, forWrite);

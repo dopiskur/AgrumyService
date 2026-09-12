@@ -73,6 +73,50 @@
                         <input type="date" name="expectedEndDate" class="form-control" required />
                         <div class="form-text">An estimate, not a hard deadline - closing the sowing is a separate step whenever harvest actually happens.</div>
                     </div>
+                    @if (Model.AvailableParcels.Count > 0 || Model.ParcelGroups.Count > 0)
+                    {
+                        <div class="col-12">
+                            <label class="form-label">Parcels for this sowing <span class="text-muted">(optional - pick individually and/or a saved group; leave empty to assign parcels later)</span></label>
+                            <div class="row g-3">
+                                @if (Model.ParcelGroups.Count > 0)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2" style="max-height:12rem;overflow-y:auto">
+                                            @foreach (var group in Model.ParcelGroups)
+                                            {
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="farmParcelGroupCropIds" value="@group.IDFarmParcelGroupCrop" id="group-@group.IDFarmParcelGroupCrop" />
+                                                    <label class="form-check-label" for="group-@group.IDFarmParcelGroupCrop">
+                                                        @group.Name <span class="text-secondary small">(@group.MemberParcelIds.Count parcel(s))</span>
+                                                    </label>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                <div class="col-md-6">
+                                    <div class="border rounded p-2" style="max-height:12rem;overflow-y:auto">
+                                        @foreach (var pz in Model.AvailableParcels)
+                                        {
+                                            <div class="mb-1">
+                                                <strong class="small">@pz.Parcel.FarmParcelName</strong>
+                                                @foreach (var z in pz.Zones)
+                                                {
+                                                    bool locked = z.CurrentSowingID != null;
+                                                    <div class="form-check form-check-inline @(locked ? "text-secondary" : "")">
+                                                        <input class="form-check-input" type="checkbox" name="farmParcelZoneIds" value="@z.IDFarmParcelZone" id="wizard-zone-@z.IDFarmParcelZone" disabled="@locked" />
+                                                        <label class="form-check-label" for="wizard-zone-@z.IDFarmParcelZone">
+                                                            @z.FarmParcelZoneName @(locked ? "(occupied)" : "")
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
                     <div class="col-md-4 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Start planning this sowing</button>
                     </div>

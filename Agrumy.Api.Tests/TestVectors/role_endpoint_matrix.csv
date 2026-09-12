@@ -16,6 +16,7 @@ DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Te
 DELETE,api/FarmGroup,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/FarmOpenfield/ParcelGroup,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Firmware,Global admin
 DELETE,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
@@ -126,6 +127,10 @@ POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/FarmParcel,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/ParcelGroup,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/ParcelGroup/AddMember,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/ParcelGroup/RemoveMember,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/ParcelGroup/Rename,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/Merge,Global admin;Global Device;Tenant admin;Tenant Device
