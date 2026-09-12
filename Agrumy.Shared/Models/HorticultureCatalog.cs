@@ -46,6 +46,45 @@ namespace Agrumy.Shared.Models
         public double? SoilECMax { get; set; }
         public double? Co2Min { get; set; }
         public double? Co2Max { get; set; }
+
+        // Type==Crop only (Perma/Hydroponic/Fruit entries never populate these) - variety/hybrid class identifier, free text since the convention differs per species.
+        public string? ClassCode { get; set; }
+        public string? PhaseDescriptionsJson { get; set; }
+        public IList<HorticultureCatalogGrowthStage> GrowthStages { get; set; } = [];
+    }
+
+    /// BBCH principal growth stages 0-9 (Zadoks-derived) - not every stage applies to every species, e.g. maize's own BBCH monograph never defines Tillering or Booting.
+    public enum BbchGrowthStage
+    {
+        Germination = 0,
+        LeafDevelopment = 1,
+        Tillering = 2,
+        StemElongation = 3,
+        Booting = 4,
+        Heading = 5,
+        Flowering = 6,
+        MilkDevelopment = 7,
+        DoughDevelopment = 8,
+        Ripening = 9,
+    }
+
+    /// One BBCH stage's environmental parameters for one HorticultureCatalogEntry (Type==Crop) - DurationDaysMin/Max (counted from Sowing.StartDate) lets the app estimate which stage a sowing currently sits in.
+    public class HorticultureCatalogGrowthStage
+    {
+        public int? ID { get; set; }
+        public BbchGrowthStage StageNumber { get; set; }
+        public double? AirTempMin { get; set; }
+        public double? AirTempMax { get; set; }
+        public double? SoilTempMin { get; set; }
+        public double? SoilTempMax { get; set; }
+        public double? AirHumidityMin { get; set; }
+        public double? AirHumidityMax { get; set; }
+        public double? SoilMoistureMin { get; set; }
+        public double? SoilMoistureMax { get; set; }
+        public double? LightMin { get; set; }
+        public double? LightMax { get; set; }
+        public int? DurationDaysMin { get; set; }
+        public int? DurationDaysMax { get; set; }
     }
 
     /// Result of applying a catalog entry's template to a zone - RulesSkipped names any rule the zone's existing rule-count cap stopped partway through (see DeviceFarmUnitApiController.AddRuleAsync's own cap check), not a validation failure.

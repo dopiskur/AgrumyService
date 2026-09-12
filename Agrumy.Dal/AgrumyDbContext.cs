@@ -84,6 +84,7 @@ namespace Agrumy.Dal
         public DbSet<HorticultureCatalogPermaRow> HorticultureCatalogPermas => Set<HorticultureCatalogPermaRow>();
         public DbSet<HorticultureCatalogHydroponicRow> HorticultureCatalogHydroponics => Set<HorticultureCatalogHydroponicRow>();
         public DbSet<HorticultureCatalogFruitRow> HorticultureCatalogFruits => Set<HorticultureCatalogFruitRow>();
+        public DbSet<HorticultureCatalogCropGrowthStageRow> HorticultureCatalogCropGrowthStages => Set<HorticultureCatalogCropGrowthStageRow>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -182,6 +183,14 @@ namespace Agrumy.Dal
             ConfigureHorticultureCatalog<HorticultureCatalogPermaRow>("horticultureCatalogPerma");
             ConfigureHorticultureCatalog<HorticultureCatalogHydroponicRow>("horticultureCatalogHydroponic");
             ConfigureHorticultureCatalog<HorticultureCatalogFruitRow>("horticultureCatalogFruit");
+
+            modelBuilder.Entity<HorticultureCatalogCropGrowthStageRow>(e =>
+            {
+                e.ToTable("horticultureCatalogCropGrowthStage");
+                e.HasKey(x => x.ID);
+                e.HasIndex(x => new { x.HorticultureCatalogCropID, x.StageNumber }).IsUnique().HasDatabaseName("ux_horticultureCatalogCropGrowthStage_crop_stage");
+                e.HasOne<HorticultureCatalogCropRow>().WithMany().HasForeignKey(x => x.HorticultureCatalogCropID).OnDelete(DeleteBehavior.Cascade);
+            });
 
             modelBuilder.Entity<UserNotificationPreferenceRow>(e =>
             {

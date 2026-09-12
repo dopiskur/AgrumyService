@@ -124,7 +124,8 @@ namespace Agrumy.Api.Dal
         {
             List<FarmParcelZoneRow> created = await QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
-                var source = await db.FarmParcelZones.FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
+                // AsNoTracking - a stale already-tracked instance (e.g. from SowingStartAsync/SowingCloseAsync's own tracked reads earlier in the same DbContext) would otherwise report a CurrentSowingID that no longer matches the database.
+                var source = await db.FarmParcelZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDFarmParcelZone == idFarmParcelZone);
                 if (source == null)
                 {
                     throw new InvalidOperationException("Zone not found.");
@@ -149,7 +150,8 @@ namespace Agrumy.Api.Dal
 
         public async Task<FarmParcelZone> FarmParcelZoneMergeAsync(IReadOnlyList<int> farmParcelZoneIds, string mergedName)
         {
-            var sources = await db.FarmParcelZones.Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
+            // AsNoTracking - same staleness trap as FarmParcelZoneSplitAsync's own read.
+            var sources = await db.FarmParcelZones.AsNoTracking().Where(z => farmParcelZoneIds.Contains(z.IDFarmParcelZone)).ToListAsync();
             if (sources.Count == 0 || sources.Any(z => z.CurrentSowingID != null))
             {
                 throw new InvalidOperationException("Cannot merge zones - not found or one has an active sowing.");
@@ -197,6 +199,8 @@ namespace Agrumy.Api.Dal
             var ruleIds = await db.DeviceFarmUnitZoneRules.AsNoTracking().Where(r => r.DeviceFarmParcelZoneID == idFarmParcelZone).Select(r => r.IDDeviceFarmUnitZoneRule).ToListAsync();
             await db.RuleNotificationStates.Where(s => ruleIds.Contains(s.RuleID)).ExecuteDeleteAsync();
             await db.DeviceFarmUnitZoneRules.Where(r => r.DeviceFarmParcelZoneID == idFarmParcelZone).ExecuteDeleteAsync();
+            // A closed sowing's occupancy link survives as history (ReleasedUtc set, row kept) - split/merge routinely delete an ex-occupied zone once its sowing is closed, so this history must go with it.
+            await db.SowingFarmParcelZones.Where(l => l.FarmParcelZoneID == idFarmParcelZone).ExecuteDeleteAsync();
             await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone).ExecuteDeleteAsync();
         }
 

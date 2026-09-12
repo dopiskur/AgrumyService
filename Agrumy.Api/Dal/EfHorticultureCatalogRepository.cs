@@ -14,7 +14,13 @@ namespace Agrumy.Api.Dal
             switch (type)
             {
                 case HorticultureCatalogType.Crop:
-                    return (await db.HorticultureCatalogCrops.AsNoTracking().OrderBy(r => r.Name).ToListAsync()).Select(ToDto).ToList();
+                {
+                    var rows = await db.HorticultureCatalogCrops.AsNoTracking().OrderBy(r => r.Name).ToListAsync();
+                    var stagesByCropId = (await db.HorticultureCatalogCropGrowthStages.AsNoTracking()
+                        .Where(s => rows.Select(r => r.ID).Contains(s.HorticultureCatalogCropID)).ToListAsync())
+                        .GroupBy(s => s.HorticultureCatalogCropID).ToDictionary(g => g.Key, g => g.Select(ToDto).ToList());
+                    return rows.Select(r => ToDto(r, (IList<HorticultureCatalogGrowthStage>)stagesByCropId.GetValueOrDefault(r.ID, []))).ToList();
+                }
                 case HorticultureCatalogType.Perma:
                     return (await db.HorticultureCatalogPermas.AsNoTracking().OrderBy(r => r.Name).ToListAsync()).Select(ToDto).ToList();
                 case HorticultureCatalogType.Hydroponic:
@@ -31,7 +37,12 @@ namespace Agrumy.Api.Dal
             switch (type)
             {
                 case HorticultureCatalogType.Crop:
-                    return ToDtoOrNull(await db.HorticultureCatalogCrops.AsNoTracking().FirstOrDefaultAsync(r => r.ID == id));
+                {
+                    var row = await db.HorticultureCatalogCrops.AsNoTracking().FirstOrDefaultAsync(r => r.ID == id);
+                    if (row == null) return null;
+                    var stages = (await db.HorticultureCatalogCropGrowthStages.AsNoTracking().Where(s => s.HorticultureCatalogCropID == id).ToListAsync()).Select(ToDto).ToList();
+                    return ToDto(row, stages);
+                }
                 case HorticultureCatalogType.Perma:
                     return ToDtoOrNull(await db.HorticultureCatalogPermas.AsNoTracking().FirstOrDefaultAsync(r => r.ID == id));
                 case HorticultureCatalogType.Hydroponic:
@@ -53,7 +64,8 @@ namespace Agrumy.Api.Dal
                     CopyToRow(entry, row);
                     db.HorticultureCatalogCrops.Add(row);
                     await db.SaveChangesAsync();
-                    return ToDto(row);
+                    await ReplaceGrowthStagesAsync(row.ID, entry.GrowthStages);
+                    return ToDto(row, entry.GrowthStages);
                 }
                 case HorticultureCatalogType.Perma:
                 {
@@ -94,6 +106,7 @@ namespace Agrumy.Api.Dal
                     if (row == null) return false;
                     CopyToRow(entry, row);
                     await db.SaveChangesAsync();
+                    await ReplaceGrowthStagesAsync(row.ID, entry.GrowthStages);
                     return true;
                 }
                 case HorticultureCatalogType.Perma:
@@ -150,6 +163,32 @@ namespace Agrumy.Api.Dal
             row.SoilPHMin = entry.SoilPHMin; row.SoilPHMax = entry.SoilPHMax;
             row.SoilECMin = entry.SoilECMin; row.SoilECMax = entry.SoilECMax;
             row.Co2Min = entry.Co2Min; row.Co2Max = entry.Co2Max;
+            row.ClassCode = entry.ClassCode;
+            row.PhaseDescriptionsJson = entry.PhaseDescriptionsJson;
+        }
+
+        /// Full delete-then-reinsert rather than a diff - a handful of rows (at most 10, one per BBCH stage), never worth the extra complexity of matching old to new by StageNumber.
+        private async Task ReplaceGrowthStagesAsync(int cropId, IList<HorticultureCatalogGrowthStage> stages)
+        {
+            await db.HorticultureCatalogCropGrowthStages.Where(s => s.HorticultureCatalogCropID == cropId).ExecuteDeleteAsync();
+            foreach (HorticultureCatalogGrowthStage s in stages)
+            {
+                db.HorticultureCatalogCropGrowthStages.Add(new HorticultureCatalogCropGrowthStageRow
+                {
+                    HorticultureCatalogCropID = cropId,
+                    StageNumber = (int)s.StageNumber,
+                    AirTempMin = s.AirTempMin, AirTempMax = s.AirTempMax,
+                    SoilTempMin = s.SoilTempMin, SoilTempMax = s.SoilTempMax,
+                    AirHumidityMin = s.AirHumidityMin, AirHumidityMax = s.AirHumidityMax,
+                    SoilMoistureMin = s.SoilMoistureMin, SoilMoistureMax = s.SoilMoistureMax,
+                    LightMin = s.LightMin, LightMax = s.LightMax,
+                    DurationDaysMin = s.DurationDaysMin, DurationDaysMax = s.DurationDaysMax,
+                });
+            }
+            if (stages.Count > 0)
+            {
+                await db.SaveChangesAsync();
+            }
         }
 
         private static void CopyToRow(HorticultureCatalogEntry entry, HorticultureCatalogPermaRow row)
@@ -194,12 +233,23 @@ namespace Agrumy.Api.Dal
             row.Co2Min = entry.Co2Min; row.Co2Max = entry.Co2Max;
         }
 
-        private static HorticultureCatalogEntry? ToDtoOrNull(HorticultureCatalogCropRow? row) => row == null ? null : ToDto(row);
         private static HorticultureCatalogEntry? ToDtoOrNull(HorticultureCatalogPermaRow? row) => row == null ? null : ToDto(row);
         private static HorticultureCatalogEntry? ToDtoOrNull(HorticultureCatalogHydroponicRow? row) => row == null ? null : ToDto(row);
         private static HorticultureCatalogEntry? ToDtoOrNull(HorticultureCatalogFruitRow? row) => row == null ? null : ToDto(row);
 
-        private static HorticultureCatalogEntry ToDto(HorticultureCatalogCropRow row) => new()
+        private static HorticultureCatalogGrowthStage ToDto(HorticultureCatalogCropGrowthStageRow s) => new()
+        {
+            ID = s.ID,
+            StageNumber = (BbchGrowthStage)s.StageNumber,
+            AirTempMin = s.AirTempMin, AirTempMax = s.AirTempMax,
+            SoilTempMin = s.SoilTempMin, SoilTempMax = s.SoilTempMax,
+            AirHumidityMin = s.AirHumidityMin, AirHumidityMax = s.AirHumidityMax,
+            SoilMoistureMin = s.SoilMoistureMin, SoilMoistureMax = s.SoilMoistureMax,
+            LightMin = s.LightMin, LightMax = s.LightMax,
+            DurationDaysMin = s.DurationDaysMin, DurationDaysMax = s.DurationDaysMax,
+        };
+
+        private static HorticultureCatalogEntry ToDto(HorticultureCatalogCropRow row, IList<HorticultureCatalogGrowthStage> stages) => new()
         {
             ID = row.ID, Name = row.Name, Description = row.Description,
             AirTempMin = row.AirTempMin, AirTempMax = row.AirTempMax,
@@ -210,6 +260,9 @@ namespace Agrumy.Api.Dal
             SoilPHMin = row.SoilPHMin, SoilPHMax = row.SoilPHMax,
             SoilECMin = row.SoilECMin, SoilECMax = row.SoilECMax,
             Co2Min = row.Co2Min, Co2Max = row.Co2Max,
+            ClassCode = row.ClassCode,
+            PhaseDescriptionsJson = row.PhaseDescriptionsJson,
+            GrowthStages = stages.OrderBy(s => s.StageNumber).ToList(),
         };
 
         private static HorticultureCatalogEntry ToDto(HorticultureCatalogPermaRow row) => new()

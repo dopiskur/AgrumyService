@@ -1940,6 +1940,65 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.ToTable("harvestResult", (string)null);
                 });
 
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogCropGrowthStageRow", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ID"));
+
+                    b.Property<double?>("AirHumidityMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirHumidityMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("AirTempMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("DurationDaysMax")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DurationDaysMin")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HorticultureCatalogCropID")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("LightMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LightMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilMoistureMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("SoilTempMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("StageNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("HorticultureCatalogCropID", "StageNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_horticultureCatalogCropGrowthStage_crop_stage");
+
+                    b.ToTable("horticultureCatalogCropGrowthStage", (string)null);
+                });
+
             modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogCropRow", b =>
                 {
                     b.Property<int>("ID")
@@ -1959,6 +2018,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     b.Property<double?>("AirTempMin")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("ClassCode")
+                        .HasColumnType("text");
 
                     b.Property<double?>("Co2Max")
                         .HasColumnType("double precision");
@@ -1980,6 +2042,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PhaseDescriptionsJson")
+                        .HasColumnType("text");
 
                     b.Property<double?>("SoilECMax")
                         .HasColumnType("double precision");
@@ -3919,6 +3984,15 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .WithMany()
                         .HasForeignKey("ZonePlantingID")
                         .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.HorticultureCatalogCropGrowthStageRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.HorticultureCatalogCropRow", null)
+                        .WithMany()
+                        .HasForeignKey("HorticultureCatalogCropID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.ParcelSatelliteIndexRow", b =>

@@ -3080,6 +3080,9 @@ public class ApiControllerTests
         _repo.Setup(r => r.UsersGetAsync(idTenant)).ReturnsAsync(new List<User>());
         _repo.Setup(r => r.DeviceFarmUnitsGetAsync(idTenant)).ReturnsAsync(new List<DeviceFarmUnit>());
         _repo.Setup(r => r.DevicesGetAsync(idTenant)).ReturnsAsync(new List<Device>());
+        // #585 - FarmOpenfields/Sowings are always queried even when empty (they gate the Open-Field export loops); Crop/FieldLog/ZonePlanting/Harvest reads only happen once those loops have rows, never reached here.
+        _repo.Setup(r => r.FarmOpenfieldsGetAsync(idTenant)).ReturnsAsync(new List<FarmOpenfield>());
+        _repo.Setup(r => r.SowingsGetAsync(idTenant)).ReturnsAsync(new List<Sowing>());
     }
 
     [Fact]
