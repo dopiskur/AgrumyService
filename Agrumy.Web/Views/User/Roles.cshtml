@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Roles";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -16,6 +17,7 @@
             *reader base.
         </p>
         <form asp-action="Roles">
+        <fieldset disabled="@isReadOnly">
             <input type="hidden" asp-for="IDUser" />
             @foreach (var role in Model.AllRoles)
             {
@@ -27,6 +29,9 @@
             }
             <div class="mb-0 mt-3">
                 <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </fieldset>
+            <div class="mb-0 mt-3">
                 <a asp-action="Details" asp-route-idUser="@Model.IDUser" class="btn btn-outline-secondary">Cancel</a>
             </div>
         </form>

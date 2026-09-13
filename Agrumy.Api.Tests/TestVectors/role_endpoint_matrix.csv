@@ -74,13 +74,13 @@ GET,api/Simulation/Session/{idSimulationSession}/Group,Global admin;Simulation a
 GET,api/Simulation/Session/{idSimulationSession}/Rule,Global admin;Simulation administrator;Tenant admin;Global reader
 GET,api/Tenant/AlertConfig,Global admin;Tenant admin;Global reader
 GET,api/Tenant/All,Global admin;Global reader
-GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device
+GET,api/Tenant/EmergencyStop,Global admin;Global Device;Tenant admin;Tenant Device;Global reader
 GET,api/Tenant/Export,Global admin;Tenant admin
 GET,api/Tenant/Satellite,Global admin;Tenant admin;Global reader
 GET,api/Tenant/WeatherState,Global admin;Tenant admin;Global reader
 GET,api/TenantQuota,Global admin;Global reader
-GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User
-GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User
+GET,api/User/Roles,Global admin;Global User;Tenant admin;Tenant User;Global reader
+GET,api/User/UserRoles,Global admin;Global User;Tenant admin;Tenant User;Global reader
 GET,api/odata/SensorData,Global admin;Global reader;Global User;Tenant admin;Tenant reader;Tenant User;Global Data Reader;Tenant Data Reader;Simulation administrator
 POST,api/Arkod/GeoPackage/Upload,Global admin
 POST,api/Arkod/GeoPackage/SyncNow,Global admin

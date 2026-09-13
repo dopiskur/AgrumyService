@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Configure Limits";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -15,6 +16,7 @@
             blocks the action outright, with a "contact support" message.
         </p>
         <form asp-action="Quota">
+        <fieldset disabled="@isReadOnly">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             @Html.HiddenFor(m => m.IDTenant)
 
@@ -102,6 +104,9 @@
 
             <div class="mt-4">
                 <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </fieldset>
+            <div class="mt-4">
                 <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
             </div>
         </form>

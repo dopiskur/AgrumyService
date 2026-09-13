@@ -785,14 +785,14 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [HttpGet("Roles")]
-        [Authorize(Roles = RoleNames.UserManagers)]
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult<IEnumerable<UserRole>>> UserRoleGet() =>
             Ok(await userRepository.UserRoleGetAsync());
 
         // ---- composable roles -------------------------------------
 
         [HttpGet("UserRoles")]
-        [Authorize(Roles = RoleNames.UserManagers)]
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult<IReadOnlyList<string>>> UserRolesGet(int idUser)
         {
             User? target = await userRepository.UserGetAsync(idUser, null, null);
@@ -800,7 +800,7 @@ namespace Agrumy.Api.Controllers.API
             {
                 return NotFound();
             }
-            if (!CallerManagesUsers(target.TenantID))
+            if (!CallerReadsUsersGlobally && !CallerManagesUsers(target.TenantID))
             {
                 return ForbidWith("Target user belongs to a different tenant");
             }

@@ -37,8 +37,11 @@
     catch (Agrumy.Web.Utils.ApiException) { }
 
     bool canEmergencyStop = hasAnyRole(RoleNames.DeviceManagers);
+    // Global reader must see the "active" banner like everyone else, even though the Activate/Clear
+    // buttons below (still gated on canEmergencyStop alone) stay hidden - reads everything, writes nothing.
+    bool canReadEmergencyStop = canEmergencyStop || isGlobalReader;
     bool emergencyStopActive = false;
-    if (canEmergencyStop)
+    if (canReadEmergencyStop)
     {
         try
         {
