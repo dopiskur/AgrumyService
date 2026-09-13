@@ -18,6 +18,22 @@
                 groups = farmGroups.Select(g => new { id = g.IDFarmParcelGroupCrop, name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))" }),
             };
         }), jsonOpts);
+
+    // Keyed by crop name (same key the crop picker already stores in .crop-picker-value) - each BBCH
+    // growth stage's DurationDays is that stage's OWN length (confirmed against seeded data, e.g.
+    // Corn's Ripening stage alone is only 4-8 days), so the crop's total estimated days-to-maturity
+    // is the sum across every defined stage, min-summed and max-summed separately then averaged
+    // (e.g. a 90-118 day total range becomes 104).
+    string cropMaturityDaysJson = JsonSerializer.Serialize(Model.CatalogCrops
+        .Where(c => c.GrowthStages.Any(s => s.DurationDaysMin != null || s.DurationDaysMax != null))
+        .ToDictionary(
+            c => c.Name,
+            c =>
+            {
+                double totalMin = c.GrowthStages.Sum(s => s.DurationDaysMin ?? s.DurationDaysMax ?? 0);
+                double totalMax = c.GrowthStages.Sum(s => s.DurationDaysMax ?? s.DurationDaysMin ?? 0);
+                return (totalMin + totalMax) / 2.0;
+            }), jsonOpts);
 }
 
 @if (TempData["Message"] is string message)
@@ -71,8 +87,25 @@
                             }
 
                             <div class="mb-3">
+                                <label class="form-label">Sowing name</label>
+                                <input type="text" name="sowingName" class="form-control sowing-name-input" style="max-width:20rem" placeholder="Defaults to the crop name" maxlength="100" />
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Start date <span class="text-muted">(optional)</span></label>
+                                    <input type="date" name="startDate" class="form-control sowing-start-date" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Expected end date</label>
+                                    <input type="date" name="expectedEndDate" class="form-control sowing-expected-end-date" readonly placeholder="Pick a start date and a variety" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
                                 <label class="form-label">Crop / variety</label>
                                 <input type="hidden" name="farmOpenfieldCropName" class="crop-picker-value" />
+                                <input type="hidden" name="expectedDurationDays" class="crop-picker-duration-value" />
                                 <div class="text-danger small mb-1 crop-picker-error" hidden>Pick a crop first.</div>
 
                                 <div class="crop-picker-search">
@@ -98,25 +131,9 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Sowing name</label>
-                                <input type="text" name="sowingName" class="form-control sowing-name-input" style="max-width:20rem" placeholder="Defaults to the crop name" maxlength="100" />
-                            </div>
-
-                            <div class="mb-3">
+                            <div class="mb-3 variety-note-field" hidden>
                                 <label class="form-label">Variety note (optional)</label>
                                 <input type="text" name="variety" class="form-control" style="max-width:20rem" placeholder="e.g. own seed lot" maxlength="100" />
-                            </div>
-
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Start date</label>
-                                    <input type="date" name="startDate" class="form-control sowing-start-date" required />
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Expected end date <span class="text-muted">(optional)</span></label>
-                                    <input type="date" name="expectedEndDate" class="form-control" />
-                                </div>
                             </div>
 
                             <div class="text-end">
@@ -164,14 +181,17 @@
             </div>
         </div>
         <script type="application/json" class="sowing-farm-picker-data">@Html.Raw(farmPickerDataJson)</script>
+        <script type="application/json" class="sowing-crop-maturity-data">@Html.Raw(cropMaturityDaysJson)</script>
         <script nonce="@Context.CspNonce()">
             (function () {
-                var wizard = document.currentScript.previousElementSibling.previousElementSibling;
+                // Selector-based (not sibling-walking) so the two data script tags above can be reordered/added-to without breaking this lookup.
+                var wizard = document.querySelector('.sowing-add-wizard');
                 var toggle = wizard.querySelector('.sowing-add-toggle');
                 var form = wizard.querySelector('.sowing-add-form');
                 toggle.addEventListener('click', function () { form.hidden = !form.hidden; });
 
-                var farmData = JSON.parse(document.currentScript.previousElementSibling.textContent);
+                var farmData = JSON.parse(document.querySelector('.sowing-farm-picker-data').textContent);
+                var cropMaturityDays = JSON.parse(document.querySelector('.sowing-crop-maturity-data').textContent);
                 var steps = Array.from(form.querySelectorAll('.sowing-wizard-step'));
 
                 function currentFarmId() {
@@ -183,12 +203,30 @@
 
                 // ---- Crop picker (single-select: Add swaps the search table for a selected+Remove display) ----
                 var cropValueInput = form.querySelector('.crop-picker-value');
+                var cropDurationInput = form.querySelector('.crop-picker-duration-value');
                 var cropError = form.querySelector('.crop-picker-error');
                 var cropSearchBlock = form.querySelector('.crop-picker-search');
                 var cropSelectedBlock = form.querySelector('.crop-picker-selected');
                 var cropSelectedLabel = form.querySelector('.crop-picker-selected-label');
                 var cropFilter = form.querySelector('.crop-picker-filter');
                 var sowingNameInput = form.querySelector('.sowing-name-input');
+                var varietyNoteField = form.querySelector('.variety-note-field');
+                var startDateInput = form.querySelector('.sowing-start-date');
+                var expectedEndDateInput = form.querySelector('.sowing-expected-end-date');
+
+                // The raw day-count (cropDurationInput) is set as soon as a variety is picked, independent of start date, so ExpectedDurationDays survives even when the wizard's start date is left blank. The visible end-date field is just a calendar preview of the same figure - blank until a start date is also given.
+                function recomputeExpectedEndDate() {
+                    var days = cropMaturityDays[cropValueInput.value];
+                    cropDurationInput.value = days == null ? '' : Math.round(days);
+                    if (!startDateInput.value || days == null) {
+                        expectedEndDateInput.value = '';
+                        return;
+                    }
+                    var end = new Date(startDateInput.value + 'T00:00:00');
+                    end.setDate(end.getDate() + Math.round(days));
+                    expectedEndDateInput.value = end.toISOString().slice(0, 10);
+                }
+                startDateInput.addEventListener('change', recomputeExpectedEndDate);
 
                 cropFilter.addEventListener('input', function () {
                     var q = cropFilter.value.trim().toLowerCase();
@@ -205,9 +243,11 @@
                         cropSelectedBlock.classList.remove('d-none');
                         cropSelectedBlock.classList.add('d-flex');
                         cropError.hidden = true;
+                        varietyNoteField.hidden = false;
                         if (!sowingNameInput.value) {
                             sowingNameInput.value = row.getAttribute('data-name');
                         }
+                        recomputeExpectedEndDate();
                     });
                 });
                 form.querySelector('.crop-picker-remove').addEventListener('click', function () {
@@ -215,6 +255,8 @@
                     cropSelectedBlock.classList.add('d-none');
                     cropSelectedBlock.classList.remove('d-flex');
                     cropSearchBlock.hidden = false;
+                    varietyNoteField.hidden = true;
+                    recomputeExpectedEndDate();
                 });
 
                 // ---- Step navigation ----

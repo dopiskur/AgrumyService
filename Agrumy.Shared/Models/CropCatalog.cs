@@ -78,7 +78,7 @@ namespace Agrumy.Shared.Models
         Ripening = 9,
     }
 
-    /// One BBCH stage's environmental parameters for one CropCatalogEntry (Type==Arable) - DurationDaysMin/Max (counted from Sowing.StartDate) lets the app estimate which stage a sowing currently sits in.
+    /// One BBCH stage's environmental parameters for one CropCatalogEntry (Type==Arable) - DurationDaysMin/Max is this stage's OWN length, not cumulative from Sowing.StartDate; summing every stage's duration (see CropSeasons.cshtml's cropMaturityDays) estimates the crop's total days-to-maturity, and a running sum from StartDate lets the app estimate which stage a sowing currently sits in.
     public class CropCatalogGrowthStage
     {
         public int? ID { get; set; }
