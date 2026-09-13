@@ -546,7 +546,11 @@
                     removeGroupBtn.type = 'button';
                     removeGroupBtn.className = 'btn btn-outline-danger';
                     removeGroupBtn.textContent = 'Remove parcel group "' + group.name + '"';
-                    removeGroupBtn.addEventListener('click', function () { submitHidden('formSowingReleaseGroup', 'release-group-id', group.id); });
+                    removeGroupBtn.addEventListener('click', function () {
+                        if (confirm('Remove parcel group "' + group.name + '" from this sowing? Every parcel it contributed is released.')) {
+                            submitHidden('formSowingReleaseGroup', 'release-group-id', group.id);
+                        }
+                    });
                     body.appendChild(removeGroupBtn);
 
                     var removeFromGroupBtn = document.createElement('button');
@@ -554,6 +558,7 @@
                     removeFromGroupBtn.className = 'btn btn-outline-secondary';
                     removeFromGroupBtn.textContent = 'Remove parcel from the parcel group';
                     removeFromGroupBtn.addEventListener('click', function () {
+                        if (!confirm('Remove this parcel from the group "' + group.name + '"? It stays in this sowing, just no longer grouped.')) { return; }
                         document.querySelector('.ungroup-parcel-id').value = zone.parcelId;
                         submitHidden('formParcelGroupRemoveMember', 'ungroup-group-id', group.id);
                     });
@@ -563,7 +568,11 @@
                     removeBtn.type = 'button';
                     removeBtn.className = 'btn btn-outline-danger';
                     removeBtn.textContent = 'Remove this parcel from the sowing';
-                    removeBtn.addEventListener('click', function () { submitHidden('formSowingReleaseZone', 'release-zone-id', zone.id); });
+                    removeBtn.addEventListener('click', function () {
+                        if (confirm('Remove this parcel from the sowing?')) {
+                            submitHidden('formSowingReleaseZone', 'release-zone-id', zone.id);
+                        }
+                    });
                     body.appendChild(removeBtn);
                 }
                 new bootstrap.Modal(document.getElementById('removeParcelModal')).show();
