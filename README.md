@@ -397,24 +397,36 @@ CRUD/reorder/delete/recycle-bin here is shared by both branches.
 | `POST /api/DeviceFarmUnit/Zone/ApplyDayNightPreset` | DeviceManagers | Add one day-threshold + one night-threshold rule pair for a plain on/off function (not Screen/Vent) |
 | `GET /api/DeviceFarmUnit/Dashboard`, `Dashboard/Zones`, `Dashboard/Zone` | JWT | Hierarchical dashboard rollups (per-unit, per-zone-list, per-zone) |
 
-**FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop/Parcel branch for an Open-Field
-farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD and rules stay on DeviceFarmUnitApiController
+**FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop (Sowing)/Parcel branch for an
+Open-Field farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD/reorder/delete/recycle-bin and
+rules stay on DeviceFarmUnitApiController, shared by both branches - an Open-Field farm is created there too,
+as an ordinary Farm with FarmType=Open-Field
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `POST /api/FarmOpenfield`, `GET .../All` | DeviceManagers / JWT | Create a Farm together with its Open-Field extension row / list Open-Field farms |
-| `GET /api/FarmOpenfield/Crop/All`, `GET .../Crop`, `GET .../Crop/Dashboard` | JWT | List a farm's crops / fetch one / crop dashboard cubes (same sensor-average/status styling as the Unit dashboard) |
-| `POST/PUT/DELETE /api/FarmOpenfield/Crop`, `POST .../Crop/Reorder` | DeviceManagers | Create / update / delete / reorder a crop |
-| `GET /api/FarmOpenfield/Parcel`, `GET .../ParcelById`, `GET .../Crop/Parcel/Dashboard` | JWT | Parcels under a crop / one by id / parcel dashboard cubes |
-| `POST/PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Create / update / delete a parcel - same safety-limit validation as a Zone |
-| `PUT /api/FarmOpenfield/Parcel/{id}/Migrate` | DeviceManagers | Move a parcel to a different crop within the same account |
+| `GET /api/FarmOpenfield/FarmParcel/All`, `GET .../FarmParcel/{id}/Zones` | JWT | Every FarmParcel on a farm / the zones under one parcel |
+| `GET /api/FarmOpenfield/Crop/All`, `GET .../Crop`, `GET .../Crop/Dashboard` | JWT | List a farm's crops (sowings) / fetch one / crop dashboard cubes (same sensor-average/status styling as the Unit dashboard) |
+| `POST/PUT/DELETE /api/FarmOpenfield/Crop` | DeviceManagers | Create / update / delete a crop |
+| `POST /api/FarmOpenfield/Sowing/Start`, `POST .../Sowing/Close` | DeviceManagers | Occupy a set of zones to start a sowing / release them and record a harvest result - blocked ahead of the earliest-harvest date a logged treatment's pre-harvest interval implies, unless explicitly confirmed |
+| `GET/POST/DELETE /api/FarmOpenfield/Sowing/FieldLog`, `POST .../FieldLog/{id}/Attachment`, `GET .../Attachments`, `GET .../Attachment/{id}/Download` | JWT (POST/DELETE DeviceManagers) | A sowing's field-log entries (irrigation, fertilization, plant protection, etc.) and their file attachments |
+| `GET /api/FarmOpenfield/Sowing/EarliestHarvestDate`, `GET .../NitrogenBalance`, `GET .../{id}/PlantProtectionReport` | JWT | Pre-harvest-interval date / kg-N-per-ha fertilization balance / a CSV export of every logged plant-protection treatment |
+| `GET /api/FarmOpenfield/Parcel`, `GET .../ParcelById`, `GET .../Crop/Parcel/Dashboard` | JWT | A crop's currently-occupied zones (occupancy is dynamic, a crop has no fixed parcel list) / one zone by id / zone dashboard cubes |
+| `POST /api/FarmOpenfield/FarmParcel` | DeviceManagers | Create a FarmParcel under a farm together with its first (whole-parcel) zone |
+| `GET/POST/DELETE /api/FarmOpenfield/ParcelGroup`, `POST .../Rename`, `POST .../AddMember`/`RemoveMember`, `GET .../{id}/Zones` | JWT (POST/DELETE DeviceManagers) | A named, reusable set of parcels within one farm, so the New Sowing wizard can start a sowing on the whole group in one step |
+| `POST /api/FarmOpenfield/Parcel/ReadyForSeason` | DeviceManagers | Toggle a zone's Ready-for-season flag on the Parcels registry |
+| `PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Update (same safety-limit validation as a Zone) / delete a zone |
+| `PUT /api/FarmOpenfield/FarmParcel/{id}/Geometry`, `GET .../Geometry`, `PUT .../Parcel/{id}/Geometry` | JWT (PUT DeviceManagers) | Set/read a parcel's outer boundary, or one zone's subdivision polygon within it - drawn on the map (Leaflet-Geoman), optionally tagged with the ARKOD parcel id it was traced from |
+| `POST /api/FarmOpenfield/Parcel/{id}/Split`, `POST .../Parcel/Merge` | DeviceManagers | Split one zone into several named zones, or merge several zones of the same parcel back into one - blocked while any zone involved has an active sowing |
 | `POST /api/FarmOpenfield/Assign`, `POST .../Unassign` | DeviceManagers | Place / remove a device from a parcel (one controller per parcel, same rule as a Zone) |
+| `POST /api/FarmOpenfield/Parcel/ManualActuate`, `POST .../ManualActuate/Stop`, `GET .../ManualActuate` | JWT (POST DeviceManagers) | Start / stop / check a Manual Actuate override for a zone - see "Automation rule engine" |
+| `PUT /api/FarmOpenfield/Parcel/{id}/Widgets`, `PUT .../GridColumns` | DeviceManagers | A zone's dashboard widget layout / grid column count |
 | `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes`, `.../Series`, `.../MoistureSeries` | JWT | A zone's available satellite scenes / an index's value over time (NDVI/NDMI/NDWI/NDSI/SWIR-composite/natural-color) / the matching soil-moisture sensor series for the same dates, for the Zone-tab dual-axis chart |
-| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}` | JWT | Rendered PNG (scalar indices as a UINT8-quantized grid, natural/SWIR as true color) for one scene |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}` | JWT | Rendered PNG for one scene - scalar indices palette a UINT8-quantized grid server-side, composites (SWIR/natural-color) are provider-rendered true color |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}/Grid` | JWT | The same scalar index's raw, un-palettized grid (one byte per cell) so the browser can palette it client-side onto a canvas instead of round-tripping a PNG; 400s for the two composite indices, which have no scalar grid |
 | `GET /api/FarmOpenfield/{scope}/{id}/Satellite`, `GET .../Satellite/Dates` | JWT | Map overlay + available dates at Farm/Sowing/Parcel/Zone scope - a zone with no scene yet at/before the requested date still draws, empty, rather than disappearing |
-| `POST /api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow` | DeviceManagers | Force an immediate scene sync for that scope instead of waiting for the daily background job |
+| `POST /api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow` | DeviceManagers | Force an immediate scene sync for that whole account instead of waiting for the daily background job, rate-limited to once every 5 minutes |
 
-Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem, `ISatelliteImagerySource`/`ISatelliteImagerySourceFactory`) is opt-in per account (own CDSE client credentials, tested and saved together with a 24h health indicator) - an account with the module off or unconfigured simply has no scenes and every satellite endpoint above returns empty/no-data rather than an error.
+Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem by default, `ISatelliteImagerySource`/`ISatelliteImagerySourceFactory`) is opt-in per account - its own CDSE client credentials, tested and saved together with a 24h health indicator, plus a configurable daily auto-sync interval that never shifts on a manual "Sync now". A Paid plan tier can additionally point the source at a commercial PlanetScope/Pléiades collection (the account's own Sentinel Hub BYOC collection id) instead of Sentinel-2; a Free account is held to Sentinel-2 regardless of what's stored. An account with the module off or unconfigured simply has no scenes, and every satellite endpoint above returns empty/no-data rather than an error.
 
 **HorticultureCatalog** (`HorticultureCatalogApiController`, `api/HorticultureCatalog`) - shared read-only agronomy reference data, every account browses the same catalog
 
@@ -610,6 +622,15 @@ things that make Agrumy easier to trust and run day-to-day:
   that don't fit under the zone's rule-count cap rather than failing outright.
   A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
   day threshold + one night threshold for a plain on/off function.
+- **Satellite crop monitoring paired with a real parcel registry.** An
+  Open-Field zone gets Sentinel-2 NDVI/NDMI/NDWI/NDSI trend charts and true-
+  color/SWIR composites (opt-in per account via the Copernicus Data Space
+  Ecosystem, a Paid plan tier unlocking commercial PlanetScope/Pléiades
+  collections) plotted against its own soil-moisture sensor series on the same
+  timeline - and ARKOD, Croatia's public land-parcel registry, lets an admin
+  trace a parcel's real government-recorded boundary onto the map instead of
+  hand-drawing it, backed by an offline GeoPackage mirror so the lookup still
+  works without a live connection to the registry.
 
 ## Self-hosted install
 
