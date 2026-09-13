@@ -180,15 +180,6 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> FarmOpenfieldAdd(string deviceFarmName)
-        {
-            await api.FarmOpenfieldCreate(deviceFarmName);
-            return RedirectToAction("CropSeasons", "FarmOpenfield");
-        }
-
-        [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<ActionResult> FarmRename(int idDeviceFarm, string deviceFarmName)
         {
             await api.DeviceFarmUpdate(new DeviceFarm { IDDeviceFarm = idDeviceFarm, DeviceFarmName = deviceFarmName });

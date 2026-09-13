@@ -38,20 +38,21 @@
             <div class="card-body">
                 @if (canManage)
                 {
-                    @if (Model.UngroupedGreenhouseFarms.Count == 0)
-                    {
-                        <p class="text-secondary small fst-italic">No ungrouped Greenhouse farms to add.</p>
-                    }
-                    else
+                    <form asp-action="CreateGreenhouseFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
+                        <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Greenhouse farm name" required maxlength="100" />
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Create</button>
+                    </form>
+                    @if (Model.UngroupedGreenhouseFarms.Count > 0)
                     {
                         <form asp-action="AddFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-3">
                             <select name="idFarm" class="form-select form-select-sm" required>
+                                <option value="" selected disabled>Or add an existing ungrouped farm...</option>
                                 @foreach (var farm in Model.UngroupedGreenhouseFarms)
                                 {
                                     <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                 }
                             </select>
-                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
                         </form>
                     }
                 }
@@ -86,20 +87,21 @@
             <div class="card-body">
                 @if (canManage)
                 {
-                    @if (Model.UngroupedCropFarms.Count == 0)
-                    {
-                        <p class="text-secondary small fst-italic">No ungrouped Crop farms to add.</p>
-                    }
-                    else
+                    <form asp-action="CreateCropFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
+                        <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Crop farm name" required maxlength="100" />
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Create</button>
+                    </form>
+                    @if (Model.UngroupedCropFarms.Count > 0)
                     {
                         <form asp-action="AddFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-3">
                             <select name="idFarm" class="form-select form-select-sm" required>
+                                <option value="" selected disabled>Or add an existing ungrouped farm...</option>
                                 @foreach (var farm in Model.UngroupedCropFarms)
                                 {
                                     <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                 }
                             </select>
-                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
                         </form>
                     }
                 }

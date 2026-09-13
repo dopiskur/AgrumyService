@@ -35,6 +35,8 @@ namespace Agrumy.Web.Controllers.View
                 parcelGroups = await api.ParcelGroupsGet(idFarm);
             }
 
+            IList<FarmGroup> farmGroups = await api.FarmGroupsGet();
+
             return View(new CropSeasonsIndexViewModel
             {
                 Farms = farms,
@@ -42,6 +44,7 @@ namespace Agrumy.Web.Controllers.View
                 CatalogCrops = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop),
                 AvailableParcels = availableParcels,
                 ParcelGroups = parcelGroups,
+                FarmGroupNames = farmGroups.Where(g => g.IDFarmGroup is int).ToDictionary(g => g.IDFarmGroup!.Value, g => g.Name ?? ""),
             });
         }
 

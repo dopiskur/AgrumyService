@@ -86,6 +86,27 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        /// The only remaining way to create a new Open-Field farm - the old standalone "Farms" register and its Crop-page parking spot are both gone, Farm Groups is the sole entry point now.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> CreateCropFarm(int id, string farmName)
+        {
+            DeviceFarm farm = await api.FarmOpenfieldCreate(farmName);
+            await api.FarmAssignToGroup(farm.IDDeviceFarm!.Value, id);
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> CreateGreenhouseFarm(int id, string farmName)
+        {
+            DeviceFarm farm = await api.DeviceFarmAdd(new DeviceFarm { DeviceFarmName = farmName, FarmType = FarmType.Greenhouse });
+            await api.FarmAssignToGroup(farm.IDDeviceFarm!.Value, id);
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

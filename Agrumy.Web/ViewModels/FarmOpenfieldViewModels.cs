@@ -75,6 +75,8 @@ namespace Agrumy.Web.ViewModels
         /// Only populated when there's exactly one Open-Field farm (the common case) - the wizard's parcel-selection step, same shape as CropParcelsViewModel.AvailableParcels. Left empty for the rare multi-farm case, which keeps today's crop+dates-only wizard and assigns parcels afterward on the Sowing Details page.
         public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
         public IList<FarmParcelGroupCrop> ParcelGroups { get; init; } = [];
+        /// Farm Group names by IDFarmGroup - the sowing list shows which group a sowing's farm belongs to instead of the farm's own name (Farm is an internal bridge entity now, see ParcelsRegistry.cshtml's own version of this).
+        public IDictionary<int, string> FarmGroupNames { get; init; } = new Dictionary<int, string>();
     }
 
     /// Drives FarmOpenfield/Parcels.cshtml - one Sowing's own detail/lifecycle page (Sowing Details, D9), the Open-Field mirror of UnitZonesViewModel.

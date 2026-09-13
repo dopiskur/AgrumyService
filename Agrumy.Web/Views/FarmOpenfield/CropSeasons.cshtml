@@ -16,35 +16,11 @@
 
 @if (canManage)
 {
-    <div class="card mb-4">
-        <div class="card-header"><h3 class="card-title mb-0">Open-Field farms</h3></div>
-        <div class="card-body">
-            @if (Model.Farms.Count == 0)
-            {
-                <p class="text-secondary">No Open-Field farms yet - add the first one below.</p>
-            }
-            else
-            {
-                <ul class="list-group mb-3">
-                    @foreach (var farm in Model.Farms)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @farm.DeviceFarmName
-                            <a asp-action="FarmSatellite" asp-route-idFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-secondary"><i class="bi bi-globe"></i> Satellite</a>
-                        </li>
-                    }
-                </ul>
-            }
-            <form asp-controller="DeviceFarmUnit" asp-action="FarmOpenfieldAdd" method="post" class="d-flex gap-2">
-                <input type="text" name="deviceFarmName" class="form-control form-control-sm" placeholder="New Open-Field farm name" required maxlength="100" style="max-width:18rem" />
-                <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm</button>
-            </form>
-        </div>
-    </div>
-
     @if (Model.Farms.Count == 0)
     {
-        <p class="text-secondary">Add an Open-Field farm above before starting a sowing.</p>
+        <p class="text-secondary">
+            No Open-Field farms yet - create one from a <a asp-controller="FarmGroup" asp-action="Index">Farm Group</a> first.
+        </p>
     }
     else if (Model.CatalogCrops.Count == 0)
     {
@@ -165,11 +141,15 @@ else
                 GrowingCycleStatus.Active => "text-bg-success",
                 _ => "text-bg-dark",
             };
-            string farmName = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == s.FarmID)?.DeviceFarmName ?? "";
+            DeviceFarm? sowingFarm = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == s.FarmID);
+            string? farmGroupName = sowingFarm?.FarmGroupID is int idGroup && Model.FarmGroupNames.TryGetValue(idGroup, out var fgName) ? fgName : null;
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>
                     <a asp-action="Parcels" asp-route-idSowing="@s.IDSowing">@s.SowingName</a>
-                    <span class="text-secondary small ms-2">@farmName</span>
+                    @if (farmGroupName != null)
+                    {
+                        <span class="text-secondary small ms-2">@farmGroupName</span>
+                    }
                 </span>
                 <span class="badge @badge">@s.Status</span>
             </li>
