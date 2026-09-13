@@ -14,6 +14,9 @@ namespace Agrumy.Shared.Models
         public FarmType FarmType { get; set; } = FarmType.Greenhouse;
         // Card position on the Farms page, drag-and-drop reorderable - a new farm gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
+        /// Map pin dropped in the "Add Greenhouse complex" dialog - optional, a farm with no pin just has nothing to show on a map.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
         /// Null when not placed in any FarmGroup - at most one group per farm.
         public int? FarmGroupID { get; set; }
         // Null unless this came from the Recycle Bin listing.
@@ -44,11 +47,22 @@ namespace Agrumy.Shared.Models
         // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
         /// Manually entered - lets the unified Parcels page and Farm Group area rollups sum Greenhouse alongside Crop/Fruit parcels.
-        public double? AreaHectares { get; set; }
+        public double? AreaSquareMeters { get; set; }
+        public DeviceFarmUnitType UnitType { get; set; } = DeviceFarmUnitType.Greenhouse;
+        /// Map pin placed via the Unit configuration dialog - where this unit sits within its DeviceFarm's own complex, not a free-standing GPS position.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         int? IFarmMidLevelNode.Id => IDDeviceFarmUnit;
         int? IFarmMidLevelNode.FarmID => DeviceFarmID;
         string? IFarmMidLevelNode.Name => DeviceFarmUnitName;
+    }
+
+    /// Descriptive covering-structure kind, set via the Unit configuration dialog - display-only, doesn't affect rule evaluation or device behavior.
+    public enum DeviceFarmUnitType
+    {
+        Greenhouse = 1,
+        Polytunnel = 2,
     }
 
     /// A growing zone within one DeviceFarmUnit - "one zone = one controller" at most, may be sensor-only; TenantID is denormalized from DeviceFarmUnit so a zone query needs no join to check ownership.

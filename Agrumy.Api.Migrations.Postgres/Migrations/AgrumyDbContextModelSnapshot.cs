@@ -598,6 +598,12 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -625,7 +631,7 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnit"));
 
-                    b.Property<double?>("AreaHectares")
+                    b.Property<double?>("AreaSquareMeters")
                         .HasColumnType("double precision");
 
                     b.Property<bool>("Deleted")
@@ -649,8 +655,19 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
                     b.Property<int?>("TenantID")
                         .HasColumnType("integer");
+
+                    b.Property<int>("UnitType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<bool?>("ZoneEnabled")
                         .HasColumnType("boolean");

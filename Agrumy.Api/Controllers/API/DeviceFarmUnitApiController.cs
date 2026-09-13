@@ -159,15 +159,43 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Unit/Area")]
-        public async Task<ActionResult<bool>> DeviceFarmUnitAreaSet(int idDeviceFarmUnit, double? areaHectares)
+        public async Task<ActionResult<bool>> DeviceFarmUnitAreaSet(int idDeviceFarmUnit, double? areaSquareMeters)
         {
             var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: true);
             if (error != null)
             {
                 return error;
             }
-            await deviceFarmUnitRepo.DeviceFarmUnitAreaSetAsync(idDeviceFarmUnit, areaHectares);
-            await WriteAuditAsync("DeviceFarmUnit.AreaSet", unit!.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), areaHectares?.ToString());
+            await deviceFarmUnitRepo.DeviceFarmUnitAreaSetAsync(idDeviceFarmUnit, areaSquareMeters);
+            await WriteAuditAsync("DeviceFarmUnit.AreaSet", unit!.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), areaSquareMeters?.ToString());
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Unit/Type")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitTypeSet(int idDeviceFarmUnit, DeviceFarmUnitType unitType)
+        {
+            var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await deviceFarmUnitRepo.DeviceFarmUnitTypeSetAsync(idDeviceFarmUnit, unitType);
+            await WriteAuditAsync("DeviceFarmUnit.TypeSet", unit!.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), unitType.ToString());
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Unit/Location")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitLocationSet(int idDeviceFarmUnit, double? latitude, double? longitude)
+        {
+            var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await deviceFarmUnitRepo.DeviceFarmUnitLocationSetAsync(idDeviceFarmUnit, latitude, longitude);
+            await WriteAuditAsync("DeviceFarmUnit.LocationSet", unit!.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), $"{latitude},{longitude}");
             return true;
         }
 

@@ -171,9 +171,9 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> FarmAdd(string deviceFarmName)
+        public async Task<ActionResult> FarmAdd(string deviceFarmName, double? latitude, double? longitude)
         {
-            await api.DeviceFarmAdd(new DeviceFarm { DeviceFarmName = deviceFarmName });
+            await api.DeviceFarmAdd(new DeviceFarm { DeviceFarmName = deviceFarmName, Latitude = latitude, Longitude = longitude });
             return RedirectToAction(nameof(Farms));
         }
 

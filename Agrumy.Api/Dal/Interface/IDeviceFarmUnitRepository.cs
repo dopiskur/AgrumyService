@@ -75,7 +75,12 @@ namespace Agrumy.Api.Dal.Interface
 
         Task DeviceFarmUnitUpdateAsync(DeviceFarmUnit unit);
 
-        Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaHectares);
+        Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaSquareMeters);
+
+        Task DeviceFarmUnitTypeSetAsync(int idDeviceFarmUnit, DeviceFarmUnitType unitType);
+
+        /// Both set together (or both cleared with null) - this unit's pin within its DeviceFarm's own complex.
+        Task DeviceFarmUnitLocationSetAsync(int idDeviceFarmUnit, double? latitude, double? longitude);
 
         /// Cascade-deletes every Zone under this Unit first (devices unassigned via DeviceUnassignFromZoneAsync), then the Unit row - a no-op if the id doesn't exist.
         Task DeviceFarmUnitDeleteAsync(int idDeviceFarmUnit);

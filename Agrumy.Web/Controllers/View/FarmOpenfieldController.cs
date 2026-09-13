@@ -390,7 +390,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Parcels registry (Fleet-style, every parcel/zone across every Open-Field farm) -----------------------------------
 
-        /// Unified across all three parcel types (Crop/Fruit/Greenhouse) - Fruit has no rows yet (no module), Greenhouse stands in via DeviceFarmUnit (its own AreaHectares, no boundary map/Ready-for-season since those are Open-Field-only concepts).
+        /// Unified across all three parcel types (Crop/Fruit/Greenhouse) - Fruit has no rows yet (no module), Greenhouse stands in via DeviceFarmUnit (its own AreaSquareMeters, no boundary map/Ready-for-season since those are Open-Field-only concepts).
         public async Task<ActionResult> ParcelsRegistry()
         {
             IList<DeviceFarm> allFarms = await api.DeviceFarmsGet();
@@ -446,8 +446,9 @@ namespace Agrumy.Web.Controllers.View
                     };
                 })
                 .ToList();
-            int greenhouseUnitsWithArea = units.Count(u => u.AreaHectares != null);
-            double greenhouseAreaHa = units.Where(u => u.AreaHectares != null).Sum(u => u.AreaHectares!.Value);
+            int greenhouseUnitsWithArea = units.Count(u => u.AreaSquareMeters != null);
+            // Units are entered/shown in m² on their own page - converted to ha here only to share the summary shape with the (much larger-scale) crop parcel rollup.
+            double greenhouseAreaHa = units.Where(u => u.AreaSquareMeters != null).Sum(u => u.AreaSquareMeters!.Value) / 10000.0;
 
             return View(new ParcelsRegistryViewModel
             {

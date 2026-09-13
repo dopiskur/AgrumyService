@@ -292,9 +292,9 @@ else
                             <a asp-controller="DeviceFarmUnit" asp-action="Zones" asp-route-idDeviceFarmUnit="@row.Unit.IDDeviceFarmUnit">@row.Unit.DeviceFarmUnitName</a>
                         </td>
                         <td>
-                            @if (row.Unit.AreaHectares is double ha)
+                            @if (row.Unit.AreaSquareMeters is double m2)
                             {
-                                @(ha.ToString("0.##") + " ha")
+                                @(m2.ToString("0.##") + " m²")
                             }
                             else
                             {
