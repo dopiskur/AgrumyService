@@ -36,11 +36,15 @@
     <div class="alert alert-warning">@manualError</div>
 }
 
-@{ bool isReadOnly = ViewBag.IsReadOnly is true; }
-@* Always visible, no scrolling needed - separate from the Discovered devices card below (which only renders when there's something to show) so these controls never disappear along with an empty results list. Links always show (pure navigation, the destination pages handle their own read-only mode); Scan's own button stays enabled=@(!isReadOnly) since the underlying action is still write-only server-side. *@
-@if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
+@{ bool isReadOnly = ViewBag.IsReadOnly is true; bool canManage = hasAnyRole(RoleNames.DeviceManagers); }
+@* Every unit-level action on one row/level (device commands, then the nav+scan a read-only viewer also gets, then the manager-only write actions) - previously split between this row and a second one buried in the zones card header, which read as two disconnected toolbars. Links/Scan always show (pure navigation, the destination pages handle their own read-only mode); Scan's own button stays enabled=@(!isReadOnly) since the underlying action is still write-only server-side. *@
+@if (canManage || isReadOnly)
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        @if (canManage)
+        {
+            <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Unit, TargetId = Model.Unit.IDDeviceFarmUnit!.Value }" />
+        }
         <a asp-action="UnitAlertRules" asp-route-idDeviceFarmUnit="@Model.Unit.IDDeviceFarmUnit" class="btn btn-sm btn-outline-primary text-nowrap">
             <i class="bi bi-bell"></i> Alert rules
         </a>
@@ -54,6 +58,33 @@
             <input type="hidden" name="UnitID" value="@Model.Unit.IDDeviceFarmUnit" />
             <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
         </form>
+        @if (canManage)
+        {
+            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitWifiUpdateModal">
+                <i class="bi bi-wifi"></i> Switch network
+            </button>
+            @if (Model.Zones.Count > 0 && otherUnits.Count > 0)
+            {
+                <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#zoneMigrateModal">
+                    <i class="bi bi-signpost-split"></i> Migrate zone
+                </button>
+            }
+            <input type="search" class="form-control form-control-sm zone-search" data-filter-target="zoneCubes" placeholder="Search zones..." style="max-width:12rem" aria-label="Search zones" />
+            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitConfigModal">
+                <i class="bi bi-gear"></i> Unit configuration
+            </button>
+            <button type="button" class="btn btn-sm btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#zoneAddModal">
+                <i class="bi bi-plus-lg"></i> Add Zone
+            </button>
+            <form asp-action="UnitDelete" method="post" data-confirm="Delete this unit and every zone in it? Devices are unassigned, not deleted.">
+                <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit"><i class="bi bi-trash"></i></button>
+            </form>
+        }
+        else if (Model.Unit.AreaSquareMeters is double unitAreaM2)
+        {
+            <span class="text-secondary small">Area: @unitAreaM2.ToString("0.##") m&sup2;</span>
+        }
     </div>
     @if (Model.DiscoveredDevices.Count > 0)
     {
@@ -69,46 +100,6 @@
 }
 
 <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <h3 class="card-title mb-0">@Model.Unit.DeviceFarmUnitName - Zones</h3>
-            @if (hasAnyRole(RoleNames.DeviceManagers))
-            {
-                <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitConfigModal">
-                    <i class="bi bi-gear"></i> Unit configuration
-                </button>
-            }
-            else if (Model.Unit.AreaSquareMeters is double unitAreaM2)
-            {
-                <span class="text-secondary small">Area: @unitAreaM2.ToString("0.##") m&sup2;</span>
-            }
-        </div>
-        @if (hasAnyRole(RoleNames.DeviceManagers))
-        {
-            <div class="d-flex align-items-center flex-wrap gap-2">
-                <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Unit, TargetId = Model.Unit.IDDeviceFarmUnit!.Value }" />
-                <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitWifiUpdateModal">
-                    <i class="bi bi-wifi"></i> Switch network
-                </button>
-                @if (Model.Zones.Count > 0 && otherUnits.Count > 0)
-                {
-                    <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#zoneMigrateModal">
-                        <i class="bi bi-signpost-split"></i> Migrate zone
-                    </button>
-                }
-                <input type="search" class="form-control form-control-sm zone-search" data-filter-target="zoneCubes" placeholder="Search zones..." style="max-width:12rem" aria-label="Search zones" />
-                <form asp-action="ZoneAdd" method="post" class="d-flex gap-2">
-                    <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
-                    <input type="text" name="deviceFarmUnitZoneName" class="form-control form-control-sm" placeholder="New zone name" required maxlength="120" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Zone</button>
-                </form>
-                <form asp-action="UnitDelete" method="post" data-confirm="Delete this unit and every zone in it? Devices are unassigned, not deleted.">
-                    <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit"><i class="bi bi-trash"></i></button>
-                </form>
-            </div>
-        }
-    </div>
     <div class="card-body">
         <div class="row" id="zoneCubes">
             <partial name="_ZoneCubes" model="Model.Zones" />
@@ -195,6 +186,28 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="zoneAddModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="ZoneAdd" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add zone</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
+                        <label class="form-label" for="zoneAddName">Name</label>
+                        <input type="text" id="zoneAddName" name="deviceFarmUnitZoneName" class="form-control" placeholder="New zone name" required maxlength="120" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Zone</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
