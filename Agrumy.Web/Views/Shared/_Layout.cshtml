@@ -50,6 +50,20 @@
         catch (Agrumy.Web.Utils.ApiException) { }
     }
     string returnUrl = Context.Request.Path + Context.Request.QueryString;
+
+    // Sidebar groups (data-lte-toggle="treeview") - each "Open" bool decides whether that group
+    // renders pre-expanded (menu-open), computed from the exact same active-link checks its own
+    // children use below, so navigating straight to a child (not via the group header) still shows
+    // it expanded instead of hiding the very page you're on.
+    bool farmingOpen = navActive("FarmGroup") == "active" || navActiveAction("FarmOpenfield", "CropSeasons") == "active" || navActive("Fruit") == "active"
+        || string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) && navActive("DeviceFarmUnit") == "active"
+        || navActiveAction("FarmOpenfield", "ParcelsRegistry") == "active" || navActive("Satellite") == "active";
+    bool fleetOpen = navActive("Device") == "active" || navActive("Firmware") == "active" || navActive("WifiConfig") == "active" || navActive("Gateway") == "active";
+    bool scientificOpen = navActive("Simulation") == "active" || navActive("Experiment") == "active";
+    bool automationOpen = navActive("Alerts") == "active" || string.Equals(currentAction, "GlobalRules", StringComparison.OrdinalIgnoreCase) && navActive("DeviceFarmUnit") == "active";
+    bool configurationOpen = navActive("User") == "active" || navActive("ServerConfig") == "active" || navActive("Tenant") == "active"
+        || string.Equals(currentAction, "RecycleBin", StringComparison.OrdinalIgnoreCase) && navActive("DeviceFarmUnit") == "active"
+        || navActive("AuditLog") == "active";
 }
 <!doctype html>
 <html lang="en">
@@ -160,94 +174,176 @@
             <div class="sidebar-wrapper">
                 <nav class="mt-2" aria-label="Main navigation">
                     <ul class="nav sidebar-menu flex-column" id="navigation">
-                        @* Farm Groups is the cross-cutting overview above Farm (spans FarmType); Crop/Fruit/Greenhouse/Parcels are flat, direct menu items - no "Open-Field farming"/"Farms" parent (removed, see FarmGroup and the Crop page's own inline Add-Farm form for where those capabilities live now). *@
                         <li class="nav-item">
                             <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
                                 <i class="nav-icon bi bi-sliders"></i>
                                 <p>@Localizer["Dashboard"]</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="FarmGroup" asp-action="Index" class="nav-link @navActive("FarmGroup")">
-                                <i class="nav-icon bi bi-diagram-3"></i>
-                                <p>@Localizer["Farm Groups"]</p>
+
+                        @* Farm Groups is the cross-cutting overview above Farm (spans FarmType); Crop/Fruit/Greenhouse/Parcels/Satellite are all crop- or field-monitoring domains - no "Open-Field farming"/"Farms" parent item itself (removed, see FarmGroup and the Crop page's own inline Add-Farm form for where those capabilities live now), just this group. *@
+                        <li class="nav-item @(farmingOpen ? "menu-open" : "")">
+                            <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
+                                <i class="nav-icon bi bi-tree"></i>
+                                <p>
+                                    @Localizer["Farming"]
+                                    <i class="nav-arrow bi bi-chevron-right"></i>
+                                </p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="FarmGroup" asp-action="Index" class="nav-link @navActive("FarmGroup")">
+                                        <i class="nav-icon bi bi-diagram-3"></i>
+                                        <p>@Localizer["Farm Groups"]</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="FarmOpenfield" asp-action="CropSeasons" class="nav-link @navActiveAction("FarmOpenfield", "CropSeasons")">
+                                        <i class="nav-icon bi bi-flower1"></i>
+                                        <p>@Localizer["Crop"]</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="Fruit" asp-action="Index" class="nav-link @navActive("Fruit")">
+                                        <i class="nav-icon bi bi-apple"></i>
+                                        <p>@Localizer["Fruit"]</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                        <i class="nav-icon bi bi-house-door"></i>
+                                        <p>@Localizer["Greenhouse"]</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
+                                        <i class="nav-icon bi bi-map"></i>
+                                        <p>@Localizer["Parcels"]</p>
+                                    </a>
+                                </li>
+                                @if (hasCatalogOrAlertsAccess)
+                                {
+                                    <li class="nav-item">
+                                        <a asp-area="" asp-controller="Satellite" asp-action="Index" class="nav-link @navActive("Satellite")">
+                                            <i class="nav-icon bi bi-globe"></i>
+                                            <p>@Localizer["Satellite"]</p>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="CropSeasons" class="nav-link @navActiveAction("FarmOpenfield", "CropSeasons")">
-                                <i class="nav-icon bi bi-flower1"></i>
-                                <p>@Localizer["Crop"]</p>
+
+                        <li class="nav-item @(fleetOpen ? "menu-open" : "")">
+                            <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
+                                <i class="nav-icon bi bi-hdd-network"></i>
+                                <p>
+                                    @Localizer["Fleet management"]
+                                    <i class="nav-arrow bi bi-chevron-right"></i>
+                                </p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a asp-area="" asp-controller="Device" asp-action="Fleet" class="nav-link @navActive("Device")">
+                                        <i class="nav-icon bi bi-broadcast"></i>
+                                        <p>@Localizer["Device fleet"]</p>
+                                    </a>
+                                </li>
+                                @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+                                {
+                                    <li class="nav-item">
+                                        <a asp-area="" asp-controller="Firmware" asp-action="Index" class="nav-link @navActive("Firmware")">
+                                            <i class="nav-icon bi bi-cpu"></i>
+                                            <p>@Localizer["Firmware"]</p>
+                                        </a>
+                                    </li>
+                                }
+                                @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+                                {
+                                    <li class="nav-item">
+                                        <a asp-area="" asp-controller="WifiConfig" asp-action="Index" class="nav-link @navActive("WifiConfig")">
+                                            <i class="nav-icon bi bi-wifi"></i>
+                                            <p>@Localizer["WiFi Networks"]</p>
+                                        </a>
+                                    </li>
+                                }
+                                @if ((User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader) && gatewayEnabled)
+                                {
+                                    <li class="nav-item">
+                                        <a asp-area="" asp-controller="Gateway" asp-action="Index" class="nav-link @navActive("Gateway")">
+                                            <i class="nav-icon bi bi-router"></i>
+                                            <p>@Localizer["LoRa Gateway"]</p>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="Fruit" asp-action="Index" class="nav-link @navActive("Fruit")">
-                                <i class="nav-icon bi bi-apple"></i>
-                                <p>@Localizer["Fruit"]</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                <i class="nav-icon bi bi-house-door"></i>
-                                <p>@Localizer["Greenhouse"]</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
-                                <i class="nav-icon bi bi-map"></i>
-                                <p>@Localizer["Parcels"]</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a asp-area="" asp-controller="Device" asp-action="Fleet" class="nav-link @navActive("Device")">
-                                <i class="nav-icon bi bi-broadcast"></i>
-                                <p>@Localizer["Device fleet"]</p>
-                            </a>
-                        </li>
-                        @if (hasCatalogOrAlertsAccess)
+
+                        @if (hasAnyRoleOrReads(RoleNames.SimulationManagers) || hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
-                                    <i class="nav-icon bi bi-bell"></i>
-                                    <p>@Localizer["Alerts"]</p>
+                            <li class="nav-item @(scientificOpen ? "menu-open" : "")">
+                                <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
+                                    <i class="nav-icon bi bi-mortarboard"></i>
+                                    <p>
+                                        @Localizer["Scientific"]
+                                        <i class="nav-arrow bi bi-chevron-right"></i>
+                                    </p>
                                 </a>
+                                <ul class="nav nav-treeview">
+                                    @if (hasAnyRoleOrReads(RoleNames.SimulationManagers))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="Simulation" asp-action="Index" class="nav-link @navActive("Simulation")">
+                                                <i class="nav-icon bi bi-cpu-fill"></i>
+                                                <p>@Localizer["Simulations"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="Experiment" asp-action="Index" class="nav-link @navActive("Experiment")">
+                                                <i class="nav-icon bi bi-flask"></i>
+                                                <p>@Localizer["Experiments"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             </li>
                         }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+
+                        @if (hasCatalogOrAlertsAccess || hasAnyRoleOrReads(RoleNames.DeviceManagers))
                         {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="GlobalRules" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "GlobalRules", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                    <i class="nav-icon bi bi-diagram-3"></i>
-                                    <p>@Localizer["Global Rules"]</p>
+                            <li class="nav-item @(automationOpen ? "menu-open" : "")">
+                                <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
+                                    <i class="nav-icon bi bi-gear-wide-connected"></i>
+                                    <p>
+                                        @Localizer["Automation"]
+                                        <i class="nav-arrow bi bi-chevron-right"></i>
+                                    </p>
                                 </a>
+                                <ul class="nav nav-treeview">
+                                    @if (hasCatalogOrAlertsAccess)
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="Alerts" asp-action="Index" class="nav-link @navActive("Alerts")">
+                                                <i class="nav-icon bi bi-bell"></i>
+                                                <p>@Localizer["Alerts"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="GlobalRules" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "GlobalRules", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                                <i class="nav-icon bi bi-diagram-3"></i>
+                                                <p>@Localizer["Global Rules"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             </li>
                         }
-                        @if (hasAnyRoleOrReads(RoleNames.UserManagers))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="User" asp-action="Index" class="nav-link @navActive("User")">
-                                    <i class="nav-icon bi bi-people"></i>
-                                    <p>@Localizer["Users"]</p>
-                                </a>
-                            </li>
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.SimulationManagers))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Simulation" asp-action="Index" class="nav-link @navActive("Simulation")">
-                                    <i class="nav-icon bi bi-cpu-fill"></i>
-                                    <p>@Localizer["Simulations"]</p>
-                                </a>
-                            </li>
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Experiment" asp-action="Index" class="nav-link @navActive("Experiment")">
-                                    <i class="nav-icon bi bi-flask"></i>
-                                    <p>@Localizer["Experiments"]</p>
-                                </a>
-                            </li>
-                        }
+
                         @if (hasCatalogOrAlertsAccess)
                         {
                             <li class="nav-item">
@@ -256,74 +352,65 @@
                                     <p>@Localizer["Horticulture Catalog"]</p>
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Satellite" asp-action="Index" class="nav-link @navActive("Satellite")">
-                                    <i class="nav-icon bi bi-globe"></i>
-                                    <p>@Localizer["Satellite"]</p>
-                                </a>
-                            </li>
                         }
-                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+
+                        @if (hasAnyRoleOrReads(RoleNames.UserManagers) || User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader || hasAnyRoleOrReads(RoleNames.DeviceManagers) || hasAnyRoleOrReads(RoleNames.Admins))
                         {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="Firmware" asp-action="Index" class="nav-link @navActive("Firmware")">
-                                    <i class="nav-icon bi bi-cpu"></i>
-                                    <p>@Localizer["Firmware"]</p>
+                            <li class="nav-item @(configurationOpen ? "menu-open" : "")">
+                                <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
+                                    <i class="nav-icon bi bi-gear"></i>
+                                    <p>
+                                        @Localizer["Configuration"]
+                                        <i class="nav-arrow bi bi-chevron-right"></i>
+                                    </p>
                                 </a>
-                            </li>
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="WifiConfig" asp-action="Index" class="nav-link @navActive("WifiConfig")">
-                                    <i class="nav-icon bi bi-wifi"></i>
-                                    <p>@Localizer["WiFi Networks"]</p>
-                                </a>
-                            </li>
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.Admins))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="AuditLog" asp-action="Index" class="nav-link @navActive("AuditLog")">
-                                    <i class="nav-icon bi bi-clock-history"></i>
-                                    <p>@Localizer["Audit Log"]</p>
-                                </a>
-                            </li>
-                        }
-                        @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="ServerConfig" asp-action="Index" class="nav-link @navActive("ServerConfig")">
-                                    <i class="nav-icon bi bi-sliders"></i>
-                                    <p>@Localizer["Server Settings"]</p>
-                                </a>
-                            </li>
-                            @if (tenantManagementEnabled)
-                            {
-                                <li class="nav-item">
-                                    <a asp-area="" asp-controller="Tenant" asp-action="Index" class="nav-link @navActive("Tenant")">
-                                        <i class="nav-icon bi bi-buildings"></i>
-                                        <p>@Localizer["Tenants"]</p>
-                                    </a>
-                                </li>
-                            }
-                            @if (gatewayEnabled)
-                            {
-                                <li class="nav-item">
-                                    <a asp-area="" asp-controller="Gateway" asp-action="Index" class="nav-link @navActive("Gateway")">
-                                        <i class="nav-icon bi bi-router"></i>
-                                        <p>@Localizer["LoRa Gateway"]</p>
-                                    </a>
-                                </li>
-                            }
-                        }
-                        @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
-                        {
-                            <li class="nav-item">
-                                <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                    <i class="nav-icon bi bi-trash3"></i>
-                                    <p>@Localizer["Recycle Bin"]</p>
-                                </a>
+                                <ul class="nav nav-treeview">
+                                    @if (hasAnyRoleOrReads(RoleNames.UserManagers))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="User" asp-action="Index" class="nav-link @navActive("User")">
+                                                <i class="nav-icon bi bi-people"></i>
+                                                <p>@Localizer["Users"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (User.IsInRole(RoleNames.GlobalAdmin) || isGlobalReader)
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="ServerConfig" asp-action="Index" class="nav-link @navActive("ServerConfig")">
+                                                <i class="nav-icon bi bi-sliders"></i>
+                                                <p>@Localizer["Server Settings"]</p>
+                                            </a>
+                                        </li>
+                                        @if (tenantManagementEnabled)
+                                        {
+                                            <li class="nav-item">
+                                                <a asp-area="" asp-controller="Tenant" asp-action="Index" class="nav-link @navActive("Tenant")">
+                                                    <i class="nav-icon bi bi-buildings"></i>
+                                                    <p>@Localizer["Tenants"]</p>
+                                                </a>
+                                            </li>
+                                        }
+                                    }
+                                    @if (hasAnyRoleOrReads(RoleNames.DeviceManagers))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="RecycleBin" class="nav-link @(string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "RecycleBin", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                                <i class="nav-icon bi bi-trash3"></i>
+                                                <p>@Localizer["Recycle Bin"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (hasAnyRoleOrReads(RoleNames.Admins))
+                                    {
+                                        <li class="nav-item">
+                                            <a asp-area="" asp-controller="AuditLog" asp-action="Index" class="nav-link @navActive("AuditLog")">
+                                                <i class="nav-icon bi bi-clock-history"></i>
+                                                <p>@Localizer["Audit Log"]</p>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             </li>
                         }
                         <li class="nav-item mt-2 border-top border-secondary border-opacity-25 pt-2">
