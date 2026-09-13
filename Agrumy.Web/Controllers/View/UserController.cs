@@ -65,7 +65,7 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.UserManagers)]
         public async Task<ActionResult> Create()
         {
-            ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+            ViewBag.SelectableRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync());
             return View(new UserView());
         }
 
@@ -76,7 +76,7 @@ namespace Agrumy.Web.Controllers.View
         {
             if (!ModelState.IsValid)
             {
-                ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+                ViewBag.SelectableRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync());
                 return View(userView);
             }
 
@@ -91,7 +91,7 @@ namespace Agrumy.Web.Controllers.View
             var assignedRoles = await api.UserRolesGet(idUser!.Value);
             ViewBag.TenantName = await ResolveTenantNameAsync(user.TenantID);
             ViewBag.CanMigrateTenant = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalUser);
-            ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+            ViewBag.SelectableRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync());
             return View(new UserView
             {
                 UserUpdate = new UserUpdate
@@ -119,7 +119,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 ViewBag.TenantName = await ResolveTenantNameAsync(userView.UserUpdate!.TenantID);
                 ViewBag.CanMigrateTenant = User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalUser);
-                ViewBag.SelectableRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+                ViewBag.SelectableRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync());
                 return View(userView);
             }
 
@@ -189,7 +189,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 IDUser = idUser.Value,
                 Email = user.Email,
-                AllRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync()),
+                AllRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync()),
                 AssignedRoles = assigned,
             });
         }
@@ -206,7 +206,7 @@ namespace Agrumy.Web.Controllers.View
             catch (ApiException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Body);
-                value.AllRoles = RoleNames.Selectable(await IsTenantManagementEnabledAsync());
+                value.AllRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync());
                 return View(value);
             }
             return RedirectToAction(nameof(Details), new { idUser = value.IDUser });
