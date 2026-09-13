@@ -78,8 +78,11 @@ async function renderGridToDataUrl(url, indexName) {
 // Days-of-week header and the grid renderer are shared module state, not per-widget - a calendar
 // is stateless between renders, it just needs (container, data, what to highlight) each time.
 const CALENDAR_DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-// Fixed, independent of the reliability slider (that one only controls what's drawn on the map) - a day marked red here always means "at least one zone's scene fell below 70% valid pixels that day".
+// A day marked red here always means "at least one zone's scene fell below 70% valid pixels that day".
 const CALENDAR_UNRELIABLE_THRESHOLD = 70;
+// Resolution-warning banner thresholds (updateSceneClassification) - see below for the two-tier wording.
+const LOW_RESOLUTION_THRESHOLD = 30;
+const DEGRADED_RESOLUTION_THRESHOLD = 60;
 
 /// Draws one month of a calendar into `container` - days present in `availableDates` are clickable
 /// and highlighted (green outline, red outline if `dateReliability` marks that day below CALENDAR_UNRELIABLE_THRESHOLD,
@@ -148,9 +151,7 @@ function initSatelliteMap(mapId) {
     const id = root.getAttribute('data-id');
     const canManage = root.getAttribute('data-can-manage') === '1';
     const indexRadios = widget.querySelectorAll('[data-sat-role="indexRadio"]');
-    const reliabilityThreshold = widget.querySelector('[data-sat-role="reliabilityThreshold"]');
-    const reliabilityLabel = widget.querySelector('[data-sat-role="reliabilityLabel"]');
-    const unreliableBanner = widget.querySelector('[data-sat-role="unreliableBanner"]');
+    const resolutionWarning = widget.querySelector('[data-sat-role="resolutionWarning"]');
     const sceneClassificationEl = widget.querySelector('[data-sat-role="sceneClassification"]');
     const slider = widget.querySelector('[data-sat-role="dateSlider"]');
     const dateLabel = widget.querySelector('[data-sat-role="dateLabel"]');
@@ -180,7 +181,6 @@ function initSatelliteMap(mapId) {
     map.setView([45.815, 15.982], 13);
 
     let overlayLayer = L.layerGroup().addTo(map);
-    let rasterEntries = []; // [{ layer: L.ImageOverlay, validPixelPercent }] built once per loadAndRender fetch - the reliability slider only adds/removes these already-rendered layers, never re-fetches or re-renders them
     let availableDates = [];
     let dateReliability = {}; // dateStr -> minValidPixelPercent, for the calendar's fixed-70% red marking
     let selectedIndex = -1; // index into availableDates - the one shared "current date" state, slider/calendar/prev-next all just move this
@@ -205,31 +205,30 @@ function initSatelliteMap(mapId) {
         legendEl.textContent = SATELLITE_LEGENDS[indexName] || '';
     }
 
-    /// Adds/removes already-rendered raster layers based on the slider's current value - no network
-    /// request and no re-render, so dragging the slider stays smooth (many `input` events per drag).
-    function applyReliabilityThreshold() {
-        const threshold = parseInt(reliabilityThreshold.value, 10);
-        rasterEntries.forEach(({ layer, validPixelPercent }) => {
-            const shouldShow = validPixelPercent >= threshold;
-            const isShown = overlayLayer.hasLayer(layer);
-            if (shouldShow && !isShown) {
-                layer.addTo(overlayLayer);
-            } else if (!shouldShow && isShown) {
-                overlayLayer.removeLayer(layer);
-            }
-        });
-    }
-
-    /// Scene classification readout + the fixed-70% "Unreliable" banner - both use the worst (lowest
+    /// Scene classification readout + the resolution-warning banner - both use the worst (lowest
     /// ValidPixelPercent) zone for the loaded date, same "flag the worst case" rule as the calendar.
+    /// Below LOW_RESOLUTION_THRESHOLD the remaining valid pixels are few enough that they risk being an
+    /// unrepresentative subset of the parcel rather than just a noisier sample - a harder warning than
+    /// the DEGRADED_RESOLUTION_THRESHOLD band, which is still a fine sample for a trend chart.
     function updateSceneClassification(worstValidPixelPercent, worstCloudPercent) {
         if (worstValidPixelPercent === null) {
             sceneClassificationEl.textContent = '';
-            unreliableBanner.hidden = true;
+            resolutionWarning.hidden = true;
             return;
         }
         sceneClassificationEl.textContent = `Scene classification: ${worstCloudPercent.toFixed(0)}% cloud, ${worstValidPixelPercent.toFixed(0)}% valid pixels.`;
-        unreliableBanner.hidden = worstValidPixelPercent >= CALENDAR_UNRELIABLE_THRESHOLD;
+        const pct = worstValidPixelPercent.toFixed(0);
+        if (worstValidPixelPercent < LOW_RESOLUTION_THRESHOLD) {
+            resolutionWarning.className = 'alert alert-danger py-1 px-2 small mb-2';
+            resolutionWarning.textContent = `Warning: Low resolution ${pct}%, statistical representation may be skewed.`;
+            resolutionWarning.hidden = false;
+        } else if (worstValidPixelPercent < DEGRADED_RESOLUTION_THRESHOLD) {
+            resolutionWarning.className = 'alert alert-warning py-1 px-2 small mb-2';
+            resolutionWarning.textContent = `Warning: Resolution degraded ${pct}%.`;
+            resolutionWarning.hidden = false;
+        } else {
+            resolutionWarning.hidden = true;
+        }
     }
 
     function updatePrevNextButtons() {
@@ -317,7 +316,6 @@ function initSatelliteMap(mapId) {
         const data = await response.json();
 
         overlayLayer.clearLayers();
-        rasterEntries = [];
         const bounds = L.latLngBounds([]);
 
         // Parcel outlines first (thicker) so zone outlines draw on top.
@@ -361,16 +359,14 @@ function initSatelliteMap(mapId) {
                 const gridUrl = `/FarmOpenfield/SatelliteGrid?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
                 renderGridToDataUrl(gridUrl, indexName).then((dataUrl) => {
                     if (dataUrl && myGeneration === renderGeneration) {
-                        rasterEntries.push({ layer: L.imageOverlay(dataUrl, zoneBounds), validPixelPercent: z.validPixelPercent });
-                        applyReliabilityThreshold();
+                        L.imageOverlay(dataUrl, zoneBounds).addTo(overlayLayer);
                     }
                 });
             } else {
                 // Composite (SwirComposite/NaturalColor) - already an RGB PNG, no scalar grid to palette-render.
                 // Same-origin passthrough (FarmOpenfieldController.SatelliteImage), not a direct Agrumy.Api link - a plain <img> can't carry the JWT Agrumy.Api requires.
                 const rasterUrl = `/FarmOpenfield/SatelliteImage?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
-                rasterEntries.push({ layer: L.imageOverlay(rasterUrl, zoneBounds), validPixelPercent: z.validPixelPercent });
-                applyReliabilityThreshold();
+                L.imageOverlay(rasterUrl, zoneBounds).addTo(overlayLayer);
             }
         });
 
@@ -381,10 +377,6 @@ function initSatelliteMap(mapId) {
     }
 
     indexRadios.forEach((r) => r.addEventListener('change', () => { updateLegend(); loadAndRender(); }));
-    reliabilityThreshold.addEventListener('input', () => {
-        reliabilityLabel.textContent = `Minimum reliability: ${reliabilityThreshold.value}%`;
-        applyReliabilityThreshold();
-    });
     if (slider) {
         slider.addEventListener('input', () => { selectedIndex = parseInt(slider.value, 10); loadAndRender(); });
     }

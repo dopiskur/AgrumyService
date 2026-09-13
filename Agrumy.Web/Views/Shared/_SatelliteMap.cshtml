@@ -19,11 +19,7 @@
         }
         <div data-sat-role="root" data-scope="@Model.Scope" data-id="@Model.Id" data-can-manage="@(canManage ? "1" : "0")">
             @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Model.AvailableIndices))
-            <div class="mb-2">
-                <label class="form-label small mb-0" data-sat-role="reliabilityLabel">Minimum reliability: @(Model.DefaultReliabilityThreshold)%</label>
-                <input type="range" class="form-range" min="0" max="100" value="@Model.DefaultReliabilityThreshold" data-sat-role="reliabilityThreshold" />
-            </div>
-            <div class="alert alert-danger py-1 px-2 small mb-2" data-sat-role="unreliableBanner" hidden>Unreliable</div>
+            <div class="alert py-1 px-2 small mb-2" data-sat-role="resolutionWarning" hidden></div>
             <div id="@mapId" data-sat-role="map" style="height:420px;"></div>
             <div class="d-flex align-items-center gap-2 mt-2">
                 <span class="small text-secondary" data-sat-role="dateLabel">No dates yet</span>
