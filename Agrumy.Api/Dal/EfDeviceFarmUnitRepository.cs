@@ -63,7 +63,7 @@ namespace Agrumy.Api.Dal
             QuotaGuard.RunAsync(db, quotaCheckAsync, async () =>
             {
                 int nextOrder = await db.DeviceFarms.Where(f => f.TenantID == farm.TenantID).Select(f => (int?)f.DisplayOrder).MaxAsync() ?? -1;
-                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName, FarmType = (int)farm.FarmType, DisplayOrder = nextOrder + 1 };
+                var row = new DeviceFarmRow { TenantID = farm.TenantID, DeviceFarmName = farm.DeviceFarmName, FarmType = (int)farm.FarmType, DisplayOrder = nextOrder + 1, Latitude = farm.Latitude, Longitude = farm.Longitude };
                 db.DeviceFarms.Add(row);
                 await db.SaveChangesAsync();
                 return ToDtoFarm(row);
@@ -338,7 +338,7 @@ namespace Agrumy.Api.Dal
         private async Task<DeviceFarmUnit> InsertUnitAsync(DeviceFarmUnit unit)
         {
             int nextOrder = await db.DeviceFarmUnits.Where(u => u.TenantID == unit.TenantID).Select(u => (int?)u.DisplayOrder).MaxAsync() ?? -1;
-            var row = new DeviceFarmUnitRow { TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID, DisplayOrder = nextOrder + 1 };
+            var row = new DeviceFarmUnitRow { TenantID = unit.TenantID, DeviceFarmUnitName = unit.DeviceFarmUnitName, DeviceFarmID = unit.DeviceFarmID, DisplayOrder = nextOrder + 1, UnitType = (int)unit.UnitType };
             db.DeviceFarmUnits.Add(row);
             await db.SaveChangesAsync();
             return ToDtoUnit(row);
@@ -357,9 +357,18 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        // Its own targeted ExecuteUpdateAsync rather than folding into DeviceFarmUnitUpdateAsync - that method's callers (UnitRename, UnitAssignFarm) build a bare DTO with AreaHectares left at its default null, which would silently wipe a previously-set area on every rename/reassign.
-        public Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaHectares) =>
-            db.DeviceFarmUnits.Where(u => u.IDDeviceFarmUnit == idDeviceFarmUnit).ExecuteUpdateAsync(set => set.SetProperty(u => u.AreaHectares, areaHectares));
+        // Its own targeted ExecuteUpdateAsync rather than folding into DeviceFarmUnitUpdateAsync - that method's callers (UnitRename, UnitAssignFarm) build a bare DTO with AreaSquareMeters left at its default null, which would silently wipe a previously-set area on every rename/reassign.
+        public Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaSquareMeters) =>
+            db.DeviceFarmUnits.Where(u => u.IDDeviceFarmUnit == idDeviceFarmUnit).ExecuteUpdateAsync(set => set.SetProperty(u => u.AreaSquareMeters, areaSquareMeters));
+
+        // Same "own targeted ExecuteUpdateAsync" reasoning as DeviceFarmUnitAreaSetAsync above.
+        public Task DeviceFarmUnitTypeSetAsync(int idDeviceFarmUnit, DeviceFarmUnitType unitType) =>
+            db.DeviceFarmUnits.Where(u => u.IDDeviceFarmUnit == idDeviceFarmUnit).ExecuteUpdateAsync(set => set.SetProperty(u => u.UnitType, (int)unitType));
+
+        // Same reasoning again - also lets the dialog clear a previously-set pin by posting both as null.
+        public Task DeviceFarmUnitLocationSetAsync(int idDeviceFarmUnit, double? latitude, double? longitude) =>
+            db.DeviceFarmUnits.Where(u => u.IDDeviceFarmUnit == idDeviceFarmUnit)
+                .ExecuteUpdateAsync(set => set.SetProperty(u => u.Latitude, latitude).SetProperty(u => u.Longitude, longitude));
 
         /// Scoped to whatever subset the caller drags (one farm's units, or the unassigned bucket) - reused 0..N-1 indices across different farms never collide because DeviceFarmUnitDashboardGetAsync's consumers always filter by DeviceFarmID before comparing DisplayOrder.
         public async Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds)
@@ -404,7 +413,10 @@ namespace Agrumy.Api.Dal
             DeviceFarmUnitName = u.DeviceFarmUnitName,
             DeviceFarmID = u.DeviceFarmID,
             DisplayOrder = u.DisplayOrder,
-            AreaHectares = u.AreaHectares,
+            AreaSquareMeters = u.AreaSquareMeters,
+            UnitType = (DeviceFarmUnitType)u.UnitType,
+            Latitude = u.Latitude,
+            Longitude = u.Longitude,
         };
 
         private static DeviceFarm ToDtoFarm(DeviceFarmRow f) => new()
@@ -415,6 +427,8 @@ namespace Agrumy.Api.Dal
             FarmType = (FarmType)f.FarmType,
             DisplayOrder = f.DisplayOrder,
             FarmGroupID = f.FarmGroupID,
+            Latitude = f.Latitude,
+            Longitude = f.Longitude,
             DeletedAtUtc = f.DeletedAtUtc,
             PurgedAtUtc = f.PurgedAtUtc,
         };

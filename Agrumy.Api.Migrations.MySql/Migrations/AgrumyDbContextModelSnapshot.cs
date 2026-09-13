@@ -1083,6 +1083,12 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double");
+
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -1110,7 +1116,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnit"));
 
-                    b.Property<double?>("AreaHectares")
+                    b.Property<double?>("AreaSquareMeters")
                         .HasColumnType("double");
 
                     b.Property<bool>("Deleted")
@@ -1134,8 +1140,19 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double");
+
                     b.Property<int?>("TenantID")
                         .HasColumnType("int");
+
+                    b.Property<int>("UnitType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<bool?>("ZoneEnabled")
                         .HasColumnType("tinyint(1)");

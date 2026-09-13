@@ -62,8 +62,9 @@ namespace Agrumy.Web.Controllers.View
 
             var greenhouseFarmIds = greenhouseFarms.Select(f => f.IDDeviceFarm).ToHashSet();
             var groupUnits = (await api.DeviceFarmUnitsGet()).Where(u => greenhouseFarmIds.Contains(u.DeviceFarmID)).ToList();
-            int greenhouseUnitsWithArea = groupUnits.Count(u => u.AreaHectares != null);
-            double greenhouseAreaHa = groupUnits.Where(u => u.AreaHectares != null).Sum(u => u.AreaHectares!.Value);
+            int greenhouseUnitsWithArea = groupUnits.Count(u => u.AreaSquareMeters != null);
+            // Units are entered/shown in m² on their own page - converted to ha here only to share ParcelAreaSummaryViewModel with the (much larger-scale) crop parcel rollup.
+            double greenhouseAreaHa = groupUnits.Where(u => u.AreaSquareMeters != null).Sum(u => u.AreaSquareMeters!.Value) / 10000.0;
 
             return View(new FarmGroupDetailsViewModel
             {

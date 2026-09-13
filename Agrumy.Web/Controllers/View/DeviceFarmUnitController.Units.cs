@@ -172,9 +172,27 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> UnitAreaUpdate(int idDeviceFarmUnit, double? areaHectares)
+        public async Task<ActionResult> UnitAreaUpdate(int idDeviceFarmUnit, double? areaSquareMeters)
         {
-            await api.DeviceFarmUnitAreaSet(idDeviceFarmUnit, areaHectares);
+            await api.DeviceFarmUnitAreaSet(idDeviceFarmUnit, areaSquareMeters);
+            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitTypeUpdate(int idDeviceFarmUnit, DeviceFarmUnitType unitType)
+        {
+            await api.DeviceFarmUnitTypeSet(idDeviceFarmUnit, unitType);
+            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitLocationUpdate(int idDeviceFarmUnit, double? latitude, double? longitude)
+        {
+            await api.DeviceFarmUnitLocationSet(idDeviceFarmUnit, latitude, longitude);
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
         }
     }

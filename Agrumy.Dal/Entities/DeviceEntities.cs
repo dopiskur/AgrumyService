@@ -11,6 +11,9 @@ namespace Agrumy.Dal.Entities
         public int DisplayOrder { get; set; }
         // Optional - a farm not yet placed in any FarmGroup has this null; at most one group per farm.
         public int? FarmGroupID { get; set; }
+        // Map pin dropped in the "Add Greenhouse complex" dialog - null means never set.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         // Soft delete, cascades to every DeviceFarmUnit/DeviceFarmUnitZone/Device still assigned to this farm at delete time (see EfDeviceFarmUnitRepository.DeviceFarmDeleteAsync). See AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
@@ -40,8 +43,13 @@ namespace Agrumy.Dal.Entities
         // Optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
         public int DisplayOrder { get; set; }
-        // Manually entered (no map/geometry - Greenhouse units aren't GPS-mapped like Open-Field parcels), so the unified Parcels page and Farm Group area rollups have something to sum for Greenhouse.
-        public double? AreaHectares { get; set; }
+        // Manually entered - lets the unified Parcels page and Farm Group area rollups have something to sum for Greenhouse.
+        public double? AreaSquareMeters { get; set; }
+        // See Agrumy.Shared.Models.DeviceFarmUnitType - stored as the enum's int value, same convention as DeviceFarmRow.FarmType.
+        public int UnitType { get; set; }
+        // Map pin placed via the Unit configuration dialog - where this unit sits within its DeviceFarmRow's own complex.
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         // Set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }
