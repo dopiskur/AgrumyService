@@ -27,25 +27,6 @@ having to adopt tooling built for the other.
 Agrumy is free, open-source software that runs on hardware priced like
 AliExpress components, not a purpose-built appliance costing thousands.
 
-**.NET 10 SDK required.**
-
-`agrumy.sln` splits into these projects:
-
-| Project | Type | What it is |
-| --- | --- | --- |
-| `Agrumy.Shared` | class library | Models (`api.Models`), `Config`, `Security` (`JwtTokenProvider`, `AuthenticationProvider`). Referenced by both apps. |
-| `Agrumy.Dal` | class library | Data-access model: `AgrumyDbContext`, EF entities (`api.Dal.Entities`), provider selection (`DbProviderKind`, `DbOptionsFactory`). No stored procedures - every query is LINQ. |
-| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), one domain-repository interface per facet (`Dal/Interface/I*Repository`, each implemented by its own `Dal/EfXxxRepository` class - `EfDeviceRepository`, `EfUserRepository`, etc., no single god-class), EF Core over `Agrumy.Dal`, MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + migration/schema bootstrap on an empty or legacy database. |
-| `Agrumy.Web` | MVC app | Admin UI (`Controllers/View`, `Views/`, `wwwroot/`). Talks to `Agrumy.Api` **only over HTTP** (`Dal/ApiRepository` + `HttpClient` with a JWT bearer token). No direct database access. |
-| `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
-| `Agrumy.Rules` | class library | Pure rule-tree evaluation - fold logic, hierarchy precedence, astronomical/day-night resolvers - with no EF Core or ASP.NET Core dependency, only `Agrumy.Shared` model types; mirrors `AgrumyFirmware`'s `RelayLogic.cpp`/`ActuatorController` as a genuinely separate C# runtime rather than sharing code with it. |
-| `Agrumy.Api.Migrations.MySql`, `Agrumy.Api.Migrations.Postgres` | class library | Per-provider EF Core migrations for `AgrumyDbContext` - see "Database & schema provisioning" below for how a schema change gets added to both. |
-| `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
-| `tools/Agrumy.ContractGen`, `tools/Agrumy.MqttCredentialSync` | console apps | Small standalone utilities, not part of the running system - ContractGen regenerates `contracts/device-api/*.schema.json` from the `Agrumy.Shared` DTOs (see "Practical advantages" below); MqttCredentialSync provisions/rotates a device's MQTT broker credentials directly against `Agrumy.Dal`, no `Agrumy.Api` host involved. |
-
-`db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
-is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
-
 ## How it works
 
 1. **Registration.** A device calls `POST /api/Device/Register` with the owning
@@ -137,6 +118,119 @@ several true rules for the same function MAX-fold their percentages together
 instead of a plain OR. Every other relay function still resolves to the same
 0/100 shape underneath, so the fold is one engine, not a special case for the
 positional functions.
+
+## Practical advantages
+
+A handful of smaller, concrete things that make Agrumy easier to trust and
+run day-to-day:
+
+- **Offline-resilient by design.** Relay control runs entirely on-device against
+  its last-saved config (see "Control is local to the device" above) - a lost
+  connection to the API doesn't stop irrigation/climate control, it just delays
+  picking up config changes.
+- **A Farm > Unit > Zone hierarchy with a live dashboard**, or Farm > Crop >
+  Parcel for an Open-Field farm (`api/FarmOpenfield`) - the same dashboard
+  rollup and rule scoping either way. `GET /api/DeviceFarmUnit/Dashboard` rolls
+  up status across an entire fleet of installations, not just one controller.
+- **Fleet-wide commands with server-side fan-out.** `POST /api/DeviceCommand`
+  targets a unit or zone and the server resolves that into the actual set of
+  devices to deliver Reboot/ForceOTA/ForceConfigSync to on their next poll.
+- **Zero-touch device provisioning.** `POST /api/Discovery/Scan` +
+  `POST /api/Discovery/Register` let an already-configured sensor-only device
+  find and register a brand-new one over WiFi, no direct access to the new
+  device needed.
+- **LoRa reach without extra bridge hardware.** A device can relay other
+  LoRa-only nodes' uplinks over its own WiFi connection (`POST
+  /api/Gateway/RelayUplink`), or a dedicated `Agrumy.Gateway` process can do
+  the same over LoRaWAN/ChirpStack or a private radio protocol.
+- **Simulation Mode.** Fully virtual devices, driven by a real background
+  worker calling the real registration/config/sensor endpoints, let a whole
+  fleet be tested and demoed without any physical hardware; a per-device
+  Latitude/Longitude override lets a demo device appear anywhere on the map
+  without touching its real GPS/manual location, reverting automatically the
+  moment the simulation is disabled.
+- **25 native firmware unit tests in CI**, no hardware required
+  (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
+  AND-OR-fold/discovery/LoRa/manual-override/PID/output-kind-dispatch logic is
+  regression-tested on every push, not just checked by hand on a bench; the
+  threshold-evaluation suite runs against a `threshold_vectors.csv` shared
+  verbatim between this repo and `AgrumyFirmware`, so both sides agree on the
+  same inputs/outputs.
+- **Contract-first device↔API.** Every device request/response shape is a JSON
+  Schema in `contracts/device-api/`, checked against both the firmware and the
+  API's actual field usage (`AgrumyFirmware/tools/contract-check`) - firmware and
+  server can't silently drift apart on wire format.
+- **Account export/import and a one-click Emergency Stop.** An account admin can
+  export their whole farm hierarchy (users, devices, rules, optionally sensor
+  history) as a portable ZIP and bring it back in under a different name -
+  useful for migrating between servers or standing up a demo from real data,
+  without server-side access. Emergency Stop forces every actuator in an
+  account off ahead of any rule, pushed immediately rather than waiting for the
+  next config poll, and stays off until explicitly cleared - deliberately a
+  single click with no confirmation step, since hesitation is the wrong default
+  for a safety control.
+- **OTA plus fully offline firmware distribution.** The same firmware catalog
+  that drives normal OTA updates also supports offline USB installs and
+  Local/Custom repository sources - useful anywhere internet access to GitHub
+  isn't guaranteed.
+- **One-line self-hosted install** (see below) - no config file to hand-write,
+  no database to prepare first, safe to re-run.
+- **On-device safety limits, not just server-side policy.** `ActuatorController`
+  enforces cooldown/max-run ordering for every relay function directly on the
+  device, so a bad or delayed config can't leave a pump or heater running
+  unbounded even during an outage.
+- **A predictable, bounded rule model, not a hidden DSL.** See "Automation rule
+  engine" above - fold-based AND/OR conditions and a Zone/Unit/Farm/Global rule
+  hierarchy cover most real automation needs without becoming a general rule
+  engine to learn.
+- **Battery-powered devices as a first-class case**, not an afterthought -
+  battery telemetry, low-battery alerting and deep sleep for sensor-only nodes
+  are built in, not bolted on.
+- **A tiered storage strategy that scales down as well as up.** Plain MySQL/
+  MariaDB for a small deployment, TimescaleDB hypertables for a large one -
+  the same schema and queries either way, chosen by one config value.
+- **A clear vertical focus.** Agrumy isn't trying to be a general home-automation
+  hub - every model and rule is shaped around greenhouse/citrus micro-climate
+  and irrigation specifically, not a generic "IoT platform."
+- **Crop-specific configuration templates.** A Horticulture Catalog (Crop/Fruit/
+  Hydroponic/Perma entries, each a recommended AirTemp/SoilTemp/Humidity/
+  Moisture/Light range, and Crop entries additionally broken down by BBCH
+  growth stage) lets a new zone start from agronomy know-how already built
+  into the product - `POST .../Zone/ApplyHorticultureCatalog` turns a chosen
+  catalog entry straight into a starter set of threshold rules, skipping any
+  that don't fit under the zone's rule-count cap rather than failing outright.
+  A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
+  day threshold + one night threshold for a plain on/off function.
+- **Satellite crop monitoring paired with a real parcel registry.** An
+  Open-Field zone gets Sentinel-2 NDVI/NDMI/NDWI/NDSI trend charts and true-
+  color/SWIR composites (opt-in per account via the Copernicus Data Space
+  Ecosystem, a Paid plan tier unlocking commercial PlanetScope/Pléiades
+  collections) plotted against its own soil-moisture sensor series on the same
+  timeline - and ARKOD, Croatia's public land-parcel registry, lets an admin
+  trace a parcel's real government-recorded boundary onto the map instead of
+  hand-drawing it, backed by an offline GeoPackage mirror so the lookup still
+  works without a live connection to the registry.
+
+## Architecture
+
+**.NET 10 SDK required.**
+
+`agrumy.sln` splits into these projects:
+
+| Project | Type | What it is |
+| --- | --- | --- |
+| `Agrumy.Shared` | class library | Models (`api.Models`), `Config`, `Security` (`JwtTokenProvider`, `AuthenticationProvider`). Referenced by both apps. |
+| `Agrumy.Dal` | class library | Data-access model: `AgrumyDbContext`, EF entities (`api.Dal.Entities`), provider selection (`DbProviderKind`, `DbOptionsFactory`). No stored procedures - every query is LINQ. |
+| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), one domain-repository interface per facet (`Dal/Interface/I*Repository`, each implemented by its own `Dal/EfXxxRepository` class - `EfDeviceRepository`, `EfUserRepository`, etc., no single god-class), EF Core over `Agrumy.Dal`, MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + migration/schema bootstrap on an empty or legacy database. |
+| `Agrumy.Web` | MVC app | Admin UI (`Controllers/View`, `Views/`, `wwwroot/`). Talks to `Agrumy.Api` **only over HTTP** (`Dal/ApiRepository` + `HttpClient` with a JWT bearer token). No direct database access. |
+| `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
+| `Agrumy.Rules` | class library | Pure rule-tree evaluation - fold logic, hierarchy precedence, astronomical/day-night resolvers - with no EF Core or ASP.NET Core dependency, only `Agrumy.Shared` model types; mirrors `AgrumyFirmware`'s `RelayLogic.cpp`/`ActuatorController` as a genuinely separate C# runtime rather than sharing code with it. |
+| `Agrumy.Api.Migrations.MySql`, `Agrumy.Api.Migrations.Postgres` | class library | Per-provider EF Core migrations for `AgrumyDbContext` - see "Database & schema provisioning" below for how a schema change gets added to both. |
+| `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
+| `tools/Agrumy.ContractGen`, `tools/Agrumy.MqttCredentialSync` | console apps | Small standalone utilities, not part of the running system - ContractGen regenerates `contracts/device-api/*.schema.json` from the `Agrumy.Shared` DTOs (see "Practical advantages" above); MqttCredentialSync provisions/rotates a device's MQTT broker credentials directly against `Agrumy.Dal`, no `Agrumy.Api` host involved. |
+
+`db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
+is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
 
 ## Quickstart
 
@@ -397,24 +491,36 @@ CRUD/reorder/delete/recycle-bin here is shared by both branches.
 | `POST /api/DeviceFarmUnit/Zone/ApplyDayNightPreset` | DeviceManagers | Add one day-threshold + one night-threshold rule pair for a plain on/off function (not Screen/Vent) |
 | `GET /api/DeviceFarmUnit/Dashboard`, `Dashboard/Zones`, `Dashboard/Zone` | JWT | Hierarchical dashboard rollups (per-unit, per-zone-list, per-zone) |
 
-**FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop/Parcel branch for an Open-Field
-farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD and rules stay on DeviceFarmUnitApiController
+**FarmOpenfield** (`FarmOpenfieldApiController`, `api/FarmOpenfield`) - the Crop (Sowing)/Parcel branch for an
+Open-Field farm, parallel to DeviceFarmUnit's Unit/Zone above; Farm-level CRUD/reorder/delete/recycle-bin and
+rules stay on DeviceFarmUnitApiController, shared by both branches - an Open-Field farm is created there too,
+as an ordinary Farm with FarmType=Open-Field
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `POST /api/FarmOpenfield`, `GET .../All` | DeviceManagers / JWT | Create a Farm together with its Open-Field extension row / list Open-Field farms |
-| `GET /api/FarmOpenfield/Crop/All`, `GET .../Crop`, `GET .../Crop/Dashboard` | JWT | List a farm's crops / fetch one / crop dashboard cubes (same sensor-average/status styling as the Unit dashboard) |
-| `POST/PUT/DELETE /api/FarmOpenfield/Crop`, `POST .../Crop/Reorder` | DeviceManagers | Create / update / delete / reorder a crop |
-| `GET /api/FarmOpenfield/Parcel`, `GET .../ParcelById`, `GET .../Crop/Parcel/Dashboard` | JWT | Parcels under a crop / one by id / parcel dashboard cubes |
-| `POST/PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Create / update / delete a parcel - same safety-limit validation as a Zone |
-| `PUT /api/FarmOpenfield/Parcel/{id}/Migrate` | DeviceManagers | Move a parcel to a different crop within the same account |
+| `GET /api/FarmOpenfield/FarmParcel/All`, `GET .../FarmParcel/{id}/Zones` | JWT | Every FarmParcel on a farm / the zones under one parcel |
+| `GET /api/FarmOpenfield/Crop/All`, `GET .../Crop`, `GET .../Crop/Dashboard` | JWT | List a farm's crops (sowings) / fetch one / crop dashboard cubes (same sensor-average/status styling as the Unit dashboard) |
+| `POST/PUT/DELETE /api/FarmOpenfield/Crop` | DeviceManagers | Create / update / delete a crop |
+| `POST /api/FarmOpenfield/Sowing/Start`, `POST .../Sowing/Close` | DeviceManagers | Occupy a set of zones to start a sowing / release them and record a harvest result - blocked ahead of the earliest-harvest date a logged treatment's pre-harvest interval implies, unless explicitly confirmed |
+| `GET/POST/DELETE /api/FarmOpenfield/Sowing/FieldLog`, `POST .../FieldLog/{id}/Attachment`, `GET .../Attachments`, `GET .../Attachment/{id}/Download` | JWT (POST/DELETE DeviceManagers) | A sowing's field-log entries (irrigation, fertilization, plant protection, etc.) and their file attachments |
+| `GET /api/FarmOpenfield/Sowing/EarliestHarvestDate`, `GET .../NitrogenBalance`, `GET .../{id}/PlantProtectionReport` | JWT | Pre-harvest-interval date / kg-N-per-ha fertilization balance / a CSV export of every logged plant-protection treatment |
+| `GET /api/FarmOpenfield/Parcel`, `GET .../ParcelById`, `GET .../Crop/Parcel/Dashboard` | JWT | A crop's currently-occupied zones (occupancy is dynamic, a crop has no fixed parcel list) / one zone by id / zone dashboard cubes |
+| `POST /api/FarmOpenfield/FarmParcel` | DeviceManagers | Create a FarmParcel under a farm together with its first (whole-parcel) zone |
+| `GET/POST/DELETE /api/FarmOpenfield/ParcelGroup`, `POST .../Rename`, `POST .../AddMember`/`RemoveMember`, `GET .../{id}/Zones` | JWT (POST/DELETE DeviceManagers) | A named, reusable set of parcels within one farm, so the New Sowing wizard can start a sowing on the whole group in one step |
+| `POST /api/FarmOpenfield/Parcel/ReadyForSeason` | DeviceManagers | Toggle a zone's Ready-for-season flag on the Parcels registry |
+| `PUT/DELETE /api/FarmOpenfield/Parcel` | DeviceManagers | Update (same safety-limit validation as a Zone) / delete a zone |
+| `PUT /api/FarmOpenfield/FarmParcel/{id}/Geometry`, `GET .../Geometry`, `PUT .../Parcel/{id}/Geometry` | JWT (PUT DeviceManagers) | Set/read a parcel's outer boundary, or one zone's subdivision polygon within it - drawn on the map (Leaflet-Geoman), optionally tagged with the ARKOD parcel id it was traced from |
+| `POST /api/FarmOpenfield/Parcel/{id}/Split`, `POST .../Parcel/Merge` | DeviceManagers | Split one zone into several named zones, or merge several zones of the same parcel back into one - blocked while any zone involved has an active sowing |
 | `POST /api/FarmOpenfield/Assign`, `POST .../Unassign` | DeviceManagers | Place / remove a device from a parcel (one controller per parcel, same rule as a Zone) |
+| `POST /api/FarmOpenfield/Parcel/ManualActuate`, `POST .../ManualActuate/Stop`, `GET .../ManualActuate` | JWT (POST DeviceManagers) | Start / stop / check a Manual Actuate override for a zone - see "Automation rule engine" |
+| `PUT /api/FarmOpenfield/Parcel/{id}/Widgets`, `PUT .../GridColumns` | DeviceManagers | A zone's dashboard widget layout / grid column count |
 | `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes`, `.../Series`, `.../MoistureSeries` | JWT | A zone's available satellite scenes / an index's value over time (NDVI/NDMI/NDWI/NDSI/SWIR-composite/natural-color) / the matching soil-moisture sensor series for the same dates, for the Zone-tab dual-axis chart |
-| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}` | JWT | Rendered PNG (scalar indices as a UINT8-quantized grid, natural/SWIR as true color) for one scene |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}` | JWT | Rendered PNG for one scene - scalar indices palette a UINT8-quantized grid server-side, composites (SWIR/natural-color) are provider-rendered true color |
+| `GET /api/FarmOpenfield/Parcel/{id}/Satellite/Scenes/{sceneId}/Index/{index}/Grid` | JWT | The same scalar index's raw, un-palettized grid (one byte per cell) so the browser can palette it client-side onto a canvas instead of round-tripping a PNG; 400s for the two composite indices, which have no scalar grid |
 | `GET /api/FarmOpenfield/{scope}/{id}/Satellite`, `GET .../Satellite/Dates` | JWT | Map overlay + available dates at Farm/Sowing/Parcel/Zone scope - a zone with no scene yet at/before the requested date still draws, empty, rather than disappearing |
-| `POST /api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow` | DeviceManagers | Force an immediate scene sync for that scope instead of waiting for the daily background job |
+| `POST /api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow` | DeviceManagers | Force an immediate scene sync for that whole account instead of waiting for the daily background job, rate-limited to once every 5 minutes |
 
-Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem, `ISatelliteImagerySource`/`ISatelliteImagerySourceFactory`) is opt-in per account (own CDSE client credentials, tested and saved together with a 24h health indicator) - an account with the module off or unconfigured simply has no scenes and every satellite endpoint above returns empty/no-data rather than an error.
+Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem by default, `ISatelliteImagerySource`/`ISatelliteImagerySourceFactory`) is opt-in per account - its own CDSE client credentials, tested and saved together with a 24h health indicator, plus a configurable daily auto-sync interval that never shifts on a manual "Sync now". A Paid plan tier can additionally point the source at a commercial PlanetScope/Pléiades collection (the account's own Sentinel Hub BYOC collection id) instead of Sentinel-2; a Free account is held to Sentinel-2 regardless of what's stored. An account with the module off or unconfigured simply has no scenes, and every satellite endpoint above returns empty/no-data rather than an error.
 
 **HorticultureCatalog** (`HorticultureCatalogApiController`, `api/HorticultureCatalog`) - shared read-only agronomy reference data, every account browses the same catalog
 
@@ -427,7 +533,7 @@ Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem, `ISatelli
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `GET /api/Arkod/Lookup` | JWT | Look up a parcel's registry geometry by its JPAID from the local GeoPackage mirror (503 if none has been synced/uploaded yet) |
+| `GET /api/Arkod/Lookup` | JWT | Look up a parcel's registry geometry by its ARKOD id from the local GeoPackage mirror (503 if none has been synced/uploaded yet) |
 | `POST /api/Arkod/GeoPackage/Upload` | Global admin | Manually upload a `.gpkg` mirror (offline-deployment fallback, up to ~1.2 GB) |
 | `POST /api/Arkod/GeoPackage/SyncNow` | Global admin | Run the daily sync job's HEAD-then-conditional-GET check immediately instead of waiting for its next tick |
 
@@ -527,89 +633,6 @@ next step - not required today.
 | `GET /api/health` | no auth | Liveness probe (DB + cache-backend checks) for a load balancer or an auto-update rollback step; reports the deployed build's version and commit |
 | `GET /api/metrics` | Metrics readers (Global admin/reader, or an account's own data-reader role) | Per-route+method request count/error count/avg/min/max duration, from an in-memory aggregate |
 | `GET /api/metrics/prometheus` | Metrics readers | The same counters exposed as a Prometheus scrape endpoint (OpenTelemetry exporter on the same `Agrumy.Api` meter) |
-
-## Practical advantages
-
-Beyond the architecture points above, a handful of smaller, concrete
-things that make Agrumy easier to trust and run day-to-day:
-
-- **Offline-resilient by design.** Relay control runs entirely on-device against
-  its last-saved config (see "Control is local to the device" above) - a lost
-  connection to the API doesn't stop irrigation/climate control, it just delays
-  picking up config changes.
-- **A Farm > Unit > Zone hierarchy with a live dashboard**, or Farm > Crop >
-  Parcel for an Open-Field farm (`api/FarmOpenfield`) - the same dashboard
-  rollup and rule scoping either way. `GET /api/DeviceFarmUnit/Dashboard` rolls
-  up status across an entire fleet of installations, not just one controller.
-- **Fleet-wide commands with server-side fan-out.** `POST /api/DeviceCommand`
-  targets a unit or zone and the server resolves that into the actual set of
-  devices to deliver Reboot/ForceOTA/ForceConfigSync to on their next poll.
-- **Zero-touch device provisioning.** `POST /api/Discovery/Scan` +
-  `POST /api/Discovery/Register` let an already-configured sensor-only device
-  find and register a brand-new one over WiFi, no direct access to the new
-  device needed.
-- **LoRa reach without extra bridge hardware.** A device can relay other
-  LoRa-only nodes' uplinks over its own WiFi connection (`POST
-  /api/Gateway/RelayUplink`), or a dedicated `Agrumy.Gateway` process can do
-  the same over LoRaWAN/ChirpStack or a private radio protocol.
-- **Simulation Mode.** Fully virtual devices, driven by a real background
-  worker calling the real registration/config/sensor endpoints, let a whole
-  fleet be tested and demoed without any physical hardware; a per-device
-  Latitude/Longitude override lets a demo device appear anywhere on the map
-  without touching its real GPS/manual location, reverting automatically the
-  moment the simulation is disabled.
-- **25 native firmware unit tests in CI**, no hardware required
-  (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
-  AND-OR-fold/discovery/LoRa/manual-override/PID/output-kind-dispatch logic is
-  regression-tested on every push, not just checked by hand on a bench; the
-  threshold-evaluation suite runs against a `threshold_vectors.csv` shared
-  verbatim between this repo and `AgrumyFirmware`, so both sides agree on the
-  same inputs/outputs.
-- **Contract-first device↔API.** Every device request/response shape is a JSON
-  Schema in `contracts/device-api/`, checked against both the firmware and the
-  API's actual field usage (`AgrumyFirmware/tools/contract-check`) - firmware and
-  server can't silently drift apart on wire format.
-- **Account export/import and a one-click Emergency Stop.** An account admin can
-  export their whole farm hierarchy (users, devices, rules, optionally sensor
-  history) as a portable ZIP and bring it back in under a different name -
-  useful for migrating between servers or standing up a demo from real data,
-  without server-side access. Emergency Stop forces every actuator in an
-  account off ahead of any rule, pushed immediately rather than waiting for the
-  next config poll, and stays off until explicitly cleared - deliberately a
-  single click with no confirmation step, since hesitation is the wrong default
-  for a safety control.
-- **OTA plus fully offline firmware distribution.** The same firmware catalog
-  that drives normal OTA updates also supports offline USB installs and
-  Local/Custom repository sources - useful anywhere internet access to GitHub
-  isn't guaranteed.
-- **One-line self-hosted install** (see below) - no config file to hand-write,
-  no database to prepare first, safe to re-run.
-- **On-device safety limits, not just server-side policy.** `ActuatorController`
-  enforces cooldown/max-run ordering for every relay function directly on the
-  device, so a bad or delayed config can't leave a pump or heater running
-  unbounded even during an outage.
-- **A predictable, bounded rule model, not a hidden DSL.** See "Automation rule
-  engine" above - fold-based AND/OR conditions and a Zone/Unit/Farm/Global rule
-  hierarchy cover most real automation needs without becoming a general rule
-  engine to learn.
-- **Battery-powered devices as a first-class case**, not an afterthought -
-  battery telemetry, low-battery alerting and deep sleep for sensor-only nodes
-  are built in, not bolted on.
-- **A tiered storage strategy that scales down as well as up.** Plain MySQL/
-  MariaDB for a small deployment, TimescaleDB hypertables for a large one -
-  the same schema and queries either way, chosen by one config value.
-- **A clear vertical focus.** Agrumy isn't trying to be a general home-automation
-  hub - every model and rule is shaped around greenhouse/citrus micro-climate
-  and irrigation specifically, not a generic "IoT platform."
-- **Crop-specific configuration templates.** A Horticulture Catalog (Crop/Fruit/
-  Hydroponic/Perma entries, each a recommended AirTemp/SoilTemp/Humidity/
-  Moisture/Light range, and Crop entries additionally broken down by BBCH
-  growth stage) lets a new zone start from agronomy know-how already built
-  into the product - `POST .../Zone/ApplyHorticultureCatalog` turns a chosen
-  catalog entry straight into a starter set of threshold rules, skipping any
-  that don't fit under the zone's rule-count cap rather than failing outright.
-  A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
-  day threshold + one night threshold for a plain on/off function.
 
 ## Self-hosted install
 
