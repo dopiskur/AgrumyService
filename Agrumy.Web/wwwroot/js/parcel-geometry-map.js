@@ -38,9 +38,12 @@ document.addEventListener('DOMContentLoaded', function () {
         version: '1.3.0',
         attribution: 'ARKOD &copy; APPRRR/NIPP',
     });
-    // "ARKOD karta" base option layers the same street tiles under the boundary overlay, so picking it doesn't leave a blank map.
+    // "ARKOD karta" base option layers the boundary overlay over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map, not just OSM streets with thin lines.
     const arkodBaseLayer = L.layerGroup([
-        L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        }),
         arkodWmsLayer,
     ]);
     L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);

@@ -161,9 +161,12 @@ function initSatelliteMap(mapId) {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
-    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - under the same street tiles so picking it doesn't leave a blank map.
+    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map.
     const arkodBaseLayer = L.layerGroup([
-        L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        }),
         L.tileLayer.wms('https://servisi.apprrr.hr/NIPP/wms', { layers: 'hr.land_parcels', format: 'image/png', transparent: true, version: '1.3.0', attribution: 'ARKOD &copy; APPRRR/NIPP' }),
     ]);
     L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);

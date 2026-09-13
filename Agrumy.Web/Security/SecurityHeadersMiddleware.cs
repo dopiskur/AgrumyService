@@ -14,8 +14,9 @@ namespace Agrumy.Web.Security
             // Per-request nonce (not unsafe-inline) for script-src - views read it via HttpContext.CspNonce() and stamp it on every legitimate inline <script>, so an injected script (also "inline") is rejected for lacking it. style-src stays unsafe-inline for now (lower-severity, out of scope here).
             string nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
             context.Items[CspNonceExtensions.ItemKey] = nonce;
+            // img-src/connect-src carry the ARKOD WMS (servisi.apprrr.hr) and Esri World Imagery (server.arcgisonline.com) map tile hosts - parcel-geometry-map.js/satellite-map.js hit these directly from the browser, not through Agrumy.Api's TileProxy.
             context.Response.Headers["Content-Security-Policy"] =
-                $"default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+                $"default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://servisi.apprrr.hr https://server.arcgisonline.com; font-src 'self'; connect-src 'self' https://servisi.apprrr.hr; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
             await next(context);
         }
