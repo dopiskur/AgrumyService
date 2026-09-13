@@ -41,7 +41,7 @@
 @if (canManage || isReadOnly)
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
             <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Unit, TargetId = Model.Unit.IDDeviceFarmUnit!.Value }" />
         }
@@ -58,7 +58,7 @@
             <input type="hidden" name="UnitID" value="@Model.Unit.IDDeviceFarmUnit" />
             <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
         </form>
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
             <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitWifiUpdateModal">
                 <i class="bi bi-wifi"></i> Switch network
@@ -69,7 +69,10 @@
                     <i class="bi bi-signpost-split"></i> Migrate zone
                 </button>
             }
-            <input type="search" class="form-control form-control-sm zone-search" data-filter-target="zoneCubes" placeholder="Search zones..." style="max-width:12rem" aria-label="Search zones" />
+        }
+        <input type="search" class="form-control form-control-sm zone-search" data-filter-target="zoneCubes" placeholder="Search zones..." style="max-width:12rem" aria-label="Search zones" />
+        @if (canManage || isReadOnly)
+        {
             <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitConfigModal">
                 <i class="bi bi-gear"></i> Unit configuration
             </button>
@@ -78,12 +81,8 @@
             </button>
             <form asp-action="UnitDelete" method="post" data-confirm="Delete this unit and every zone in it? Devices are unassigned, not deleted.">
                 <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit"><i class="bi bi-trash"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit" disabled="@isReadOnly"><i class="bi bi-trash"></i></button>
             </form>
-        }
-        else if (Model.Unit.AreaSquareMeters is double unitAreaM2)
-        {
-            <span class="text-secondary small">Area: @unitAreaM2.ToString("0.##") m&sup2;</span>
         }
     </div>
     @if (Model.DiscoveredDevices.Count > 0)
@@ -116,7 +115,7 @@
     </div>
 </div>
 
-@if (hasAnyRole(RoleNames.DeviceManagers))
+@if (canManage || isReadOnly)
 {
     <div class="modal fade" id="unitConfigModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -133,7 +132,7 @@
                             <input type="text" id="unitConfigName" name="deviceFarmUnitName" class="form-control" value="@Model.Unit.DeviceFarmUnitName" required maxlength="100" />
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-outline-secondary">Save</button>
+                            <button type="submit" class="btn btn-outline-secondary" disabled="@isReadOnly">Save</button>
                         </div>
                     </form>
 
@@ -144,7 +143,7 @@
                             <input type="number" id="unitConfigArea" step="any" min="0" name="areaSquareMeters" value="@Model.Unit.AreaSquareMeters" class="form-control" placeholder="not set" />
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-outline-secondary">Save</button>
+                            <button type="submit" class="btn btn-outline-secondary" disabled="@isReadOnly">Save</button>
                         </div>
                     </form>
 
@@ -163,7 +162,7 @@
                             </div>
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-outline-secondary">Save</button>
+                            <button type="submit" class="btn btn-outline-secondary" disabled="@isReadOnly">Save</button>
                         </div>
                     </form>
 
@@ -179,7 +178,7 @@
                         <input type="hidden" id="unitConfigLatitude" name="latitude" value="@Model.Unit.Latitude" />
                         <input type="hidden" id="unitConfigLongitude" name="longitude" value="@Model.Unit.Longitude" />
                         <div class="text-end mt-2">
-                            <button type="submit" class="btn btn-outline-secondary">Save location</button>
+                            <button type="submit" class="btn btn-outline-secondary" disabled="@isReadOnly">Save location</button>
                         </div>
                     </form>
                 </div>
@@ -205,7 +204,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Zone</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Zone</button>
                     </div>
                 </form>
             </div>
@@ -240,7 +239,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Switch network</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Switch network</button>
                 </div>
             </form>
         </div>
@@ -310,7 +309,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Migrate</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Migrate</button>
                     </div>
                 </form>
             </div>

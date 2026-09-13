@@ -18,7 +18,7 @@
         <form asp-action="LoRaPrivateKeyGenerate" method="post"
               data-confirm="This immediately invalidates the device's current key - it will be rejected until re-provisioned with the new one. Continue?">
             <input type="hidden" name="idDevice" value="@Model" />
-            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-key"></i> Generate new key</button>
+            <button type="submit" class="btn btn-sm btn-primary" disabled="@(ViewBag.IsReadOnly is true)"><i class="bi bi-key"></i> Generate new key</button>
         </form>
     </div>
 </div>

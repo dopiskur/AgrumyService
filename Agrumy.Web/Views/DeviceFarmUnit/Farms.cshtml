@@ -17,7 +17,7 @@
 }
 
 @* Manual actuate/Automation rules/Scan (sole greenhouse only) and "Add Greenhouse complex" share one row so they line up instead of stacking as two separately-aligned rows - it stays immediately visible above the cards regardless (roadmap correction - it used to sit below them, which meant scrolling past every existing greenhouse/unit cube just to find where to add a new one). Open-Field farms are added on their own page (D1), not here. *@
-@if (Model.Farms.Count == 1 || canManage)
+@if (Model.Farms.Count == 1 || canManage || isReadOnly)
 {
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -38,7 +38,7 @@
                 </form>
             }
         </div>
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
             <button type="button" class="btn btn-sm btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#farmAddModal">
                 <i class="bi bi-plus-lg"></i> Add Greenhouse complex
@@ -47,7 +47,7 @@
     </div>
 }
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     <div class="modal fade" id="farmAddModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -72,7 +72,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Greenhouse complex</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Add Greenhouse complex</button>
                     </div>
                 </form>
             </div>
@@ -107,7 +107,7 @@
                             <option value="@f.IDDeviceFarm">@f.DeviceFarmName</option>
                         }
                     </select>
-                    <button type="button" id="farmDeleteMigrateButton" class="btn btn-outline-primary btn-sm mb-3">Migrate units, don't delete</button>
+                    <button type="button" id="farmDeleteMigrateButton" class="btn btn-outline-primary btn-sm mb-3" disabled="@isReadOnly">Migrate units, don't delete</button>
                     <hr />
                 </div>
                 <p class="text-danger">
@@ -118,7 +118,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="farmDeleteConfirmButton" class="btn btn-danger">Delete everything</button>
+                <button type="button" id="farmDeleteConfirmButton" class="btn btn-danger" disabled="@isReadOnly">Delete everything</button>
             </div>
         </div>
     </div>

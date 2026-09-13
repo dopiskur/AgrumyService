@@ -1,14 +1,18 @@
 @model DeviceCommandButtonsViewModel
+@{
+    // Shared by every page that includes this partial - relies on the parent view's own ViewBag (partials inherit it by default), same convention as the rest of the Global-reader "visible but disabled" pattern. These commands run immediately on click (no confirmation dialog to safely explore), so disabling is the only option - hiding them would violate "Global reader reads everything".
+    bool isReadOnly = ViewBag.IsReadOnly is true;
+}
 <span class="btn-group flex-shrink-0" role="group">
-    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command disabled="@isReadOnly"
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.Reboot)">
         <i class="bi bi-arrow-clockwise"></i> Reboot
     </button>
-    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command disabled="@isReadOnly"
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ForceOTA)">
         <i class="bi bi-cloud-arrow-down"></i> Force OTA Check
     </button>
-    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command disabled="@isReadOnly"
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ForceConfigSync)">
         <i class="bi bi-arrow-repeat"></i> Force Config Sync
     </button>

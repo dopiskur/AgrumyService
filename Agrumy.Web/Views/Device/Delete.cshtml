@@ -35,7 +35,7 @@
 
         <form asp-action="DeleteConfirm">
             <input type="hidden" asp-for="IDDevice" />
-            <input type="submit" value="Delete" class="btn btn-danger" />
+            <input type="submit" value="Delete" class="btn btn-danger" disabled="@(ViewBag.IsReadOnly is true)" />
             <a asp-action="Fleet" class="btn btn-outline-secondary">Back to List</a>
         </form>
     </div>

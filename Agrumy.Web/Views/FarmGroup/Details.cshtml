@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = Model.Group.Name;
     bool canManage = RoleNames.DeviceManagers.Split(',').Any(User.IsInRole);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     Func<ParcelAreaSummaryViewModel, string, string> areaLine = (summary, label) =>
     {
         if (summary.TotalCount == 0)
@@ -17,10 +18,10 @@
 
 <div class="d-flex align-items-center gap-2 mb-3">
     <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Farm Groups</a>
-    @if (canManage)
+    @if (canManage || isReadOnly)
     {
         <form asp-action="Delete" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="ms-auto">
-            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Delete this farm group? Member farms are not deleted, only unassigned.">
+            <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" data-confirm="Delete this farm group? Member farms are not deleted, only unassigned.">
                 <i class="bi bi-trash"></i> Delete Group
             </button>
         </form>
@@ -36,11 +37,11 @@
         <div class="card h-100">
             <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-house-door me-1"></i> Greenhouse</h5></div>
             <div class="card-body">
-                @if (canManage)
+                @if (canManage || isReadOnly)
                 {
                     <form asp-action="CreateGreenhouseFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
                         <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Greenhouse farm name" required maxlength="100" />
-                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Create</button>
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Create</button>
                     </form>
                     @if (Model.UngroupedGreenhouseFarms.Count > 0)
                     {
@@ -52,7 +53,7 @@
                                     <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                 }
                             </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add</button>
                         </form>
                     }
                 }
@@ -67,10 +68,10 @@
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <a asp-controller="DeviceFarmUnit" asp-action="Farms">@farm.DeviceFarmName</a>
-                                @if (canManage)
+                                @if (canManage || isReadOnly)
                                 {
                                     <form asp-action="RemoveFarm" asp-route-id="@Model.Group.IDFarmGroup" asp-route-idFarm="@farm.IDDeviceFarm" method="post">
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove from group"><i class="bi bi-x-lg"></i></button>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly" title="Remove from group"><i class="bi bi-x-lg"></i></button>
                                     </form>
                                 }
                             </li>
@@ -85,11 +86,11 @@
         <div class="card h-100">
             <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-flower1 me-1"></i> Crop</h5></div>
             <div class="card-body">
-                @if (canManage)
+                @if (canManage || isReadOnly)
                 {
                     <form asp-action="CreateCropFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
                         <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Crop farm name" required maxlength="100" />
-                        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Create</button>
+                        <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Create</button>
                     </form>
                     @if (Model.UngroupedCropFarms.Count > 0)
                     {
@@ -101,7 +102,7 @@
                                     <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                 }
                             </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add</button>
                         </form>
                     }
                 }
@@ -120,10 +121,10 @@
                                     <a asp-controller="FarmOpenfield" asp-action="CropSeasons" class="small me-2">Crop</a>
                                     <a asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="small me-2">Parcels</a>
                                     <a asp-controller="FarmOpenfield" asp-action="FarmSatellite" asp-route-idFarm="@farm.IDDeviceFarm" class="small me-2">Satellite</a>
-                                    @if (canManage)
+                                    @if (canManage || isReadOnly)
                                     {
                                         <form asp-action="RemoveFarm" asp-route-id="@Model.Group.IDFarmGroup" asp-route-idFarm="@farm.IDDeviceFarm" method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove from group"><i class="bi bi-x-lg"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly" title="Remove from group"><i class="bi bi-x-lg"></i></button>
                                         </form>
                                     }
                                 </span>

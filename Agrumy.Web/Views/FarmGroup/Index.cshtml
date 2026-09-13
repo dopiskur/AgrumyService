@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Farm Groups";
     bool canManage = RoleNames.DeviceManagers.Split(',').Any(User.IsInRole);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <p class="text-secondary">
@@ -10,11 +11,11 @@
     Crop and Fruit sections.
 </p>
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     <form asp-action="Create" method="post" class="d-flex gap-2 mb-3">
         <input type="text" name="name" class="form-control form-control-sm" placeholder="New farm group name" required maxlength="100" style="max-width:18rem" />
-        <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Farm Group</button>
+        <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Farm Group</button>
     </form>
 }
 
