@@ -129,7 +129,7 @@ else
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th>Farm</th>
+                    <th>Farm Group</th>
                     <th>Parcel</th>
                     <th>Boundary</th>
                     <th>Zone</th>
@@ -141,7 +141,34 @@ else
                 @foreach (var row in Model.Rows)
                 {
                     <tr>
-                        <td>@row.FarmName</td>
+                        <td>
+                            @if (row.IdFarmGroup is int idGroup)
+                            {
+                                <a asp-controller="FarmGroup" asp-action="Details" asp-route-id="@idGroup">@row.FarmGroupName</a>
+                            }
+                            else if (!canManage)
+                            {
+                                <span class="text-secondary">Unassigned</span>
+                            }
+                            else if (Model.AvailableFarmGroups.Count == 0)
+                            {
+                                <span class="text-secondary small">No Farm Groups yet - <a asp-controller="FarmGroup" asp-action="Index">create one</a></span>
+                            }
+                            else
+                            {
+                                <form asp-action="AssignFarmToGroup" method="post" class="d-flex gap-1">
+                                    <input type="hidden" name="idFarm" value="@row.IdFarm" />
+                                    <select name="idFarmGroup" class="form-select form-select-sm" style="max-width:10rem" required>
+                                        <option value="" selected disabled>Choose group</option>
+                                        @foreach (var g in Model.AvailableFarmGroups)
+                                        {
+                                            <option value="@g.IDFarmGroup">@g.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>
+                                </form>
+                            }
+                        </td>
                         <td>@row.Parcel.FarmParcelName</td>
                         <td>
                             <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@row.Parcel.IDFarmParcel" title="Boundary and zone map">
@@ -209,7 +236,7 @@ else
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th>Farm</th>
+                    <th>Farm Group</th>
                     <th>Unit</th>
                     <th>Area</th>
                 </tr>
@@ -218,7 +245,38 @@ else
                 @foreach (var row in Model.GreenhouseRows)
                 {
                     <tr>
-                        <td>@row.FarmName</td>
+                        <td>
+                            @if (row.IdFarmGroup is int idGroup)
+                            {
+                                <a asp-controller="FarmGroup" asp-action="Details" asp-route-id="@idGroup">@row.FarmGroupName</a>
+                            }
+                            else if (row.IdFarm is not int idFarm)
+                            {
+                                <span class="text-secondary">—</span>
+                            }
+                            else if (!canManage)
+                            {
+                                <span class="text-secondary">Unassigned</span>
+                            }
+                            else if (Model.AvailableFarmGroups.Count == 0)
+                            {
+                                <span class="text-secondary small">No Farm Groups yet - <a asp-controller="FarmGroup" asp-action="Index">create one</a></span>
+                            }
+                            else
+                            {
+                                <form asp-action="AssignFarmToGroup" method="post" class="d-flex gap-1">
+                                    <input type="hidden" name="idFarm" value="@idFarm" />
+                                    <select name="idFarmGroup" class="form-select form-select-sm" style="max-width:10rem" required>
+                                        <option value="" selected disabled>Choose group</option>
+                                        @foreach (var g in Model.AvailableFarmGroups)
+                                        {
+                                            <option value="@g.IDFarmGroup">@g.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>
+                                </form>
+                            }
+                        </td>
                         <td>
                             <a asp-controller="DeviceFarmUnit" asp-action="Zones" asp-route-idDeviceFarmUnit="@row.Unit.IDDeviceFarmUnit">@row.Unit.DeviceFarmUnitName</a>
                         </td>

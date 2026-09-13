@@ -9,10 +9,12 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmParcelZone> Zones { get; init; } = [];
     }
 
-    /// One row on FarmOpenfield/ParcelsRegistry.cshtml - a parcel (or one of its split zones) plus which farm it belongs to, since the registry flattens every farm into one list.
+    /// One row on FarmOpenfield/ParcelsRegistry.cshtml - a parcel (or one of its split zones) plus its owning farm's Farm Group (Farm itself is an internal grouping detail now, not shown - the row exposes the Group instead, or lets the admin assign one via IdFarm when null).
     public class ParcelRegistryRowViewModel
     {
-        public required string FarmName { get; init; }
+        public required int IdFarm { get; init; }
+        public int? IdFarmGroup { get; init; }
+        public string? FarmGroupName { get; init; }
         public required FarmParcel Parcel { get; init; }
         public required FarmParcelZone Zone { get; init; }
     }
@@ -33,10 +35,12 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmParcelGroupCrop> Groups { get; init; } = [];
     }
 
-    /// One Greenhouse DeviceFarmUnit row on the unified Parcels page - a Unit isn't a FarmParcel, but stands in for "the Greenhouse parcel type" there since it's the closest existing concept with an owning Farm and (now) its own AreaHectares.
+    /// One Greenhouse DeviceFarmUnit row on the unified Parcels page - a Unit isn't a FarmParcel, but stands in for "the Greenhouse parcel type" there since it's the closest existing concept with an owning Farm and (now) its own AreaHectares. IdFarm is null for a farm-less Unit (valid state), in which case there's nothing to assign to a group.
     public class GreenhouseUnitRowViewModel
     {
-        public required string FarmName { get; init; }
+        public int? IdFarm { get; init; }
+        public int? IdFarmGroup { get; init; }
+        public string? FarmGroupName { get; init; }
         public required DeviceFarmUnit Unit { get; init; }
     }
 
@@ -57,6 +61,8 @@ namespace Agrumy.Web.ViewModels
         public IList<GreenhouseUnitRowViewModel> GreenhouseRows { get; init; } = [];
         public required ParcelAreaSummaryViewModel CropAreaSummary { get; init; }
         public required ParcelAreaSummaryViewModel GreenhouseAreaSummary { get; init; }
+        /// Options for the inline "Assign" dropdown on rows whose farm has no Farm Group yet.
+        public IList<FarmGroup> AvailableFarmGroups { get; init; } = [];
     }
 
     /// Drives FarmOpenfield/CropSeasons.cshtml - every sowing across every Open-Field farm, plus what "New sowing" needs to build one (farm picker, catalog-driven crop/variety picker).

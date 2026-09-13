@@ -389,6 +389,8 @@ namespace Agrumy.Web.Controllers.View
         {
             IList<DeviceFarm> allFarms = await api.DeviceFarmsGet();
             IList<DeviceFarm> openfieldFarms = allFarms.Where(f => f.FarmType == FarmType.OpenField).ToList();
+            IList<FarmGroup> farmGroups = await api.FarmGroupsGet();
+            var farmGroupNames = farmGroups.ToDictionary(g => g.IDFarmGroup!.Value, g => g.Name ?? "");
             var rows = new List<ParcelRegistryRowViewModel>();
             var farmOptions = new List<ParcelRegistryFarmOptionViewModel>();
             var groupSections = new List<ParcelGroupSectionViewModel>();
@@ -398,6 +400,7 @@ namespace Agrumy.Web.Controllers.View
             foreach (DeviceFarm farm in openfieldFarms)
             {
                 int idFarm = farm.IDDeviceFarm!.Value;
+                string? farmGroupName = farm.FarmGroupID is int idGroup ? farmGroupNames.GetValueOrDefault(idGroup) : null;
                 farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarm = idFarm });
                 IList<FarmParcel> parcels = await api.FarmParcelsGet(idFarm);
                 foreach (FarmParcel parcel in parcels)
@@ -410,7 +413,7 @@ namespace Agrumy.Web.Controllers.View
                     }
                     foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
                     {
-                        rows.Add(new ParcelRegistryRowViewModel { FarmName = farm.DeviceFarmName ?? "", Parcel = parcel, Zone = zone });
+                        rows.Add(new ParcelRegistryRowViewModel { IdFarm = idFarm, IdFarmGroup = farm.FarmGroupID, FarmGroupName = farmGroupName, Parcel = parcel, Zone = zone });
                     }
                 }
                 groupSections.Add(new ParcelGroupSectionViewModel
@@ -423,9 +426,19 @@ namespace Agrumy.Web.Controllers.View
             }
 
             IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
-            var greenhouseFarms = allFarms.Where(f => f.FarmType == FarmType.Greenhouse).ToDictionary(f => f.IDDeviceFarm!.Value, f => f.DeviceFarmName ?? "");
+            var greenhouseFarms = allFarms.Where(f => f.FarmType == FarmType.Greenhouse).ToDictionary(f => f.IDDeviceFarm!.Value, f => f);
             var greenhouseRows = units
-                .Select(u => new GreenhouseUnitRowViewModel { FarmName = u.DeviceFarmID is int idUnitFarm && greenhouseFarms.TryGetValue(idUnitFarm, out var name) ? name : "(unassigned)", Unit = u })
+                .Select(u =>
+                {
+                    DeviceFarm? unitFarm = u.DeviceFarmID is int idUnitFarm ? greenhouseFarms.GetValueOrDefault(idUnitFarm) : null;
+                    return new GreenhouseUnitRowViewModel
+                    {
+                        IdFarm = unitFarm?.IDDeviceFarm,
+                        IdFarmGroup = unitFarm?.FarmGroupID,
+                        FarmGroupName = unitFarm?.FarmGroupID is int idUnitGroup ? farmGroupNames.GetValueOrDefault(idUnitGroup) : null,
+                        Unit = u,
+                    };
+                })
                 .ToList();
             int greenhouseUnitsWithArea = units.Count(u => u.AreaHectares != null);
             double greenhouseAreaHa = units.Where(u => u.AreaHectares != null).Sum(u => u.AreaHectares!.Value);
@@ -438,7 +451,17 @@ namespace Agrumy.Web.Controllers.View
                 GreenhouseRows = greenhouseRows,
                 CropAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
                 GreenhouseAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = greenhouseAreaHa, WithAreaCount = greenhouseUnitsWithArea, TotalCount = units.Count },
+                AvailableFarmGroups = farmGroups,
             });
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> AssignFarmToGroup(int idFarm, int idFarmGroup)
+        {
+            await api.FarmAssignToGroup(idFarm, idFarmGroup);
+            return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         // ---- Parcel Groups (FarmParcelGroupCrop) management, from the ParcelsRegistry page -----------------------------------
