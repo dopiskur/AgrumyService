@@ -176,7 +176,7 @@ function initSatelliteMap(mapId) {
 
             const showRaster = z.hasData && z.sceneId && (!onlyReliable || z.reliable);
             if (showRaster && zoneBounds) {
-                const opacity = z.reliable ? 1 : 0.5; // unreliable (below MinValidPixelPercent) still shown, faded rather than hidden - D4's "never disappears"
+                const opacity = z.reliable ? 1 : 0.75; // unreliable (below MinValidPixelPercent) still shown, faded rather than hidden - D4's "never disappears"
                 const indexName = SATELLITE_INDEX_NAMES[parseInt(indexValue, 10)];
                 if (SATELLITE_PALETTE_STOPS[indexName]) {
                     // Scalar index - fetch the raw grid and palette-render it in the browser instead of asking the server for a pre-rendered PNG.
