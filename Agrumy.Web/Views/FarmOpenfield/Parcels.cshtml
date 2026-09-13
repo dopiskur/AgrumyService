@@ -72,7 +72,7 @@
                     <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                 </form>
-                <form asp-action="CropDelete" method="post" onsubmit="return confirm('Delete this sowing?');" class="ms-auto">
+                <form asp-action="CropDelete" method="post" data-confirm="Delete this sowing?" class="ms-auto">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete sowing"><i class="bi bi-trash"></i></button>
                 </form>
@@ -143,7 +143,7 @@
                         </div>
                     }
                     <div class="col-12">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this sowing? Its zones become free again.');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Close this sowing? Its zones become free again.">
                             <i class="bi bi-flag-fill"></i> Close sowing
                         </button>
                     </div>
@@ -270,7 +270,7 @@
                     </div>
                 </form>
             </details>
-            <script>
+            <script nonce="@Context.CspNonce()">
                 (function () {
                     var select = document.getElementById('entryTypeSelect');
                     if (!select) return;
@@ -304,7 +304,7 @@
                             <td>
                                 @if (canManage)
                                 {
-                                    <form asp-action="FieldLogEntryDelete" method="post" class="d-inline" onsubmit="return confirm('Delete this entry?');">
+                                    <form asp-action="FieldLogEntryDelete" method="post" class="d-inline" data-confirm="Delete this entry?">
                                         <input type="hidden" name="idFieldLogEntry" value="@entry.IDFieldLogEntry" />
                                         <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>

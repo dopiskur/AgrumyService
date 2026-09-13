@@ -56,7 +56,7 @@
                                     <form asp-action="Delete" method="post" class="d-inline">
                                         <input type="hidden" name="type" value="@type" />
                                         <input type="hidden" name="id" value="@entry.ID" />
-                                        <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Delete this catalog entry?');" data-action="delete"><i class="bi bi-trash"></i></button>
+                                        <button type="submit" class="btn btn-outline-danger" title="Delete" data-confirm="Delete this catalog entry?" data-action="delete"><i class="bi bi-trash"></i></button>
                                     </form>
                                 }
                             </div>

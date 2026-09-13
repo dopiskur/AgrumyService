@@ -67,7 +67,7 @@
 {
 if (running)
 {
-    <form asp-action="Stop" method="post" class="mb-3" onsubmit="return confirm('Stop this simulation now? Every member device returns to its real readings immediately.');">
+    <form asp-action="Stop" method="post" class="mb-3" data-confirm="Stop this simulation now? Every member device returns to its real readings immediately.">
         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
         <button type="submit" class="btn btn-outline-danger" data-action="stop">Stop simulation</button>
     </form>
@@ -185,7 +185,7 @@ else
                             </div>
                         </div>
                     </details>
-                    <form asp-action="SessionGroupDelete" method="post" class="d-inline" onsubmit="return confirm('Remove this group? Every member device it added returns to its real readings.');">
+                    <form asp-action="SessionGroupDelete" method="post" class="d-inline" data-confirm="Remove this group? Every member device it added returns to its real readings.">
                         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
                         <input type="hidden" name="idGroup" value="@g.IDSimulationGroup" />
                         <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="delete">Remove</button>

@@ -103,7 +103,7 @@
                             }
                             <form asp-action="ParcelGroupDelete" method="post" class="d-inline ms-2">
                                 <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this parcel group?');"><i class="bi bi-trash"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Delete this parcel group?"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </details>

@@ -125,7 +125,7 @@
                                     @if (rule.TargetPercent is int targetPercent) { <span class="badge text-bg-info">&rarr; @targetPercent%</span> }
                                     - @Html.Raw(SummarizeTree(rule.Root))
                                 </span>
-                                <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                                <form asp-action="@Model.DeleteActionName" method="post" data-confirm="Remove this rule?">
                                     <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
                                     @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
                                     {
@@ -230,7 +230,7 @@
                             @if (rule.IsSafetyRule) { <span class="badge text-bg-warning">safety</span> }
                             - @rule.NotificationSubject - @Html.Raw(SummarizeTree(rule.Root))
                         </span>
-                        <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                        <form asp-action="@Model.DeleteActionName" method="post" data-confirm="Remove this rule?">
                             <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
                             @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
                             {

@@ -246,7 +246,7 @@
                             <input type="hidden" name="mode" value="@FirmwareSyncMode.PullIncremental" />
                             <button type="submit" class="btn btn-outline-primary" title="Download only releases the local store does not have yet"><i class="bi bi-cloud-download"></i> Pull from GitHub (incremental)</button>
                         </form>
-                        <form asp-action="Sync" method="post" onsubmit="return confirm('Delete every locally stored firmware file and download all releases again?');">
+                        <form asp-action="Sync" method="post" data-confirm="Delete every locally stored firmware file and download all releases again?">
                             <input type="hidden" name="mode" value="@FirmwareSyncMode.PullFull" />
                             <button type="submit" class="btn btn-outline-primary" title="Wipe the local store first, then download every release"><i class="bi bi-cloud-download-fill"></i> Pull from GitHub (full rebuild)</button>
                         </form>
@@ -340,7 +340,7 @@
                             <td>
                                 @if (!isReadOnly)
                                 {
-                                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Remove this build from the catalog@(f.Source == FirmwareSource.Local ? " and delete the stored file" : "")?');">
+                                    <form asp-action="Delete" method="post" class="d-inline" data-confirm="Remove this build from the catalog@(f.Source == FirmwareSource.Local ? " and delete the stored file" : "")?">
                                         <input type="hidden" name="idDeviceFirmware" value="@f.IDDeviceFirmware" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
                                     </form>

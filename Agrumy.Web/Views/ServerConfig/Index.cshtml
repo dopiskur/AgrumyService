@@ -981,7 +981,7 @@
     <script src="~/js/archive-settings.js"></script>
     <script src="~/js/webhook-ssrf-allowlist.js"></script>
     <script src="~/js/live-refresh.js"></script>
-    <script>
+    <script nonce="@Context.CspNonce()">
         document.addEventListener('DOMContentLoaded', function () {
             startLiveRefresh({
                 url: '@Url.Action("Health")',
