@@ -439,7 +439,7 @@ Satellite imagery (Sentinel-2 via the Copernicus Data Space Ecosystem by default
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `GET /api/Arkod/Lookup` | JWT | Look up a parcel's registry geometry by its JPAID from the local GeoPackage mirror (503 if none has been synced/uploaded yet) |
+| `GET /api/Arkod/Lookup` | JWT | Look up a parcel's registry geometry by its ARKOD id from the local GeoPackage mirror (503 if none has been synced/uploaded yet) |
 | `POST /api/Arkod/GeoPackage/Upload` | Global admin | Manually upload a `.gpkg` mirror (offline-deployment fallback, up to ~1.2 GB) |
 | `POST /api/Arkod/GeoPackage/SyncNow` | Global admin | Run the daily sync job's HEAD-then-conditional-GET check immediately instead of waiting for its next tick |
 
