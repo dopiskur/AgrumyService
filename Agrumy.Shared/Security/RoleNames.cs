@@ -29,9 +29,22 @@ namespace Agrumy.Shared.Security
             GlobalDataReader, TenantDataReader, SimulationAdministrator,
         };
 
-        /// The role picker's checkbox list - minus the five Tenant-scoped roles when TenantManagementEnabled is off, since a single-organization deployment has no use for a role that only matters across multiple organizations.
-        public static IReadOnlyList<string> Selectable(bool tenantManagementEnabled) =>
-            tenantManagementEnabled ? All : All.Where(r => !r.StartsWith("Tenant", StringComparison.Ordinal)).ToList();
+        /// Every role name a Tenant admin may grant - Global-* roles are a Global-admin-only power, regardless of which organization that Global admin themself belongs to (a Global admin isn't otherwise tenant-scoped).
+        public static readonly IReadOnlyList<string> TenantScopedGrantableRoles = new[]
+        {
+            TenantAdmin, TenantReader, TenantUser, TenantDevice,
+        };
+
+        /// Every role name callerIsGlobalAdmin may grant - the single source of truth shared by UserApiController's own server-side check and the Web role-picker views below, so the UI can never offer a role it can't actually save.
+        public static IReadOnlyList<string> Grantable(bool callerIsGlobalAdmin) =>
+            callerIsGlobalAdmin ? All : TenantScopedGrantableRoles;
+
+        /// The role picker's checkbox list - Grantable(callerIsGlobalAdmin), further minus the Tenant-scoped roles when TenantManagementEnabled is off (a single-organization deployment has no use for a role that only matters across multiple organizations).
+        public static IReadOnlyList<string> Selectable(bool callerIsGlobalAdmin, bool tenantManagementEnabled)
+        {
+            IEnumerable<string> roles = Grantable(callerIsGlobalAdmin);
+            return tenantManagementEnabled ? roles.ToList() : roles.Where(r => !r.StartsWith("Tenant", StringComparison.Ordinal)).ToList();
+        }
 
         // Comma-separated lists for [Authorize(Roles = ...)] - any listed role passes the attribute (the coarse gate); the precise per-organization decision happens inline via ApiControllerBase's capability helpers.
 

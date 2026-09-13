@@ -656,7 +656,7 @@ namespace Agrumy.Api.Controllers.API
                 return (new List<string> { RoleNames.TenantReader }, null); // safe default, never elevated
             }
 
-            HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();
+            HashSet<string> allowed = RoleNames.Grantable(CallerIsGlobalAdmin).ToHashSet();
             string? disallowed = wanted.FirstOrDefault(r => !allowed.Contains(r));
             return disallowed != null
                 ? (null, ForbidWith($"Not allowed to assign role \"{disallowed}\"."))
@@ -733,7 +733,7 @@ namespace Agrumy.Api.Controllers.API
             bool callerIsAdmin = CallerIsGlobalAdmin || CallerHasRole(RoleNames.TenantAdmin);
             if (value.RoleNames != null && callerIsAdmin)
             {
-                HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();
+                HashSet<string> allowed = RoleNames.Grantable(CallerIsGlobalAdmin).ToHashSet();
                 string? disallowed = value.RoleNames.FirstOrDefault(r => !allowed.Contains(r));
                 if (disallowed != null)
                 {
@@ -791,12 +791,6 @@ namespace Agrumy.Api.Controllers.API
 
         // ---- composable roles -------------------------------------
 
-        /// Every role name an Organization admin may grant - Global-* roles are a Global-admin-only power.
-        private static readonly string[] TenantScopedGrantableRoles =
-        {
-            RoleNames.TenantAdmin, RoleNames.TenantReader, RoleNames.TenantUser, RoleNames.TenantDevice,
-        };
-
         [HttpGet("UserRoles")]
         [Authorize(Roles = RoleNames.UserManagers)]
         public async Task<ActionResult<IReadOnlyList<string>>> UserRolesGet(int idUser)
@@ -828,7 +822,7 @@ namespace Agrumy.Api.Controllers.API
                 return ForbidWith("Target user belongs to a different tenant");
             }
 
-            HashSet<string> allowed = CallerIsGlobalAdmin ? RoleNames.All.ToHashSet() : TenantScopedGrantableRoles.ToHashSet();
+            HashSet<string> allowed = RoleNames.Grantable(CallerIsGlobalAdmin).ToHashSet();
             string? disallowed = value.RoleNames.FirstOrDefault(r => !allowed.Contains(r));
             if (disallowed != null)
             {

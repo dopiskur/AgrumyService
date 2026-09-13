@@ -17,6 +17,7 @@
     }
 
     <form asp-action="Index">
+        <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
         <div class="mb-3">
             <label asp-for="Login" class="visually-hidden"></label>

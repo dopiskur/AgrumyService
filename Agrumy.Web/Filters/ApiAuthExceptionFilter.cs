@@ -1,6 +1,7 @@
 using Agrumy.Web.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -17,7 +18,17 @@ namespace Agrumy.Web.Filters
             }
 
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            context.Result = new RedirectToActionResult("Index", "Login", new { sessionExpired = true });
+
+            // A live-refresh.js background poll must never see this as a redirect - fetch() follows it silently and injects the whole Login page into a page fragment. Its own JS-side 401 handler does the real navigation instead.
+            if (context.HttpContext.Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                context.Result = new UnauthorizedResult();
+                context.ExceptionHandled = true;
+                return;
+            }
+
+            context.Result = new RedirectToActionResult("Index", "Login",
+                new { sessionExpired = true, returnUrl = context.HttpContext.Request.GetEncodedPathAndQuery() });
             context.ExceptionHandled = true;
         }
     }

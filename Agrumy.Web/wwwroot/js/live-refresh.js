@@ -8,6 +8,11 @@ function startLiveRefresh({ url, applyHtml, intervalMs = 10000 }) {
         let html;
         try {
             const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (response.status === 401) {
+                // Session expired mid-poll - a real navigation (not applyHtml) so the whole page, not just this fragment, lands on Login.
+                window.location.href = '/Login?sessionExpired=true&returnUrl=' + encodeURIComponent(location.pathname + location.search);
+                return;
+            }
             if (!response.ok) {
                 return; // transient server/network hiccup - next tick tries again
             }

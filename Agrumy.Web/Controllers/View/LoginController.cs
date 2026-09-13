@@ -18,7 +18,7 @@ namespace Agrumy.Web.Controllers.View
     {
         private static readonly JsonSerializerOptions ImportJsonOptions = new(JsonSerializerDefaults.Web);
 
-        public async Task<ActionResult> Index(bool sessionExpired = false)
+        public async Task<ActionResult> Index(bool sessionExpired = false, string? returnUrl = null)
         {
             if (await BootstrapPendingSafeAsync())
             {
@@ -29,12 +29,13 @@ namespace Agrumy.Web.Controllers.View
             {
                 ModelState.AddModelError(string.Empty, "Your session expired - please sign in again.");
             }
+            ViewBag.ReturnUrl = returnUrl;
             return View(new UserLogin());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Index(UserLogin userLogin)
+        public async Task<ActionResult> Index(UserLogin userLogin, string? returnUrl = null)
         {
             UserLoginResult? result;
             IReadOnlyList<string>? roles;
@@ -68,11 +69,12 @@ namespace Agrumy.Web.Controllers.View
             if (result?.Token is null || result.RefreshToken is null || roles is null || roles.Count == 0)
             {
                 ModelState.AddModelError(string.Empty, "Invalid email/username or password.");
+                ViewBag.ReturnUrl = returnUrl;
                 return View(userLogin);
             }
 
             await SignInAsync(result, roles);
-            return RedirectToAction("Farms", "DeviceFarmUnit");
+            return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction("Farms", "DeviceFarmUnit");
         }
 
         /// Organization-import counterpart to the login form, reached via the 428 redirect (Agrumy.Shared.Models.User.MustChangePassword); GET pre-fills Login from TempData when present.
