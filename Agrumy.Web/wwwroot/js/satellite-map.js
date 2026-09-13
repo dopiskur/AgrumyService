@@ -157,10 +157,16 @@ function initSatelliteMap(mapId) {
 
     const map = L.map(mapEl);
     // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
-    L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
+    const osmLayer = L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - under the same street tiles so picking it doesn't leave a blank map.
+    const arkodBaseLayer = L.layerGroup([
+        L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+        L.tileLayer.wms('https://servisi.apprrr.hr/NIPP/wms', { layers: 'hr.land_parcels', format: 'image/png', transparent: true, version: '1.3.0', attribution: 'ARKOD &copy; APPRRR/NIPP' }),
+    ]);
+    L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);
     map.setView([45.815, 15.982], 13);
 
     let overlayLayer = L.layerGroup().addTo(map);

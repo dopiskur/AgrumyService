@@ -23,12 +23,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const map = L.map(mapEl).setView([DEFAULT_LAT, DEFAULT_LON], 15);
     // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
-    L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
+    const osmLayer = L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // ARKOD (hr.land_parcels) WMS visual overlay - public NIPP-registered service, no registration needed.
+    // ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed.
     const ARKOD_WMS_URL = 'https://servisi.apprrr.hr/NIPP/wms';
     const ARKOD_WMS_LAYER = 'hr.land_parcels';
     const arkodWmsLayer = L.tileLayer.wms(ARKOD_WMS_URL, {
@@ -38,19 +38,12 @@ document.addEventListener('DOMContentLoaded', function () {
         version: '1.3.0',
         attribution: 'ARKOD &copy; APPRRR/NIPP',
     });
-    const arkodWmsToggle = document.getElementById('arkodWmsToggle');
-    if (arkodWmsToggle) {
-        if (arkodWmsToggle.checked) {
-            arkodWmsLayer.addTo(map);
-        }
-        arkodWmsToggle.addEventListener('change', () => {
-            if (arkodWmsToggle.checked) {
-                arkodWmsLayer.addTo(map);
-            } else {
-                map.removeLayer(arkodWmsLayer);
-            }
-        });
-    }
+    // "ARKOD karta" base option layers the same street tiles under the boundary overlay, so picking it doesn't leave a blank map.
+    const arkodBaseLayer = L.layerGroup([
+        L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
+        arkodWmsLayer,
+    ]);
+    L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);
 
     const zoneColors = ['#2b8a3e', '#1971c2', '#e8590c', '#9c36b5', '#0c8599', '#c2255c'];
 
