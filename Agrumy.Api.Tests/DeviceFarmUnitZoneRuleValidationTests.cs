@@ -109,10 +109,10 @@ public class DeviceFarmUnitZoneRuleValidationTests
     }
 
     [Fact]
-    public void HorticultureRuleTemplateBuilderOutput_IsValid_SameCheckAsAHandAddedRule()
+    public void CropCatalogRuleTemplateBuilderOutput_IsValid_SameCheckAsAHandAddedRule()
     {
         // Agrumy.Rules can't be referenced from here without a project reference this test project
-        // doesn't have, so this mirrors HorticultureRuleTemplateBuilder.BuildRules' exact shape for one
+        // doesn't have, so this mirrors CropCatalogRuleTemplateBuilder.BuildRules' exact shape for one
         // entry (a single ComparisonNode leaf, Relay action, TargetPercent 100) rather than importing it -
         // the point is that shape, wherever it's built, passes the same Validate() a hand-typed rule does.
         var generated = new DeviceFarmUnitZoneRule

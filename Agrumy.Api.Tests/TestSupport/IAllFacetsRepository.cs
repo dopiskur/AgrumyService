@@ -20,7 +20,7 @@ namespace Agrumy.Api.Tests.TestSupport
         IControllerDataRepository,
         ISimulationRepository,
         IExperimentRepository,
-        IHorticultureCatalogRepository,
+        ICropCatalogEntryRepository,
         ISsrfAllowlistRepository,
         ISowingRepository,
         IFarmParcelRepository,

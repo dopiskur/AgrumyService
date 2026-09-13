@@ -1,28 +1,38 @@
 namespace Agrumy.Shared.Models
 {
-    /// Which of the four subcatalogs an entry belongs to - each backed by its own table (horticultureCatalogCrop/Perma/Hydroponic/Fruit), same row shape across all four.
-    public enum HorticultureCatalogType
+    /// Which subcatalog an entry belongs to - each backed by its own table (cropCatalogArable/Fruit/Vegetable/Industrial/Ornamental/MedicinalAndAromatic), same row shape across all six (Arable alone also gets BBCH growth stages).
+    public enum CropCatalogType
     {
-        Crop = 1,
-        Perma = 2,
-        Hydroponic = 3,
-        Fruit = 4,
+        Arable = 1,
+        Fruit = 2,
+        Vegetable = 3,
+        Industrial = 4,
+        Ornamental = 5,
+        MedicinalAndAromatic = 6,
     }
 
-    /// Display order for catalog tabs/pickers - Hydroponic before Perma intentionally, opposite of the raw enum-value order above, so nothing here may use Enum.GetValues() for display.
-    public static class HorticultureCatalogTypeDisplay
+    /// Display order for catalog tabs/pickers.
+    public static class CropCatalogTypeDisplay
     {
-        public static readonly IReadOnlyList<HorticultureCatalogType> Order =
+        public static readonly IReadOnlyList<CropCatalogType> Order =
         [
-            HorticultureCatalogType.Crop,
-            HorticultureCatalogType.Fruit,
-            HorticultureCatalogType.Hydroponic,
-            HorticultureCatalogType.Perma,
+            CropCatalogType.Arable,
+            CropCatalogType.Fruit,
+            CropCatalogType.Vegetable,
+            CropCatalogType.Industrial,
+            CropCatalogType.Ornamental,
+            CropCatalogType.MedicinalAndAromatic,
         ];
+
+        public static string DisplayName(CropCatalogType type) => type switch
+        {
+            CropCatalogType.MedicinalAndAromatic => "Medicinal & Aromatic",
+            _ => type.ToString(),
+        };
     }
 
-    /// One recommended-parameter-range entry (e.g. "Tomato", "Food forest guild", "Deep water culture lettuce") - AirTemp/SoilTemp/AirHumidity/SoilMoisture/Light ranges drive HorticultureRuleTemplateBuilder's generated starter rules when applied to a zone; SoilPH/SoilEC/Co2 are informational only (no actuator exists in RelayFunction for pH/EC dosing or CO2 injection).
-    public class HorticultureCatalogEntry
+    /// One recommended-parameter-range entry (e.g. "Wheat - Winter", "Apple", "Lavender") - AirTemp/SoilTemp/AirHumidity/SoilMoisture/Light ranges drive CropCatalogRuleTemplateBuilder's generated starter rules when applied to a zone; SoilPH/SoilEC/Co2 are informational only (no actuator exists in RelayFunction for pH/EC dosing or CO2 injection).
+    public class CropCatalogEntry
     {
         public int? ID { get; set; }
         public string Name { get; set; } = "";
@@ -47,10 +57,10 @@ namespace Agrumy.Shared.Models
         public double? Co2Min { get; set; }
         public double? Co2Max { get; set; }
 
-        // Type==Crop only (Perma/Hydroponic/Fruit entries never populate these) - variety/hybrid class identifier, free text since the convention differs per species.
+        // Type==Arable only (every other type never populates these) - variety/hybrid class identifier, free text since the convention differs per species.
         public string? ClassCode { get; set; }
         public string? PhaseDescriptionsJson { get; set; }
-        public IList<HorticultureCatalogGrowthStage> GrowthStages { get; set; } = [];
+        public IList<CropCatalogGrowthStage> GrowthStages { get; set; } = [];
     }
 
     /// BBCH principal growth stages 0-9 (Zadoks-derived) - not every stage applies to every species, e.g. maize's own BBCH monograph never defines Tillering or Booting.
@@ -68,8 +78,8 @@ namespace Agrumy.Shared.Models
         Ripening = 9,
     }
 
-    /// One BBCH stage's environmental parameters for one HorticultureCatalogEntry (Type==Crop) - DurationDaysMin/Max (counted from Sowing.StartDate) lets the app estimate which stage a sowing currently sits in.
-    public class HorticultureCatalogGrowthStage
+    /// One BBCH stage's environmental parameters for one CropCatalogEntry (Type==Arable) - DurationDaysMin/Max (counted from Sowing.StartDate) lets the app estimate which stage a sowing currently sits in.
+    public class CropCatalogGrowthStage
     {
         public int? ID { get; set; }
         public BbchGrowthStage StageNumber { get; set; }
@@ -88,7 +98,7 @@ namespace Agrumy.Shared.Models
     }
 
     /// Result of applying a catalog entry's template to a zone - RulesSkipped names any rule the zone's existing rule-count cap stopped partway through (see DeviceFarmUnitApiController.AddRuleAsync's own cap check), not a validation failure.
-    public class HorticultureCatalogApplyResult
+    public class CropCatalogApplyResult
     {
         public int RulesAdded { get; set; }
         public IList<string> RulesSkipped { get; set; } = [];

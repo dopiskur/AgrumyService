@@ -3,6 +3,7 @@ using System;
 using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Agrumy.Api.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913175503_RenameHorticultureCatalogToCropCatalog")]
+    partial class RenameHorticultureCatalogToCropCatalog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1083,12 +1086,6 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
-
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1116,7 +1113,7 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnit"));
 
-                    b.Property<double?>("AreaSquareMeters")
+                    b.Property<double?>("AreaHectares")
                         .HasColumnType("double precision");
 
                     b.Property<bool>("Deleted")
@@ -1140,19 +1137,8 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
-
                     b.Property<int?>("TenantID")
                         .HasColumnType("integer");
-
-                    b.Property<int>("UnitType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
 
                     b.Property<bool?>("ZoneEnabled")
                         .HasColumnType("boolean");

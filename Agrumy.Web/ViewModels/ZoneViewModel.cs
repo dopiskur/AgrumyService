@@ -19,10 +19,12 @@ namespace Agrumy.Web.ViewModels
         public IList<DeviceManualOverride> ManualOverrides { get; init; } = [];
 
         // Same "no controller, no section" gating as Rules/ManualOverrides above - a sensor-only zone has nothing to apply a relay-driving template to.
-        public IList<HorticultureCatalogEntry> CropCatalog { get; init; } = [];
-        public IList<HorticultureCatalogEntry> PermaCatalog { get; init; } = [];
-        public IList<HorticultureCatalogEntry> HydroponicCatalog { get; init; } = [];
-        public IList<HorticultureCatalogEntry> FruitCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> ArableCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> FruitCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> VegetableCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> IndustrialCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> OrnamentalCatalog { get; init; } = [];
+        public IList<CropCatalogEntry> MedicinalAndAromaticCatalog { get; init; } = [];
 
         public IList<DiscoveryResult> DiscoveredDevices { get; set; } = [];
         public IList<TenantWifiConfig> WifiConfigs { get; set; } = [];

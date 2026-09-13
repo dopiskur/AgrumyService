@@ -70,8 +70,8 @@ namespace Agrumy.Web.ViewModels
     {
         public IList<DeviceFarm> Farms { get; init; } = [];
         public IList<Sowing> Sowings { get; init; } = [];
-        /// HorticultureCatalogType.Crop entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
-        public IList<HorticultureCatalogEntry> CatalogCrops { get; init; } = [];
+        /// CropCatalogType.Arable entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
+        public IList<CropCatalogEntry> CatalogCrops { get; init; } = [];
         /// Keyed by IDDeviceFarm - the wizard's parcel-selection step swaps between these client-side as the Farm picker changes, same shape as CropParcelsViewModel.AvailableParcels.
         public IDictionary<int, IList<FarmParcelWithZonesViewModel>> AvailableParcelsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelWithZonesViewModel>>();
         public IDictionary<int, IList<FarmParcelGroupCrop>> ParcelGroupsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelGroupCrop>>();

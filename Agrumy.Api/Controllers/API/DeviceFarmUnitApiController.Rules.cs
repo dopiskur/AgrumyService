@@ -164,8 +164,8 @@ namespace Agrumy.Api.Controllers.API
 
         /// Reuses AddRuleAsync per generated rule (same validation/cap-check/audit as adding one rule by hand) - a catalog entry's ranges are a starting point, not guaranteed to fit if the zone is already near its rule-count cap.
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost("Zone/ApplyHorticultureCatalog")]
-        public async Task<ActionResult<HorticultureCatalogApplyResult>> ApplyHorticultureCatalog(int? idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId)
+        [HttpPost("Zone/ApplyCropCatalog")]
+        public async Task<ActionResult<CropCatalogApplyResult>> ApplyCropCatalog(int? idDeviceFarmUnitZone, CropCatalogType catalogType, int catalogId)
         {
             var (zone, error) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
             if (error != null)
@@ -173,14 +173,14 @@ namespace Agrumy.Api.Controllers.API
                 return error;
             }
 
-            HorticultureCatalogEntry? entry = await horticultureCatalogRepo.CatalogGetByIdAsync(catalogType, catalogId);
+            CropCatalogEntry? entry = await cropCatalogEntryRepo.CatalogGetByIdAsync(catalogType, catalogId);
             if (entry == null)
             {
                 return NotFound("Catalog entry not found.");
             }
 
             int zoneId = zone!.IDDeviceFarmUnitZone!.Value;
-            IList<DeviceFarmUnitZoneRule> templateRules = HorticultureRuleTemplateBuilder.BuildRules(entry, zoneId);
+            IList<DeviceFarmUnitZoneRule> templateRules = CropCatalogRuleTemplateBuilder.BuildRules(entry, zoneId);
             int existingCount = (await deviceFarmUnitRepo.RulesGetForZoneAsync(zoneId)).Count;
             int added = 0;
             var skipped = new List<string>();
@@ -198,11 +198,11 @@ namespace Agrumy.Api.Controllers.API
                 }
             }
 
-            await WriteAuditAsync("DeviceFarmUnitZone.HorticultureCatalogApplied", zone.TenantID, "DeviceFarmUnitZone", zoneId.ToString(), $"{catalogType}/{entry.Name}: {added} rule(s) added");
-            return Ok(new HorticultureCatalogApplyResult { RulesAdded = added, RulesSkipped = skipped });
+            await WriteAuditAsync("DeviceFarmUnitZone.CropCatalogApplied", zone.TenantID, "DeviceFarmUnitZone", zoneId.ToString(), $"{catalogType}/{entry.Name}: {added} rule(s) added");
+            return Ok(new CropCatalogApplyResult { RulesAdded = added, RulesSkipped = skipped });
         }
 
-        /// "Day/Night targets" preset, same AddRuleAsync reuse as ApplyHorticultureCatalog. Rejects Screen/Vent (positional, no plain on/off threshold) and a day window that isn't a proper subset of the day (0 &lt;= start &lt; end &lt;= 86400, and not the whole day - a full-day "day" window leaves no room for a night rule to ever fire).
+        /// "Day/Night targets" preset, same AddRuleAsync reuse as ApplyCropCatalog. Rejects Screen/Vent (positional, no plain on/off threshold) and a day window that isn't a proper subset of the day (0 &lt;= start &lt; end &lt;= 86400, and not the whole day - a full-day "day" window leaves no room for a night rule to ever fire).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Zone/ApplyDayNightPreset")]
         public async Task<ActionResult<DayNightPresetApplyResult>> ApplyDayNightPreset(int? idDeviceFarmUnitZone, [FromBody] DayNightTargetPresetRequest request)

@@ -2,8 +2,8 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Rules
 {
-    /// Turns one HorticultureCatalogEntry's recommended ranges into a starter set of DeviceFarmUnitZoneRule rows - a reasonable default the admin fine-tunes afterward, not a finished configuration. Only AirTemp/AirHumidity/SoilMoisture/Light convert into real rules; SoilPH/SoilEC/Co2 have no matching RelayFunction (no pH/EC dosing or CO2 injection actuator exists in this codebase) and stay informational-only on the catalog entry itself.
-    public static class HorticultureRuleTemplateBuilder
+    /// Turns one CropCatalogEntry's recommended ranges into a starter set of DeviceFarmUnitZoneRule rows - a reasonable default the admin fine-tunes afterward, not a finished configuration. Only AirTemp/AirHumidity/SoilMoisture/Light convert into real rules; SoilPH/SoilEC/Co2 have no matching RelayFunction (no pH/EC dosing or CO2 injection actuator exists in this codebase) and stay informational-only on the catalog entry itself.
+    public static class CropCatalogRuleTemplateBuilder
     {
         // Same fixed hysteresis-per-metric convention ServerConfig's own hysteresis defaults use - a generated rule is meant to be a safe starting point, not independently tuned per catalog entry.
         private const double TempHysteresis = 1.0;
@@ -11,7 +11,7 @@ namespace Agrumy.Rules
         private const double MoistureHysteresis = 5.0;
         private const double LightHysteresis = 50.0;
 
-        public static IList<DeviceFarmUnitZoneRule> BuildRules(HorticultureCatalogEntry entry, int zoneId)
+        public static IList<DeviceFarmUnitZoneRule> BuildRules(CropCatalogEntry entry, int zoneId)
         {
             var rules = new List<DeviceFarmUnitZoneRule>();
 

@@ -20,7 +20,7 @@ DELETE,api/FarmOpenfield/ParcelGroup,Global admin;Global Device;Tenant admin;Ten
 DELETE,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Firmware,Global admin
 DELETE,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
-DELETE,api/HorticultureCatalog,Global admin
+DELETE,api/CropCatalog,Global admin
 DELETE,api/SensorData,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/ServerConfig/FirmwareSsrfAllowlist/{id:int},Global admin
 DELETE,api/ServerConfig/WebhookSsrfAllowlist/{id:int},Global admin
@@ -95,6 +95,8 @@ POST,api/DeviceCommand,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/Area,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unit/Type,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unit/Location,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
@@ -108,7 +110,7 @@ POST,api/DeviceFarmUnit/Unit/ManualActuate,Global admin;Global Device;Tenant adm
 POST,api/DeviceFarmUnit/Unit/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ApplyDayNightPreset,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Zone/ApplyCropCatalog,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/ManualActuate/Stop,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Zone/Planting/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
@@ -148,7 +150,7 @@ POST,api/Firmware/Sync,Global admin
 POST,api/Firmware/Upload,Global admin
 POST,api/Firmware/UploadZip,Global admin
 POST,api/Gateway/DeviceMapping,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/HorticultureCatalog,Global admin
+POST,api/CropCatalog,Global admin
 POST,api/RecycleBin/Device/{idDevice}/PurgeNow,Global admin
 POST,api/RecycleBin/Device/{idDevice}/Restore,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/RecycleBin/Empty,Global admin
@@ -192,7 +194,7 @@ POST,api/FarmOpenfield/Parcel/ReadyForSeason,Global admin;Global Device;Tenant a
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
-PUT,api/HorticultureCatalog,Global admin
+PUT,api/CropCatalog,Global admin
 PUT,api/ServerConfig/Accounts,Global admin
 PUT,api/ServerConfig/Alerts,Global admin
 PUT,api/ServerConfig/Arkod,Global admin
