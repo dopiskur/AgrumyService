@@ -4,6 +4,8 @@
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
     bool areaWarning = Model.Parcel.AreaHectares is double ha && ha < 0.5;
+    int idParcel = Model.Parcel.IDFarmParcel!.Value;
+    string mapId = $"satMap-Parcel-{idParcel}";
     var mapData = new
     {
         parcel = new { id = Model.Parcel.IDFarmParcel, name = Model.Parcel.FarmParcelName, geometry = Model.Parcel.GeometryGeoJson },
@@ -27,61 +29,116 @@
     <div class="alert alert-warning">@error</div>
 }
 
-<div class="card">
-    <div class="card-header d-flex align-items-center flex-wrap gap-2">
-        <h3 class="card-title mb-0">
-            @Model.Parcel.FarmParcelName
-            @if (Model.Parcel.AreaHectares is double areaHa)
-            {
-                <span class="badge @(areaWarning ? "text-bg-warning" : "text-bg-light text-dark")">@areaHa.ToString("0.##") ha</span>
-            }
-        </h3>
-        @if (areaWarning)
-        {
-            <span class="text-warning small">&lt; 0.5 ha - satelitska statistika nepouzdana na 10 m</span>
-        }
-    </div>
-    <div class="card-body">
-        <div class="form-check form-switch mb-2">
-            <input class="form-check-input" type="checkbox" id="arkodWmsToggle" checked>
-            <label class="form-check-label small" for="arkodWmsToggle">Show ARKOD parcel boundaries (APPRRR/NIPP WMS overlay)</label>
-        </div>
-        @if (canManage)
-        {
-            <div class="row g-2 mb-2 align-items-end">
-                <div class="col-auto">
-                    <label class="form-label small mb-0">Editing</label>
-                    <select id="geometryTargetSelect" class="form-select form-select-sm">
-                        <option value="parcel">Parcel outer boundary</option>
-                        @foreach (var z in Model.Zones)
-                        {
-                            <option value="zone-@z.IDFarmParcelZone">Zone: @z.FarmParcelZoneName</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <button type="button" id="geometrySaveBtn" class="btn btn-sm btn-primary"><i class="bi bi-save"></i> Save boundary</button>
-                </div>
-                <div class="col-auto">
-                    <button type="button" id="arkodLookupBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-crosshair"></i> Find ARKOD parcel by click</button>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label small mb-0">ARKOD ID</label>
-                    <input type="text" id="arkodParcelIdInput" class="form-control form-control-sm" value="@Model.Parcel.ArkodParcelId" maxlength="40" placeholder="manual entry, or use Find ARKOD parcel" />
-                </div>
-                <div class="col-auto">
-                    <button type="button" id="arkodLookupByIdBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i> Look up this ID</button>
-                </div>
+<div class="row" data-sat-role="widget">
+    <div class="col-lg-4 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    @Model.Parcel.FarmParcelName
+                    @if (Model.Parcel.AreaHectares is double areaHa)
+                    {
+                        <span class="badge @(areaWarning ? "text-bg-warning" : "text-bg-light text-dark")">@areaHa.ToString("0.##") ha</span>
+                    }
+                </h3>
+                @if (areaWarning)
+                {
+                    <span class="text-warning small">&lt; 0.5 ha - satelitska statistika nepouzdana na 10 m</span>
+                }
             </div>
-            <p class="text-secondary small">Draw or edit the selected boundary with the polygon tool in the map's top-left corner, then Save. Zone boundaries subdivide the parcel's own outer boundary and render with their own separations. "Find ARKOD parcel by click" queries the official APPRRR boundary at the point you click; "Look up this ID" instead resolves the ARKOD ID typed above against this server's own local GeoPackage mirror (Server Settings &rarr; ARKOD) - useful with no outbound internet. Either way you get a starting shape for the layer currently selected in "Editing", still yours to adjust before Save.</p>
-            <p class="text-secondary small fst-italic" id="arkodLookupStatus" hidden></p>
-        }
-        <div id="parcelGeometryMap" data-map="@System.Text.Json.JsonSerializer.Serialize(mapData)" style="height:520px;"></div>
+            <div class="card-body">
+                @if (canManage)
+                {
+                    <button type="button" class="btn btn-outline-primary w-100 mb-3" data-bs-toggle="modal" data-bs-target="#defineBoundariesModal">
+                        <i class="bi bi-vector-pen"></i> Define boundaries
+                    </button>
+                }
+
+                <div data-sat-role="root" data-scope="Parcel" data-id="@idParcel" data-can-manage="@(canManage ? "1" : "0")" hidden></div>
+
+                <select class="form-select form-select-sm mb-2" data-sat-role="index">
+                    @foreach (Agrumy.Shared.Models.SatelliteIndex index in Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>())
+                    {
+                        <option value="@((int)index)">@index</option>
+                    }
+                </select>
+                <div class="form-check form-check-inline mb-2">
+                    <input type="checkbox" class="form-check-input" id="@(mapId)-reliable" data-sat-role="onlyReliable" checked />
+                    <label class="form-check-label small" for="@(mapId)-reliable">Only reliable</label>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-sat-role="prevDate">&laquo; Previous</button>
+                    <span class="small text-secondary flex-grow-1 text-center" data-sat-role="dateLabel">No dates yet</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-sat-role="nextDate">Next &raquo;</button>
+                </div>
+                <div data-sat-role="calendar" class="mb-2"></div>
+                <p class="small text-secondary fst-italic mt-2" data-sat-role="emptyNotice" hidden>No satellite data yet for this parcel - configure the satellite module and wait for the next daily sync, or use Sync now.</p>
+                <div class="small text-secondary mt-1" data-sat-role="legend"></div>
+
+                @if (canManage)
+                {
+                    @Html.AntiForgeryToken()
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-sat-role="syncNow"><i class="bi bi-arrow-repeat"></i> Sync now</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8 mb-3">
+        <div class="card h-100">
+            <div class="card-body p-2">
+                <div id="@mapId" data-sat-role="map" style="height:620px;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="mt-3">
-    <partial name="_SatelliteMap" model="new SatelliteMapViewModel { Scope = Agrumy.Shared.Models.SatelliteMapScope.Parcel, Id = Model.Parcel.IDFarmParcel!.Value, CanManage = canManage }" />
+<div class="modal fade" id="defineBoundariesModal" tabindex="-1" aria-labelledby="defineBoundariesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="defineBoundariesModalLabel">Define boundaries - @Model.Parcel.FarmParcelName</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-2">
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="arkodWmsToggle" checked>
+                    <label class="form-check-label small" for="arkodWmsToggle">Show ARKOD parcel boundaries (APPRRR/NIPP WMS overlay)</label>
+                </div>
+                @if (canManage)
+                {
+                    <div class="row g-2 mb-2 align-items-end">
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">Editing</label>
+                            <select id="geometryTargetSelect" class="form-select form-select-sm">
+                                <option value="parcel">Parcel outer boundary</option>
+                                @foreach (var z in Model.Zones)
+                                {
+                                    <option value="zone-@z.IDFarmParcelZone">Zone: @z.FarmParcelZoneName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" id="geometrySaveBtn" class="btn btn-sm btn-primary"><i class="bi bi-save"></i> Save boundary</button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" id="arkodLookupBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-crosshair"></i> Find ARKOD parcel by click</button>
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0">ARKOD ID</label>
+                            <input type="text" id="arkodParcelIdInput" class="form-control form-control-sm" value="@Model.Parcel.ArkodParcelId" maxlength="40" placeholder="manual entry, or use Find ARKOD parcel" />
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" id="arkodLookupByIdBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i> Look up this ID</button>
+                        </div>
+                    </div>
+                    <p class="text-secondary small">Draw or edit the selected boundary with the polygon tool in the map's top-left corner, then Save. Zone boundaries subdivide the parcel's own outer boundary and render with their own separations. "Find ARKOD parcel by click" queries the official APPRRR boundary at the point you click; "Look up this ID" instead resolves the ARKOD ID typed above against this server's own local GeoPackage mirror (Server Settings &rarr; ARKOD) - useful with no outbound internet. Either way you get a starting shape for the layer currently selected in "Editing", still yours to adjust before Save.</p>
+                    <p class="text-secondary small fst-italic" id="arkodLookupStatus" hidden></p>
+                }
+                <div id="parcelGeometryMap" data-map="@System.Text.Json.JsonSerializer.Serialize(mapData)" style="height:75vh;"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <form asp-action="FarmParcelGeometrySet" method="post" id="parcelGeometryForm" class="d-none">
@@ -104,4 +161,10 @@
     <script src="~/lib/leaflet/leaflet.js"></script>
     <script src="~/lib/leaflet-geoman/dist/leaflet-geoman.min.js"></script>
     <script src="~/js/parcel-geometry-map.js"></script>
+    <script src="~/js/satellite-map.js"></script>
+    <script nonce="@Context.CspNonce()">
+        document.addEventListener('DOMContentLoaded', function () {
+            initSatelliteMap('@mapId');
+        });
+    </script>
 }

@@ -7,6 +7,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    // Inside the "Define boundaries" modal the container is display:none until shown - Leaflet
+    // would measure zero width/height if created now, so defer the whole setup to first open.
+    const modal = mapEl.closest('.modal');
+    if (modal) {
+        modal.addEventListener('shown.bs.modal', initParcelGeometryMap, { once: true });
+    } else {
+        initParcelGeometryMap();
+    }
+
+    function initParcelGeometryMap() {
     const data = JSON.parse(mapEl.getAttribute('data-map'));
     const DEFAULT_LAT = 45.815;
     const DEFAULT_LON = 15.982;
@@ -267,5 +277,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 lookupStatus.textContent = 'ARKOD lookup failed (network error).';
             }
         });
+    }
     }
 });

@@ -75,23 +75,85 @@ async function renderGridToDataUrl(url, indexName) {
     return canvas.toDataURL();
 }
 
+// Days-of-week header and the grid renderer are shared module state, not per-widget - a calendar
+// is stateless between renders, it just needs (container, data, what to highlight) each time.
+const CALENDAR_DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+/// Draws one month of a calendar into `container` - days present in `availableDates` are clickable
+/// and highlighted (green outline, or solid blue if `selectedDateStr`), other days are disabled.
+/// `displayYearMonth` is 'YYYY-MM'. Calls `onSelectDate(dateStr)` on a day click, `onNavigateMonth(newYearMonth)`
+/// on the prev/next month arrows - the caller re-renders with the new state either way.
+function renderCalendarGrid(container, availableDates, displayYearMonth, selectedDateStr, onSelectDate, onNavigateMonth) {
+    const dateSet = new Set(availableDates);
+    const [year, month] = displayYearMonth.split('-').map(Number); // month is 1-based
+    const first = new Date(year, month - 1, 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const startDow = first.getDay();
+    const monthLabel = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    let html = '<div class="d-flex justify-content-between align-items-center mb-1">'
+        + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-cal-nav="-1">&lsaquo;</button>'
+        + `<span class="small fw-semibold">${monthLabel}</span>`
+        + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-cal-nav="1">&rsaquo;</button>'
+        + '</div><table class="table table-sm text-center mb-0" style="table-layout:fixed"><thead><tr>';
+    CALENDAR_DOW.forEach((d) => { html += `<th class="small text-secondary fw-normal p-1">${d}</th>`; });
+    html += '</tr></thead><tbody><tr>';
+    for (let i = 0; i < startDow; i++) {
+        html += '<td></td>';
+    }
+    let col = startDow;
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasData = dateSet.has(dateStr);
+        const isSelected = dateStr === selectedDateStr;
+        let cls = 'btn btn-sm w-100 p-1 border-0';
+        cls += isSelected ? ' btn-primary' : hasData ? ' btn-outline-success' : ' text-secondary bg-transparent';
+        html += `<td class="p-0"><button type="button" class="${cls}" ${hasData ? '' : 'disabled tabindex="-1"'} data-cal-date="${dateStr}">${day}</button></td>`;
+        col++;
+        if (col === 7 && day !== daysInMonth) {
+            html += '</tr><tr>';
+            col = 0;
+        }
+    }
+    html += '</tr></tbody></table>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('[data-cal-date]').forEach((btn) => {
+        btn.addEventListener('click', () => onSelectDate(btn.getAttribute('data-cal-date')));
+    });
+    container.querySelectorAll('[data-cal-nav]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const delta = parseInt(btn.getAttribute('data-cal-nav'), 10);
+            const next = new Date(year, (month - 1) + delta, 1);
+            onNavigateMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+        });
+    });
+}
+
 function initSatelliteMap(mapId) {
     const mapEl = document.getElementById(mapId);
     if (!mapEl || typeof L === 'undefined') {
         return;
     }
-    const root = mapEl.closest('.card').querySelector('[data-sat-role="root"]');
+    // "widget" wraps everything for one satellite instance - a single .card in the default layout
+    // (_SatelliteMap.cshtml), or a two-column row when the map and its controls are drawn separately
+    // (FarmParcelDetails' "Define boundaries" split layout) - either way this is the one scoping root.
+    const widget = mapEl.closest('[data-sat-role="widget"]');
+    const root = widget.querySelector('[data-sat-role="root"]');
     const scope = root.getAttribute('data-scope');
     const id = root.getAttribute('data-id');
     const canManage = root.getAttribute('data-can-manage') === '1';
-    const card = mapEl.closest('.card');
-    const indexSelect = card.querySelector('[data-sat-role="index"]');
-    const reliableCheckbox = card.querySelector('[data-sat-role="onlyReliable"]');
-    const slider = card.querySelector('[data-sat-role="dateSlider"]');
-    const dateLabel = card.querySelector('[data-sat-role="dateLabel"]');
-    const legendEl = card.querySelector('[data-sat-role="legend"]');
-    const emptyNotice = card.querySelector('[data-sat-role="emptyNotice"]');
-    const syncButton = card.querySelector('[data-sat-role="syncNow"]');
+    const indexSelect = widget.querySelector('[data-sat-role="index"]');
+    const reliableCheckbox = widget.querySelector('[data-sat-role="onlyReliable"]');
+    const slider = widget.querySelector('[data-sat-role="dateSlider"]');
+    const dateLabel = widget.querySelector('[data-sat-role="dateLabel"]');
+    const legendEl = widget.querySelector('[data-sat-role="legend"]');
+    const emptyNotice = widget.querySelector('[data-sat-role="emptyNotice"]');
+    const syncButton = widget.querySelector('[data-sat-role="syncNow"]');
+    // Calendar + Previous/Next are optional - only the split layout provides them, the plain slider still works everywhere else.
+    const calendarEl = widget.querySelector('[data-sat-role="calendar"]');
+    const prevDateBtn = widget.querySelector('[data-sat-role="prevDate"]');
+    const nextDateBtn = widget.querySelector('[data-sat-role="nextDate"]');
 
     const map = L.map(mapEl);
     // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
@@ -103,41 +165,93 @@ function initSatelliteMap(mapId) {
 
     let overlayLayer = L.layerGroup().addTo(map);
     let availableDates = [];
+    let selectedIndex = -1; // index into availableDates - the one shared "current date" state, slider/calendar/prev-next all just move this
+    let calendarDisplayMonth = null; // 'YYYY-MM' the calendar grid is currently showing, independent of which day is selected
     let renderGeneration = 0; // guards against a slow grid fetch resolving after a newer loadAndRender already cleared/repopulated overlayLayer
+
+    function selectedDate() {
+        return selectedIndex >= 0 && selectedIndex < availableDates.length ? availableDates[selectedIndex] : null;
+    }
 
     function updateLegend() {
         const indexName = SATELLITE_INDEX_NAMES[parseInt(indexSelect.value, 10)];
         legendEl.textContent = SATELLITE_LEGENDS[indexName] || '';
     }
 
+    function updatePrevNextButtons() {
+        if (prevDateBtn) {
+            prevDateBtn.disabled = selectedIndex <= 0;
+        }
+        if (nextDateBtn) {
+            nextDateBtn.disabled = selectedIndex < 0 || selectedIndex >= availableDates.length - 1;
+        }
+    }
+
+    function refreshCalendar() {
+        if (!calendarEl) {
+            return;
+        }
+        const date = selectedDate();
+        if (date) {
+            calendarDisplayMonth = date.slice(0, 7);
+        } else if (!calendarDisplayMonth) {
+            const today = new Date();
+            calendarDisplayMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        }
+        renderCalendarGrid(calendarEl, availableDates, calendarDisplayMonth, date, (clickedDate) => {
+            const idx = availableDates.indexOf(clickedDate);
+            if (idx >= 0) {
+                selectedIndex = idx;
+                loadAndRender();
+            }
+        }, (newMonth) => {
+            calendarDisplayMonth = newMonth;
+            refreshCalendar();
+        });
+    }
+
     async function loadDates() {
         const response = await fetch(`/FarmOpenfield/SatelliteMapDates?scope=${scope}&id=${id}`);
         availableDates = response.ok ? await response.json() : [];
         if (availableDates.length === 0) {
-            slider.disabled = true;
-            slider.max = 0;
+            selectedIndex = -1;
+            if (slider) {
+                slider.disabled = true;
+                slider.max = 0;
+            }
             dateLabel.textContent = 'No dates yet';
             emptyNotice.hidden = false;
+            updatePrevNextButtons();
+            refreshCalendar();
             return false;
         }
         emptyNotice.hidden = true;
-        slider.disabled = false;
-        slider.max = availableDates.length - 1;
-        slider.value = availableDates.length - 1; // default to the most recent date
-        dateLabel.textContent = availableDates[availableDates.length - 1];
+        selectedIndex = availableDates.length - 1; // default to the most recent date
+        if (slider) {
+            slider.disabled = false;
+            slider.max = availableDates.length - 1;
+            slider.value = selectedIndex;
+        }
+        dateLabel.textContent = availableDates[selectedIndex];
+        updatePrevNextButtons();
+        refreshCalendar();
         return true;
     }
 
     async function loadAndRender() {
         const myGeneration = ++renderGeneration;
-        const hasDates = availableDates.length > 0;
-        const selectedDate = hasDates ? availableDates[parseInt(slider.value, 10)] : null;
-        dateLabel.textContent = selectedDate || 'No dates yet';
+        const date = selectedDate();
+        dateLabel.textContent = date || 'No dates yet';
+        if (slider) {
+            slider.value = selectedIndex >= 0 ? selectedIndex : 0;
+        }
+        updatePrevNextButtons();
+        refreshCalendar();
         const indexValue = indexSelect.value;
 
         let url = `/FarmOpenfield/SatelliteMap?scope=${scope}&id=${id}&index=${indexValue}`;
-        if (selectedDate) {
-            url += `&date=${selectedDate}`;
+        if (date) {
+            url += `&date=${date}`;
         }
         const response = await fetch(url);
         if (!response.ok) {
@@ -202,7 +316,15 @@ function initSatelliteMap(mapId) {
 
     indexSelect.addEventListener('change', () => { updateLegend(); loadAndRender(); });
     reliableCheckbox.addEventListener('change', loadAndRender);
-    slider.addEventListener('input', loadAndRender);
+    if (slider) {
+        slider.addEventListener('input', () => { selectedIndex = parseInt(slider.value, 10); loadAndRender(); });
+    }
+    if (prevDateBtn) {
+        prevDateBtn.addEventListener('click', () => { if (selectedIndex > 0) { selectedIndex--; loadAndRender(); } });
+    }
+    if (nextDateBtn) {
+        nextDateBtn.addEventListener('click', () => { if (selectedIndex < availableDates.length - 1) { selectedIndex++; loadAndRender(); } });
+    }
 
     if (syncButton) {
         syncButton.addEventListener('click', async () => {
