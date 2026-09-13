@@ -3,6 +3,7 @@
     ViewData["Title"] = Model.Crop.SowingName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     string statusBadge = Model.Crop.Status switch
     {
         GrowingCycleStatus.Planned => "text-bg-secondary",
@@ -54,11 +55,14 @@
                 </span>
             }
         </h3>
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
             <a asp-action="SowingRules" asp-route-idSowing="@Model.Crop.IDSowing" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-diagram-3"></i> Automation rules
             </a>
+        }
+        @if (canManage)
+        {
             @if (Model.Crop.Status != GrowingCycleStatus.Closed)
             {
                 <form asp-action="CropRename" method="post" class="d-flex gap-1">

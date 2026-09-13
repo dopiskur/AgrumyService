@@ -125,25 +125,20 @@
                                     @if (rule.TargetPercent is int targetPercent) { <span class="badge text-bg-info">&rarr; @targetPercent%</span> }
                                     - @Html.Raw(SummarizeTree(rule.Root))
                                 </span>
-                                @if (!isReadOnly)
-                                {
-                                    <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
-                                        <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
-                                        @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
-                                        {
-                                            <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
-                                        }
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                }
+                                <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                                    <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
+                                    @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
+                                    {
+                                        <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
+                                    }
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete" disabled="@isReadOnly"><i class="bi bi-trash"></i></button>
+                                </form>
                             </li>
                         }
                     </ul>
                 }
             </div>
         }
-        @if (!isReadOnly)
-        {
         <div class="rule-add-wizard">
             <button type="button" class="btn btn-sm btn-outline-primary rule-add-toggle">+ Add rule</button>
             <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded rule-add-form" hidden>
@@ -196,11 +191,10 @@
                     </div>
                     @TreeBuilder("relay", isNotification: false, notificationRules)
                     <button type="button" class="btn btn-sm btn-outline-secondary rule-wizard-back">Back</button>
-                    <button type="submit" class="btn btn-sm btn-primary" data-action="add">Add rule</button>
+                    <button type="submit" class="btn btn-sm btn-primary" data-action="add" disabled="@isReadOnly">Add rule</button>
                 </div>
             </form>
         </div>
-        }
         <p class="text-secondary small mb-0">
             Astronomical conditions need a location set under Server Settings &rarr; Weather (or this
             tenant's own, under Tenants &rarr; Edit) - a day with no location configured drops the whole
@@ -236,24 +230,19 @@
                             @if (rule.IsSafetyRule) { <span class="badge text-bg-warning">safety</span> }
                             - @rule.NotificationSubject - @Html.Raw(SummarizeTree(rule.Root))
                         </span>
-                        @if (!isReadOnly)
-                        {
-                            <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
-                                <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
-                                @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
-                                {
-                                    <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
-                                }
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete"><i class="bi bi-trash"></i></button>
-                            </form>
-                        }
+                        <form asp-action="@Model.DeleteActionName" method="post" onsubmit="return confirm('Remove this rule?');">
+                            <input type="hidden" name="idDeviceFarmUnitZoneRule" value="@rule.IDDeviceFarmUnitZoneRule" />
+                            @if (!string.IsNullOrEmpty(Model.ScopeHiddenFieldName))
+                            {
+                                <input type="hidden" name="@Model.ScopeHiddenFieldName" value="@Model.ScopeId" />
+                            }
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-action="delete" disabled="@isReadOnly"><i class="bi bi-trash"></i></button>
+                        </form>
                     </li>
                 }
             </ul>
         }
 
-        @if (!isReadOnly)
-        {
         <div class="rule-add-wizard">
             <button type="button" class="btn btn-sm btn-outline-primary rule-add-toggle">+ Add notification rule</button>
             <form asp-action="@Model.AddActionName" method="post" class="mt-2 p-2 border rounded rule-add-form" hidden>
@@ -294,11 +283,10 @@
                     </div>
                     @TreeBuilder("notification", isNotification: true, notificationRules)
                     <button type="button" class="btn btn-sm btn-outline-secondary rule-wizard-back">Back</button>
-                    <button type="submit" class="btn btn-sm btn-primary" data-action="add">Add notification rule</button>
+                    <button type="submit" class="btn btn-sm btn-primary" data-action="add" disabled="@isReadOnly">Add notification rule</button>
                 </div>
             </form>
         </div>
-        }
     </div>
 </div>
 

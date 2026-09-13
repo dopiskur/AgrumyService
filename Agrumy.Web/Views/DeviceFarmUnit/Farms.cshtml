@@ -4,6 +4,7 @@
     ViewData["Title"] = multipleFarms ? "Greenhouses" : "Greenhouse";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 @if (TempData["Message"] is string scanMessage)
@@ -33,7 +34,7 @@
                 </a>
                 <form asp-action="ScanFarm" method="post" class="d-inline">
                     <input type="hidden" name="FarmID" value="@Model.Farms[0].IDDeviceFarm" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
                 </form>
             }
         </div>

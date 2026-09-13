@@ -4,6 +4,7 @@
     ViewData["Title"] = parcel.FarmParcelZoneName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     bool hasController = Model.Devices.Any(d => d.ControllerCapable);
     var ruleEditorModel = new RuleEditorViewModel
     {
@@ -62,12 +63,12 @@
     <div class="alert alert-info">@scopeWarning</div>
 }
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
         <form asp-action="ScanParcel" method="post" class="d-inline">
             <input type="hidden" name="ParcelID" value="@parcel.IDFarmParcelZone" />
-            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+            <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
         </form>
     </div>
     @if (Model.DiscoveredDevices.Count > 0)
@@ -331,7 +332,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Confirm</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Confirm</button>
                 </div>
             </form>
         </div>

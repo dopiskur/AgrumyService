@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Fleet";
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card">
@@ -9,7 +10,7 @@
         <h3 class="card-title">Discovered devices</h3>
         <div class="float-end">
             <form asp-action="ScanFleet" method="post" onsubmit="return confirm('This runs a full scan of every sensor in your fleet - it may take a while. Continue?');">
-                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
             </form>
         </div>
     </div>
@@ -146,7 +147,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Confirm</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Confirm</button>
                 </div>
             </form>
         </div>
