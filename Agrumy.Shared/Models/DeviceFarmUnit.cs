@@ -43,6 +43,8 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmID { get; set; }
         // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
+        /// Manually entered - lets the unified Parcels page and Farm Group area rollups sum Greenhouse alongside Crop/Fruit parcels.
+        public double? AreaHectares { get; set; }
 
         int? IFarmMidLevelNode.Id => IDDeviceFarmUnit;
         int? IFarmMidLevelNode.FarmID => DeviceFarmID;

@@ -2,6 +2,17 @@
 @{
     ViewData["Title"] = Model.Group.Name;
     bool canManage = RoleNames.DeviceManagers.Split(',').Any(User.IsInRole);
+    Func<ParcelAreaSummaryViewModel, string, string> areaLine = (summary, label) =>
+    {
+        if (summary.TotalCount == 0)
+        {
+            return $"no {label}";
+        }
+        string total = summary.TotalHectares.ToString("0.##");
+        return summary.WithAreaCount == summary.TotalCount
+            ? $"{total} ha across {summary.TotalCount} {label}"
+            : $"{total} ha across {summary.WithAreaCount} of {summary.TotalCount} {label} ({summary.TotalCount - summary.WithAreaCount} with no area recorded)";
+    };
 }
 
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -15,6 +26,10 @@
         </form>
     }
 </div>
+
+<p class="text-secondary">
+    Total area: @areaLine(Model.CropAreaSummary, "Crop parcels"), @areaLine(Model.GreenhouseAreaSummary, "Greenhouse units").
+</p>
 
 <div class="row g-3">
     <div class="col-lg-4">
@@ -100,8 +115,9 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span>@farm.DeviceFarmName</span>
                                 <span>
-                                    <a asp-controller="FarmOpenfield" asp-action="CropSeasons" class="small me-2">Crop Seasons</a>
+                                    <a asp-controller="FarmOpenfield" asp-action="CropSeasons" class="small me-2">Crop</a>
                                     <a asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="small me-2">Parcels</a>
+                                    <a asp-controller="FarmOpenfield" asp-action="FarmSatellite" asp-route-idFarm="@farm.IDDeviceFarm" class="small me-2">Satellite</a>
                                     @if (canManage)
                                     {
                                         <form asp-action="RemoveFarm" asp-route-id="@Model.Group.IDFarmGroup" asp-route-idFarm="@farm.IDDeviceFarm" method="post" class="d-inline">

@@ -9,19 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Sowing/FarmParcel/FarmParcelZone CRUD, the sjetva wizard's Start/Close lifecycle, device assignment, and safety-limit editing (D1/D2/D9) - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new.
+    /// Sowing/FarmParcel/FarmParcelZone CRUD, the sjetva wizard's Start/Close lifecycle, device assignment, and safety-limit editing (D1/D2/D9) - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new. No standalone "Farms" register page any more - creating a new Open-Field farm and the per-farm Satellite link both live inline on CropSeasons.cshtml/FarmGroup/Details.cshtml now.
+
     [Authorize]
     public class FarmOpenfieldController(IApi api) : Controller
     {
-        // ---- Root page (D1) --------------------------------------------
-
-        /// The Open-Field farm register only - name/satellite/add. Parcels (Registry) and Crop Seasons are their own pages now, not nested per-farm cards here.
-        public async Task<ActionResult> Index()
-        {
-            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
-            return View(new FarmOpenfieldIndexViewModel { Farms = farms });
-        }
-
         // ---- Crop Seasons (every sowing across every Open-Field farm) --------------------------------------------
 
         public async Task<ActionResult> CropSeasons()
@@ -228,7 +220,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> CropDelete(int idSowing)
         {
             await api.CropDelete(idSowing);
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(CropSeasons));
         }
 
         /// D9 - Planned -> Active: occupies the picked zones, redirects back to Sowing Details.
@@ -392,19 +384,30 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Parcels registry (Fleet-style, every parcel/zone across every Open-Field farm) -----------------------------------
 
+        /// Unified across all three parcel types (Crop/Fruit/Greenhouse) - Fruit has no rows yet (no module), Greenhouse stands in via DeviceFarmUnit (its own AreaHectares, no boundary map/Ready-for-season since those are Open-Field-only concepts).
         public async Task<ActionResult> ParcelsRegistry()
         {
-            IList<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
+            IList<DeviceFarm> allFarms = await api.DeviceFarmsGet();
+            IList<DeviceFarm> openfieldFarms = allFarms.Where(f => f.FarmType == FarmType.OpenField).ToList();
             var rows = new List<ParcelRegistryRowViewModel>();
             var farmOptions = new List<ParcelRegistryFarmOptionViewModel>();
             var groupSections = new List<ParcelGroupSectionViewModel>();
-            foreach (DeviceFarm farm in farms)
+            var cropParcelsWithArea = 0;
+            var cropParcelsTotal = 0;
+            var cropAreaHa = 0.0;
+            foreach (DeviceFarm farm in openfieldFarms)
             {
                 int idFarm = farm.IDDeviceFarm!.Value;
                 farmOptions.Add(new ParcelRegistryFarmOptionViewModel { FarmName = farm.DeviceFarmName ?? "", IdFarm = idFarm });
                 IList<FarmParcel> parcels = await api.FarmParcelsGet(idFarm);
                 foreach (FarmParcel parcel in parcels)
                 {
+                    cropParcelsTotal++;
+                    if (parcel.AreaHectares is double ha)
+                    {
+                        cropParcelsWithArea++;
+                        cropAreaHa += ha;
+                    }
                     foreach (FarmParcelZone zone in await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value))
                     {
                         rows.Add(new ParcelRegistryRowViewModel { FarmName = farm.DeviceFarmName ?? "", Parcel = parcel, Zone = zone });
@@ -418,7 +421,24 @@ namespace Agrumy.Web.Controllers.View
                     Groups = await api.ParcelGroupsGet(idFarm),
                 });
             }
-            return View(new ParcelsRegistryViewModel { Rows = rows, Farms = farmOptions, GroupSections = groupSections });
+
+            IList<DeviceFarmUnit> units = await api.DeviceFarmUnitsGet();
+            var greenhouseFarms = allFarms.Where(f => f.FarmType == FarmType.Greenhouse).ToDictionary(f => f.IDDeviceFarm!.Value, f => f.DeviceFarmName ?? "");
+            var greenhouseRows = units
+                .Select(u => new GreenhouseUnitRowViewModel { FarmName = u.DeviceFarmID is int idUnitFarm && greenhouseFarms.TryGetValue(idUnitFarm, out var name) ? name : "(unassigned)", Unit = u })
+                .ToList();
+            int greenhouseUnitsWithArea = units.Count(u => u.AreaHectares != null);
+            double greenhouseAreaHa = units.Where(u => u.AreaHectares != null).Sum(u => u.AreaHectares!.Value);
+
+            return View(new ParcelsRegistryViewModel
+            {
+                Rows = rows,
+                Farms = farmOptions,
+                GroupSections = groupSections,
+                GreenhouseRows = greenhouseRows,
+                CropAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
+                GreenhouseAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = greenhouseAreaHa, WithAreaCount = greenhouseUnitsWithArea, TotalCount = units.Count },
+            });
         }
 
         // ---- Parcel Groups (FarmParcelGroupCrop) management, from the ParcelsRegistry page -----------------------------------
@@ -503,7 +523,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 TempData["Error"] = ex.Body;
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -520,7 +540,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 TempData["Error"] = ex.Body;
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

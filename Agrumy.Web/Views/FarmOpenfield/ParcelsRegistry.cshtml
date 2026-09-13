@@ -3,6 +3,17 @@
     ViewData["Title"] = "Parcels";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    Func<ParcelAreaSummaryViewModel, string, string> areaLine = (summary, label) =>
+    {
+        if (summary.TotalCount == 0)
+        {
+            return $"No {label} yet.";
+        }
+        string total = summary.TotalHectares.ToString("0.##");
+        return summary.WithAreaCount == summary.TotalCount
+            ? $"{total} ha across {summary.TotalCount} {label}"
+            : $"{total} ha across {summary.WithAreaCount} of {summary.TotalCount} {label} ({summary.TotalCount - summary.WithAreaCount} with no area recorded yet)";
+    };
 }
 
 @if (TempData["Message"] is string message)
@@ -14,6 +25,16 @@
     <div class="alert alert-warning">@error</div>
 }
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title">Total area</h6>
+        <p class="mb-1"><i class="bi bi-flower1 me-1"></i> Crop: @areaLine(Model.CropAreaSummary, "parcels")</p>
+        <p class="mb-1"><i class="bi bi-apple me-1"></i> Fruit: no Fruit Plantation module yet.</p>
+        <p class="mb-0"><i class="bi bi-house-door me-1"></i> Greenhouse: @areaLine(Model.GreenhouseAreaSummary, "units")</p>
+    </div>
+</div>
+
+<h4>Crop</h4>
 <p class="text-secondary">
     Every Open-Field parcel (and each of its zones, if split) with its readiness for the current season.
     A parcel starts a new season "Not ready" - confirm pre-season field prep (ploughing, discing,
@@ -165,6 +186,50 @@ else
                                 <span class="badge @(row.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger")">
                                     @(row.Zone.ReadyForSeason ? "Ready" : "Not ready")
                                 </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h4 class="mt-4">Fruit</h4>
+<p class="text-secondary fst-italic">Fruit Plantation module isn't built yet.</p>
+
+<h4 class="mt-4">Greenhouse</h4>
+@if (Model.GreenhouseRows.Count == 0)
+{
+    <p class="text-secondary">No Greenhouse units yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Farm</th>
+                    <th>Unit</th>
+                    <th>Area</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.GreenhouseRows)
+                {
+                    <tr>
+                        <td>@row.FarmName</td>
+                        <td>
+                            <a asp-controller="DeviceFarmUnit" asp-action="Zones" asp-route-idDeviceFarmUnit="@row.Unit.IDDeviceFarmUnit">@row.Unit.DeviceFarmUnitName</a>
+                        </td>
+                        <td>
+                            @if (row.Unit.AreaHectares is double ha)
+                            {
+                                @(ha.ToString("0.##") + " ha")
+                            }
+                            else
+                            {
+                                <span class="text-secondary">not set</span>
                             }
                         </td>
                     </tr>

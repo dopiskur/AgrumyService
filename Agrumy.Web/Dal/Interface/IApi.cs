@@ -228,7 +228,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<IList<FarmGroup>> FarmGroupsGet();
 
         [Post("/api/FarmGroup")]
-        Task<FarmGroup> FarmGroupCreate([Body] string? name);
+        Task<FarmGroup> FarmGroupCreate([Body(BodySerializationMethod.Serialized)] string? name);
 
         [Delete("/api/FarmGroup")]
         Task FarmGroupDelete(int idFarmGroup);
@@ -283,6 +283,9 @@ namespace Agrumy.Web.Dal.Interface
 
         [Delete("/api/DeviceFarmUnit")]
         Task DeviceFarmUnitDelete(int? idDeviceFarmUnit);
+
+        [Post("/api/DeviceFarmUnit/Unit/Area")]
+        Task DeviceFarmUnitAreaSet(int idDeviceFarmUnit, double? areaHectares);
 
         /// Persists the Farms page's drag-and-drop unit cube order - full replacement of every listed unit's DisplayOrder by index, not a partial patch.
         [Post("/api/DeviceFarmUnit/Reorder")]

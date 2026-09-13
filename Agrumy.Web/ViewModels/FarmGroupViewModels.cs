@@ -23,5 +23,8 @@ namespace Agrumy.Web.ViewModels
         public IList<DeviceFarm> CropFarms { get; init; } = [];
         public IList<DeviceFarm> UngroupedGreenhouseFarms { get; init; } = [];
         public IList<DeviceFarm> UngroupedCropFarms { get; init; } = [];
+        /// Scoped to just this group's own member farms - the "how much area does this group occupy" rollup, same shape as ParcelsRegistry.cshtml's app-wide one.
+        public required ParcelAreaSummaryViewModel CropAreaSummary { get; init; }
+        public required ParcelAreaSummaryViewModel GreenhouseAreaSummary { get; init; }
     }
 }

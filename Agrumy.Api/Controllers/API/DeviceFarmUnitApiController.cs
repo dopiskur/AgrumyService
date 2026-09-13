@@ -158,6 +158,20 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Unit/Area")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitAreaSet(int idDeviceFarmUnit, double? areaHectares)
+        {
+            var (unit, error) = await EnsureOwnedUnitAsync(idDeviceFarmUnit, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            await deviceFarmUnitRepo.DeviceFarmUnitAreaSetAsync(idDeviceFarmUnit, areaHectares);
+            await WriteAuditAsync("DeviceFarmUnit.AreaSet", unit!.TenantID, "DeviceFarmUnit", idDeviceFarmUnit.ToString(), areaHectares?.ToString());
+            return true;
+        }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpDelete]
         public async Task<ActionResult<bool>> DeviceFarmUnitDelete(int? idDeviceFarmUnit)
         {

@@ -168,5 +168,14 @@ namespace Agrumy.Web.Controllers.View
             await api.DeviceFarmUnitUpdate(new DeviceFarmUnit { IDDeviceFarmUnit = idDeviceFarmUnit, DeviceFarmUnitName = deviceFarmUnitName });
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
         }
+
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UnitAreaUpdate(int idDeviceFarmUnit, double? areaHectares)
+        {
+            await api.DeviceFarmUnitAreaSet(idDeviceFarmUnit, areaHectares);
+            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+        }
     }
 }

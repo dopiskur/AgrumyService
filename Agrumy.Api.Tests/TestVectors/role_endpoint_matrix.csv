@@ -94,6 +94,7 @@ POST,api/Device/WifiUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceCommand,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Unit/Area,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
