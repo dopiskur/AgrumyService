@@ -48,18 +48,22 @@ namespace Agrumy.Web.Controllers.View
             DeviceFarmUnitZone zone = await api.DeviceFarmUnitZoneGetById(idDeviceFarmUnitZone);
             IList<DeviceFarmUnitZoneRule> rules = [];
             IList<DeviceManualOverride> manualOverrides = [];
-            IList<HorticultureCatalogEntry> cropCatalog = [];
-            IList<HorticultureCatalogEntry> permaCatalog = [];
-            IList<HorticultureCatalogEntry> hydroponicCatalog = [];
-            IList<HorticultureCatalogEntry> fruitCatalog = [];
+            IList<CropCatalogEntry> arableCatalog = [];
+            IList<CropCatalogEntry> fruitCatalog = [];
+            IList<CropCatalogEntry> vegetableCatalog = [];
+            IList<CropCatalogEntry> industrialCatalog = [];
+            IList<CropCatalogEntry> ornamentalCatalog = [];
+            IList<CropCatalogEntry> medicinalAndAromaticCatalog = [];
             if (hasController)
             {
                 rules = await api.DeviceFarmUnitZoneRulesGet(idDeviceFarmUnitZone);
                 manualOverrides = await api.DeviceFarmUnitZoneManualActuateStatus(idDeviceFarmUnitZone);
-                cropCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop);
-                permaCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Perma);
-                hydroponicCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Hydroponic);
-                fruitCatalog = await api.HorticultureCatalogGet(HorticultureCatalogType.Fruit);
+                arableCatalog = await api.CropCatalogGet(CropCatalogType.Arable);
+                fruitCatalog = await api.CropCatalogGet(CropCatalogType.Fruit);
+                vegetableCatalog = await api.CropCatalogGet(CropCatalogType.Vegetable);
+                industrialCatalog = await api.CropCatalogGet(CropCatalogType.Industrial);
+                ornamentalCatalog = await api.CropCatalogGet(CropCatalogType.Ornamental);
+                medicinalAndAromaticCatalog = await api.CropCatalogGet(CropCatalogType.MedicinalAndAromatic);
             }
 
             // Breadcrumb's Farm segment; cheap enough to fetch every load, no need to gate behind hasController like Rules/ManualOverrides above.
@@ -83,10 +87,12 @@ namespace Agrumy.Web.Controllers.View
                 Zone = zone,
                 Rules = rules,
                 ManualOverrides = manualOverrides,
-                CropCatalog = cropCatalog,
-                PermaCatalog = permaCatalog,
-                HydroponicCatalog = hydroponicCatalog,
+                ArableCatalog = arableCatalog,
                 FruitCatalog = fruitCatalog,
+                VegetableCatalog = vegetableCatalog,
+                IndustrialCatalog = industrialCatalog,
+                OrnamentalCatalog = ornamentalCatalog,
+                MedicinalAndAromaticCatalog = medicinalAndAromaticCatalog,
                 DiscoveredDevices = await api.DiscoveryResultsGet(null, idDeviceFarmUnitZone),
                 WifiConfigs = await api.DiscoveryWifiConfigsGet(),
                 UnitName = unit.DeviceFarmUnitName,
@@ -181,9 +187,9 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ApplyHorticultureCatalog(int idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId)
+        public async Task<ActionResult> ApplyCropCatalog(int idDeviceFarmUnitZone, CropCatalogType catalogType, int catalogId)
         {
-            HorticultureCatalogApplyResult result = await api.HorticultureCatalogApplyToZone(idDeviceFarmUnitZone, catalogType, catalogId);
+            CropCatalogApplyResult result = await api.CropCatalogApplyToZone(idDeviceFarmUnitZone, catalogType, catalogId);
             TempData["Message"] = result.RulesSkipped.Count == 0
                 ? $"Added {result.RulesAdded} rule(s) from the catalog template."
                 : $"Added {result.RulesAdded} rule(s); skipped {result.RulesSkipped.Count} (zone's rule limit reached): {string.Join(", ", result.RulesSkipped)}.";

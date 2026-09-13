@@ -328,22 +328,22 @@ namespace Agrumy.Web.Dal.Interface
         [Delete("/api/DeviceFarmUnit/Zone/Rule")]
         Task DeviceFarmUnitZoneRuleDelete(int? idDeviceFarmUnitZoneRule);
 
-        // ---- Horticulture Catalog -------------------------------
+        // ---- Crop Catalog -------------------------------
 
-        [Get("/api/HorticultureCatalog")]
-        Task<IList<HorticultureCatalogEntry>> HorticultureCatalogGet(HorticultureCatalogType type);
+        [Get("/api/CropCatalog")]
+        Task<IList<CropCatalogEntry>> CropCatalogGet(CropCatalogType type);
 
-        [Get("/api/HorticultureCatalog/ById")]
-        Task<HorticultureCatalogEntry> HorticultureCatalogGetById(HorticultureCatalogType type, int id);
+        [Get("/api/CropCatalog/ById")]
+        Task<CropCatalogEntry> CropCatalogGetById(CropCatalogType type, int id);
 
-        [Post("/api/HorticultureCatalog")]
-        Task<HorticultureCatalogEntry> HorticultureCatalogAdd(HorticultureCatalogType type, [Body] HorticultureCatalogEntry entry);
+        [Post("/api/CropCatalog")]
+        Task<CropCatalogEntry> CropCatalogAdd(CropCatalogType type, [Body] CropCatalogEntry entry);
 
-        [Delete("/api/HorticultureCatalog")]
-        Task HorticultureCatalogDelete(HorticultureCatalogType type, int id);
+        [Delete("/api/CropCatalog")]
+        Task CropCatalogDelete(CropCatalogType type, int id);
 
-        [Post("/api/DeviceFarmUnit/Zone/ApplyHorticultureCatalog")]
-        Task<HorticultureCatalogApplyResult> HorticultureCatalogApplyToZone(int idDeviceFarmUnitZone, HorticultureCatalogType catalogType, int catalogId);
+        [Post("/api/DeviceFarmUnit/Zone/ApplyCropCatalog")]
+        Task<CropCatalogApplyResult> CropCatalogApplyToZone(int idDeviceFarmUnitZone, CropCatalogType catalogType, int catalogId);
 
         [Post("/api/DeviceFarmUnit/Zone/ApplyDayNightPreset")]
         Task<DayNightPresetApplyResult> DayNightPresetApplyToZone(int idDeviceFarmUnitZone, [Body] DayNightTargetPresetRequest request);

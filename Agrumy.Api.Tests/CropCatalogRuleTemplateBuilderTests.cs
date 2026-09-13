@@ -3,12 +3,12 @@ using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests;
 
-public class HorticultureRuleTemplateBuilderTests
+public class CropCatalogRuleTemplateBuilderTests
 {
     [Fact]
     public void AllRangesSet_GeneratesOneRulePerRange()
     {
-        var entry = new HorticultureCatalogEntry
+        var entry = new CropCatalogEntry
         {
             Name = "Tomato",
             AirTempMin = 18, AirTempMax = 28,
@@ -21,7 +21,7 @@ public class HorticultureRuleTemplateBuilderTests
             Co2Min = 800, Co2Max = 1200,
         };
 
-        var rules = HorticultureRuleTemplateBuilder.BuildRules(entry, zoneId: 42);
+        var rules = CropCatalogRuleTemplateBuilder.BuildRules(entry, zoneId: 42);
 
         Assert.Equal(5, rules.Count);
         Assert.All(rules, r => Assert.Equal(42, r.DeviceFarmUnitZoneID));
@@ -38,9 +38,9 @@ public class HorticultureRuleTemplateBuilderTests
     [Fact]
     public void NoRangesSet_GeneratesNoRules()
     {
-        var entry = new HorticultureCatalogEntry { Name = "Unspecified" };
+        var entry = new CropCatalogEntry { Name = "Unspecified" };
 
-        var rules = HorticultureRuleTemplateBuilder.BuildRules(entry, zoneId: 1);
+        var rules = CropCatalogRuleTemplateBuilder.BuildRules(entry, zoneId: 1);
 
         Assert.Empty(rules);
     }
@@ -48,9 +48,9 @@ public class HorticultureRuleTemplateBuilderTests
     [Fact]
     public void OnlyAirTempMinSet_GeneratesExactlyOneRule()
     {
-        var entry = new HorticultureCatalogEntry { Name = "Cold-hardy crop", AirTempMin = 5 };
+        var entry = new CropCatalogEntry { Name = "Cold-hardy crop", AirTempMin = 5 };
 
-        var rules = HorticultureRuleTemplateBuilder.BuildRules(entry, zoneId: 7);
+        var rules = CropCatalogRuleTemplateBuilder.BuildRules(entry, zoneId: 7);
 
         var rule = Assert.Single(rules);
         Assert.Equal(RelayFunction.Heating, rule.RelayFunction);

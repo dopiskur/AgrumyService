@@ -82,11 +82,13 @@ namespace Agrumy.Dal
         public DbSet<AuditLogRow> AuditLogs => Set<AuditLogRow>();
 
         public DbSet<TenantQuotaRow> TenantQuotas => Set<TenantQuotaRow>();
-        public DbSet<HorticultureCatalogCropRow> HorticultureCatalogCrops => Set<HorticultureCatalogCropRow>();
-        public DbSet<HorticultureCatalogPermaRow> HorticultureCatalogPermas => Set<HorticultureCatalogPermaRow>();
-        public DbSet<HorticultureCatalogHydroponicRow> HorticultureCatalogHydroponics => Set<HorticultureCatalogHydroponicRow>();
-        public DbSet<HorticultureCatalogFruitRow> HorticultureCatalogFruits => Set<HorticultureCatalogFruitRow>();
-        public DbSet<HorticultureCatalogCropGrowthStageRow> HorticultureCatalogCropGrowthStages => Set<HorticultureCatalogCropGrowthStageRow>();
+        public DbSet<CropCatalogArableRow> CropCatalogArables => Set<CropCatalogArableRow>();
+        public DbSet<CropCatalogFruitRow> CropCatalogFruits => Set<CropCatalogFruitRow>();
+        public DbSet<CropCatalogVegetableRow> CropCatalogVegetables => Set<CropCatalogVegetableRow>();
+        public DbSet<CropCatalogIndustrialRow> CropCatalogIndustrials => Set<CropCatalogIndustrialRow>();
+        public DbSet<CropCatalogOrnamentalRow> CropCatalogOrnamentals => Set<CropCatalogOrnamentalRow>();
+        public DbSet<CropCatalogMedicinalAndAromaticRow> CropCatalogMedicinalAndAromatics => Set<CropCatalogMedicinalAndAromaticRow>();
+        public DbSet<CropCatalogArableGrowthStageRow> CropCatalogArableGrowthStages => Set<CropCatalogArableGrowthStageRow>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -169,8 +171,8 @@ namespace Agrumy.Dal
                 e.HasIndex(x => x.TenantID).HasDatabaseName("ix_user_tenant"); // Every organization-scoped user list filters by TenantID alone.
             });
 
-            // Four tables, identical column config - see HorticultureCatalog*Row's own remarks for why they stay separate.
-            void ConfigureHorticultureCatalog<TEntity>(string tableName) where TEntity : class
+            // Six tables, identical column config - see CropCatalog*Row's own remarks for why they stay separate.
+            void ConfigureCropCatalog<TEntity>(string tableName) where TEntity : class
             {
                 modelBuilder.Entity<TEntity>(e =>
                 {
@@ -181,17 +183,19 @@ namespace Agrumy.Dal
                     e.Property<string?>("Description").HasMaxLength(1000);
                 });
             }
-            ConfigureHorticultureCatalog<HorticultureCatalogCropRow>("horticultureCatalogCrop");
-            ConfigureHorticultureCatalog<HorticultureCatalogPermaRow>("horticultureCatalogPerma");
-            ConfigureHorticultureCatalog<HorticultureCatalogHydroponicRow>("horticultureCatalogHydroponic");
-            ConfigureHorticultureCatalog<HorticultureCatalogFruitRow>("horticultureCatalogFruit");
+            ConfigureCropCatalog<CropCatalogArableRow>("cropCatalogArable");
+            ConfigureCropCatalog<CropCatalogFruitRow>("cropCatalogFruit");
+            ConfigureCropCatalog<CropCatalogVegetableRow>("cropCatalogVegetable");
+            ConfigureCropCatalog<CropCatalogIndustrialRow>("cropCatalogIndustrial");
+            ConfigureCropCatalog<CropCatalogOrnamentalRow>("cropCatalogOrnamental");
+            ConfigureCropCatalog<CropCatalogMedicinalAndAromaticRow>("cropCatalogMedicinalAndAromatic");
 
-            modelBuilder.Entity<HorticultureCatalogCropGrowthStageRow>(e =>
+            modelBuilder.Entity<CropCatalogArableGrowthStageRow>(e =>
             {
-                e.ToTable("horticultureCatalogCropGrowthStage");
+                e.ToTable("cropCatalogArableGrowthStage");
                 e.HasKey(x => x.ID);
-                e.HasIndex(x => new { x.HorticultureCatalogCropID, x.StageNumber }).IsUnique().HasDatabaseName("ux_horticultureCatalogCropGrowthStage_crop_stage");
-                e.HasOne<HorticultureCatalogCropRow>().WithMany().HasForeignKey(x => x.HorticultureCatalogCropID).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(x => new { x.CropCatalogArableID, x.StageNumber }).IsUnique().HasDatabaseName("ux_cropCatalogArableGrowthStage_arable_stage");
+                e.HasOne<CropCatalogArableRow>().WithMany().HasForeignKey(x => x.CropCatalogArableID).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<UserNotificationPreferenceRow>(e =>

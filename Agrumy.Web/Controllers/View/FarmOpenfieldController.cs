@@ -43,7 +43,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 Farms = farms,
                 Sowings = sowings,
-                CatalogCrops = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop),
+                CatalogCrops = await api.CropCatalogGet(CropCatalogType.Arable),
                 AvailableParcelsByFarm = availableParcelsByFarm,
                 ParcelGroupsByFarm = parcelGroupsByFarm,
                 FarmGroupNames = farmGroups.Where(g => g.IDFarmGroup is int).ToDictionary(g => g.IDFarmGroup!.Value, g => g.Name ?? ""),
@@ -169,7 +169,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + an OPTIONAL expected end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from - falls back to DefaultExpectedDurationDays when left blank, since neither Sowing nor HorticultureCatalogEntry carries a per-crop growth-length default). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
+        /// Sjetva wizard (D3/D9): crop (picked from the Crop Catalog's Arable entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + an OPTIONAL expected end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from - falls back to DefaultExpectedDurationDays when left blank, since neither Sowing nor CropCatalogEntry carries a per-crop growth-length default). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]

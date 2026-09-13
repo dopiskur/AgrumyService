@@ -68,7 +68,7 @@ namespace Agrumy.Api.Startup
             services.AddScoped<IControllerDataRepository, EfControllerDataRepository>();
             services.AddScoped<ISimulationRepository, EfSimulationRepository>();
             services.AddScoped<IExperimentRepository, EfExperimentRepository>();
-            services.AddScoped<IHorticultureCatalogRepository, EfHorticultureCatalogRepository>();
+            services.AddScoped<ICropCatalogEntryRepository, EfCropCatalogEntryRepository>();
 
             // Cache:Redis:ConnectionString switches to Redis; unset/empty keeps the in-process default.
             string? redisConnectionString = builder.Configuration["Cache:Redis:ConnectionString"];

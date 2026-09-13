@@ -140,7 +140,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
             deviceFarmUnitRepository,
             new EfSensorDataRepository(db, experimentRepository),
             experimentRepository,
-            new EfHorticultureCatalogRepository(db),
+            new EfCropCatalogEntryRepository(db),
             sowingRepository,
             farmParcelRepository,
             new EfCropCatalogRepository(db),
@@ -3514,13 +3514,13 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task HorticultureCatalog_AddGetUpdateDelete_RoundTripsOnEachOfTheThreeTables(DbProviderKind provider)
+    public async Task CropCatalog_AddGetUpdateDelete_RoundTripsOnEachOfTheSixTables(DbProviderKind provider)
     {
         var t = Use(provider);
 
-        foreach (HorticultureCatalogType type in Enum.GetValues<HorticultureCatalogType>())
+        foreach (CropCatalogType type in Enum.GetValues<CropCatalogType>())
         {
-            var added = await _repo.CatalogAddAsync(type, new HorticultureCatalogEntry { Name = "Test entry", AirTempMin = 18, AirTempMax = 26 });
+            var added = await _repo.CatalogAddAsync(type, new CropCatalogEntry { Name = "Test entry", AirTempMin = 18, AirTempMax = 26 });
             Assert.NotNull(added.ID);
 
             var fetched = await _repo.CatalogGetByIdAsync(type, added.ID!.Value);
@@ -3540,28 +3540,28 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         }
     }
 
-    /// GrowthStages only applies to Type==Crop (Perma/Hydroponic/Fruit never populate it) - BBCH stage numbers are sparse (a real Crop entry can skip stages, e.g. maize never has 2/Tillering or 4/Booting), and ReplaceGrowthStagesAsync's delete-then-reinsert must not leave orphaned rows behind on update.
+    /// GrowthStages only applies to Type==Arable (Fruit/Vegetable/Industrial/Ornamental/MedicinalAndAromatic never populate it) - BBCH stage numbers are sparse (a real Arable entry can skip stages, e.g. maize never has 2/Tillering or 4/Booting), and ReplaceGrowthStagesAsync's delete-then-reinsert must not leave orphaned rows behind on update.
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task HorticultureCatalogCrop_GrowthStages_RoundTripAndReplaceOnUpdate(DbProviderKind provider)
+    public async Task CropCatalogArable_GrowthStages_RoundTripAndReplaceOnUpdate(DbProviderKind provider)
     {
         var t = Use(provider);
 
-        var added = await _repo.CatalogAddAsync(HorticultureCatalogType.Crop, new HorticultureCatalogEntry
+        var added = await _repo.CatalogAddAsync(CropCatalogType.Arable, new CropCatalogEntry
         {
             Name = "Test crop " + U(),
             ClassCode = "FAO 500",
             PhaseDescriptionsJson = """{"0":"Germination"}""",
             GrowthStages =
             [
-                new HorticultureCatalogGrowthStage { StageNumber = BbchGrowthStage.Germination, AirTempMin = 18, AirTempMax = 25, DurationDaysMin = 5, DurationDaysMax = 10 },
-                new HorticultureCatalogGrowthStage { StageNumber = BbchGrowthStage.Flowering, SoilMoistureMin = 75, SoilMoistureMax = 85, DurationDaysMin = 5, DurationDaysMax = 8 },
+                new CropCatalogGrowthStage { StageNumber = BbchGrowthStage.Germination, AirTempMin = 18, AirTempMax = 25, DurationDaysMin = 5, DurationDaysMax = 10 },
+                new CropCatalogGrowthStage { StageNumber = BbchGrowthStage.Flowering, SoilMoistureMin = 75, SoilMoistureMax = 85, DurationDaysMin = 5, DurationDaysMax = 8 },
             ],
         });
         Assert.NotNull(added.ID);
         Assert.Equal("FAO 500", added.ClassCode);
         Assert.Equal(2, added.GrowthStages.Count);
 
-        var fetched = await _repo.CatalogGetByIdAsync(HorticultureCatalogType.Crop, added.ID!.Value);
+        var fetched = await _repo.CatalogGetByIdAsync(CropCatalogType.Arable, added.ID!.Value);
         Assert.Equal(2, fetched!.GrowthStages.Count);
         Assert.Equal(BbchGrowthStage.Germination, fetched.GrowthStages[0].StageNumber);
         Assert.Equal(18, fetched.GrowthStages[0].AirTempMin);
@@ -3571,18 +3571,18 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         // Update replaces the whole stage set - drop Flowering, add Ripening, change Germination's own values.
         fetched.GrowthStages =
         [
-            new HorticultureCatalogGrowthStage { StageNumber = BbchGrowthStage.Germination, AirTempMin = 20, AirTempMax = 28 },
-            new HorticultureCatalogGrowthStage { StageNumber = BbchGrowthStage.Ripening, SoilMoistureMin = 30, SoilMoistureMax = 50 },
+            new CropCatalogGrowthStage { StageNumber = BbchGrowthStage.Germination, AirTempMin = 20, AirTempMax = 28 },
+            new CropCatalogGrowthStage { StageNumber = BbchGrowthStage.Ripening, SoilMoistureMin = 30, SoilMoistureMax = 50 },
         ];
-        Assert.True(await _repo.CatalogUpdateAsync(HorticultureCatalogType.Crop, fetched));
+        Assert.True(await _repo.CatalogUpdateAsync(CropCatalogType.Arable, fetched));
 
-        var updated = await _repo.CatalogGetByIdAsync(HorticultureCatalogType.Crop, added.ID.Value);
+        var updated = await _repo.CatalogGetByIdAsync(CropCatalogType.Arable, added.ID.Value);
         Assert.Equal(2, updated!.GrowthStages.Count);
         Assert.DoesNotContain(updated.GrowthStages, s => s.StageNumber == BbchGrowthStage.Flowering);
         Assert.Contains(updated.GrowthStages, s => s.StageNumber == BbchGrowthStage.Ripening && s.SoilMoistureMin == 30);
         Assert.Equal(20, updated.GrowthStages.Single(s => s.StageNumber == BbchGrowthStage.Germination).AirTempMin);
 
-        Assert.True(await _repo.CatalogDeleteAsync(HorticultureCatalogType.Crop, added.ID.Value));
+        Assert.True(await _repo.CatalogDeleteAsync(CropCatalogType.Arable, added.ID.Value));
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]

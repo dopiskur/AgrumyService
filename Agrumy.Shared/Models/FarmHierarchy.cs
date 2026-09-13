@@ -87,7 +87,7 @@ namespace Agrumy.Shared.Models
         int DashboardGridColumns { get; }
     }
 
-    /// Global (TenantID null, Global-admin maintained) or organization-added cultivar/species catalog a Sowing or ZonePlanting references - Detaljni dizajn R, D12: an organization sees the union of both, edits only its own rows, same shared-plus-own pattern as the existing Horticulture Catalog.
+    /// Global (TenantID null, Global-admin maintained) or organization-added cultivar/species catalog a Sowing or ZonePlanting references - Detaljni dizajn R, D12: an organization sees the union of both, edits only its own rows, same shared-plus-own pattern as the existing Crop Catalog.
     public class Crop
     {
         [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]

@@ -1,14 +1,14 @@
-@model IList<Agrumy.Shared.Models.HorticultureCatalogEntry>
+@model IList<Agrumy.Shared.Models.CropCatalogEntry>
 @{
-    ViewData["Title"] = "Horticulture Catalog";
-    var type = (Agrumy.Shared.Models.HorticultureCatalogType)ViewBag.CatalogType;
+    ViewData["Title"] = "Crop Catalog";
+    var type = (Agrumy.Shared.Models.CropCatalogType)ViewBag.CatalogType;
     // An Organization admin browses this shared, cross-organization catalog the same read-only way a Global reader does; only a Global admin ever edits it.
     bool isReadOnly = ViewBag.IsReadOnly is true || User.IsInRole(RoleNames.TenantAdmin);
 }
 
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">Horticulture Catalog</h3>
+        <h3 class="card-title">Crop Catalog</h3>
         @if (!isReadOnly)
         {
             <div class="card-tools">
@@ -18,11 +18,11 @@
     </div>
     <div class="card-body">
         <ul class="nav nav-tabs mb-3">
-            @foreach (var tab in Agrumy.Shared.Models.HorticultureCatalogTypeDisplay.Order)
+            @foreach (var tab in Agrumy.Shared.Models.CropCatalogTypeDisplay.Order)
             {
                 <li class="nav-item">
                     <a class="nav-link @(tab == type ? "active" : "")" asp-action="Index" asp-route-type="@tab">
-                        @(tab switch { Agrumy.Shared.Models.HorticultureCatalogType.Crop => "Crop", Agrumy.Shared.Models.HorticultureCatalogType.Fruit => "Fruit", Agrumy.Shared.Models.HorticultureCatalogType.Perma => "Permaculture", Agrumy.Shared.Models.HorticultureCatalogType.Hydroponic => "Hydroponics", _ => tab.ToString() })
+                        @Agrumy.Shared.Models.CropCatalogTypeDisplay.DisplayName(tab)
                     </a>
                 </li>
             }

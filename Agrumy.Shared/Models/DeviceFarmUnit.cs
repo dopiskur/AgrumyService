@@ -320,7 +320,7 @@ namespace Agrumy.Shared.Models
         public string NamePrefix { get; set; } = "";
     }
 
-    /// Response of POST .../Zone/ApplyDayNightPreset - same "capped, not failed" shape as HorticultureCatalogApplyResult, since the same zone rule-count cap can stop the night rule after the day rule already saved.
+    /// Response of POST .../Zone/ApplyDayNightPreset - same "capped, not failed" shape as CropCatalogApplyResult, since the same zone rule-count cap can stop the night rule after the day rule already saved.
     public class DayNightPresetApplyResult
     {
         public int RulesAdded { get; set; }
@@ -361,7 +361,7 @@ namespace Agrumy.Shared.Models
         // Must match AgrumyFirmware Logic/ConditionTree.h's MAX_CHILDREN_PER_GROUP.
         public const int HardMaxChildrenPerGroup = 4;
 
-        /// Shape+bound self-validation - everything Agrumy.Api.Devices.RuleValidationService.ShapeErrorAsync checks EXCEPT RuleTriggered's cross-reference (needs a DB lookup, which a Shared-project DTO can't do; RuleValidationService still checks that part itself). Runs automatically wherever this DTO is model-bound ([ApiController] rejects it with 400 before the action body runs) or wherever RuleValidationService.ShapeErrorAsync delegates to it - a rule built in code (e.g. Agrumy.Rules.HorticultureRuleTemplateBuilder) gets the exact same checks as one typed in by hand, not a second hand-maintained copy of them.
+        /// Shape+bound self-validation - everything Agrumy.Api.Devices.RuleValidationService.ShapeErrorAsync checks EXCEPT RuleTriggered's cross-reference (needs a DB lookup, which a Shared-project DTO can't do; RuleValidationService still checks that part itself). Runs automatically wherever this DTO is model-bound ([ApiController] rejects it with 400 before the action body runs) or wherever RuleValidationService.ShapeErrorAsync delegates to it - a rule built in code (e.g. Agrumy.Rules.CropCatalogRuleTemplateBuilder) gets the exact same checks as one typed in by hand, not a second hand-maintained copy of them.
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (string.IsNullOrWhiteSpace(Name))

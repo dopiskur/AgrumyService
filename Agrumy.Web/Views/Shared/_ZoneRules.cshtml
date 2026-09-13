@@ -40,35 +40,37 @@
 <partial name="_RuleEditor" model="ruleEditorModel" />
 
 @{
-    (string Label, IList<HorticultureCatalogEntry> Entries)[] catalogs =
+    (CropCatalogType Type, IList<CropCatalogEntry> Entries)[] catalogs =
     [
-        ("Crop", Model.CropCatalog),
-        ("Fruit", Model.FruitCatalog),
-        ("Hydroponic", Model.HydroponicCatalog),
-        ("Perma", Model.PermaCatalog),
+        (CropCatalogType.Arable, Model.ArableCatalog),
+        (CropCatalogType.Fruit, Model.FruitCatalog),
+        (CropCatalogType.Vegetable, Model.VegetableCatalog),
+        (CropCatalogType.Industrial, Model.IndustrialCatalog),
+        (CropCatalogType.Ornamental, Model.OrnamentalCatalog),
+        (CropCatalogType.MedicinalAndAromatic, Model.MedicinalAndAromaticCatalog),
     ];
 }
 @if (catalogs.Any(c => c.Entries.Count > 0))
 {
     <div class="card mb-3">
         <div class="card-body">
-            <h6 class="fw-semibold">Apply Horticulture Catalog template</h6>
+            <h6 class="fw-semibold">Apply Crop Catalog template</h6>
             <p class="text-secondary small">
                 Adds a starter set of rules from the picked entry's recommended ranges - a reasonable
                 default, not a finished configuration. Fine-tune (or delete) the generated rules above
                 afterward like any other rule.
             </p>
-            @foreach (var (label, entries) in catalogs)
+            @foreach (var (type, entries) in catalogs)
             {
                 if (entries.Count == 0)
                 {
                     continue;
                 }
-                <form asp-action="ApplyHorticultureCatalog" method="post" class="d-flex align-items-end gap-2 mb-2">
+                <form asp-action="ApplyCropCatalog" method="post" class="d-flex align-items-end gap-2 mb-2">
                     <input type="hidden" name="idDeviceFarmUnitZone" value="@Model.Zone!.IDDeviceFarmUnitZone" />
-                    <input type="hidden" name="catalogType" value="@label" />
+                    <input type="hidden" name="catalogType" value="@type" />
                     <div>
-                        <label class="form-label small mb-0">@label</label>
+                        <label class="form-label small mb-0">@CropCatalogTypeDisplay.DisplayName(type)</label>
                         <select name="catalogId" class="form-select form-select-sm" style="min-width:16rem">
                             @foreach (var entry in entries)
                             {
