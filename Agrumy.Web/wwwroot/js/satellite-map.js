@@ -156,20 +156,20 @@ function initSatelliteMap(mapId) {
     const nextDateBtn = widget.querySelector('[data-sat-role="nextDate"]');
 
     const map = L.map(mapEl);
-    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
+    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires. Not added to the map by default - "ARKOD karta" is, see below.
     const osmLayer = L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
-    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map.
+    });
+    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map. Default base layer.
     const arkodBaseLayer = L.layerGroup([
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         }),
         L.tileLayer.wms('https://servisi.apprrr.hr/NIPP/wms', { layers: 'hr.land_parcels', format: 'image/png', transparent: true, version: '1.3.0', attribution: 'ARKOD &copy; APPRRR/NIPP' }),
-    ]);
-    L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);
+    ]).addTo(map);
+    L.control.layers({ 'ARKOD karta': arkodBaseLayer, 'OpenStreetMap': osmLayer }).addTo(map);
     map.setView([45.815, 15.982], 13);
 
     let overlayLayer = L.layerGroup().addTo(map);

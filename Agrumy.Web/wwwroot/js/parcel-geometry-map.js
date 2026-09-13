@@ -22,11 +22,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const DEFAULT_LON = 15.982;
 
     const map = L.map(mapEl).setView([DEFAULT_LAT, DEFAULT_LON], 15);
-    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
+    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires. Not added to the map by default - "ARKOD karta" is, see below.
     const osmLayer = L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    });
 
     // ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed.
     const ARKOD_WMS_URL = 'https://servisi.apprrr.hr/NIPP/wms';
@@ -38,15 +38,15 @@ document.addEventListener('DOMContentLoaded', function () {
         version: '1.3.0',
         attribution: 'ARKOD &copy; APPRRR/NIPP',
     });
-    // "ARKOD karta" base option layers the boundary overlay over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map, not just OSM streets with thin lines.
+    // "ARKOD karta" base option layers the boundary overlay over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map, not just OSM streets with thin lines. Default base layer.
     const arkodBaseLayer = L.layerGroup([
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         }),
         arkodWmsLayer,
-    ]);
-    L.control.layers({ 'OpenStreetMap': osmLayer, 'ARKOD karta': arkodBaseLayer }).addTo(map);
+    ]).addTo(map);
+    L.control.layers({ 'ARKOD karta': arkodBaseLayer, 'OpenStreetMap': osmLayer }).addTo(map);
 
     const zoneColors = ['#2b8a3e', '#1971c2', '#e8590c', '#9c36b5', '#0c8599', '#c2255c'];
 
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!lookupArmed) {
             return;
         }
-        setLookupArmed(false);
+        // Stays armed across clicks - Off is an explicit re-click of the button, so panning around and trying several parcels doesn't mean re-arming every time.
         const active = currentEntry();
         if (!active) {
             return;
@@ -240,7 +240,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const arkodId = feature.properties?.id || feature.properties?.jpaid || '';
-            applyArkodGeometry(active, feature.geometry, arkodId, feature.properties?.area);
+            // GetFeatureInfo clips the returned geometry to the current viewport's BBOX, so a parcel
+            // extending off-screen comes back with a chunk missing - re-resolve the full boundary
+            // through the same local-mirror lookup "Look up this ID" uses, falling back to the
+            // (possibly clipped) WMS geometry only if that mirror has no entry for this id.
+            let geometry = feature.geometry;
+            let areaM2 = feature.properties?.area;
+            if (arkodId) {
+                try {
+                    const fullResponse = await fetch(`/FarmOpenfield/ArkodLookupById?arkodId=${encodeURIComponent(arkodId)}`);
+                    if (fullResponse.ok) {
+                        const fullResult = await fullResponse.json();
+                        geometry = JSON.parse(fullResult.geometryGeoJson);
+                        areaM2 = fullResult.areaM2;
+                    }
+                } catch (err) {
+                    // local mirror unreachable - keep the WMS geometry already captured above
+                }
+            }
+            applyArkodGeometry(active, geometry, arkodId, areaM2);
         } catch (err) {
             lookupStatus.textContent = 'ARKOD lookup failed (network error) - try again or draw manually.';
         }
