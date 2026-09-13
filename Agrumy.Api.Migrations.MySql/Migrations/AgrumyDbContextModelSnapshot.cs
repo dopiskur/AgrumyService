@@ -3040,6 +3040,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<DateOnly?>("HarvestDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("Name")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Notes")
                         .HasColumnType("longtext");
 

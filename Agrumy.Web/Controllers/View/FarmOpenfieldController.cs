@@ -173,7 +173,7 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly? expectedEndDate, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
+        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? sowingName, string? variety, DateOnly startDate, DateOnly? expectedEndDate, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
         {
             const int defaultExpectedDurationDays = 90;
             int expectedDurationDays = expectedEndDate is DateOnly eed ? Math.Max(1, eed.DayNumber - startDate.DayNumber) : defaultExpectedDurationDays;
@@ -181,6 +181,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 FarmID = idFarm,
                 SowingName = farmOpenfieldCropName,
+                Name = string.IsNullOrWhiteSpace(sowingName) ? null : sowingName,
                 Variety = variety,
                 StartDate = startDate,
                 ExpectedDurationDays = expectedDurationDays,
@@ -212,10 +213,10 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropRename(int idSowing, string farmOpenfieldCropName)
+        public async Task<ActionResult> CropRename(int idSowing, string sowingName)
         {
             Sowing crop = await api.CropGet(idSowing);
-            crop.SowingName = farmOpenfieldCropName;
+            crop.Name = sowingName;
             await api.CropUpdate(crop);
             return RedirectToAction(nameof(Parcels), new { idSowing });
         }

@@ -69,7 +69,7 @@
             {
                 <form asp-action="CropRename" method="post" class="d-flex gap-1">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                    <input type="text" name="farmOpenfieldCropName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
+                    <input type="text" name="sowingName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                 </form>
                 <form asp-action="CropDelete" method="post" data-confirm="Delete this sowing?" class="ms-auto">

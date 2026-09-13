@@ -99,6 +99,11 @@
                             </div>
 
                             <div class="mb-3">
+                                <label class="form-label">Sowing name</label>
+                                <input type="text" name="sowingName" class="form-control sowing-name-input" style="max-width:20rem" placeholder="Defaults to the crop name" maxlength="100" />
+                            </div>
+
+                            <div class="mb-3">
                                 <label class="form-label">Variety note (optional)</label>
                                 <input type="text" name="variety" class="form-control" style="max-width:20rem" placeholder="e.g. own seed lot" maxlength="100" />
                             </div>
@@ -183,6 +188,7 @@
                 var cropSelectedBlock = form.querySelector('.crop-picker-selected');
                 var cropSelectedLabel = form.querySelector('.crop-picker-selected-label');
                 var cropFilter = form.querySelector('.crop-picker-filter');
+                var sowingNameInput = form.querySelector('.sowing-name-input');
 
                 cropFilter.addEventListener('input', function () {
                     var q = cropFilter.value.trim().toLowerCase();
@@ -199,6 +205,9 @@
                         cropSelectedBlock.classList.remove('d-none');
                         cropSelectedBlock.classList.add('d-flex');
                         cropError.hidden = true;
+                        if (!sowingNameInput.value) {
+                            sowingNameInput.value = row.getAttribute('data-name');
+                        }
                     });
                 });
                 form.querySelector('.crop-picker-remove').addEventListener('click', function () {

@@ -180,7 +180,9 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? ClosedUtc { get; set; }
         public int? ClosedByUserID { get; set; }
         public string? Notes { get; set; }
-        /// Not a stored column - the repository fills it in from Crop.Name (+ Variety) on every read, since a Sowing has no free-text name of its own; a display convenience for scope pickers/audit labels only.
+        /// User-assigned, stored independently of the crop - the "New sowing" wizard defaults it to the picked crop's name but it's editable from there on (D9's Rename).
+        public string? Name { get; set; }
+        /// Not a stored column - the repository fills it in from Name if set, else Crop.Name (+ Variety), so a sowing created before Name existed still displays something sensible.
         public string? SowingName { get; set; }
     }
 

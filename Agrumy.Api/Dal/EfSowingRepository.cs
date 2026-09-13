@@ -38,6 +38,7 @@ namespace Agrumy.Api.Dal
                     TenantID = sowing.TenantID,
                     FarmID = sowing.FarmID,
                     CropID = cropID,
+                    Name = sowing.Name,
                     Variety = sowing.Variety,
                     SeedRateKgPerHa = sowing.SeedRateKgPerHa,
                     StartDate = sowing.StartDate == default ? DateOnly.FromDateTime(DateTime.UtcNow) : sowing.StartDate,
@@ -57,6 +58,7 @@ namespace Agrumy.Api.Dal
             {
                 return;
             }
+            row.Name = sowing.Name;
             row.Variety = sowing.Variety;
             row.SeedRateKgPerHa = sowing.SeedRateKgPerHa;
             row.ExpectedDurationDays = sowing.ExpectedDurationDays;
@@ -168,6 +170,7 @@ namespace Agrumy.Api.Dal
                 TenantID = sowing.TenantID,
                 FarmID = sowing.FarmID,
                 CropID = sowing.CropID,
+                Name = sowing.Name,
                 Variety = sowing.Variety,
                 SeedRateKgPerHa = sowing.SeedRateKgPerHa,
                 StartDate = sowing.StartDate,
@@ -296,12 +299,14 @@ namespace Agrumy.Api.Dal
             return rows.Select(row =>
             {
                 string? cropName = cropNames.GetValueOrDefault(row.CropID);
+                string? derivedName = string.IsNullOrEmpty(row.Variety) ? cropName : $"{cropName} ({row.Variety})";
                 return new Sowing
                 {
                     IDSowing = row.IDSowing,
                     TenantID = row.TenantID,
                     FarmID = row.FarmID,
                     CropID = row.CropID,
+                    Name = row.Name,
                     Variety = row.Variety,
                     SeedRateKgPerHa = row.SeedRateKgPerHa,
                     StartDate = row.StartDate,
@@ -311,7 +316,7 @@ namespace Agrumy.Api.Dal
                     ClosedUtc = row.ClosedUtc,
                     ClosedByUserID = row.ClosedByUserID,
                     Notes = row.Notes,
-                    SowingName = string.IsNullOrEmpty(row.Variety) ? cropName : $"{cropName} ({row.Variety})",
+                    SowingName = string.IsNullOrWhiteSpace(row.Name) ? derivedName : row.Name,
                 };
             }).ToList();
         }
