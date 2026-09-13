@@ -24,18 +24,11 @@
                 @(active.Mode == ManualOverrideMode.Target ? "(safety cutoff, may finish sooner once the target is reached)" : "")
             </span>
         </div>
-        @if (!isReadOnly)
-        {
-            <form asp-action="@stopAction" method="post">
-                <input type="hidden" name="@scopeFieldName" value="@Model.ScopeId" />
-                <input type="hidden" name="relayFunction" value="@((int)Model.RelayFunction)" />
-                <button type="submit" class="btn btn-sm btn-outline-danger" data-action="stop">Stop</button>
-            </form>
-        }
-    }
-    else if (isReadOnly)
-    {
-        <div class="flex-grow-1 text-secondary small">Not active.</div>
+        <form asp-action="@stopAction" method="post">
+            <input type="hidden" name="@scopeFieldName" value="@Model.ScopeId" />
+            <input type="hidden" name="relayFunction" value="@((int)Model.RelayFunction)" />
+            <button type="submit" class="btn btn-sm btn-outline-danger" data-action="stop" disabled="@isReadOnly">Stop</button>
+        </form>
     }
     else
     {
@@ -58,11 +51,11 @@
             <div id="@(fid)_durationFields" class="d-flex flex-wrap align-items-center gap-1">
                 @foreach (int minutes in new[] { 5, 15, 30, 60 })
                 {
-                    <button type="submit" name="durationMinutes" value="@minutes" class="btn btn-sm btn-outline-primary">@(minutes < 60 ? $"{minutes}min" : "1h")</button>
+                    <button type="submit" name="durationMinutes" value="@minutes" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly">@(minutes < 60 ? $"{minutes}min" : "1h")</button>
                 }
                 <span class="text-secondary small">or</span>
                 <input type="number" min="1" name="durationMinutesCustom" class="form-control form-control-sm" style="width:6rem" placeholder="min" />
-                <button type="submit" class="btn btn-sm btn-primary">Start</button>
+                <button type="submit" class="btn btn-sm btn-primary" disabled="@isReadOnly">Start</button>
             </div>
 
             <div id="@(fid)_targetFields" class="d-flex flex-wrap align-items-center gap-1" hidden>
@@ -74,7 +67,7 @@
                 </select>
                 <input type="number" step="any" name="targetThreshold" class="form-control form-control-sm" style="width:7rem" placeholder="target" required />
                 <input type="number" step="any" name="targetHysteresis" class="form-control form-control-sm" style="width:7rem" placeholder="hysteresis" value="2" />
-                <button type="submit" class="btn btn-sm btn-primary">Start</button>
+                <button type="submit" class="btn btn-sm btn-primary" disabled="@isReadOnly">Start</button>
             </div>
             @if (!Model.IsUnitLevel && !Model.IsFarmLevel && Model.MaxRunSeconds is > 0)
             {

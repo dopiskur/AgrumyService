@@ -4,6 +4,7 @@
     bool multipleFarms = Model.Farms.Count > 1;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     var unassigned = Model.Units.Where(u => u.DeviceFarmID == null).ToList();
     const string allUnitsContainerId = "unitCubes-all";
     const string unassignedUnitsContainerId = "unitCubes-unassigned";
@@ -67,12 +68,15 @@ else
                     <a asp-action="DeviceFarmRules" asp-route-idDeviceFarm="@farm.IDDeviceFarm" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-diagram-3"></i> Automation rules
                     </a>
-                    @if (canManage)
+                    @if (canManage || isReadOnly)
                     {
                         <form asp-action="ScanFarm" method="post" class="d-inline">
                             <input type="hidden" name="FarmID" value="@farm.IDDeviceFarm" />
-                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-broadcast"></i> Scan for new devices</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
                         </form>
+                    }
+                    @if (canManage)
+                    {
                         <form asp-action="FarmRename" method="post" class="d-flex gap-1">
                             <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
                             <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />

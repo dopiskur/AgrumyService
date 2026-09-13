@@ -1,8 +1,23 @@
+@using System.Text.Json
 @model CropSeasonsIndexViewModel
 @{
     ViewData["Title"] = "Crop";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    // Keyed by farm id - the wizard's parcel/group picker (step 2) swaps this client-side as the Farm select changes, so it needs every farm's data up front rather than a server round-trip per change.
+    string farmPickerDataJson = JsonSerializer.Serialize(Model.Farms.Where(f => f.IDDeviceFarm is int).ToDictionary(
+        f => f.IDDeviceFarm!.Value.ToString(),
+        f =>
+        {
+            IList<FarmParcelWithZonesViewModel> farmParcels = Model.AvailableParcelsByFarm.TryGetValue(f.IDDeviceFarm!.Value, out var fp) ? fp : [];
+            IList<FarmParcelGroupCrop> farmGroups = Model.ParcelGroupsByFarm.TryGetValue(f.IDDeviceFarm!.Value, out var fg) ? fg : [];
+            return new
+            {
+                parcels = farmParcels.SelectMany(pz => pz.Zones.Select(z => new { id = z.IDFarmParcelZone, name = $"{pz.Parcel.FarmParcelName} - {z.FarmParcelZoneName}", locked = z.CurrentSowingID != null })),
+                groups = farmGroups.Select(g => new { id = g.IDFarmParcelGroupCrop, name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))" }),
+            };
+        }), jsonOpts);
 }
 
 @if (TempData["Message"] is string message)
@@ -31,98 +46,301 @@
     }
     else
     {
-        <div class="card mb-4">
-            <div class="card-header"><h3 class="card-title mb-0">New sowing</h3></div>
-            <div class="card-body">
-                <form asp-action="CropAdd" method="post" class="row g-3">
-                    @if (Model.Farms.Count > 1)
-                    {
-                        <div class="col-md-4">
-                            <label class="form-label">Farm</label>
-                            <select name="idFarm" class="form-select" required>
-                                @foreach (var farm in Model.Farms)
-                                {
-                                    <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
-                                }
-                            </select>
-                        </div>
-                    }
-                    else
-                    {
-                        <input type="hidden" name="idFarm" value="@Model.Farms[0].IDDeviceFarm" />
-                    }
-                    <div class="col-md-4">
-                        <label class="form-label">Crop / variety</label>
-                        <select name="farmOpenfieldCropName" class="form-select" required>
-                            @foreach (var crop in Model.CatalogCrops.OrderBy(c => c.Name))
+        <div class="sowing-add-wizard mb-4">
+            <button type="button" class="btn btn-primary sowing-add-toggle"><i class="bi bi-plus-lg"></i> New sowing</button>
+            <div class="card mt-2 sowing-add-form" hidden>
+                <div class="card-header"><h3 class="card-title mb-0">New sowing</h3></div>
+                <div class="card-body">
+                    <form asp-action="CropAdd" method="post" id="sowingAddForm">
+                        <div class="sowing-wizard-step">
+                            @if (Model.Farms.Count > 1)
                             {
-                                <option value="@crop.Name">@crop.Name@(string.IsNullOrEmpty(crop.ClassCode) ? "" : $" ({crop.ClassCode})")</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Variety note (optional)</label>
-                        <input type="text" name="variety" class="form-control" placeholder="e.g. own seed lot" maxlength="100" />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Start date</label>
-                        <input type="date" name="startDate" class="form-control" required />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Expected end date</label>
-                        <input type="date" name="expectedEndDate" class="form-control" required />
-                        <div class="form-text">An estimate, not a hard deadline - closing the sowing is a separate step whenever harvest actually happens.</div>
-                    </div>
-                    @if (Model.AvailableParcels.Count > 0 || Model.ParcelGroups.Count > 0)
-                    {
-                        <div class="col-12">
-                            <label class="form-label">Parcels for this sowing <span class="text-muted">(optional - pick individually and/or a saved group; leave empty to assign parcels later)</span></label>
-                            <div class="row g-3">
-                                @if (Model.ParcelGroups.Count > 0)
-                                {
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-2" style="max-height:12rem;overflow-y:auto">
-                                            @foreach (var group in Model.ParcelGroups)
-                                            {
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="farmParcelGroupCropIds" value="@group.IDFarmParcelGroupCrop" id="group-@group.IDFarmParcelGroupCrop" />
-                                                    <label class="form-check-label" for="group-@group.IDFarmParcelGroupCrop">
-                                                        @group.Name <span class="text-secondary small">(@group.MemberParcelIds.Count parcel(s))</span>
-                                                    </label>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                                <div class="col-md-6">
-                                    <div class="border rounded p-2" style="max-height:12rem;overflow-y:auto">
-                                        @foreach (var pz in Model.AvailableParcels)
+                                <div class="mb-3">
+                                    <label class="form-label">Farm</label>
+                                    <select name="idFarm" class="form-select sowing-farm-select" style="max-width:20rem" required>
+                                        @foreach (var farm in Model.Farms)
                                         {
-                                            <div class="mb-1">
-                                                <strong class="small">@pz.Parcel.FarmParcelName</strong>
-                                                @foreach (var z in pz.Zones)
-                                                {
-                                                    bool locked = z.CurrentSowingID != null;
-                                                    <div class="form-check form-check-inline @(locked ? "text-secondary" : "")">
-                                                        <input class="form-check-input" type="checkbox" name="farmParcelZoneIds" value="@z.IDFarmParcelZone" id="wizard-zone-@z.IDFarmParcelZone" disabled="@locked" />
-                                                        <label class="form-check-label" for="wizard-zone-@z.IDFarmParcelZone">
-                                                            @z.FarmParcelZoneName @(locked ? "(occupied)" : "")
-                                                        </label>
-                                                    </div>
-                                                }
-                                            </div>
+                                            <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                         }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="hidden" name="idFarm" value="@Model.Farms[0].IDDeviceFarm" />
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">Crop / variety</label>
+                                <input type="hidden" name="farmOpenfieldCropName" class="crop-picker-value" />
+                                <div class="text-danger small mb-1 crop-picker-error" hidden>Pick a crop first.</div>
+
+                                <div class="crop-picker-search">
+                                    <input type="search" class="form-control form-control-sm mb-2 crop-picker-filter" placeholder="Search crops...">
+                                    <div class="border rounded" style="max-height:14rem;overflow-y:auto">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <tbody>
+                                                @foreach (var crop in Model.CatalogCrops.OrderBy(c => c.Name))
+                                                {
+                                                    string cropLabel = crop.Name + (string.IsNullOrEmpty(crop.ClassCode) ? "" : $" ({crop.ClassCode})");
+                                                    <tr class="crop-picker-row" data-name="@crop.Name" data-label="@cropLabel" data-search="@cropLabel.ToLowerInvariant()">
+                                                        <td>@cropLabel</td>
+                                                        <td class="text-end"><button type="button" class="btn btn-sm btn-primary crop-picker-add">Add</button></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
+                                <div class="crop-picker-selected d-none justify-content-between align-items-center border rounded p-2">
+                                    <span class="fw-semibold crop-picker-selected-label"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger crop-picker-remove">Remove</button>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Variety note (optional)</label>
+                                <input type="text" name="variety" class="form-control" style="max-width:20rem" placeholder="e.g. own seed lot" maxlength="100" />
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Start date</label>
+                                    <input type="date" name="startDate" class="form-control sowing-start-date" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Expected end date <span class="text-muted">(optional)</span></label>
+                                    <input type="date" name="expectedEndDate" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="text-end">
+                                <button type="button" class="btn btn-primary sowing-wizard-next">Next</button>
                             </div>
                         </div>
-                    }
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Start planning this sowing</button>
-                    </div>
-                </form>
+
+                        <div class="sowing-wizard-step" hidden>
+                            <div class="d-flex gap-2 mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary sowing-picker-toggle" data-picker="parcel">+ Add parcel</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary sowing-picker-toggle" data-picker="group">+ Add parcel group</button>
+                            </div>
+
+                            <div class="sowing-picker-search d-none mb-3" data-picker="parcel">
+                                <input type="search" class="form-control form-control-sm mb-2 sowing-picker-filter" placeholder="Search parcels...">
+                                <div class="border rounded" style="max-height:12rem;overflow-y:auto">
+                                    <table class="table table-sm table-hover mb-0"><tbody class="sowing-picker-body"></tbody></table>
+                                </div>
+                            </div>
+                            <div class="sowing-picker-search d-none mb-3" data-picker="group">
+                                <input type="search" class="form-control form-control-sm mb-2 sowing-picker-filter" placeholder="Search parcel groups...">
+                                <div class="border rounded" style="max-height:12rem;overflow-y:auto">
+                                    <table class="table table-sm table-hover mb-0"><tbody class="sowing-picker-body"></tbody></table>
+                                </div>
+                            </div>
+
+                            <label class="form-label">Parcels for this sowing <span class="text-muted">(optional - leave empty to assign later)</span></label>
+                            <input type="search" class="form-control form-control-sm mb-2 sowing-selected-filter" placeholder="Search added parcels...">
+                            <div class="border rounded mb-3" style="max-height:14rem;overflow-y:auto">
+                                <table class="table table-sm mb-0">
+                                    <tbody class="sowing-selected-body">
+                                        <tr class="sowing-selected-empty"><td class="text-secondary small fst-italic">None added yet.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="sowing-selected-inputs"></div>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary sowing-wizard-back">Back</button>
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Save and continue</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
+        <script type="application/json" class="sowing-farm-picker-data">@Html.Raw(farmPickerDataJson)</script>
+        <script nonce="@Context.CspNonce()">
+            (function () {
+                var wizard = document.currentScript.previousElementSibling.previousElementSibling;
+                var toggle = wizard.querySelector('.sowing-add-toggle');
+                var form = wizard.querySelector('.sowing-add-form');
+                toggle.addEventListener('click', function () { form.hidden = !form.hidden; });
+
+                var farmData = JSON.parse(document.currentScript.previousElementSibling.textContent);
+                var steps = Array.from(form.querySelectorAll('.sowing-wizard-step'));
+
+                function currentFarmId() {
+                    var select = form.querySelector('.sowing-farm-select');
+                    if (select) { return select.value; }
+                    var hidden = form.querySelector('input[name="idFarm"]');
+                    return hidden ? hidden.value : null;
+                }
+
+                // ---- Crop picker (single-select: Add swaps the search table for a selected+Remove display) ----
+                var cropValueInput = form.querySelector('.crop-picker-value');
+                var cropError = form.querySelector('.crop-picker-error');
+                var cropSearchBlock = form.querySelector('.crop-picker-search');
+                var cropSelectedBlock = form.querySelector('.crop-picker-selected');
+                var cropSelectedLabel = form.querySelector('.crop-picker-selected-label');
+                var cropFilter = form.querySelector('.crop-picker-filter');
+
+                cropFilter.addEventListener('input', function () {
+                    var q = cropFilter.value.trim().toLowerCase();
+                    form.querySelectorAll('.crop-picker-row').forEach(function (row) {
+                        row.hidden = q.length > 0 && row.getAttribute('data-search').indexOf(q) === -1;
+                    });
+                });
+                form.querySelectorAll('.crop-picker-add').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var row = btn.closest('.crop-picker-row');
+                        cropValueInput.value = row.getAttribute('data-name');
+                        cropSelectedLabel.textContent = row.getAttribute('data-label');
+                        cropSearchBlock.hidden = true;
+                        cropSelectedBlock.classList.remove('d-none');
+                        cropSelectedBlock.classList.add('d-flex');
+                        cropError.hidden = true;
+                    });
+                });
+                form.querySelector('.crop-picker-remove').addEventListener('click', function () {
+                    cropValueInput.value = '';
+                    cropSelectedBlock.classList.add('d-none');
+                    cropSelectedBlock.classList.remove('d-flex');
+                    cropSearchBlock.hidden = false;
+                });
+
+                // ---- Step navigation ----
+                function showStep(index) {
+                    steps.forEach(function (step, i) { step.hidden = i !== index; });
+                }
+                form.querySelector('.sowing-wizard-next').addEventListener('click', function () {
+                    if (!cropValueInput.value) {
+                        cropError.hidden = false;
+                        return;
+                    }
+                    var startDate = form.querySelector('.sowing-start-date');
+                    if (!startDate.checkValidity()) {
+                        startDate.reportValidity();
+                        return;
+                    }
+                    populatePickers(currentFarmId());
+                    showStep(1);
+                });
+                form.querySelector('.sowing-wizard-back').addEventListener('click', function () { showStep(0); });
+
+                var farmSelect = form.querySelector('.sowing-farm-select');
+                if (farmSelect) {
+                    farmSelect.addEventListener('change', function () {
+                        resetSelections();
+                        populatePickers(farmSelect.value);
+                    });
+                }
+
+                // ---- Parcel/group pickers (multi-select: Add appends to a running "selected" list, Remove un-adds) ----
+                var selectedItems = []; // { type: 'zone'|'group', id, name }
+                var selectedBody = form.querySelector('.sowing-selected-body');
+                var selectedEmptyRow = form.querySelector('.sowing-selected-empty');
+                var selectedInputsContainer = form.querySelector('.sowing-selected-inputs');
+                var selectedFilter = form.querySelector('.sowing-selected-filter');
+
+                function resetSelections() {
+                    selectedItems = [];
+                    renderSelected();
+                }
+
+                function renderSelected() {
+                    selectedBody.querySelectorAll('tr:not(.sowing-selected-empty)').forEach(function (r) { r.remove(); });
+                    selectedInputsContainer.innerHTML = '';
+                    selectedEmptyRow.hidden = selectedItems.length > 0;
+                    selectedItems.forEach(function (item) {
+                        var tr = document.createElement('tr');
+                        tr.innerHTML = '<td>' + item.name.replace(/</g, '&lt;') + (item.type === 'group' ? ' <span class="badge text-bg-secondary">group</span>' : '') + '</td>' +
+                            '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove>Remove</button></td>';
+                        tr.querySelector('[data-remove]').addEventListener('click', function () { removeSelected(item); });
+                        selectedBody.appendChild(tr);
+
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = item.type === 'group' ? 'farmParcelGroupCropIds' : 'farmParcelZoneIds';
+                        input.value = item.id;
+                        selectedInputsContainer.appendChild(input);
+                    });
+                    applySelectedFilter();
+                }
+
+                function applySelectedFilter() {
+                    var q = selectedFilter.value.trim().toLowerCase();
+                    selectedBody.querySelectorAll('tr:not(.sowing-selected-empty)').forEach(function (row) {
+                        row.hidden = q.length > 0 && row.textContent.toLowerCase().indexOf(q) === -1;
+                    });
+                }
+                selectedFilter.addEventListener('input', applySelectedFilter);
+
+                function addSelected(type, id, name) {
+                    if (selectedItems.some(function (i) { return i.type === type && String(i.id) === String(id); })) { return; }
+                    selectedItems.push({ type: type, id: id, name: name });
+                    renderSelected();
+                    updatePickerRowState(type, id, true);
+                }
+                function removeSelected(item) {
+                    selectedItems = selectedItems.filter(function (i) { return !(i.type === item.type && String(i.id) === String(item.id)); });
+                    renderSelected();
+                    updatePickerRowState(item.type, item.id, false);
+                }
+                function updatePickerRowState(type, id, added) {
+                    var row = form.querySelector('.sowing-picker-body tr[data-type="' + type + '"][data-id="' + id + '"]');
+                    if (row) { row.hidden = added; }
+                }
+
+                function populatePickers(farmId) {
+                    var data = farmData[farmId] || { parcels: [], groups: [] };
+                    fillPickerTable('parcel', data.parcels.map(function (p) { return { id: p.id, name: p.name, disabled: p.locked, disabledLabel: '(occupied)' }; }));
+                    fillPickerTable('group', data.groups.map(function (g) { return { id: g.id, name: g.name, disabled: false }; }));
+                }
+                function fillPickerTable(type, items) {
+                    var body = form.querySelector('.sowing-picker-search[data-picker="' + type + '"] .sowing-picker-body');
+                    body.innerHTML = '';
+                    items.forEach(function (item) {
+                        var tr = document.createElement('tr');
+                        tr.setAttribute('data-type', type);
+                        tr.setAttribute('data-id', item.id);
+                        tr.setAttribute('data-search', item.name.toLowerCase());
+                        var alreadySelected = selectedItems.some(function (i) { return i.type === type && String(i.id) === String(item.id); });
+                        tr.hidden = alreadySelected;
+                        var addBtnHtml = item.disabled
+                            ? '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>' + item.disabledLabel + '</button>'
+                            : '<button type="button" class="btn btn-sm btn-primary" data-add>Add</button>';
+                        tr.innerHTML = '<td>' + item.name.replace(/</g, '&lt;') + '</td><td class="text-end">' + addBtnHtml + '</td>';
+                        if (!item.disabled) {
+                            tr.querySelector('[data-add]').addEventListener('click', function () { addSelected(type, item.id, item.name); });
+                        }
+                        body.appendChild(tr);
+                    });
+                }
+
+                form.querySelectorAll('.sowing-picker-toggle').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var kind = btn.getAttribute('data-picker');
+                        var target = form.querySelector('.sowing-picker-search[data-picker="' + kind + '"]');
+                        var wasVisible = !target.classList.contains('d-none');
+                        form.querySelectorAll('.sowing-picker-search').forEach(function (block) { block.classList.add('d-none'); });
+                        if (!wasVisible) { target.classList.remove('d-none'); }
+                    });
+                });
+                form.querySelectorAll('.sowing-picker-filter').forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        var body = input.closest('.sowing-picker-search').querySelector('.sowing-picker-body');
+                        var q = input.value.trim().toLowerCase();
+                        body.querySelectorAll('tr').forEach(function (row) {
+                            var alreadySelected = row.hidden && selectedItems.some(function (i) { return String(i.id) === row.getAttribute('data-id') && i.type === row.getAttribute('data-type'); });
+                            if (alreadySelected) { return; }
+                            row.hidden = q.length > 0 && row.getAttribute('data-search').indexOf(q) === -1;
+                        });
+                    });
+                });
+
+                populatePickers(currentFarmId());
+            })();
+        </script>
     }
 }
 

@@ -72,9 +72,9 @@ namespace Agrumy.Web.ViewModels
         public IList<Sowing> Sowings { get; init; } = [];
         /// HorticultureCatalogType.Crop entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
         public IList<HorticultureCatalogEntry> CatalogCrops { get; init; } = [];
-        /// Only populated when there's exactly one Open-Field farm (the common case) - the wizard's parcel-selection step, same shape as CropParcelsViewModel.AvailableParcels. Left empty for the rare multi-farm case, which keeps today's crop+dates-only wizard and assigns parcels afterward on the Sowing Details page.
-        public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
-        public IList<FarmParcelGroupCrop> ParcelGroups { get; init; } = [];
+        /// Keyed by IDDeviceFarm - the wizard's parcel-selection step swaps between these client-side as the Farm picker changes, same shape as CropParcelsViewModel.AvailableParcels.
+        public IDictionary<int, IList<FarmParcelWithZonesViewModel>> AvailableParcelsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelWithZonesViewModel>>();
+        public IDictionary<int, IList<FarmParcelGroupCrop>> ParcelGroupsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelGroupCrop>>();
         /// Farm Group names by IDFarmGroup - the sowing list shows which group a sowing's farm belongs to instead of the farm's own name (Farm is an internal bridge entity now, see ParcelsRegistry.cshtml's own version of this).
         public IDictionary<int, string> FarmGroupNames { get; init; } = new Dictionary<int, string>();
     }
