@@ -63,6 +63,7 @@ namespace Agrumy.Api.Dal
                 SensorDataRetentionDays = settings.SensorDataRetentionDays,
                 RecycleBinRetentionDays = 30,
                 SatelliteRasterRetentionDays = 30,
+                SatelliteDataPointRetentionDays = 730,
                 WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes,
                 WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold,
                 FrostLookaheadHours = settings.FrostLookaheadHours,
@@ -122,6 +123,7 @@ namespace Agrumy.Api.Dal
             row.SensorDataRetentionDays = config.SensorDataRetentionDays;
             row.RecycleBinRetentionDays = config.RecycleBinRetentionDays;
             row.SatelliteRasterRetentionDays = config.SatelliteRasterRetentionDays;
+            row.SatelliteDataPointRetentionDays = config.SatelliteDataPointRetentionDays;
             row.PurgeOrphanedSensorDataScheduleEnabled = config.PurgeOrphanedSensorDataScheduleEnabled;
             row.WeatherLocationLat = config.WeatherLocationLat;
             row.WeatherLocationLon = config.WeatherLocationLon;
@@ -330,6 +332,7 @@ namespace Agrumy.Api.Dal
             SensorDataRetentionDays = r.SensorDataRetentionDays,
             RecycleBinRetentionDays = r.RecycleBinRetentionDays ?? 30,
             SatelliteRasterRetentionDays = r.SatelliteRasterRetentionDays ?? 30,
+            SatelliteDataPointRetentionDays = r.SatelliteDataPointRetentionDays ?? 730,
             PurgeOrphanedSensorDataScheduleEnabled = r.PurgeOrphanedSensorDataScheduleEnabled,
             WeatherLocationLat = r.WeatherLocationLat,
             WeatherLocationLon = r.WeatherLocationLon,

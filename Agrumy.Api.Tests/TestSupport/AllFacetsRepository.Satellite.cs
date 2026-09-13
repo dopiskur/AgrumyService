@@ -48,6 +48,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<int> ImagePathsClearOlderThanAsync(DateTimeOffset cutoffUtc) => satelliteSceneRepository.ImagePathsClearOlderThanAsync(cutoffUtc);
 
+        public Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate) => satelliteSceneRepository.ScenesDeleteOlderThanAsync(cutoffDate);
+
         public Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable) => satelliteSceneRepository.SeriesGetAsync(farmParcelZoneId, index, fromUtc, toUtc, onlyReliable);
 
         public Task FarmParcelZoneBackfillCompletedSetAsync(int farmParcelZoneId, DateTimeOffset completedAtUtc) => satelliteSceneRepository.FarmParcelZoneBackfillCompletedSetAsync(farmParcelZoneId, completedAtUtc);

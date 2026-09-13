@@ -135,6 +135,11 @@ namespace Agrumy.Api.Controllers.API
             {
                 return "Satellite raster cache retention must be between 0 and 365 days.";
             }
+            // Fixed dropdown - the retention horizon is an admin-chosen preset, not free text.
+            if (s.SatelliteDataPointRetentionDays is not (null or 0 or 1 or 7 or 30 or 90 or 180 or 365 or 730 or 1825 or 3650))
+            {
+                return "Satellite data point retention must be one of the preset options.";
+            }
             return null;
         });
 

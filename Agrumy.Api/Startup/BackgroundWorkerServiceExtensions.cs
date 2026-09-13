@@ -64,6 +64,8 @@ namespace Agrumy.Api.Startup
             services.AddHostedService<SatelliteSyncBackgroundService>();
             services.AddScoped<SatelliteRasterRetentionEvaluator>();
             services.AddHostedService<SatelliteRasterRetentionBackgroundService>();
+            services.AddScoped<SatelliteDataPointRetentionEvaluator>();
+            services.AddHostedService<SatelliteDataPointRetentionBackgroundService>();
 
             services.AddHttpClient<Agrumy.Api.Arkod.ArkodGeoPackageSyncEvaluator>(client => client.Timeout = TimeSpan.FromMinutes(60));
             services.AddHostedService<ArkodGeoPackageSyncBackgroundService>();

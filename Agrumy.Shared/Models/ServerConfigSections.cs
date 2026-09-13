@@ -149,6 +149,8 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Satellite raster cache retention (days)")]
         [Range(0, 365)]
         public int? SatelliteRasterRetentionDays { get; set; } = 30;
+        [Display(Name = "Satellite data point retention (days)")]
+        public int? SatelliteDataPointRetentionDays { get; set; } = 730;
         [Display(Name = "Recycle bin retention (days)")]
         [Range(0, 90)]
         public int? RecycleBinRetentionDays { get; set; }
@@ -159,6 +161,7 @@ namespace Agrumy.Shared.Models
         {
             SensorDataRetentionDays = c.SensorDataRetentionDays,
             SatelliteRasterRetentionDays = c.SatelliteRasterRetentionDays,
+            SatelliteDataPointRetentionDays = c.SatelliteDataPointRetentionDays,
             RecycleBinRetentionDays = c.RecycleBinRetentionDays,
             PurgeOrphanedSensorDataScheduleEnabled = c.PurgeOrphanedSensorDataScheduleEnabled,
         };
@@ -167,6 +170,7 @@ namespace Agrumy.Shared.Models
         {
             c.SensorDataRetentionDays = SensorDataRetentionDays;
             c.SatelliteRasterRetentionDays = SatelliteRasterRetentionDays;
+            c.SatelliteDataPointRetentionDays = SatelliteDataPointRetentionDays;
             c.RecycleBinRetentionDays = RecycleBinRetentionDays;
             c.PurgeOrphanedSensorDataScheduleEnabled = PurgeOrphanedSensorDataScheduleEnabled;
         }

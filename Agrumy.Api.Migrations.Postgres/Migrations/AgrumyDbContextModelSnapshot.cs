@@ -2804,6 +2804,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("RecycleBinRetentionDays")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SatelliteDataPointRetentionDays")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SatelliteRasterRetentionDays")
                         .HasColumnType("integer");
 

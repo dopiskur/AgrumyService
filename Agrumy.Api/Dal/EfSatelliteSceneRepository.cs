@@ -122,6 +122,21 @@ namespace Agrumy.Api.Dal
                 .ExecuteUpdateAsync(set => set.SetProperty(i => i.ImagePath, (string?)null));
         }
 
+        public async Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate)
+        {
+            var sceneIds = await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
+                .Where(s => s.SceneDateUtc < cutoffDate)
+                .Select(s => s.IDFarmParcelZoneSatelliteScene)
+                .ToListAsync();
+            if (sceneIds.Count == 0)
+            {
+                return 0;
+            }
+            // Index rows first - they carry the FK to the scene.
+            await db.ParcelSatelliteIndices.Where(i => sceneIds.Contains(i.SceneID)).ExecuteDeleteAsync();
+            return await db.FarmParcelZoneSatelliteScenes.Where(s => sceneIds.Contains(s.IDFarmParcelZoneSatelliteScene)).ExecuteDeleteAsync();
+        }
+
         public async Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable)
         {
             IQueryable<FarmParcelZoneSatelliteSceneRow> scenesQuery = db.FarmParcelZoneSatelliteScenes.AsNoTracking().Where(s => s.FarmParcelZoneID == farmParcelZoneId);

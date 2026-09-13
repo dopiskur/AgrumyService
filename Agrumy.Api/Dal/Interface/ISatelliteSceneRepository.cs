@@ -31,6 +31,9 @@ namespace Agrumy.Api.Dal.Interface
         /// D10 retention job - clears ImagePath for every index row past the cutoff so the next view regenerates from GridBase64; never touches GridBase64/StatsJson themselves.
         Task<int> ImagePathsClearOlderThanAsync(DateTimeOffset cutoffUtc);
 
+        /// Data-point retention (separate from the PNG-cache retention above) - permanently deletes a scene and its index rows (grid/stats included) once its own SceneDateUtc is older than the cutoff. Returns the number of scenes deleted.
+        Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate);
+
         /// Time series across the scene's whole history for one zone+index, straight off the stats columns - no raster read (Detaljni dizajn S, B4).
         Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable);
 
