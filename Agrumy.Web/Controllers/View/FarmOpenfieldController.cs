@@ -22,17 +22,19 @@ namespace Agrumy.Web.Controllers.View
             List<int?> farmIds = farms.Select(f => f.IDDeviceFarm).ToList();
             IList<Sowing> sowings = (await api.CropsGet()).Where(s => farmIds.Contains(s.FarmID)).ToList();
 
-            // Parcel/group picker only renders for the single-farm case - a multi-farm wizard would need the picker to swap per farm choice, not worth the extra JS for the rare case (keeps today's crop+dates-only flow there, zones get assigned afterward on the Sowing Details page).
-            var availableParcels = new List<FarmParcelWithZonesViewModel>();
-            IList<FarmParcelGroupCrop> parcelGroups = [];
-            if (farms.Count == 1)
+            // Parcel/group picker is keyed per farm so the wizard can swap between them client-side as the Farm choice changes.
+            var availableParcelsByFarm = new Dictionary<int, IList<FarmParcelWithZonesViewModel>>();
+            var parcelGroupsByFarm = new Dictionary<int, IList<FarmParcelGroupCrop>>();
+            foreach (DeviceFarm farm in farms)
             {
-                int idFarm = farms[0].IDDeviceFarm!.Value;
+                int idFarm = farm.IDDeviceFarm!.Value;
+                var availableParcels = new List<FarmParcelWithZonesViewModel>();
                 foreach (FarmParcel parcel in await api.FarmParcelsGet(idFarm))
                 {
                     availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
                 }
-                parcelGroups = await api.ParcelGroupsGet(idFarm);
+                availableParcelsByFarm[idFarm] = availableParcels;
+                parcelGroupsByFarm[idFarm] = await api.ParcelGroupsGet(idFarm);
             }
 
             IList<FarmGroup> farmGroups = await api.FarmGroupsGet();
@@ -42,8 +44,8 @@ namespace Agrumy.Web.Controllers.View
                 Farms = farms,
                 Sowings = sowings,
                 CatalogCrops = await api.HorticultureCatalogGet(HorticultureCatalogType.Crop),
-                AvailableParcels = availableParcels,
-                ParcelGroups = parcelGroups,
+                AvailableParcelsByFarm = availableParcelsByFarm,
+                ParcelGroupsByFarm = parcelGroupsByFarm,
                 FarmGroupNames = farmGroups.Where(g => g.IDFarmGroup is int).ToDictionary(g => g.IDFarmGroup!.Value, g => g.Name ?? ""),
             });
         }
@@ -167,7 +169,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard step 1 (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the single-farm picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection (multi-farm case, or nothing picked) keeps the old create-as-Planned behavior.
+        /// Sjetva wizard (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -203,7 +205,11 @@ namespace Agrumy.Web.Controllers.View
                     TempData["Error"] = ex.Body;
                 }
             }
-            return RedirectToAction(nameof(Parcels), new { idSowing = added.IDSowing });
+            else
+            {
+                TempData["Message"] = "Sowing created.";
+            }
+            return RedirectToAction(nameof(CropSeasons));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
