@@ -85,8 +85,10 @@ namespace Agrumy.Web.ViewModels
         public required Sowing Crop { get; init; }
         public required DeviceFarm Farm { get; init; }
         public IList<FarmParcelZoneDashboard> Parcels { get; init; } = [];
-        /// Every zone on the sowing's own farm, free or not - the Start-sowing zone picker (D3/D9) when the sowing is still Planned. Empty once Active/Closed.
+        /// Every zone on the sowing's own farm, free or not - the Start-sowing zone picker (D3/D9) when the sowing is still Planned, and the Manage-parcels dialog's data source (both its Add pickers and its own-zones table) regardless of status.
         public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
+        /// The farm's saved parcel groups - Manage-parcels' "Add parcel group" picker, its zone table's Group column/Assign-to-group button, and the "Remove parcel group" option.
+        public IList<FarmParcelGroupCrop> ParcelGroups { get; init; } = [];
         public IList<FieldLogEntry> LogEntries { get; init; } = [];
         /// D13 - null means no PlantProtection entry has been logged yet, so Harvest is never karenca-gated.
         public DateOnly? EarliestHarvestDate { get; init; }

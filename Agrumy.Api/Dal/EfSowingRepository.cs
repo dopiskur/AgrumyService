@@ -92,6 +92,20 @@ namespace Agrumy.Api.Dal
             await SyncDevicesAsync(farmParcelZoneIds, idSowing);
         }
 
+        public async Task SowingReleaseZoneAsync(int idSowing, int idFarmParcelZone)
+        {
+            var link = await db.SowingFarmParcelZones.FirstOrDefaultAsync(l => l.SowingID == idSowing && l.FarmParcelZoneID == idFarmParcelZone && l.ReleasedUtc == null);
+            if (link == null)
+            {
+                return;
+            }
+            link.ReleasedUtc = DateTimeOffset.UtcNow;
+            await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone)
+                .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, (int?)null));
+            await db.SaveChangesAsync();
+            await SyncDevicesAsync([idFarmParcelZone], null);
+        }
+
         public async Task SowingCloseAsync(int idSowing, int? closedByUserID)
         {
             var occupied = await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing && l.ReleasedUtc == null).ToListAsync();

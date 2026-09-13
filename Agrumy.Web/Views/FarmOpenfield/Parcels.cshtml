@@ -151,7 +151,15 @@
             </details>
         }
 
-        <h5>Zones</h5>
+        <div class="d-flex align-items-center gap-2">
+            <h5 class="mb-0">Zones</h5>
+            @if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+            {
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manageParcelsModal">
+                    <i class="bi bi-ui-checks-grid"></i> Manage parcels
+                </button>
+            }
+        </div>
         @if (Model.Parcels.Count == 0)
         {
             <p class="text-secondary">No zones occupied yet.</p>
@@ -316,3 +324,295 @@
     <partial name="_SatelliteMap" model="new SatelliteMapViewModel { Scope = Agrumy.Shared.Models.SatelliteMapScope.Sowing, Id = Model.Crop.IDSowing!.Value, CanManage = canManage }" />
 </div>
 </div>
+
+@if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+{
+    <div class="modal fade" id="manageParcelsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header flex-wrap gap-2">
+                    <h5 class="modal-title me-auto">Manage parcels</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary manage-parcels-toggle" data-picker="parcel">+ Add parcel</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary manage-parcels-toggle" data-picker="group">+ Add parcel group</button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="manage-parcels-picker d-none mb-3" data-picker="parcel">
+                        <input type="search" class="form-control form-control-sm mb-2 manage-parcels-picker-filter" placeholder="Search parcels...">
+                        <div class="border rounded" style="max-height:12rem;overflow-y:auto">
+                            <table class="table table-sm table-hover mb-0"><tbody class="manage-parcels-picker-body"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="manage-parcels-picker d-none mb-3" data-picker="group">
+                        <input type="search" class="form-control form-control-sm mb-2 manage-parcels-picker-filter" placeholder="Search parcel groups...">
+                        <div class="border rounded" style="max-height:12rem;overflow-y:auto">
+                            <table class="table table-sm table-hover mb-0"><tbody class="manage-parcels-picker-body"></tbody></table>
+                        </div>
+                    </div>
+
+                    <div class="manage-parcels-groups-block mb-3 d-none">
+                        <h6>Parcel groups</h6>
+                        <input type="search" class="form-control form-control-sm mb-2 manage-groups-filter" placeholder="Search...">
+                        <div class="border rounded" style="max-height:10rem;overflow-y:auto">
+                            <table class="table table-sm mb-0"><tbody class="manage-groups-body"></tbody></table>
+                        </div>
+                    </div>
+
+                    <h6>Parcels</h6>
+                    <input type="search" class="form-control form-control-sm mb-2 manage-zones-filter" placeholder="Search parcels...">
+                    <div class="border rounded" style="max-height:18rem;overflow-y:auto">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Ready</th><th>Parcel</th><th>Group</th><th></th><th></th></tr></thead>
+                            <tbody class="manage-zones-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="assignToGroupModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign to group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-grid gap-2 assign-to-group-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="removeParcelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Remove parcel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-grid gap-2 remove-parcel-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="SowingReleaseZone" method="post" class="d-none" id="formSowingReleaseZone">
+        <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+        <input type="hidden" name="idFarmParcelZone" class="release-zone-id" />
+    </form>
+    <form asp-action="SowingReleaseGroup" method="post" class="d-none" id="formSowingReleaseGroup">
+        <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+        <input type="hidden" name="idFarmParcelGroupCrop" class="release-group-id" />
+    </form>
+    <form asp-action="SowingStart" method="post" class="d-none" id="formSowingAddZone">
+        <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+        <input type="hidden" name="farmParcelZoneIds" class="add-zone-id" />
+    </form>
+    <form asp-action="SowingAddGroup" method="post" class="d-none" id="formSowingAddGroup">
+        <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
+        <input type="hidden" name="idFarmParcelGroupCrop" class="add-group-id" />
+    </form>
+    <form asp-action="ParcelGroupAddMember" method="post" class="d-none" id="formParcelGroupAddMember">
+        <input type="hidden" name="idFarmParcelGroupCrop" class="assign-group-id" />
+        <input type="hidden" name="idFarmParcel" class="assign-parcel-id" />
+        <input type="hidden" name="returnUrl" value="@Url.Action("Parcels", new { idSowing = Model.Crop.IDSowing })" />
+    </form>
+    <form asp-action="ParcelGroupRemoveMember" method="post" class="d-none" id="formParcelGroupRemoveMember">
+        <input type="hidden" name="idFarmParcelGroupCrop" class="ungroup-group-id" />
+        <input type="hidden" name="idFarmParcel" class="ungroup-parcel-id" />
+        <input type="hidden" name="returnUrl" value="@Url.Action("Parcels", new { idSowing = Model.Crop.IDSowing })" />
+    </form>
+
+    <script type="application/json" id="manageParcelsData">
+        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            zones = Model.AvailableParcels.SelectMany(pz => pz.Zones.Select(z => new
+            {
+                id = z.IDFarmParcelZone,
+                parcelId = pz.Parcel.IDFarmParcel,
+                parcelName = pz.Parcel.FarmParcelName,
+                zoneName = z.FarmParcelZoneName,
+                ready = z.ReadyForSeason,
+                inSowing = z.CurrentSowingID == Model.Crop.IDSowing,
+                locked = z.CurrentSowingID != null && z.CurrentSowingID != Model.Crop.IDSowing,
+            })),
+            groups = Model.ParcelGroups.Select(g => new { id = g.IDFarmParcelGroupCrop, name = g.Name, memberParcelIds = g.MemberParcelIds }),
+        }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))
+    </script>
+    <script nonce="@Context.CspNonce()">
+        (function () {
+            var data = JSON.parse(document.getElementById('manageParcelsData').textContent);
+            var groupByParcelId = {};
+            data.groups.forEach(function (g) {
+                (g.memberParcelIds || []).forEach(function (pid) { groupByParcelId[pid] = g; });
+            });
+
+            function filterRows(input, body) {
+                input.addEventListener('input', function () {
+                    var q = input.value.trim().toLowerCase();
+                    body.querySelectorAll('tr').forEach(function (row) {
+                        row.hidden = q.length > 0 && row.getAttribute('data-search').indexOf(q) === -1;
+                    });
+                });
+            }
+
+            function submitHidden(formId, fieldClass, value) {
+                var form = document.getElementById(formId);
+                form.querySelector('.' + fieldClass).value = value;
+                form.submit();
+            }
+
+            // ---- Ready toggle (same endpoint as the Parcels registry, no dialog) ----
+            var antiForgeryToken = document.querySelector('#formSowingReleaseZone input[name="__RequestVerificationToken"]').value;
+            function setReady(idFarmParcelZone, ready, checkbox) {
+                fetch('@Url.Action("ParcelReadyForSeasonSet")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': antiForgeryToken },
+                    body: 'idFarmParcelZone=' + encodeURIComponent(idFarmParcelZone) + '&ready=' + ready,
+                }).then(function (r) { if (!r.ok) { checkbox.checked = !ready; } });
+            }
+
+            // ---- Main "Parcels" table (zones currently in this sowing) ----
+            var zonesBody = document.querySelector('.manage-zones-body');
+            var groupsBlock = document.querySelector('.manage-parcels-groups-block');
+            var groupsBody = document.querySelector('.manage-groups-body');
+
+            function renderZonesAndGroups() {
+                var inSowing = data.zones.filter(function (z) { return z.inSowing; });
+                zonesBody.innerHTML = '';
+                inSowing.forEach(function (z) {
+                    var group = groupByParcelId[z.parcelId];
+                    var label = z.parcelName === z.zoneName ? z.zoneName : (z.parcelName + ' - ' + z.zoneName);
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-search', label.toLowerCase());
+                    tr.innerHTML =
+                        '<td><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch"' + (z.ready ? ' checked' : '') + '></div></td>' +
+                        '<td>' + label.replace(/</g, '&lt;') + '</td>' +
+                        '<td>' + (group ? '<span class="badge text-bg-secondary">' + group.name.replace(/</g, '&lt;') + '</span>' : '<button type="button" class="btn btn-sm btn-outline-secondary" data-assign>Assign to group</button>') + '</td>' +
+                        '<td class="text-end"><a class="btn btn-sm btn-outline-primary" href="@Url.Action("Parcel")?idFarmParcelZone=' + z.id + '">View</a></td>' +
+                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove>Remove</button></td>';
+                    tr.querySelector('input[type=checkbox]').addEventListener('change', function (e) { setReady(z.id, e.target.checked, e.target); });
+                    var assignBtn = tr.querySelector('[data-assign]');
+                    if (assignBtn) { assignBtn.addEventListener('click', function () { openAssignToGroup(z); }); }
+                    tr.querySelector('[data-remove]').addEventListener('click', function () { openRemoveParcel(z, group); });
+                    zonesBody.appendChild(tr);
+                });
+
+                var groupsInSowing = data.groups
+                    .map(function (g) { return { g: g, count: inSowing.filter(function (z) { return groupByParcelId[z.parcelId] === g; }).length }; })
+                    .filter(function (x) { return x.count > 0; });
+                groupsBlock.classList.toggle('d-none', groupsInSowing.length === 0);
+                groupsBody.innerHTML = '';
+                groupsInSowing.forEach(function (x) {
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-search', x.g.name.toLowerCase());
+                    tr.innerHTML = '<td>' + x.g.name.replace(/</g, '&lt;') + '</td>' +
+                        '<td class="text-secondary small">' + x.count + ' parcel(s) in this sowing</td>' +
+                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-group>Remove</button></td>';
+                    tr.querySelector('[data-remove-group]').addEventListener('click', function () {
+                        if (confirm('Remove parcel group "' + x.g.name + '" from this sowing? Every parcel it contributed is released.')) {
+                            submitHidden('formSowingReleaseGroup', 'release-group-id', x.g.id);
+                        }
+                    });
+                    groupsBody.appendChild(tr);
+                });
+            }
+
+            function openAssignToGroup(zone) {
+                var body = document.querySelector('.assign-to-group-body');
+                body.innerHTML = '';
+                if (data.groups.length === 0) {
+                    body.innerHTML = '<p class="text-secondary small mb-0">No parcel groups on this farm yet.</p>';
+                } else {
+                    data.groups.forEach(function (g) {
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-outline-primary';
+                        btn.textContent = g.name;
+                        btn.addEventListener('click', function () {
+                            document.querySelector('.assign-parcel-id').value = zone.parcelId;
+                            submitHidden('formParcelGroupAddMember', 'assign-group-id', g.id);
+                        });
+                        body.appendChild(btn);
+                    });
+                }
+                new bootstrap.Modal(document.getElementById('assignToGroupModal')).show();
+            }
+
+            function openRemoveParcel(zone, group) {
+                var body = document.querySelector('.remove-parcel-body');
+                body.innerHTML = '';
+                if (group) {
+                    var removeGroupBtn = document.createElement('button');
+                    removeGroupBtn.type = 'button';
+                    removeGroupBtn.className = 'btn btn-outline-danger';
+                    removeGroupBtn.textContent = 'Remove parcel group "' + group.name + '"';
+                    removeGroupBtn.addEventListener('click', function () { submitHidden('formSowingReleaseGroup', 'release-group-id', group.id); });
+                    body.appendChild(removeGroupBtn);
+
+                    var removeFromGroupBtn = document.createElement('button');
+                    removeFromGroupBtn.type = 'button';
+                    removeFromGroupBtn.className = 'btn btn-outline-secondary';
+                    removeFromGroupBtn.textContent = 'Remove parcel from the parcel group';
+                    removeFromGroupBtn.addEventListener('click', function () {
+                        document.querySelector('.ungroup-parcel-id').value = zone.parcelId;
+                        submitHidden('formParcelGroupRemoveMember', 'ungroup-group-id', group.id);
+                    });
+                    body.appendChild(removeFromGroupBtn);
+                } else {
+                    var removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn btn-outline-danger';
+                    removeBtn.textContent = 'Remove this parcel from the sowing';
+                    removeBtn.addEventListener('click', function () { submitHidden('formSowingReleaseZone', 'release-zone-id', zone.id); });
+                    body.appendChild(removeBtn);
+                }
+                new bootstrap.Modal(document.getElementById('removeParcelModal')).show();
+            }
+
+            // ---- "Add parcel" / "Add parcel group" pickers ----
+            document.querySelectorAll('.manage-parcels-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var kind = btn.getAttribute('data-picker');
+                    var target = document.querySelector('.manage-parcels-picker[data-picker="' + kind + '"]');
+                    var wasVisible = !target.classList.contains('d-none');
+                    document.querySelectorAll('.manage-parcels-picker').forEach(function (block) { block.classList.add('d-none'); });
+                    if (!wasVisible) { target.classList.remove('d-none'); }
+                });
+            });
+
+            function fillParcelPicker() {
+                var body = document.querySelector('.manage-parcels-picker[data-picker="parcel"] .manage-parcels-picker-body');
+                body.innerHTML = '';
+                data.zones.filter(function (z) { return !z.inSowing && !z.locked; }).forEach(function (z) {
+                    var label = z.parcelName === z.zoneName ? z.zoneName : (z.parcelName + ' - ' + z.zoneName);
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-search', label.toLowerCase());
+                    tr.innerHTML = '<td>' + label.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary">Add</button></td>';
+                    tr.querySelector('button').addEventListener('click', function () { submitHidden('formSowingAddZone', 'add-zone-id', z.id); });
+                    body.appendChild(tr);
+                });
+            }
+            function fillGroupPicker() {
+                var body = document.querySelector('.manage-parcels-picker[data-picker="group"] .manage-parcels-picker-body');
+                body.innerHTML = '';
+                data.groups.forEach(function (g) {
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-search', g.name.toLowerCase());
+                    tr.innerHTML = '<td>' + g.name.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary">Add</button></td>';
+                    tr.querySelector('button').addEventListener('click', function () { submitHidden('formSowingAddGroup', 'add-group-id', g.id); });
+                    body.appendChild(tr);
+                });
+            }
+
+            document.querySelectorAll('.manage-parcels-picker-filter').forEach(function (input) {
+                filterRows(input, input.closest('.manage-parcels-picker').querySelector('.manage-parcels-picker-body'));
+            });
+            filterRows(document.querySelector('.manage-zones-filter'), zonesBody);
+            filterRows(document.querySelector('.manage-groups-filter'), groupsBody);
+
+            renderZonesAndGroups();
+            fillParcelPicker();
+            fillGroupPicker();
+        })();
+    </script>
+}

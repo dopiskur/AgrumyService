@@ -247,6 +247,65 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Parcels), new { idSowing });
         }
 
+        /// Manage-parcels dialog's "Add parcel group" - expands the group to its member zones and starts/extends the sowing with whichever of them aren't already occupied by it (SowingStart itself rejects any that are free-elsewhere/occupied-elsewhere).
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SowingAddGroup(int idSowing, int idFarmParcelGroupCrop)
+        {
+            var currentZoneIds = (await api.ParcelsGet(idSowing)).Select(z => z.IDFarmParcelZone).ToHashSet();
+            var zoneIds = (await api.ParcelGroupZonesGet(idFarmParcelGroupCrop)).Where(id => !currentZoneIds.Contains(id)).ToList();
+            if (zoneIds.Count == 0)
+            {
+                TempData["Message"] = "Every parcel in that group is already part of this sowing.";
+                return RedirectToAction(nameof(Parcels), new { idSowing });
+            }
+            try
+            {
+                await api.SowingStart(new SowingStartRequest { IDSowing = idSowing, FarmParcelZoneIds = zoneIds });
+                TempData["Message"] = "Parcel group added.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        /// Manage-parcels dialog's Remove on a single zone - releases it without closing the sowing or touching any other zone it still occupies.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SowingReleaseZone(int idSowing, int idFarmParcelZone)
+        {
+            try
+            {
+                await api.SowingReleaseZone(new SowingReleaseZoneRequest { IDSowing = idSowing, FarmParcelZoneID = idFarmParcelZone });
+                TempData["Message"] = "Parcel removed from sowing.";
+            }
+            catch (ApiException ex)
+            {
+                TempData["Error"] = ex.Body;
+            }
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
+        /// Manage-parcels dialog's "Remove parcel group <name>" option (as opposed to "Remove parcel from the parcel group", which is ParcelGroupRemoveMember) - releases every zone this sowing currently occupies that belongs to the group, leaving the group definition itself untouched.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SowingReleaseGroup(int idSowing, int idFarmParcelGroupCrop)
+        {
+            var currentZoneIds = (await api.ParcelsGet(idSowing)).Select(z => z.IDFarmParcelZone).ToHashSet();
+            var groupZoneIds = await api.ParcelGroupZonesGet(idFarmParcelGroupCrop);
+            foreach (int idZone in groupZoneIds.Where(id => currentZoneIds.Contains(id)))
+            {
+                await api.SowingReleaseZone(new SowingReleaseZoneRequest { IDSowing = idSowing, FarmParcelZoneID = idZone });
+            }
+            TempData["Message"] = "Parcel group removed from sowing.";
+            return RedirectToAction(nameof(Parcels), new { idSowing });
+        }
+
         /// D9/D13/D14 - Active -> Closed: a grouped harvest result (per-zone breakdown is a fast-follow), releases every occupied zone. confirmEarlyHarvest is D13's explicit "I know the karenca hasn't passed yet" checkbox, shown on the page whenever EarliestHarvestDate is still in the future.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
@@ -368,12 +427,9 @@ namespace Agrumy.Web.Controllers.View
             DeviceFarm? farm = farms.FirstOrDefault(f => f.IDDeviceFarm == crop.FarmID);
 
             var availableParcels = new List<FarmParcelWithZonesViewModel>();
-            if (crop.Status == GrowingCycleStatus.Planned)
+            foreach (FarmParcel parcel in await api.FarmParcelsGet(crop.FarmID))
             {
-                foreach (FarmParcel parcel in await api.FarmParcelsGet(crop.FarmID))
-                {
-                    availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
-                }
+                availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
             }
 
             return View(new CropParcelsViewModel
@@ -382,6 +438,7 @@ namespace Agrumy.Web.Controllers.View
                 Farm = farm ?? new DeviceFarm(),
                 Parcels = await api.ParcelDashboardListGet(idSowing),
                 AvailableParcels = availableParcels,
+                ParcelGroups = await api.ParcelGroupsGet(crop.FarmID),
                 LogEntries = await api.FieldLogEntriesGet(idSowing),
                 EarliestHarvestDate = await api.EarliestHarvestDateGet(idSowing),
                 NitrogenBalanceKgPerHa = await api.NitrogenBalanceGet(idSowing),
@@ -493,19 +550,19 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        public async Task<ActionResult> ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel, string? returnUrl)
         {
             await api.ParcelGroupAddMember(idFarmParcelGroupCrop, idFarmParcel);
-            return RedirectToAction(nameof(ParcelsRegistry));
+            return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel)
+        public async Task<ActionResult> ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel, string? returnUrl)
         {
             await api.ParcelGroupRemoveMember(idFarmParcelGroupCrop, idFarmParcel);
-            return RedirectToAction(nameof(ParcelsRegistry));
+            return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(ParcelsRegistry));
         }
 
         /// The registry's own toggle - "ready" flips straight through, the "populate prep dates first" dialog lives client-side (parcel-registry.js) and just decides whether to detour through the Parcel detail page before/instead of calling this.

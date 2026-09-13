@@ -292,6 +292,13 @@ namespace Agrumy.Shared.Models
         public List<int> FarmParcelZoneIds { get; set; } = [];
     }
 
+    /// Body of the Manage-parcels dialog's Remove (D9) - releases one zone from a sowing without closing it, unlike SowingClose which releases every zone at once.
+    public class SowingReleaseZoneRequest
+    {
+        public int IDSowing { get; set; }
+        public int FarmParcelZoneID { get; set; }
+    }
+
     /// Body of the "Close sowing" action (D9/D14) - a grouped harvest result plus the closing dnevnik entry. Confirm must be true when the sowing has an unexpired EarliestHarvestDate (D13) - the API returns 409 with that date otherwise, the same "explicit confirmation" pattern as other safety-gated writes.
     public class SowingCloseRequest
     {

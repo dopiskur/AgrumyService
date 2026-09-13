@@ -453,6 +453,9 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/FarmOpenfield/Sowing/Start")]
         Task SowingStart([Body] SowingStartRequest request);
 
+        [Post("/api/FarmOpenfield/Sowing/ReleaseZone")]
+        Task SowingReleaseZone([Body] SowingReleaseZoneRequest request);
+
         [Post("/api/FarmOpenfield/Sowing/Close")]
         Task SowingClose([Body] SowingCloseRequest request);
 

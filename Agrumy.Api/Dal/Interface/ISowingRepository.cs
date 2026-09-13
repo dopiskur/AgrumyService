@@ -20,6 +20,9 @@ namespace Agrumy.Api.Dal.Interface
         /// D9 - releases every zone the sowing occupies (ReleasedUtc, CurrentSowingID/Device.SowingID cleared, ConfigVersion bumped), flips Status to Closed. The caller is responsible for writing the closing fieldLogEntry/harvestResult first (see IFieldLogRepository).
         Task SowingCloseAsync(int idSowing, int? closedByUserID);
 
+        /// Manage-parcels dialog's Remove - releases a single zone (same ReleasedUtc/CurrentSowingID/Device.SowingID/ConfigVersion handling as SowingCloseAsync) without touching Status or any other zone the sowing still occupies. No-op if the zone isn't currently occupied by this sowing.
+        Task SowingReleaseZoneAsync(int idSowing, int idFarmParcelZone);
+
         Task SowingDeleteAsync(int idSowing);
 
         /// Agrumy.Api.Migration.TenantImportService only - writes Status/HarvestDate/ClosedUtc verbatim from a source export instead of always creating Planned like SowingAddAsync does, and occupies the given (already-remapped, new-tenant) zones directly without SowingStartAsync's "must currently be free" guard, since a freshly imported target has no prior occupants to collide with. occupiedFarmParcelZoneIds should be empty for anything other than a currently-Active sowing (a Closed sowing's historical zone assignments aren't reconstructed - same simplification the Greenhouse Units/Zones import already accepts for pre-Farm history).
