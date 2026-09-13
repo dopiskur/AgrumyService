@@ -16,7 +16,13 @@
             return new
             {
                 parcels = farmParcels.SelectMany(pz => pz.Zones.Select(z => new { id = z.IDFarmParcelZone, name = $"{pz.Parcel.FarmParcelName} - {z.FarmParcelZoneName}", locked = z.CurrentSowingID != null })),
-                groups = farmGroups.Select(g => new { id = g.IDFarmParcelGroupArable, name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))" }),
+                // A group counts as locked once any member parcel's zone is already held by a sowing - groups are picked wholesale, so a partially-occupied one would otherwise fail on submit instead of never being offered.
+                groups = farmGroups.Select(g => new
+                {
+                    id = g.IDFarmParcelGroupArable,
+                    name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))",
+                    locked = farmParcels.Any(pz => g.MemberParcelIds.Contains(pz.Parcel.IDFarmParcel!.Value) && pz.Zones.Any(z => z.CurrentSowingID != null)),
+                }),
             };
         }), jsonOpts);
 
@@ -346,7 +352,7 @@
                 function populatePickers(farmId) {
                     var data = farmData[farmId] || { parcels: [], groups: [] };
                     fillPickerTable('parcel', data.parcels.map(function (p) { return { id: p.id, name: p.name, disabled: p.locked, disabledLabel: '(occupied)' }; }));
-                    fillPickerTable('group', data.groups.map(function (g) { return { id: g.id, name: g.name, disabled: false }; }));
+                    fillPickerTable('group', data.groups.map(function (g) { return { id: g.id, name: g.name, disabled: g.locked, disabledLabel: '(in use by another sowing)' }; }));
                 }
                 function fillPickerTable(type, items) {
                     var body = form.querySelector('.sowing-picker-search[data-picker="' + type + '"] .sowing-picker-body');

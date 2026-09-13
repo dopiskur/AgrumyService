@@ -4,33 +4,19 @@
     ViewData["Title"] = zone.DeviceFarmUnitZoneName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool hasController = zone.Devices.Any(d => d.DeviceControllerEnabled == true);
-    var renameModel = new InlineRenameViewModel
-    {
-        Action = nameof(Agrumy.Web.Controllers.View.DeviceFarmUnitController.ZoneRename),
-        IdFieldName = "idDeviceFarmUnitZone",
-        IdValue = zone.IDDeviceFarmUnitZone,
-        NameFieldName = "deviceFarmUnitZoneName",
-        CurrentName = zone.DeviceFarmUnitZoneName,
-        MaxLength = 120,
-    };
+    var otherZones = Model.Zones.Where(z => z.IDDeviceFarmUnitZone != zone.IDDeviceFarmUnitZone).ToList();
 }
 
 @{
-    // Same threshold as Zones.cshtml/Farms.cshtml.
-    bool multipleFarms = Model.Farms.Count > 1;
-    var unitFarm = multipleFarms ? Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.UnitFarmID) : null;
+    var unitFarm = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == Model.UnitFarmID);
 }
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        @if (multipleFarms)
+        <li class="breadcrumb-item"><a asp-action="Farms">Greenhouse</a></li>
+        @if (unitFarm != null)
         {
-            <li class="breadcrumb-item"><a asp-action="Farms">Greenhouse</a></li>
-            @if (unitFarm != null)
-            {
-                <li class="breadcrumb-item">@unitFarm.DeviceFarmName</li>
-            }
+            <li class="breadcrumb-item">@unitFarm.DeviceFarmName</li>
         }
-        <li class="breadcrumb-item"><a asp-action="Index">Units</a></li>
         <li class="breadcrumb-item"><a asp-action="Zones" asp-route-idDeviceFarmUnit="@zone.IDDeviceFarmUnit">@Model.UnitName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@zone.DeviceFarmUnitZoneName</li>
     </ol>
@@ -86,47 +72,46 @@
 }
 
 <div class="card">
-    <div class="card-header">
-        <h3 class="card-title">
-            @* Status badge lives in _ZoneDetails.cshtml, not here - this header sits outside the polled #zoneDetails fragment and a badge here would go stale. *@
-            @zone.DeviceFarmUnitZoneName
-            @if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
+    @if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
+    {
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
+            @if (hasController)
             {
-                <partial name="_InlineRename" model="renameModel" />
+                <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Zone, TargetId = zone.IDDeviceFarmUnitZone }" />
             }
-        </h3>
-        @if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
-        {
-            <div class="float-end d-flex align-items-center gap-2">
-                @if (hasController)
-                {
-                    <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Zone, TargetId = zone.IDDeviceFarmUnitZone }" />
-                }
-                @if (!hasController)
-                {
-                    <a asp-action="AssignPicker" asp-route-idDeviceFarmUnitZone="@zone.IDDeviceFarmUnitZone" asp-route-controllerCapable="true" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-cpu"></i> Add Controller
-                    </a>
-                }
-                <a asp-action="AssignPicker" asp-route-idDeviceFarmUnitZone="@zone.IDDeviceFarmUnitZone" asp-route-controllerCapable="false" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-broadcast"></i> Add Sensor
+            @if (!hasController)
+            {
+                <a asp-action="AssignPicker" asp-route-idDeviceFarmUnitZone="@zone.IDDeviceFarmUnitZone" asp-route-controllerCapable="true" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-cpu"></i> Add Controller
                 </a>
-                <details class="d-inline-block align-middle">
-                    <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;"><i class="bi bi-plus-lg"></i> Add Zone</summary>
-                    <form asp-action="ZoneAdd" method="post" class="d-flex gap-2 mt-2">
-                        <input type="hidden" name="idDeviceFarmUnit" value="@zone.IDDeviceFarmUnit" />
-                        <input type="text" name="deviceFarmUnitZoneName" class="form-control form-control-sm" placeholder="New zone name" required maxlength="120" />
-                        <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly">Add</button>
-                    </form>
-                </details>
-                <form asp-action="ZoneDelete" method="post" data-confirm="Delete this zone? Its devices are unassigned, not deleted.">
-                    <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+            }
+            <a asp-action="AssignPicker" asp-route-idDeviceFarmUnitZone="@zone.IDDeviceFarmUnitZone" asp-route-controllerCapable="false" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-broadcast"></i> Add Sensor
+            </a>
+            @if (zone.Devices.Count > 0 && otherZones.Count > 0)
+            {
+                <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#zoneMigrateDevicesModal">
+                    <i class="bi bi-signpost-split"></i> Migrate
+                </button>
+            }
+            <details class="d-inline-block align-middle">
+                <summary class="btn btn-sm btn-outline-primary" style="cursor:pointer;"><i class="bi bi-plus-lg"></i> Add Zone</summary>
+                <form asp-action="ZoneAdd" method="post" class="d-flex gap-2 mt-2">
                     <input type="hidden" name="idDeviceFarmUnit" value="@zone.IDDeviceFarmUnit" />
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete zone" disabled="@isReadOnly"><i class="bi bi-trash"></i></button>
+                    <input type="text" name="deviceFarmUnitZoneName" class="form-control form-control-sm" placeholder="New zone name" required maxlength="120" />
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly">Add</button>
                 </form>
-            </div>
-        }
-    </div>
+            </details>
+            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#zoneConfigModal">
+                <i class="bi bi-gear"></i> Zone configuration
+            </button>
+            <form asp-action="ZoneDelete" method="post" data-confirm="Delete this zone? Its devices are unassigned, not deleted.">
+                <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                <input type="hidden" name="idDeviceFarmUnit" value="@zone.IDDeviceFarmUnit" />
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete zone" disabled="@isReadOnly"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+    }
     <div class="card-body" id="zoneDetails">
         <partial name="_ZoneDetails" model="Model" />
     </div>
@@ -393,6 +378,72 @@
         }
     </div>
 </div>
+
+@if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
+{
+    <div class="modal fade" id="zoneConfigModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Zone configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form asp-action="ZoneRename" method="post" class="row g-2 align-items-end">
+                        <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                        <div class="col">
+                            <label class="form-label" for="zoneConfigName">Name</label>
+                            <input type="text" id="zoneConfigName" name="deviceFarmUnitZoneName" class="form-control" value="@zone.DeviceFarmUnitZoneName" required maxlength="120" />
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-outline-secondary" disabled="@isReadOnly">Save</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (zone.Devices.Count > 0 && otherZones.Count > 0)
+    {
+        <div class="modal fade" id="zoneMigrateDevicesModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="ZoneMigrateDevices" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Migrate sensors and controller</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
+                            <p class="text-secondary small">Moves every sensor and controller currently in this zone into the target zone below (which can sit in any unit or Greenhouse complex) - this zone stays in place, just emptied.</p>
+                            <label class="form-label" for="zoneMigrateTarget">Target zone</label>
+                            <select class="form-select" id="zoneMigrateTarget" name="idTargetDeviceFarmUnitZone" required>
+                                <option value="" selected disabled>Choose a zone...</option>
+                                @foreach (var group in otherZones.GroupBy(z => z.GroupLabel))
+                                {
+                                    <optgroup label="@group.Key">
+                                        @foreach (var z in group)
+                                        {
+                                            <option value="@z.IDDeviceFarmUnitZone">@z.ZoneName</option>
+                                        }
+                                    </optgroup>
+                                }
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@isReadOnly">Migrate</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+}
 
 <div class="modal fade" id="registerDeviceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">

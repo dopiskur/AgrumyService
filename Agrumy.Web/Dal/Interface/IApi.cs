@@ -312,8 +312,8 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/DeviceFarmUnit/ZoneById")]
         Task<DeviceFarmUnitZone> DeviceFarmUnitZoneGetById(int? idDeviceFarmUnitZone);
 
-        [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate")]
-        Task DeviceFarmUnitZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
+        [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/MigrateDevices")]
+        Task DeviceFarmUnitZoneMigrateDevices(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnitZone);
 
         // Saves independently of DeviceFarmUnitZoneUpdate above.
         [Put("/api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets")]

@@ -99,6 +99,46 @@ namespace Agrumy.Api.Dal
             return true;
         }
 
+        public async Task<(bool Success, string? Error)> DeviceFarmUnitZoneMigrateDevicesAsync(int idSourceZone, int idTargetZone)
+        {
+            var sourceZone = await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idSourceZone);
+            var targetZone = await db.DeviceFarmUnitZones.AsNoTracking().FirstOrDefaultAsync(z => z.IDDeviceFarmUnitZone == idTargetZone);
+            if (sourceZone == null || targetZone == null)
+            {
+                return (false, "Zone not found.");
+            }
+            if (sourceZone.TenantID != targetZone.TenantID)
+            {
+                return (false, "Target zone belongs to a different tenant.");
+            }
+
+            var deviceIds = await db.Devices.AsNoTracking().Where(d => d.DeviceFarmUnitZoneID == idSourceZone).Select(d => d.IDDevice).ToListAsync();
+            if (deviceIds.Count == 0)
+            {
+                return (false, "This zone has no devices to migrate.");
+            }
+            bool sourceHasController = await db.Devices.AsNoTracking().AnyAsync(d => d.DeviceFarmUnitZoneID == idSourceZone && d.DeviceControllerEnabled == true);
+            if (sourceHasController && await db.Devices.AsNoTracking().AnyAsync(d => d.DeviceFarmUnitZoneID == idTargetZone && d.DeviceControllerEnabled == true))
+            {
+                return (false, "Target zone already has a controller assigned.");
+            }
+
+            // Same field set as AssignToZoneAsync's single-device move (Devices.cs) - SowingID/FarmParcelZoneID cleared for the same Greenhouse/Open-Field mutual-exclusivity reason.
+            await db.Devices.Where(d => d.DeviceFarmUnitZoneID == idSourceZone)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.DeviceFarmUnitID, targetZone.DeviceFarmUnitID)
+                    .SetProperty(d => d.DeviceFarmUnitZoneID, targetZone.IDDeviceFarmUnitZone)
+                    .SetProperty(d => d.SowingID, (int?)null)
+                    .SetProperty(d => d.FarmParcelZoneID, (int?)null)
+                    .SetProperty(d => d.ConfigVersion, d => (d.ConfigVersion ?? 0) + 1));
+            foreach (int deviceId in deviceIds)
+            {
+                await outboxRepository.AddOutboxItemAsync(deviceId, CommandActionType.ConfigChanged, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            }
+            await deviceRepository.InvalidateFleetCacheAsync(sourceZone.TenantID);
+            return (true, null);
+        }
+
         /// Bumps ConfigVersion for every device in the zone (bulk update, not fetch-then-loop) so the next poll picks up a zone-level rule/safety-limit change, and enqueues each of those devices' own ConfigChanged outbox signal.
         public Task DeviceFarmUnitZoneConfigVersionBumpAsync(int idDeviceFarmUnitZone) =>
             BumpConfigVersionAndMarkChangedAsync(db.Devices.Where(d => d.DeviceFarmUnitZoneID == idDeviceFarmUnitZone));

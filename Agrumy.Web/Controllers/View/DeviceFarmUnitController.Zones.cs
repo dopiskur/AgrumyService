@@ -338,21 +338,22 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
         }
 
+        /// Relocates every sensor and controller currently in this zone into an existing target zone (possibly in another unit or Greenhouse complex) - the zone itself stays in place, just emptied.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ZoneMigrate(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit, int idDeviceFarmUnit)
+        public async Task<ActionResult> ZoneMigrateDevices(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnitZone)
         {
             try
             {
-                await api.DeviceFarmUnitZoneMigrate(idDeviceFarmUnitZone, idTargetDeviceFarmUnit);
-                TempData["Message"] = "Zone migrated.";
+                await api.DeviceFarmUnitZoneMigrateDevices(idDeviceFarmUnitZone, idTargetDeviceFarmUnitZone);
+                TempData["Message"] = "Devices migrated to the target zone.";
             }
             catch (ApiException ex)
             {
                 TempData["Error"] = ex.Body;
             }
-            return RedirectToAction(nameof(Zones), new { idDeviceFarmUnit });
+            return RedirectToAction(nameof(Zone), new { idDeviceFarmUnitZone });
         }
 
         // Fetch-then-patch: the update call overwrites every field unconditionally, so posting just the name would blank the other fields.

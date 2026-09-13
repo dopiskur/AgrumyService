@@ -185,6 +185,7 @@ PUT,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Devic
 PUT,api/DeviceFarmUnit/Zone,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/GridColumns,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/MigrateDevices,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Arable,Global admin;Global Device;Tenant admin;Tenant Device

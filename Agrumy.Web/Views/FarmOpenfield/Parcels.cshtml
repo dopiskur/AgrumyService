@@ -605,10 +605,14 @@
                     body.appendChild(tr);
                 });
             }
+            // A group is unavailable here once any of its member parcels' zones is already held by another sowing (data.zones' own locked flag, same definition used to filter the parcel picker above) - freed automatically once that sowing closes or is deleted.
+            function groupLocked(g) {
+                return data.zones.some(function (z) { return (g.memberParcelIds || []).indexOf(z.parcelId) !== -1 && z.locked; });
+            }
             function fillGroupPicker() {
                 var body = document.querySelector('.manage-parcels-picker[data-picker="group"] .manage-parcels-picker-body');
                 body.innerHTML = '';
-                data.groups.forEach(function (g) {
+                data.groups.filter(function (g) { return !groupLocked(g); }).forEach(function (g) {
                     var tr = document.createElement('tr');
                     tr.setAttribute('data-search', g.name.toLowerCase());
                     tr.innerHTML = '<td>' + g.name.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary"' + disabledAttr + '>Add</button></td>';
