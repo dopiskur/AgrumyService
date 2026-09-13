@@ -423,7 +423,7 @@ namespace Agrumy.Web.Dal.Interface
         // ---- Arkod -------------------------------------------------------------
 
         [Get("/api/Arkod/Lookup")]
-        Task<ArkodParcelLookupResult> ArkodLookup(string jpaid);
+        Task<ArkodParcelLookupResult> ArkodLookup(string arkodId);
 
         [Multipart]
         [Post("/api/Arkod/GeoPackage/Upload")]

@@ -6,12 +6,12 @@ using Microsoft.Data.Sqlite;
 
 namespace Agrumy.Api.Arkod
 {
-    /// Reads a single parcel's geometry+attributes out of the local ARKOD GeoPackage mirror (ArkodGeoPackageStorage) by ARKOD/JPA id - the offline fallback for the primary WMS GetFeatureInfo click-lookup (parcel-geometry-map.js), same source data either way. GeoPackage's own binary blob header (magic+version+flags+srs_id+envelope) is parsed by hand - documented, confirmed against a real downloaded file during development - before handing the remaining bytes to a small WKB Polygon/MultiPolygon reader; vertices come out in EPSG:3765 metres and are reprojected via Htrs96TransverseMercator.
+    /// Reads a single parcel's geometry+attributes out of the local ARKOD GeoPackage mirror (ArkodGeoPackageStorage) by its ARKOD id (the "id" column - the public per-parcel id shown on the ARKOD preglednik/WMS, not "jpaid" which is a per-holding registration code shared by many parcels) - the offline fallback for the primary WMS GetFeatureInfo click-lookup (parcel-geometry-map.js), same source data either way. GeoPackage's own binary blob header (magic+version+flags+srs_id+envelope) is parsed by hand - documented, confirmed against a real downloaded file during development - before handing the remaining bytes to a small WKB Polygon/MultiPolygon reader; vertices come out in EPSG:3765 metres and are reprojected via Htrs96TransverseMercator.
     public sealed class ArkodGeoPackageLookup(ArkodGeoPackageStorage storage)
     {
-        public async Task<ArkodParcelLookupResult?> TryFindByJpaIdAsync(string jpaId, CancellationToken ct = default)
+        public async Task<ArkodParcelLookupResult?> TryFindByArkodIdAsync(string arkodId, CancellationToken ct = default)
         {
-            if (!storage.Exists || string.IsNullOrWhiteSpace(jpaId))
+            if (!storage.Exists || !long.TryParse(arkodId, out long id))
             {
                 return null;
             }
@@ -25,20 +25,10 @@ namespace Agrumy.Api.Arkod
                 return null;
             }
 
-            // Best-effort - the file has no index on jpaid as shipped; a first-ever lookup pays for a full scan while building this, every later one is fast. A read-only mount (or an export with no jpaid column) just means every lookup stays a full scan.
-            try
-            {
-                await using var indexCmd = connection.CreateCommand();
-                indexCmd.CommandText = $"CREATE INDEX IF NOT EXISTS idx_arkod_jpaid ON \"{table}\"(jpaid)";
-                await indexCmd.ExecuteNonQueryAsync(ct);
-            }
-            catch (SqliteException)
-            {
-            }
-
+            // "id" is the GeoPackage's INTEGER PRIMARY KEY (rowid alias) as shipped, so this is already an indexed lookup - no separate index needed.
             await using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT home_name, area, \"{geomColumn}\" FROM \"{table}\" WHERE jpaid = @jpaid LIMIT 1";
-            command.Parameters.AddWithValue("@jpaid", jpaId);
+            command.CommandText = $"SELECT home_name, area, \"{geomColumn}\" FROM \"{table}\" WHERE id = @id LIMIT 1";
+            command.Parameters.AddWithValue("@id", id);
             await using SqliteDataReader reader = await command.ExecuteReaderAsync(ct);
             if (!await reader.ReadAsync(ct))
             {
@@ -50,7 +40,7 @@ namespace Agrumy.Api.Arkod
             var blob = (byte[])reader[2];
 
             string? geoJson = ParseAndReproject(blob);
-            return geoJson == null ? null : new ArkodParcelLookupResult { ArkodParcelId = jpaId, HomeName = homeName, AreaM2 = areaM2, GeometryGeoJson = geoJson };
+            return geoJson == null ? null : new ArkodParcelLookupResult { ArkodParcelId = arkodId, HomeName = homeName, AreaM2 = areaM2, GeometryGeoJson = geoJson };
         }
 
         private static async Task<(string Table, string GeomColumn)> ResolveGeometryTableAsync(SqliteConnection connection, CancellationToken ct)

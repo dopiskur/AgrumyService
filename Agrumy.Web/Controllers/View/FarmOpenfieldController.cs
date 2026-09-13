@@ -150,11 +150,11 @@ namespace Agrumy.Web.Controllers.View
             Json(await api.MoistureSeriesGet(idFarmParcelZone, from, to));
 
         /// The offline-capable counterpart to the browser-direct WMS click-lookup in parcel-geometry-map.js: looks a known ARKOD ID up against the local GeoPackage mirror instead of servisi.apprrr.hr.
-        public async Task<ActionResult> ArkodLookupByJpaId(string jpaid)
+        public async Task<ActionResult> ArkodLookupById(string arkodId)
         {
             try
             {
-                return Json(await api.ArkodLookup(jpaid));
+                return Json(await api.ArkodLookup(arkodId));
             }
             catch (ApiException ex)
             {

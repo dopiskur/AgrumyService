@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const arkodId = feature.properties?.jpaid || feature.properties?.id || '';
+            const arkodId = feature.properties?.id || feature.properties?.jpaid || '';
             applyArkodGeometry(active, feature.geometry, arkodId, feature.properties?.area);
         } catch (err) {
             lookupStatus.textContent = 'ARKOD lookup failed (network error) - try again or draw manually.';
@@ -251,20 +251,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // "Look up this ID" - the offline-capable counterpart: resolves the typed ARKOD ID against this
-    // server's own local GeoPackage mirror (FarmOpenfieldController.ArkodLookupByJpaId) instead of
+    // server's own local GeoPackage mirror (FarmOpenfieldController.ArkodLookupById) instead of
     // querying servisi.apprrr.hr directly, so it still works with no outbound internet at request time.
     const lookupByIdBtn = document.getElementById('arkodLookupByIdBtn');
     if (lookupByIdBtn) {
         lookupByIdBtn.addEventListener('click', async () => {
             const active = currentEntry();
-            const jpaid = document.getElementById('arkodParcelIdInput')?.value?.trim();
-            if (!active || !jpaid) {
+            const arkodId = document.getElementById('arkodParcelIdInput')?.value?.trim();
+            if (!active || !arkodId) {
                 return;
             }
             lookupStatus.hidden = false;
-            lookupStatus.textContent = 'Looking up ARKOD parcel ' + jpaid + '...';
+            lookupStatus.textContent = 'Looking up ARKOD parcel ' + arkodId + '...';
             try {
-                const response = await fetch(`/FarmOpenfield/ArkodLookupByJpaId?jpaid=${encodeURIComponent(jpaid)}`);
+                const response = await fetch(`/FarmOpenfield/ArkodLookupById?arkodId=${encodeURIComponent(arkodId)}`);
                 if (!response.ok) {
                     lookupStatus.textContent = response.status === 404
                         ? 'No ARKOD parcel with that ID in the local GeoPackage mirror.'
