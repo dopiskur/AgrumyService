@@ -343,7 +343,7 @@
                     <span><i class="bi bi-exclamation-octagon-fill me-2"></i><strong>@Localizer["Emergency stop is active"]</strong> - @Localizer["every actuator in this tenant is forced off."]</span>
                     @if (canEmergencyStop)
                     {
-                        <form asp-controller="EmergencyStop" asp-action="Clear" method="post" onsubmit="return confirm('@Localizer["Resume normal operation? Actuators will follow their rules again."]');">
+                        <form asp-controller="EmergencyStop" asp-action="Clear" method="post" data-confirm="@Localizer["Resume normal operation? Actuators will follow their rules again."]">
                             <input type="hidden" name="returnUrl" value="@returnUrl" />
                             <button type="submit" class="btn btn-sm btn-outline-light">@Localizer["Resume normal operation"]</button>
                         </form>
@@ -386,6 +386,7 @@
     <script src="~/lib/adminlte/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/adminlte/dist/js/adminlte.min.js"></script>
     <script src="~/js/device-commands.js"></script>
+    <script src="~/js/confirm-submit.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

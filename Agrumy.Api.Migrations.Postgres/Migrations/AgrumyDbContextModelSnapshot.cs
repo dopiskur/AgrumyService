@@ -3057,6 +3057,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<DateOnly?>("HarvestDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 

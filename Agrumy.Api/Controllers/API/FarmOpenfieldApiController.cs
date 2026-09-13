@@ -186,6 +186,30 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
+        /// Manage-parcels dialog's Remove - releases one zone without closing the sowing or touching any other zone it still occupies.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost("Sowing/ReleaseZone")]
+        public async Task<ActionResult<bool>> SowingReleaseZone([FromBody] SowingReleaseZoneRequest request)
+        {
+            var (sowing, error) = await EnsureOwnedCropAsync(request.IDSowing, forWrite: true);
+            if (error != null)
+            {
+                return error;
+            }
+            var (zone, zoneError) = await EnsureOwnedParcelAsync(request.FarmParcelZoneID, forWrite: true);
+            if (zoneError != null)
+            {
+                return zoneError;
+            }
+            if (zone!.CurrentSowingID != request.IDSowing)
+            {
+                return Conflict("Zone is not currently occupied by this sowing.");
+            }
+            await sowingRepo.SowingReleaseZoneAsync(request.IDSowing, request.FarmParcelZoneID);
+            await WriteAuditAsync("Sowing.ZoneReleased", sowing!.TenantID, "Sowing", request.IDSowing.ToString(), request.FarmParcelZoneID.ToString());
+            return true;
+        }
+
         /// D9 - Active -> Closed: releases every occupied zone, writes the closing Harvest dnevnik entry (IsClosingEntry) plus a harvestResult row (D14 - grouped by default).
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost("Sowing/Close")]

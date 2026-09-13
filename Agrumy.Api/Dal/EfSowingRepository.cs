@@ -38,6 +38,7 @@ namespace Agrumy.Api.Dal
                     TenantID = sowing.TenantID,
                     FarmID = sowing.FarmID,
                     CropID = cropID,
+                    Name = sowing.Name,
                     Variety = sowing.Variety,
                     SeedRateKgPerHa = sowing.SeedRateKgPerHa,
                     StartDate = sowing.StartDate == default ? DateOnly.FromDateTime(DateTime.UtcNow) : sowing.StartDate,
@@ -57,6 +58,7 @@ namespace Agrumy.Api.Dal
             {
                 return;
             }
+            row.Name = sowing.Name;
             row.Variety = sowing.Variety;
             row.SeedRateKgPerHa = sowing.SeedRateKgPerHa;
             row.ExpectedDurationDays = sowing.ExpectedDurationDays;
@@ -92,6 +94,20 @@ namespace Agrumy.Api.Dal
             await SyncDevicesAsync(farmParcelZoneIds, idSowing);
         }
 
+        public async Task SowingReleaseZoneAsync(int idSowing, int idFarmParcelZone)
+        {
+            var link = await db.SowingFarmParcelZones.FirstOrDefaultAsync(l => l.SowingID == idSowing && l.FarmParcelZoneID == idFarmParcelZone && l.ReleasedUtc == null);
+            if (link == null)
+            {
+                return;
+            }
+            link.ReleasedUtc = DateTimeOffset.UtcNow;
+            await db.FarmParcelZones.Where(z => z.IDFarmParcelZone == idFarmParcelZone)
+                .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, (int?)null));
+            await db.SaveChangesAsync();
+            await SyncDevicesAsync([idFarmParcelZone], null);
+        }
+
         public async Task SowingCloseAsync(int idSowing, int? closedByUserID)
         {
             var occupied = await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing && l.ReleasedUtc == null).ToListAsync();
@@ -114,8 +130,38 @@ namespace Agrumy.Api.Dal
             await SyncDevicesAsync(zoneIds, null);
         }
 
-        public async Task SowingDeleteAsync(int idSowing) =>
+        public async Task SowingDeleteAsync(int idSowing)
+        {
+            // Release any zones still occupied first (same cleanup as SowingCloseAsync) so no Device.SowingID/FarmParcelZone.CurrentSowingID is left pointing at a row about to disappear.
+            var occupied = await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing && l.ReleasedUtc == null).ToListAsync();
+            if (occupied.Count > 0)
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                List<int> zoneIds = occupied.Select(l => l.FarmParcelZoneID).ToList();
+                foreach (var link in occupied)
+                {
+                    link.ReleasedUtc = now;
+                }
+                await db.FarmParcelZones.Where(z => zoneIds.Contains(z.IDFarmParcelZone))
+                    .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, (int?)null));
+                await db.SaveChangesAsync();
+                await SyncDevicesAsync(zoneIds, null);
+            }
+
+            // App-level cleanup for every DeleteBehavior.NoAction FK a Sowing can carry - same "cascade wins" precedent as EfDeviceFarmUnitRepository.DeviceFarmUnitZoneDeleteAsync.
+            var ruleIds = await db.DeviceFarmUnitZoneRules.AsNoTracking().Where(r => r.DeviceSowingID == idSowing).Select(r => r.IDDeviceFarmUnitZoneRule).ToListAsync();
+            await db.RuleNotificationStates.Where(s => ruleIds.Contains(s.RuleID)).ExecuteDeleteAsync();
+            await db.DeviceFarmUnitZoneRules.Where(r => r.DeviceSowingID == idSowing).ExecuteDeleteAsync();
+
+            var fieldLogIds = await db.FieldLogEntries.AsNoTracking().Where(f => f.SowingID == idSowing).Select(f => f.IDFieldLogEntry).ToListAsync();
+            await db.FieldLogAttachments.Where(a => fieldLogIds.Contains(a.FieldLogEntryID)).ExecuteDeleteAsync();
+            await db.FieldLogEntries.Where(f => f.SowingID == idSowing).ExecuteDeleteAsync();
+
+            await db.HarvestResults.Where(h => h.SowingID == idSowing).ExecuteDeleteAsync();
+            await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing).ExecuteDeleteAsync();
+
             await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteDeleteAsync();
+        }
 
         public async Task<Sowing> SowingRestoreAsync(Sowing sowing, IReadOnlyList<int> occupiedFarmParcelZoneIds)
         {
@@ -124,6 +170,7 @@ namespace Agrumy.Api.Dal
                 TenantID = sowing.TenantID,
                 FarmID = sowing.FarmID,
                 CropID = sowing.CropID,
+                Name = sowing.Name,
                 Variety = sowing.Variety,
                 SeedRateKgPerHa = sowing.SeedRateKgPerHa,
                 StartDate = sowing.StartDate,
@@ -252,12 +299,14 @@ namespace Agrumy.Api.Dal
             return rows.Select(row =>
             {
                 string? cropName = cropNames.GetValueOrDefault(row.CropID);
+                string? derivedName = string.IsNullOrEmpty(row.Variety) ? cropName : $"{cropName} ({row.Variety})";
                 return new Sowing
                 {
                     IDSowing = row.IDSowing,
                     TenantID = row.TenantID,
                     FarmID = row.FarmID,
                     CropID = row.CropID,
+                    Name = row.Name,
                     Variety = row.Variety,
                     SeedRateKgPerHa = row.SeedRateKgPerHa,
                     StartDate = row.StartDate,
@@ -267,7 +316,7 @@ namespace Agrumy.Api.Dal
                     ClosedUtc = row.ClosedUtc,
                     ClosedByUserID = row.ClosedByUserID,
                     Notes = row.Notes,
-                    SowingName = string.IsNullOrEmpty(row.Variety) ? cropName : $"{cropName} ({row.Variety})",
+                    SowingName = string.IsNullOrWhiteSpace(row.Name) ? derivedName : row.Name,
                 };
             }).ToList();
         }

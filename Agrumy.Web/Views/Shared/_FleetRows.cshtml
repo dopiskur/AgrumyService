@@ -115,7 +115,7 @@
                 @if (zoneScoped && hasAnyRole(RoleNames.DeviceManagers))
                 {
                     <form asp-controller="DeviceFarmUnit" asp-action="Remove" method="post" class="d-inline"
-                          onsubmit="return confirm('Remove this device from the zone? It stays registered and keeps reporting - it just stops counting toward this zone.');">
+                          data-confirm="Remove this device from the zone? It stays registered and keeps reporting - it just stops counting toward this zone.">
                         <input type="hidden" name="idDevice" value="@item.IDDevice" />
                         <input type="hidden" name="idDeviceFarmUnitZone" value="@item.DeviceFarmUnitZoneID" />
                         <button type="submit" class="btn btn-outline-danger" title="Remove from zone" aria-label="Remove from zone"><i class="bi bi-x-lg"></i></button>

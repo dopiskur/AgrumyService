@@ -119,7 +119,7 @@
                         <button type="submit" class="btn btn-sm btn-primary text-nowrap">Add</button>
                     </form>
                 </details>
-                <form asp-action="ZoneDelete" method="post" onsubmit="return confirm('Delete this zone? Its devices are unassigned, not deleted.');">
+                <form asp-action="ZoneDelete" method="post" data-confirm="Delete this zone? Its devices are unassigned, not deleted.">
                     <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
                     <input type="hidden" name="idDeviceFarmUnit" value="@zone.IDDeviceFarmUnit" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete zone"><i class="bi bi-trash"></i></button>
@@ -245,7 +245,7 @@
                             </div>
                         }
                         <div class="col-12">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this planting cycle? The zone becomes free for a new one.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Close this planting cycle? The zone becomes free for a new one.">
                                 <i class="bi bi-flag-fill"></i> Close planting
                             </button>
                         </div>
@@ -379,7 +379,7 @@
                             <td>
                                 @if (hasAnyRole(RoleNames.DeviceManagers))
                                 {
-                                    <form asp-action="ZonePlantingFieldLogDelete" method="post" class="d-inline" onsubmit="return confirm('Delete this entry?');">
+                                    <form asp-action="ZonePlantingFieldLogDelete" method="post" class="d-inline" data-confirm="Delete this entry?">
                                         <input type="hidden" name="idFieldLogEntry" value="@entry.IDFieldLogEntry" />
                                         <input type="hidden" name="idDeviceFarmUnitZone" value="@zone.IDDeviceFarmUnitZone" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>

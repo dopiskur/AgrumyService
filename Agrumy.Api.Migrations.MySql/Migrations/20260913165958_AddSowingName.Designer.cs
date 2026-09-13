@@ -4,6 +4,7 @@ using Agrumy.Dal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrumy.Api.Migrations.MySql.Migrations
 {
     [DbContext(typeof(AgrumyDbContext))]
-    partial class AgrumyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913165958_AddSowingName")]
+    partial class AddSowingName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -598,12 +601,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double");
-
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -631,7 +628,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDDeviceFarmUnit"));
 
-                    b.Property<double?>("AreaSquareMeters")
+                    b.Property<double?>("AreaHectares")
                         .HasColumnType("double");
 
                     b.Property<bool>("Deleted")
@@ -655,19 +652,8 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double");
-
                     b.Property<int?>("TenantID")
                         .HasColumnType("int");
-
-                    b.Property<int>("UnitType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
 
                     b.Property<bool?>("ZoneEnabled")
                         .HasColumnType("tinyint(1)");

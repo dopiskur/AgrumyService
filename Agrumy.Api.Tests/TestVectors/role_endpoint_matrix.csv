@@ -139,6 +139,7 @@ POST,api/FarmOpenfield/Parcel/{idFarmParcelZone}/Split,Global admin;Global Devic
 POST,api/FarmOpenfield/Sowing/Close,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/FieldLog/{idFieldLogEntry}/Attachment,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Sowing/ReleaseZone,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Sowing/Start,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Unassign,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow,Global admin;Global Device;Tenant admin;Tenant Device

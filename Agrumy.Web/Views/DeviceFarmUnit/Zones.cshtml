@@ -102,7 +102,7 @@
                     <input type="text" name="deviceFarmUnitZoneName" class="form-control form-control-sm" placeholder="New zone name" required maxlength="120" />
                     <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Zone</button>
                 </form>
-                <form asp-action="UnitDelete" method="post" onsubmit="return confirm('Delete this unit and every zone in it? Devices are unassigned, not deleted.');">
+                <form asp-action="UnitDelete" method="post" data-confirm="Delete this unit and every zone in it? Devices are unassigned, not deleted.">
                     <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete unit"><i class="bi bi-trash"></i></button>
                 </form>

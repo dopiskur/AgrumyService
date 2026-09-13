@@ -9,7 +9,7 @@
     <div class="card-header">
         <h3 class="card-title">Discovered devices</h3>
         <div class="float-end">
-            <form asp-action="ScanFleet" method="post" onsubmit="return confirm('This runs a full scan of every sensor in your fleet - it may take a while. Continue?');">
+            <form asp-action="ScanFleet" method="post" data-confirm="This runs a full scan of every sensor in your fleet - it may take a while. Continue?">
                 <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
             </form>
         </div>

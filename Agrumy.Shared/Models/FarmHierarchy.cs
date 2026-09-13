@@ -180,7 +180,9 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? ClosedUtc { get; set; }
         public int? ClosedByUserID { get; set; }
         public string? Notes { get; set; }
-        /// Not a stored column - the repository fills it in from Crop.Name (+ Variety) on every read, since a Sowing has no free-text name of its own; a display convenience for scope pickers/audit labels only.
+        /// User-assigned, stored independently of the crop - the "New sowing" wizard defaults it to the picked crop's name but it's editable from there on (D9's Rename).
+        public string? Name { get; set; }
+        /// Not a stored column - the repository fills it in from Name if set, else Crop.Name (+ Variety), so a sowing created before Name existed still displays something sensible.
         public string? SowingName { get; set; }
     }
 
@@ -290,6 +292,13 @@ namespace Agrumy.Shared.Models
     {
         public int IDSowing { get; set; }
         public List<int> FarmParcelZoneIds { get; set; } = [];
+    }
+
+    /// Body of the Manage-parcels dialog's Remove (D9) - releases one zone from a sowing without closing it, unlike SowingClose which releases every zone at once.
+    public class SowingReleaseZoneRequest
+    {
+        public int IDSowing { get; set; }
+        public int FarmParcelZoneID { get; set; }
     }
 
     /// Body of the "Close sowing" action (D9/D14) - a grouped harvest result plus the closing dnevnik entry. Confirm must be true when the sowing has an unexpired EarliestHarvestDate (D13) - the API returns 409 with that date otherwise, the same "explicit confirmation" pattern as other safety-gated writes.

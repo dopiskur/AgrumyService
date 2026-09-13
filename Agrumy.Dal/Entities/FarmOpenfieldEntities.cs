@@ -73,6 +73,7 @@ namespace Agrumy.Dal.Entities
         public int? TenantID { get; set; }
         public int FarmID { get; set; }
         public int CropID { get; set; }
+        public string? Name { get; set; }
         public string? Variety { get; set; }
         public double? SeedRateKgPerHa { get; set; }
         public DateOnly StartDate { get; set; }

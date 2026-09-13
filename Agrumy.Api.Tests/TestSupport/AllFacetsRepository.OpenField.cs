@@ -18,6 +18,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task SowingStartAsync(int idSowing, IReadOnlyList<int> farmParcelZoneIds, Func<Task<string?>>? quotaCheckAsync = null) => sowingRepository.SowingStartAsync(idSowing, farmParcelZoneIds, quotaCheckAsync);
 
+        public Task SowingReleaseZoneAsync(int idSowing, int idFarmParcelZone) => sowingRepository.SowingReleaseZoneAsync(idSowing, idFarmParcelZone);
+
         public Task SowingCloseAsync(int idSowing, int? closedByUserID) => sowingRepository.SowingCloseAsync(idSowing, closedByUserID);
 
         public Task SowingDeleteAsync(int idSowing) => sowingRepository.SowingDeleteAsync(idSowing);

@@ -72,7 +72,7 @@
                 </td>
                 <td>
                     <a asp-action="Details" asp-route-idSimulationSession="@session.IDSimulationSession" class="btn btn-outline-secondary btn-sm">Open</a>
-                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Delete simulation \'@session.Name\'? Any member physical device returns to its real readings immediately. This cannot be undone.');">
+                    <form asp-action="Delete" method="post" class="d-inline" data-confirm="Delete simulation '@session.Name'? Any member physical device returns to its real readings immediately. This cannot be undone.">
                         <input type="hidden" name="idSimulationSession" value="@session.IDSimulationSession" />
                         <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
                     </form>

@@ -20,7 +20,7 @@
     @if (canManage)
     {
         <form asp-action="Delete" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="ms-auto">
-            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this farm group? Member farms are not deleted, only unassigned.');">
+            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Delete this farm group? Member farms are not deleted, only unassigned.">
                 <i class="bi bi-trash"></i> Delete Group
             </button>
         </form>

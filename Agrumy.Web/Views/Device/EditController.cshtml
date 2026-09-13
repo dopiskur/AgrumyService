@@ -219,7 +219,7 @@
 </div>
 
 @section Scripts {
-    <script>
+    <script nonce="@Context.CspNonce()">
         // Add Function wizard - one button reveals the next free physical slot as a titled, removable
         // row (Step 1 function/Step 2 output type/Step 3 output-kind-specific fields), Step 4 being the
         // page's own shared Save button. The row title is "OutputType #N" by add order, not by slot number.

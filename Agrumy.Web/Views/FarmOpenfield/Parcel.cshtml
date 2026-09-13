@@ -104,7 +104,7 @@
                     <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" value="@parcel.FarmParcelZoneName" required maxlength="120" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                 </form>
-                <form asp-action="ParcelDelete" method="post" onsubmit="return confirm('Delete this parcel? Its devices are unassigned, not deleted.');">
+                <form asp-action="ParcelDelete" method="post" data-confirm="Delete this parcel? Its devices are unassigned, not deleted.">
                     <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
                     <input type="hidden" name="idSowing" value="@Model.Crop?.IDSowing" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete parcel"><i class="bi bi-trash"></i></button>
@@ -136,7 +136,7 @@
                             <td class="text-end">
                                 @if (canManage)
                                 {
-                                    <form asp-action="Remove" method="post" class="d-inline" onsubmit="return confirm('Remove this device from the parcel?');">
+                                    <form asp-action="Remove" method="post" class="d-inline" data-confirm="Remove this device from the parcel?">
                                         <input type="hidden" name="idDevice" value="@d.IDDevice" />
                                         <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>

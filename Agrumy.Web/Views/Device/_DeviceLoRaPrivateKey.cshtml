@@ -16,7 +16,7 @@
         }
         <p class="text-secondary small">AES-256 key for this device's LoRa private-protocol uplink encryption (GatewayApiController.RelayUplink) - only meaningful for a device paired as a LoRa private-protocol node. Generating a new key resets replay tracking, so any node still using the old key stops being accepted until re-provisioned with this one.</p>
         <form asp-action="LoRaPrivateKeyGenerate" method="post"
-              onsubmit="return confirm('This immediately invalidates the device\'s current key - it will be rejected until re-provisioned with the new one. Continue?');">
+              data-confirm="This immediately invalidates the device's current key - it will be rejected until re-provisioned with the new one. Continue?">
             <input type="hidden" name="idDevice" value="@Model" />
             <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-key"></i> Generate new key</button>
         </form>
