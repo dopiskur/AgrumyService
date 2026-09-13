@@ -8,8 +8,6 @@ namespace Agrumy.Web.ViewModels
         public required SatelliteMapScope Scope { get; init; }
         public required int Id { get; init; }
         public IList<SatelliteIndex> AvailableIndices { get; init; } = Enum.GetValues<SatelliteIndex>().ToList();
-        /// D4 - 70% for Farm/Sowing/Parcel, 0% (show everything) for Zone.
-        public int DefaultReliabilityThreshold { get; init; } = 70;
         public bool CanManage { get; init; }
     }
 }

@@ -56,11 +56,7 @@
                 <div data-sat-role="root" data-scope="Parcel" data-id="@idParcel" data-can-manage="@(canManage ? "1" : "0")" hidden></div>
 
                 @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>()))
-                <div class="mb-2">
-                    <label class="form-label small mb-0" data-sat-role="reliabilityLabel">Minimum reliability: 70%</label>
-                    <input type="range" class="form-range" min="0" max="100" value="70" data-sat-role="reliabilityThreshold" />
-                </div>
-                <div class="alert alert-danger py-1 px-2 small mb-2" data-sat-role="unreliableBanner" hidden>Unreliable</div>
+                <div class="alert py-1 px-2 small mb-2" data-sat-role="resolutionWarning" hidden></div>
 
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-sat-role="prevDate">&laquo; Previous</button>
