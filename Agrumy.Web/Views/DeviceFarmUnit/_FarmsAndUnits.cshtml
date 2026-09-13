@@ -15,16 +15,16 @@
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
             <h3 class="card-title mb-0">Units</h3>
             <input type="search" class="form-control form-control-sm ms-auto unit-search" data-filter-target="unitCubes-all" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
-            @if (canManage)
+            @if (canManage || isReadOnly)
             {
                 <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
                     <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Unit</button>
                 </form>
             }
         </div>
         <div class="card-body">
-            @if (canManage && Model.Farms.Count == 1 && unassigned.Count > 0)
+            @if ((canManage || isReadOnly) && Model.Farms.Count == 1 && unassigned.Count > 0)
             {
                 <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
                     <input type="hidden" name="idDeviceFarm" value="@Model.Farms[0].IDDeviceFarm" />
@@ -35,7 +35,7 @@
                             <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
                         }
                     </select>
-                    <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
+                    <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly">Add to farm</button>
                 </form>
             }
             <partial name="_UnitCubes" model="new UnitCubesListViewModel { Units = Model.Units, Farms = Model.Farms, ContainerId = allUnitsContainerId }" />
@@ -53,7 +53,8 @@ else
         string farmUnitsContainerId = $"unitCubes-farm-{farm.IDDeviceFarm}";
         <div class="card mb-3" data-id-device-farm="@farm.IDDeviceFarm">
             <div class="card-header">
-                @if (canManage)
+                @* The reorder POST itself stays DeviceManagers-only server-side (FarmsReorder), so showing the handle to a read-only viewer is harmless - a drag they attempt just fails to persist and snaps back on the next live-refresh tick. *@
+                @if (canManage || isReadOnly)
                 {
                     <i class="bi bi-grip-vertical farm-drag-handle me-2" title="Drag to reorder" style="cursor:grab"></i>
                 }
@@ -75,14 +76,14 @@ else
                             <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly"><i class="bi bi-broadcast"></i> Scan for new devices</button>
                         </form>
                     }
-                    @if (canManage)
+                    @if (canManage || isReadOnly)
                     {
                         <form asp-action="FarmRename" method="post" class="d-flex gap-1">
                             <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
                             <input type="text" name="deviceFarmName" class="form-control form-control-sm" value="@farm.DeviceFarmName" required maxlength="100" />
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly">Rename</button>
                         </form>
-                        @* Delegated in farm-delete.js (not a per-button listener) - this card is inside the 10s live-refresh target, so a freshly re-rendered button must still work without DOMContentLoaded re-running. *@
+                        @* Delegated in farm-delete.js (not a per-button listener) - this card is inside the 10s live-refresh target, so a freshly re-rendered button must still work without DOMContentLoaded re-running. Opens the confirm modal only - its own Delete/Migrate buttons are what's disabled for read-only, so the trigger itself stays enabled. *@
                         <button type="button" class="btn btn-sm btn-outline-danger farm-delete-button" title="Delete"
                                 data-id-device-farm="@farm.IDDeviceFarm" data-farm-name="@farm.DeviceFarmName" data-other-farm-count="@otherFarms.Count">
                             <i class="bi bi-trash"></i>
@@ -94,7 +95,7 @@ else
                 <div class="d-flex justify-content-end mb-2">
                     <input type="search" class="form-control form-control-sm unit-search" data-filter-target="@farmUnitsContainerId" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
                 </div>
-                @if (canManage && unassigned.Count > 0)
+                @if ((canManage || isReadOnly) && unassigned.Count > 0)
                 {
                     <form asp-action="UnitAssignFarm" method="post" class="d-flex gap-2 mb-3">
                         <input type="hidden" name="idDeviceFarm" value="@farm.IDDeviceFarm" />
@@ -105,7 +106,7 @@ else
                                 <option value="@unit.IDDeviceFarmUnit">@unit.DeviceFarmUnitName</option>
                             }
                         </select>
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Add to farm</button>
+                        <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly">Add to farm</button>
                     </form>
                 }
                 @if (unitsInFarm.Count == 0)
@@ -126,11 +127,11 @@ else
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
             <h3 class="card-title mb-0">Unassigned Units</h3>
             <input type="search" class="form-control form-control-sm ms-auto unit-search" data-filter-target="unitCubes-unassigned" placeholder="Search units..." style="max-width:14rem" aria-label="Search units" />
-            @if (canManage)
+            @if (canManage || isReadOnly)
             {
                 <form asp-action="UnitAdd" method="post" class="d-flex gap-2">
                     <input type="text" name="deviceFarmUnitName" class="form-control form-control-sm" placeholder="New unit name" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Unit</button>
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Unit</button>
                 </form>
             }
         </div>

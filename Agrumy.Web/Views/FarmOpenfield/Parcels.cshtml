@@ -63,18 +63,18 @@
                 <i class="bi bi-diagram-3"></i> Automation rules
             </a>
         }
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
             @if (Model.Crop.Status != GrowingCycleStatus.Closed)
             {
                 <form asp-action="CropRename" method="post" class="d-flex gap-1">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
                     <input type="text" name="sowingName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly">Rename</button>
                 </form>
                 <form asp-action="CropDelete" method="post" data-confirm="Delete this sowing?" class="ms-auto">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete sowing"><i class="bi bi-trash"></i></button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" title="Delete sowing"><i class="bi bi-trash"></i></button>
                 </form>
             }
         }
@@ -87,7 +87,7 @@
             {
                 <p class="text-secondary small fst-italic">No free zones on this farm yet - add a parcel or close another sowing first.</p>
             }
-            else if (canManage)
+            else if (canManage || isReadOnly)
             {
                 <form asp-action="SowingStart" method="post" class="mb-3">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
@@ -107,11 +107,11 @@
                             }
                         </div>
                     }
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-play-fill"></i> Start sowing</button>
+                    <button type="submit" class="btn btn-sm btn-primary" disabled="@isReadOnly"><i class="bi bi-play-fill"></i> Start sowing</button>
                 </form>
             }
         }
-        else if (Model.Crop.Status == GrowingCycleStatus.Active && canManage)
+        else if (Model.Crop.Status == GrowingCycleStatus.Active && (canManage || isReadOnly))
         {
             <details class="mb-3">
                 <summary class="fw-semibold">Close sowing</summary>
@@ -143,7 +143,7 @@
                         </div>
                     }
                     <div class="col-12">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Close this sowing? Its zones become free again.">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" data-confirm="Close this sowing? Its zones become free again.">
                             <i class="bi bi-flag-fill"></i> Close sowing
                         </button>
                     </div>
@@ -153,7 +153,7 @@
 
         <div class="d-flex align-items-center gap-2">
             <h5 class="mb-0">Zones</h5>
-            @if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+            @if ((canManage || isReadOnly) && Model.Crop.Status != GrowingCycleStatus.Closed)
             {
                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manageParcelsModal">
                     <i class="bi bi-ui-checks-grid"></i> Manage parcels
@@ -195,7 +195,7 @@
         </a>
     </div>
     <div class="card-body">
-        @if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+        @if ((canManage || isReadOnly) && Model.Crop.Status != GrowingCycleStatus.Closed)
         {
             <details class="mb-3">
                 <summary class="fw-semibold">+ Add event</summary>
@@ -266,7 +266,7 @@
                         <textarea name="Note" class="form-control form-control-sm" rows="2"></textarea>
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add event</button>
+                        <button type="submit" class="btn btn-sm btn-primary" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add event</button>
                     </div>
                 </form>
             </details>
@@ -302,12 +302,12 @@
                             <td>@entry.EntryType @(entry.IsClosingEntry ? "(closing)" : "")</td>
                             <td>@entry.Note</td>
                             <td>
-                                @if (canManage)
+                                @if (canManage || isReadOnly)
                                 {
                                     <form asp-action="FieldLogEntryDelete" method="post" class="d-inline" data-confirm="Delete this entry?">
                                         <input type="hidden" name="idFieldLogEntry" value="@entry.IDFieldLogEntry" />
                                         <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Delete"><i class="bi bi-trash"></i></button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" disabled="@isReadOnly" title="Delete"><i class="bi bi-trash"></i></button>
                                     </form>
                                 }
                             </td>
@@ -325,7 +325,7 @@
 </div>
 </div>
 
-@if (canManage && Model.Crop.Status != GrowingCycleStatus.Closed)
+@if ((canManage || isReadOnly) && Model.Crop.Status != GrowingCycleStatus.Closed)
 {
     <div class="modal fade" id="manageParcelsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
@@ -440,6 +440,8 @@
     </script>
     <script nonce="@Context.CspNonce()">
         (function () {
+            // Every row action here is created dynamically (innerHTML strings below), so there's no single Razor-rendered submit button to add disabled="@isReadOnly" to - each creation site disables its own button/checkbox against this instead.
+            var isReadOnly = @Html.Raw(isReadOnly ? "true" : "false");
             var data = JSON.parse(document.getElementById('manageParcelsData').textContent);
             var groupByParcelId = {};
             data.groups.forEach(function (g) {
@@ -476,6 +478,8 @@
             var groupsBlock = document.querySelector('.manage-parcels-groups-block');
             var groupsBody = document.querySelector('.manage-groups-body');
 
+            var disabledAttr = isReadOnly ? ' disabled' : '';
+
             function renderZonesAndGroups() {
                 var inSowing = data.zones.filter(function (z) { return z.inSowing; });
                 zonesBody.innerHTML = '';
@@ -485,11 +489,11 @@
                     var tr = document.createElement('tr');
                     tr.setAttribute('data-search', label.toLowerCase());
                     tr.innerHTML =
-                        '<td><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch"' + (z.ready ? ' checked' : '') + '></div></td>' +
+                        '<td><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" role="switch"' + (z.ready ? ' checked' : '') + disabledAttr + '></div></td>' +
                         '<td>' + label.replace(/</g, '&lt;') + '</td>' +
-                        '<td>' + (group ? '<span class="badge text-bg-secondary">' + group.name.replace(/</g, '&lt;') + '</span>' : '<button type="button" class="btn btn-sm btn-outline-secondary" data-assign>Assign to group</button>') + '</td>' +
+                        '<td>' + (group ? '<span class="badge text-bg-secondary">' + group.name.replace(/</g, '&lt;') + '</span>' : '<button type="button" class="btn btn-sm btn-outline-secondary" data-assign' + disabledAttr + '>Assign to group</button>') + '</td>' +
                         '<td class="text-end"><a class="btn btn-sm btn-outline-primary" href="@Url.Action("Parcel")?idFarmParcelZone=' + z.id + '">View</a></td>' +
-                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove>Remove</button></td>';
+                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove' + disabledAttr + '>Remove</button></td>';
                     tr.querySelector('input[type=checkbox]').addEventListener('change', function (e) { setReady(z.id, e.target.checked, e.target); });
                     var assignBtn = tr.querySelector('[data-assign]');
                     if (assignBtn) { assignBtn.addEventListener('click', function () { openAssignToGroup(z); }); }
@@ -507,7 +511,7 @@
                     tr.setAttribute('data-search', x.g.name.toLowerCase());
                     tr.innerHTML = '<td>' + x.g.name.replace(/</g, '&lt;') + '</td>' +
                         '<td class="text-secondary small">' + x.count + ' parcel(s) in this sowing</td>' +
-                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-group>Remove</button></td>';
+                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-group' + disabledAttr + '>Remove</button></td>';
                     tr.querySelector('[data-remove-group]').addEventListener('click', function () {
                         if (confirm('Remove parcel group "' + x.g.name + '" from this sowing? Every parcel it contributed is released.')) {
                             submitHidden('formSowingReleaseGroup', 'release-group-id', x.g.id);
@@ -596,7 +600,7 @@
                     var label = z.parcelName === z.zoneName ? z.zoneName : (z.parcelName + ' - ' + z.zoneName);
                     var tr = document.createElement('tr');
                     tr.setAttribute('data-search', label.toLowerCase());
-                    tr.innerHTML = '<td>' + label.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary">Add</button></td>';
+                    tr.innerHTML = '<td>' + label.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary"' + disabledAttr + '>Add</button></td>';
                     tr.querySelector('button').addEventListener('click', function () { submitHidden('formSowingAddZone', 'add-zone-id', z.id); });
                     body.appendChild(tr);
                 });
@@ -611,7 +615,7 @@
                 data.groups.filter(function (g) { return !groupLocked(g); }).forEach(function (g) {
                     var tr = document.createElement('tr');
                     tr.setAttribute('data-search', g.name.toLowerCase());
-                    tr.innerHTML = '<td>' + g.name.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary">Add</button></td>';
+                    tr.innerHTML = '<td>' + g.name.replace(/</g, '&lt;') + '</td><td class="text-end"><button type="button" class="btn btn-sm btn-primary"' + disabledAttr + '>Add</button></td>';
                     tr.querySelector('button').addEventListener('click', function () { submitHidden('formSowingAddGroup', 'add-group-id', g.id); });
                     body.appendChild(tr);
                 });

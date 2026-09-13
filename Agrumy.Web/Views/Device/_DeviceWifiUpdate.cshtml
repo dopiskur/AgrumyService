@@ -22,7 +22,7 @@
                 <input type="password" name="wifiPassword" class="form-control" maxlength="64" />
             </div>
             <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-wifi"></i> Switch network</button>
+                <button type="submit" class="btn btn-sm btn-primary" disabled="@(ViewBag.IsReadOnly is true)"><i class="bi bi-wifi"></i> Switch network</button>
             </div>
         </form>
     </div>

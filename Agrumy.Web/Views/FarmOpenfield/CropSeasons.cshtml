@@ -4,6 +4,7 @@
     ViewData["Title"] = "Crop";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     // Keyed by farm id - the wizard's parcel/group picker (step 2) swaps this client-side as the Farm select changes, so it needs every farm's data up front rather than a server round-trip per change.
     string farmPickerDataJson = JsonSerializer.Serialize(Model.Farms.Where(f => f.IDDeviceFarm is int).ToDictionary(
@@ -51,7 +52,7 @@
     <div class="alert alert-warning">@error</div>
 }
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     @if (Model.Farms.Count == 0)
     {
@@ -179,7 +180,7 @@
 
                             <div class="d-flex justify-content-between">
                                 <button type="button" class="btn btn-outline-secondary sowing-wizard-back">Back</button>
-                                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Save and continue</button>
+                                <button type="submit" class="btn btn-primary" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Save and continue</button>
                             </div>
                         </div>
                     </form>

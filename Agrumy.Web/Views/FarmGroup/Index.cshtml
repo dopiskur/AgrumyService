@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Farm Groups";
     bool canManage = RoleNames.DeviceManagers.Split(',').Any(User.IsInRole);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <p class="text-secondary">
@@ -10,7 +11,7 @@
     Crop and Fruit sections.
 </p>
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     <button type="button" class="btn btn-sm btn-primary text-nowrap mb-3" data-bs-toggle="modal" data-bs-target="#farmGroupAddModal">
         <i class="bi bi-plus-lg"></i> Add Farm Group
@@ -30,7 +31,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Farm Group</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Farm Group</button>
                     </div>
                 </form>
             </div>

@@ -2,21 +2,19 @@
 @{
     string mapId = $"satMap-{Model.Scope}-{Model.Id}";
     bool canManage = Model.CanManage;
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 
 <div class="card" data-sat-role="widget">
     <div class="card-header d-flex align-items-center flex-wrap gap-2">
         <h3 class="card-title mb-0"><i class="bi bi-globe"></i> Satellite (@Model.Scope)</h3>
-        @if (canManage)
+        @if (canManage || isReadOnly)
         {
-            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-sat-role="syncNow"><i class="bi bi-arrow-repeat"></i> Sync now</button>
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-sat-role="syncNow" disabled="@isReadOnly"><i class="bi bi-arrow-repeat"></i> Sync now</button>
         }
     </div>
     <div class="card-body">
-        @if (canManage)
-        {
-            @Html.AntiForgeryToken()
-        }
+        @Html.AntiForgeryToken()
         <div data-sat-role="root" data-scope="@Model.Scope" data-id="@Model.Id" data-can-manage="@(canManage ? "1" : "0")">
             @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Model.AvailableIndices))
             <div class="alert py-1 px-2 small mb-2" data-sat-role="resolutionWarning" hidden></div>

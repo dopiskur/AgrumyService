@@ -3,6 +3,7 @@
     ViewData["Title"] = "Parcels";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
     Func<ParcelAreaSummaryViewModel, string, string> areaLine = (summary, label) =>
     {
         if (summary.TotalCount == 0)
@@ -41,7 +42,7 @@
     fertilizing...) is done, then toggle it to Ready.
 </p>
 
-@if (canManage)
+@if (canManage || isReadOnly)
 {
     @if (Model.Farms.Count == 0)
     {
@@ -66,12 +67,12 @@
                 <input type="hidden" name="idFarm" value="@Model.Farms[0].IdFarm" />
             }
             <input type="text" name="farmParcelName" class="form-control form-control-sm" placeholder="New parcel name" required maxlength="120" style="max-width:16rem" />
-            <button type="submit" class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel</button>
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Parcel</button>
         </form>
     }
 }
 
-@if (canManage && Model.GroupSections.Any(s => s.Parcels.Count > 0))
+@if ((canManage || isReadOnly) && Model.GroupSections.Any(s => s.Parcels.Count > 0))
 {
     <div class="card mb-4">
         <div class="card-header"><h3 class="card-title mb-0">Parcel Groups</h3></div>
@@ -96,14 +97,14 @@
                                 <form asp-action="@(isMember ? "ParcelGroupRemoveMember" : "ParcelGroupAddMember")" method="post" class="d-inline">
                                     <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
                                     <input type="hidden" name="idFarmParcel" value="@parcel.IDFarmParcel" />
-                                    <button type="submit" class="btn btn-sm @(isMember ? "btn-outline-success" : "btn-outline-secondary") mb-1">
+                                    <button type="submit" class="btn btn-sm @(isMember ? "btn-outline-success" : "btn-outline-secondary") mb-1" disabled="@isReadOnly">
                                         <i class="bi @(isMember ? "bi-check-square" : "bi-square")"></i> @parcel.FarmParcelName
                                     </button>
                                 </form>
                             }
                             <form asp-action="ParcelGroupDelete" method="post" class="d-inline ms-2">
                                 <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Delete this parcel group?"><i class="bi bi-trash"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" data-confirm="Delete this parcel group?"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </details>
@@ -111,7 +112,7 @@
                 <form asp-action="ParcelGroupAdd" method="post" class="d-flex gap-2 mb-3">
                     <input type="hidden" name="idFarm" value="@farmSection.IdFarm" />
                     <input type="text" name="name" class="form-control form-control-sm" placeholder="New group name" required maxlength="120" style="max-width:16rem" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Add Parcel Group</button>
+                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Add Parcel Group</button>
                 </form>
             }
         </div>
@@ -154,7 +155,7 @@ else
                             }
                         </td>
                         <td>
-                            @if (canManage && Model.AvailableFarmGroups.Count > 0)
+                            @if ((canManage || isReadOnly) && Model.AvailableFarmGroups.Count > 0)
                             {
                                 <form asp-action="AssignFarmToGroup" method="post" class="d-flex gap-1">
                                     <input type="hidden" name="idFarm" value="@first.IdFarm" />
@@ -165,7 +166,7 @@ else
                                             <option value="@g.IDFarmGroup" selected="@(g.IDFarmGroup == first.IdFarmGroup ? "selected" : null)">@g.Name</option>
                                         }
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">@(first.IdFarmGroup is int ? "Reassign" : "Assign")</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly">@(first.IdFarmGroup is int ? "Reassign" : "Assign")</button>
                                 </form>
                             }
                             else
@@ -208,12 +209,12 @@ else
                             }
                         </td>
                         <td>
-                            @if (canManage)
+                            @if (canManage || isReadOnly)
                             {
                                 <div class="form-check form-switch mb-0 d-inline-flex align-items-center gap-2">
                                     <input class="form-check-input parcel-ready-toggle" type="checkbox" role="switch"
                                            data-id-farm-parcel-zone="@first.Zone.IDFarmParcelZone"
-                                           checked="@(first.Zone.ReadyForSeason ? "checked" : null)" />
+                                           checked="@(first.Zone.ReadyForSeason ? "checked" : null)" disabled="@isReadOnly" />
                                     <span class="badge @(first.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger") ready-badge">
                                         @(first.Zone.ReadyForSeason ? "Ready" : "Not ready")
                                     </span>
@@ -265,7 +266,7 @@ else
                             {
                                 <span class="text-secondary">—</span>
                             }
-                            else if (!canManage)
+                            else if (!canManage && !isReadOnly)
                             {
                                 <span class="text-secondary">Unassigned</span>
                             }
@@ -284,7 +285,7 @@ else
                                             <option value="@g.IDFarmGroup">@g.Name</option>
                                         }
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@isReadOnly">Assign</button>
                                 </form>
                             }
                         </td>

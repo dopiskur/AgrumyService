@@ -44,13 +44,13 @@
     <div class="card-header">
         <h3 class="card-title">
             @Model.DeviceName
-            @if (!isReadOnly && hasAnyRole(RoleNames.DeviceManagers))
+            @if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
             {
                 <partial name="_InlineRename" model="renameModel" />
             }
         </h3>
         <div class="float-end d-flex align-items-center gap-2">
-            @if (hasAnyRole(RoleNames.DeviceManagers))
+            @if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
             {
                 <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Device, TargetId = Model.IDDevice!.Value }" />
             }
@@ -62,15 +62,13 @@
                 <a asp-action="EditController" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-primary">Controller config</a>
             }
             <a asp-action="Events" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-secondary">Events</a>
-            @if (!isReadOnly)
-            {
-                <a asp-action="Delete" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-danger">Delete</a>
-            }
-            @if (!isReadOnly && hasAnyRole(RoleNames.GlobalAdmin))
+            @* Delete's own GET is already DeviceManagersOrGlobalReader - a reader can open the confirm page, its own Confirm button is what's disabled. *@
+            <a asp-action="Delete" asp-route-idDevice="@Model.IDDevice" class="btn btn-sm btn-danger">Delete</a>
+            @if (hasAnyRole(RoleNames.GlobalAdmin) || isReadOnly)
             {
                 <form asp-action="HardReset" asp-route-idDevice="@Model.IDDevice" method="post" class="d-inline"
                       data-confirm="This wipes the device completely (factory reset) - it will need physical/captive-portal re-provisioning afterward. Continue?">
-                    <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-exclamation-octagon"></i> Hard Reset</button>
+                    <button type="submit" class="btn btn-sm btn-danger" disabled="@isReadOnly"><i class="bi bi-exclamation-octagon"></i> Hard Reset</button>
                 </form>
             }
             <a asp-action="Fleet" class="btn btn-sm btn-outline-secondary">Back to List</a>
@@ -94,10 +92,7 @@
                             <partial name="_EnabledToggleField" model="batteryToggle" />
                             <partial name="_EnabledToggleField" model="debugToggle" />
                             <partial name="_EnabledToggleField" model="enabledToggle" />
-                            @if (!isReadOnly)
-                            {
-                                <input type="submit" value="Save" class="btn btn-primary" />
-                            }
+                            <input type="submit" value="Save" class="btn btn-primary" />
                         </fieldset>
                     </form>
                 </div>
@@ -195,7 +190,7 @@
         </div>
     </div>
 }
-@if (hasAnyRole(RoleNames.DeviceManagers))
+@if (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly)
 {
     <partial name="_DeviceWifiUpdate" model="Model.IDDevice!.Value" />
     <partial name="_DeviceLoRaPrivateKey" model="Model.IDDevice!.Value" />

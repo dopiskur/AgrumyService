@@ -20,6 +20,7 @@
 @{
     bool zoneScoped = ViewData["ZoneScoped"] as bool? == true;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
+    bool isReadOnly = ViewBag.IsReadOnly is true;
 }
 @foreach (var item in Model)
 {
@@ -83,12 +84,12 @@
             {
                 <span class="badge text-bg-info ms-1" title="Update requested - installs on the next config poll">&rarr; @(item.FirmwareTargetVersion ?? "latest")</span>
             }
-            else if (item.FirmwareUpdateAvailable && hasAnyRole(RoleNames.DeviceManagers))
+            else if (item.FirmwareUpdateAvailable && (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly))
             {
                 <form asp-controller="Device" asp-action="FirmwareUpdate" method="post" class="d-inline ms-1">
                     <input type="hidden" name="idDevice" value="@item.IDDevice" />
                     <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
-                    <button type="submit" class="btn btn-warning btn-sm py-0" title="Update to @item.LatestFirmwareVersion"><i class="bi bi-cloud-arrow-down"></i> @item.LatestFirmwareVersion</button>
+                    <button type="submit" class="btn btn-warning btn-sm py-0" disabled="@isReadOnly" title="Update to @item.LatestFirmwareVersion"><i class="bi bi-cloud-arrow-down"></i> @item.LatestFirmwareVersion</button>
                 </form>
             }
         </td>
@@ -112,13 +113,13 @@
                 <a asp-controller="SensorData" asp-action="Report" asp-route-idDevice="@item.IDDevice" class="btn btn-danger" title="Reports" aria-label="Reports"><i class="bi bi-file-earmark-bar-graph"></i></a>
                 <a asp-controller="Device" asp-action="Details" asp-route-idDevice="@item.IDDevice" class="btn btn-primary" title="Settings" aria-label="Settings"><i class="bi bi-gear"></i></a>
                 <a asp-controller="Device" asp-action="Events" asp-route-idDevice="@item.IDDevice" class="btn btn-outline-secondary" title="Events" aria-label="Events"><i class="bi bi-clock-history"></i></a>
-                @if (zoneScoped && hasAnyRole(RoleNames.DeviceManagers))
+                @if (zoneScoped && (hasAnyRole(RoleNames.DeviceManagers) || isReadOnly))
                 {
                     <form asp-controller="DeviceFarmUnit" asp-action="Remove" method="post" class="d-inline"
                           data-confirm="Remove this device from the zone? It stays registered and keeps reporting - it just stops counting toward this zone.">
                         <input type="hidden" name="idDevice" value="@item.IDDevice" />
                         <input type="hidden" name="idDeviceFarmUnitZone" value="@item.DeviceFarmUnitZoneID" />
-                        <button type="submit" class="btn btn-outline-danger" title="Remove from zone" aria-label="Remove from zone"><i class="bi bi-x-lg"></i></button>
+                        <button type="submit" class="btn btn-outline-danger" disabled="@isReadOnly" title="Remove from zone" aria-label="Remove from zone"><i class="bi bi-x-lg"></i></button>
                     </form>
                 }
             </div>
