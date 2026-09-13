@@ -140,9 +140,18 @@ namespace Agrumy.Shared.Models
         public bool HasData { get; set; }
         public DateOnly? SceneDateUtc { get; set; }
         public bool Reliable { get; set; }
+        public double ValidPixelPercent { get; set; }
+        public double CloudPercent { get; set; }
         /// Non-null only once a rendered index exists - the browser builds the raster URL itself (Agrumy.Web's own /FarmOpenfield/SatelliteImage passthrough), since a URL built here would point at Agrumy.Api's own address, unreachable directly from the browser (different auth: Bearer vs. the web app's cookie).
         public int? SceneId { get; set; }
         public string? StatsJson { get; set; }
+    }
+
+    /// One calendar day in a SatelliteMapDates response - MinValidPixelPercent is the worst (lowest) ValidPixelPercent across every zone in scope that has a scene on that date, so a multi-zone scope's calendar flags a day red if ANY zone was unreliable that day.
+    public class SatelliteDateEntry
+    {
+        public DateOnly Date { get; set; }
+        public double MinValidPixelPercent { get; set; }
     }
 
     public class SatelliteMapParcelEntry

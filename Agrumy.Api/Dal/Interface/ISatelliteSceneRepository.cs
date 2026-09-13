@@ -16,8 +16,8 @@ namespace Agrumy.Api.Dal.Interface
         /// S-C, D4 - the scene the date slider should show for this zone when its own history has no exact match for the selected date: the latest one at or before it. Null means the zone has nothing that old yet.
         Task<FarmParcelZoneSatelliteScene?> SceneAtOrBeforeDateAsync(int farmParcelZoneId, DateOnly date);
 
-        /// S-C map's date slider - the union of scene dates across every zone in the current scope, one cheap query instead of fetching each zone's full history.
-        Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds);
+        /// S-C map's date slider/calendar - the union of scene dates across every zone in the current scope (one cheap query instead of fetching each zone's full history), each paired with the worst ValidPixelPercent among that date's scenes so the calendar can flag unreliable days.
+        Task<IList<SatelliteDateEntry>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds);
 
         Task<ParcelSatelliteIndex> IndexUpsertAsync(ParcelSatelliteIndex index);
 
@@ -30,6 +30,9 @@ namespace Agrumy.Api.Dal.Interface
 
         /// D10 retention job - clears ImagePath for every index row past the cutoff so the next view regenerates from GridBase64; never touches GridBase64/StatsJson themselves.
         Task<int> ImagePathsClearOlderThanAsync(DateTimeOffset cutoffUtc);
+
+        /// Data-point retention (separate from the PNG-cache retention above) - permanently deletes a scene and its index rows (grid/stats included) once its own SceneDateUtc is older than the cutoff. Returns the number of scenes deleted.
+        Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate);
 
         /// Time series across the scene's whole history for one zone+index, straight off the stats columns - no raster read (Detaljni dizajn S, B4).
         Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable);

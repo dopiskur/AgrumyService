@@ -157,7 +157,7 @@
             <div class="sidebar-wrapper">
                 <nav class="mt-2" aria-label="Main navigation">
                     <ul class="nav sidebar-menu flex-column" id="navigation">
-                        @* D1 (Detaljni dizajn R) - two separate root items instead of one mixed Farms page; Greenhouse keeps its own page, Open-Field farming gets its own (with Crop Seasons/Parcels nested under it). *@
+                        @* Farm Groups is the cross-cutting overview above Farm (spans FarmType); Crop/Fruit/Greenhouse/Parcels are flat, direct menu items - no "Open-Field farming"/"Farms" parent (removed, see FarmGroup and the Crop page's own inline Add-Farm form for where those capabilities live now). *@
                         <li class="nav-item">
                             <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Index" class="nav-link @navActive("DeviceFarmUnit")">
                                 <i class="nav-icon bi bi-sliders"></i>
@@ -170,43 +170,28 @@
                                 <p>@Localizer["Farm Groups"]</p>
                             </a>
                         </li>
-                        @{
-                            bool openfieldSectionActive = string.Equals(currentController, "FarmOpenfield", StringComparison.OrdinalIgnoreCase)
-                                && !string.Equals(currentAction, "FarmSatellite", StringComparison.OrdinalIgnoreCase);
-                        }
-                        <li class="nav-item @(openfieldSectionActive ? "menu-open" : "")">
-                            <a href="#" data-lte-toggle="treeview" class="nav-link @(openfieldSectionActive ? "active" : "")" aria-expanded="@(openfieldSectionActive ? "true" : "false")">
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="CropSeasons" class="nav-link @navActiveAction("FarmOpenfield", "CropSeasons")">
                                 <i class="nav-icon bi bi-flower1"></i>
-                                <p>
-                                    @Localizer["Open-Field farming"]
-                                    <i class="nav-arrow bi bi-chevron-right"></i>
-                                </p>
+                                <p>@Localizer["Crop"]</p>
                             </a>
-                            <ul class="nav nav-treeview">
-                                <li class="nav-item">
-                                    <a asp-area="" asp-controller="FarmOpenfield" asp-action="Index" class="nav-link @navActiveAction("FarmOpenfield", "Index")">
-                                        <i class="nav-icon bi bi-house-door"></i>
-                                        <p>@Localizer["Farms"]</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a asp-area="" asp-controller="FarmOpenfield" asp-action="CropSeasons" class="nav-link @navActiveAction("FarmOpenfield", "CropSeasons")">
-                                        <i class="nav-icon bi bi-calendar3"></i>
-                                        <p>@Localizer["Crop Seasons"]</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
-                                        <i class="nav-icon bi bi-map"></i>
-                                        <p>@Localizer["Parcels"]</p>
-                                    </a>
-                                </li>
-                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="Fruit" asp-action="Index" class="nav-link @navActive("Fruit")">
+                                <i class="nav-icon bi bi-apple"></i>
+                                <p>@Localizer["Fruit"]</p>
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                                 <i class="nav-icon bi bi-house-door"></i>
                                 <p>@Localizer["Greenhouse"]</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
+                                <i class="nav-icon bi bi-map"></i>
+                                <p>@Localizer["Parcels"]</p>
                             </a>
                         </li>
                         <li class="nav-item">

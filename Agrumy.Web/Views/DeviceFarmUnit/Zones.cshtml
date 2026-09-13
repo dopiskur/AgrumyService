@@ -84,6 +84,19 @@
         </h3>
         @if (hasAnyRole(RoleNames.DeviceManagers))
         {
+            <form asp-action="UnitAreaUpdate" method="post" class="d-flex align-items-center gap-2 mt-1">
+                <input type="hidden" name="idDeviceFarmUnit" value="@Model.Unit.IDDeviceFarmUnit" />
+                <label class="text-secondary small mb-0">Area (ha)</label>
+                <input type="number" step="any" min="0" name="areaHectares" value="@Model.Unit.AreaHectares" class="form-control form-control-sm" style="max-width:8rem" placeholder="not set" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
+            </form>
+        }
+        else if (Model.Unit.AreaHectares is double unitAreaHa)
+        {
+            <p class="text-secondary small mb-0">Area: @unitAreaHa.ToString("0.##") ha</p>
+        }
+        @if (hasAnyRole(RoleNames.DeviceManagers))
+        {
             <div class="float-end d-flex align-items-center gap-3">
                 <partial name="_DeviceCommandButtons" model="new DeviceCommandButtonsViewModel { TargetType = CommandTargetType.Unit, TargetId = Model.Unit.IDDeviceFarmUnit!.Value }" />
                 <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#unitWifiUpdateModal">

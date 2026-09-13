@@ -80,6 +80,10 @@ namespace Agrumy.Shared.Models
         [Range(0, 365)]
         public int? SatelliteRasterRetentionDays { get; set; } = 30;
 
+        // Unlike SatelliteRasterRetentionDays above (just the rendered PNG cache), this deletes the scene row itself - grid/stats included - once its own imagery date is this old. Null/0 keeps every scene forever. Server-wide only, no per-tenant override.
+        [Display(Name = "Satellite data point retention (days)")]
+        public int? SatelliteDataPointRetentionDays { get; set; } = 730;
+
         // How long a soft-deleted Farm/Device stays listed (and restorable) in the Recycle Bin; 0-90, default 30. Past this, a device/farm just drops off the recycle bin listing - its row (and SensorData) is NOT auto-purged, that's the separate manual/schedulable "Purge orphaned sensor data" action below.
         [Display(Name = "Recycle bin retention (days)")]
         [Range(0, 90)]

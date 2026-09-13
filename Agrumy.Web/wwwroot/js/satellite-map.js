@@ -75,78 +75,249 @@ async function renderGridToDataUrl(url, indexName) {
     return canvas.toDataURL();
 }
 
+// Days-of-week header and the grid renderer are shared module state, not per-widget - a calendar
+// is stateless between renders, it just needs (container, data, what to highlight) each time.
+const CALENDAR_DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+// Fixed, independent of the reliability slider (that one only controls what's drawn on the map) - a day marked red here always means "at least one zone's scene fell below 70% valid pixels that day".
+const CALENDAR_UNRELIABLE_THRESHOLD = 70;
+
+/// Draws one month of a calendar into `container` - days present in `availableDates` are clickable
+/// and highlighted (green outline, red outline if `dateReliability` marks that day below CALENDAR_UNRELIABLE_THRESHOLD,
+/// or solid blue if `selectedDateStr`), other days are disabled. `displayYearMonth` is 'YYYY-MM'.
+/// Calls `onSelectDate(dateStr)` on a day click, `onNavigateMonth(newYearMonth)` on the prev/next month arrows -
+/// the caller re-renders with the new state either way.
+function renderCalendarGrid(container, availableDates, displayYearMonth, selectedDateStr, dateReliability, onSelectDate, onNavigateMonth) {
+    const dateSet = new Set(availableDates);
+    const [year, month] = displayYearMonth.split('-').map(Number); // month is 1-based
+    const first = new Date(year, month - 1, 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const startDow = first.getDay();
+    const monthLabel = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    let html = '<div class="d-flex justify-content-between align-items-center mb-1">'
+        + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-cal-nav="-1">&lsaquo;</button>'
+        + `<span class="small fw-semibold">${monthLabel}</span>`
+        + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-cal-nav="1">&rsaquo;</button>'
+        + '</div><table class="table table-sm text-center mb-0" style="table-layout:fixed"><thead><tr>';
+    CALENDAR_DOW.forEach((d) => { html += `<th class="small text-secondary fw-normal p-1">${d}</th>`; });
+    html += '</tr></thead><tbody><tr>';
+    for (let i = 0; i < startDow; i++) {
+        html += '<td></td>';
+    }
+    let col = startDow;
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasData = dateSet.has(dateStr);
+        const isSelected = dateStr === selectedDateStr;
+        const isUnreliable = hasData && dateReliability && dateReliability[dateStr] !== undefined && dateReliability[dateStr] < CALENDAR_UNRELIABLE_THRESHOLD;
+        let cls = 'btn btn-sm w-100 p-1 border-0';
+        cls += isSelected ? ' btn-primary' : isUnreliable ? ' btn-outline-danger text-danger' : hasData ? ' btn-outline-success' : ' text-secondary bg-transparent';
+        html += `<td class="p-0"><button type="button" class="${cls}" ${hasData ? '' : 'disabled tabindex="-1"'} data-cal-date="${dateStr}">${day}</button></td>`;
+        col++;
+        if (col === 7 && day !== daysInMonth) {
+            html += '</tr><tr>';
+            col = 0;
+        }
+    }
+    html += '</tr></tbody></table>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('[data-cal-date]').forEach((btn) => {
+        btn.addEventListener('click', () => onSelectDate(btn.getAttribute('data-cal-date')));
+    });
+    container.querySelectorAll('[data-cal-nav]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const delta = parseInt(btn.getAttribute('data-cal-nav'), 10);
+            const next = new Date(year, (month - 1) + delta, 1);
+            onNavigateMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+        });
+    });
+}
+
 function initSatelliteMap(mapId) {
     const mapEl = document.getElementById(mapId);
     if (!mapEl || typeof L === 'undefined') {
         return;
     }
-    const root = mapEl.closest('.card').querySelector('[data-sat-role="root"]');
+    // "widget" wraps everything for one satellite instance - a single .card in the default layout
+    // (_SatelliteMap.cshtml), or a two-column row when the map and its controls are drawn separately
+    // (FarmParcelDetails' "Define boundaries" split layout) - either way this is the one scoping root.
+    const widget = mapEl.closest('[data-sat-role="widget"]');
+    const root = widget.querySelector('[data-sat-role="root"]');
     const scope = root.getAttribute('data-scope');
     const id = root.getAttribute('data-id');
     const canManage = root.getAttribute('data-can-manage') === '1';
-    const card = mapEl.closest('.card');
-    const indexSelect = card.querySelector('[data-sat-role="index"]');
-    const reliableCheckbox = card.querySelector('[data-sat-role="onlyReliable"]');
-    const slider = card.querySelector('[data-sat-role="dateSlider"]');
-    const dateLabel = card.querySelector('[data-sat-role="dateLabel"]');
-    const legendEl = card.querySelector('[data-sat-role="legend"]');
-    const emptyNotice = card.querySelector('[data-sat-role="emptyNotice"]');
-    const syncButton = card.querySelector('[data-sat-role="syncNow"]');
+    const indexRadios = widget.querySelectorAll('[data-sat-role="indexRadio"]');
+    const reliabilityThreshold = widget.querySelector('[data-sat-role="reliabilityThreshold"]');
+    const reliabilityLabel = widget.querySelector('[data-sat-role="reliabilityLabel"]');
+    const unreliableBanner = widget.querySelector('[data-sat-role="unreliableBanner"]');
+    const sceneClassificationEl = widget.querySelector('[data-sat-role="sceneClassification"]');
+    const slider = widget.querySelector('[data-sat-role="dateSlider"]');
+    const dateLabel = widget.querySelector('[data-sat-role="dateLabel"]');
+    const legendEl = widget.querySelector('[data-sat-role="legend"]');
+    const emptyNotice = widget.querySelector('[data-sat-role="emptyNotice"]');
+    const syncButton = widget.querySelector('[data-sat-role="syncNow"]');
+    // Calendar + Previous/Next are optional - only the split layout provides them, the plain slider still works everywhere else.
+    const calendarEl = widget.querySelector('[data-sat-role="calendar"]');
+    const prevDateBtn = widget.querySelector('[data-sat-role="prevDate"]');
+    const nextDateBtn = widget.querySelector('[data-sat-role="nextDate"]');
 
     const map = L.map(mapEl);
-    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires.
-    L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
+    // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - a plain <img> tile request can't carry the JWT that TileProxy's [Authorize] requires. Not added to the map by default - "ARKOD karta" is, see below.
+    const osmLayer = L.tileLayer(`/Map/Tile/{z}/{x}/{y}.png`, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    });
+    // "ARKOD karta" base option layers the ARKOD (hr.land_parcels) WMS boundary overlay - public NIPP-registered service, no registration needed - over real aerial imagery (ARKOD's own WMS has no imagery layer, only vector boundaries) so it reads as an actual satellite map. Default base layer.
+    const arkodBaseLayer = L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        }),
+        L.tileLayer.wms('https://servisi.apprrr.hr/NIPP/wms', { layers: 'hr.land_parcels', format: 'image/png', transparent: true, version: '1.3.0', attribution: 'ARKOD &copy; APPRRR/NIPP' }),
+    ]).addTo(map);
+    L.control.layers({ 'ARKOD karta': arkodBaseLayer, 'OpenStreetMap': osmLayer }).addTo(map);
     map.setView([45.815, 15.982], 13);
 
     let overlayLayer = L.layerGroup().addTo(map);
+    let rasterEntries = []; // [{ layer: L.ImageOverlay, validPixelPercent }] built once per loadAndRender fetch - the reliability slider only adds/removes these already-rendered layers, never re-fetches or re-renders them
     let availableDates = [];
+    let dateReliability = {}; // dateStr -> minValidPixelPercent, for the calendar's fixed-70% red marking
+    let selectedIndex = -1; // index into availableDates - the one shared "current date" state, slider/calendar/prev-next all just move this
+    let calendarDisplayMonth = null; // 'YYYY-MM' the calendar grid is currently showing, independent of which day is selected
     let renderGeneration = 0; // guards against a slow grid fetch resolving after a newer loadAndRender already cleared/repopulated overlayLayer
 
+    function selectedDate() {
+        return selectedIndex >= 0 && selectedIndex < availableDates.length ? availableDates[selectedIndex] : null;
+    }
+
+    function getSelectedIndexValue() {
+        for (const r of indexRadios) {
+            if (r.checked) {
+                return r.value;
+            }
+        }
+        return indexRadios.length ? indexRadios[0].value : '1';
+    }
+
     function updateLegend() {
-        const indexName = SATELLITE_INDEX_NAMES[parseInt(indexSelect.value, 10)];
+        const indexName = SATELLITE_INDEX_NAMES[parseInt(getSelectedIndexValue(), 10)];
         legendEl.textContent = SATELLITE_LEGENDS[indexName] || '';
+    }
+
+    /// Adds/removes already-rendered raster layers based on the slider's current value - no network
+    /// request and no re-render, so dragging the slider stays smooth (many `input` events per drag).
+    function applyReliabilityThreshold() {
+        const threshold = parseInt(reliabilityThreshold.value, 10);
+        rasterEntries.forEach(({ layer, validPixelPercent }) => {
+            const shouldShow = validPixelPercent >= threshold;
+            const isShown = overlayLayer.hasLayer(layer);
+            if (shouldShow && !isShown) {
+                layer.addTo(overlayLayer);
+            } else if (!shouldShow && isShown) {
+                overlayLayer.removeLayer(layer);
+            }
+        });
+    }
+
+    /// Scene classification readout + the fixed-70% "Unreliable" banner - both use the worst (lowest
+    /// ValidPixelPercent) zone for the loaded date, same "flag the worst case" rule as the calendar.
+    function updateSceneClassification(worstValidPixelPercent, worstCloudPercent) {
+        if (worstValidPixelPercent === null) {
+            sceneClassificationEl.textContent = '';
+            unreliableBanner.hidden = true;
+            return;
+        }
+        sceneClassificationEl.textContent = `Scene classification: ${worstCloudPercent.toFixed(0)}% cloud, ${worstValidPixelPercent.toFixed(0)}% valid pixels.`;
+        unreliableBanner.hidden = worstValidPixelPercent >= CALENDAR_UNRELIABLE_THRESHOLD;
+    }
+
+    function updatePrevNextButtons() {
+        if (prevDateBtn) {
+            prevDateBtn.disabled = selectedIndex <= 0;
+        }
+        if (nextDateBtn) {
+            nextDateBtn.disabled = selectedIndex < 0 || selectedIndex >= availableDates.length - 1;
+        }
+    }
+
+    function refreshCalendar() {
+        if (!calendarEl) {
+            return;
+        }
+        const date = selectedDate();
+        if (date) {
+            calendarDisplayMonth = date.slice(0, 7);
+        } else if (!calendarDisplayMonth) {
+            const today = new Date();
+            calendarDisplayMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        }
+        renderCalendarGrid(calendarEl, availableDates, calendarDisplayMonth, date, dateReliability, (clickedDate) => {
+            const idx = availableDates.indexOf(clickedDate);
+            if (idx >= 0) {
+                selectedIndex = idx;
+                loadAndRender();
+            }
+        }, (newMonth) => {
+            calendarDisplayMonth = newMonth;
+            refreshCalendar();
+        });
     }
 
     async function loadDates() {
         const response = await fetch(`/FarmOpenfield/SatelliteMapDates?scope=${scope}&id=${id}`);
-        availableDates = response.ok ? await response.json() : [];
+        const entries = response.ok ? await response.json() : [];
+        availableDates = entries.map((e) => e.date);
+        dateReliability = {};
+        entries.forEach((e) => { dateReliability[e.date] = e.minValidPixelPercent; });
         if (availableDates.length === 0) {
-            slider.disabled = true;
-            slider.max = 0;
+            selectedIndex = -1;
+            if (slider) {
+                slider.disabled = true;
+                slider.max = 0;
+            }
             dateLabel.textContent = 'No dates yet';
             emptyNotice.hidden = false;
+            updatePrevNextButtons();
+            refreshCalendar();
             return false;
         }
         emptyNotice.hidden = true;
-        slider.disabled = false;
-        slider.max = availableDates.length - 1;
-        slider.value = availableDates.length - 1; // default to the most recent date
-        dateLabel.textContent = availableDates[availableDates.length - 1];
+        selectedIndex = availableDates.length - 1; // default to the most recent date
+        if (slider) {
+            slider.disabled = false;
+            slider.max = availableDates.length - 1;
+            slider.value = selectedIndex;
+        }
+        dateLabel.textContent = availableDates[selectedIndex];
+        updatePrevNextButtons();
+        refreshCalendar();
         return true;
     }
 
     async function loadAndRender() {
         const myGeneration = ++renderGeneration;
-        const hasDates = availableDates.length > 0;
-        const selectedDate = hasDates ? availableDates[parseInt(slider.value, 10)] : null;
-        dateLabel.textContent = selectedDate || 'No dates yet';
-        const indexValue = indexSelect.value;
+        const date = selectedDate();
+        dateLabel.textContent = date || 'No dates yet';
+        if (slider) {
+            slider.value = selectedIndex >= 0 ? selectedIndex : 0;
+        }
+        updatePrevNextButtons();
+        refreshCalendar();
+        const indexValue = getSelectedIndexValue();
 
         let url = `/FarmOpenfield/SatelliteMap?scope=${scope}&id=${id}&index=${indexValue}`;
-        if (selectedDate) {
-            url += `&date=${selectedDate}`;
+        if (date) {
+            url += `&date=${date}`;
         }
         const response = await fetch(url);
         if (!response.ok) {
             return;
         }
         const data = await response.json();
-        const onlyReliable = reliableCheckbox.checked;
 
         overlayLayer.clearLayers();
+        rasterEntries = [];
         const bounds = L.latLngBounds([]);
 
         // Parcel outlines first (thicker) so zone outlines draw on top.
@@ -161,6 +332,8 @@ function initSatelliteMap(mapId) {
             } catch (e) { /* malformed geometry - skip this parcel's outline, the zones still render */ }
         });
 
+        let worstValidPixelPercent = null;
+        let worstCloudPercent = null;
         (data.zones || []).forEach((z) => {
             if (!z.geometryGeoJson) {
                 return;
@@ -174,35 +347,53 @@ function initSatelliteMap(mapId) {
                 bounds.extend(zoneBounds);
             } catch (e) { return; }
 
-            const showRaster = z.hasData && z.sceneId && (!onlyReliable || z.reliable);
-            if (showRaster && zoneBounds) {
-                const opacity = z.reliable ? 1 : 0.5; // unreliable (below MinValidPixelPercent) still shown, faded rather than hidden - D4's "never disappears"
-                const indexName = SATELLITE_INDEX_NAMES[parseInt(indexValue, 10)];
-                if (SATELLITE_PALETTE_STOPS[indexName]) {
-                    // Scalar index - fetch the raw grid and palette-render it in the browser instead of asking the server for a pre-rendered PNG.
-                    const gridUrl = `/FarmOpenfield/SatelliteGrid?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
-                    renderGridToDataUrl(gridUrl, indexName).then((dataUrl) => {
-                        if (dataUrl && myGeneration === renderGeneration) {
-                            L.imageOverlay(dataUrl, zoneBounds, { opacity }).addTo(overlayLayer);
-                        }
-                    });
-                } else {
-                    // Composite (SwirComposite/NaturalColor) - already an RGB PNG, no scalar grid to palette-render.
-                    // Same-origin passthrough (FarmOpenfieldController.SatelliteImage), not a direct Agrumy.Api link - a plain <img> can't carry the JWT Agrumy.Api requires.
-                    const url = `/FarmOpenfield/SatelliteImage?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
-                    L.imageOverlay(url, zoneBounds, { opacity }).addTo(overlayLayer);
-                }
+            if (!z.hasData || !z.sceneId) {
+                return;
+            }
+            if (worstValidPixelPercent === null || z.validPixelPercent < worstValidPixelPercent) {
+                worstValidPixelPercent = z.validPixelPercent;
+                worstCloudPercent = z.cloudPercent;
+            }
+
+            const indexName = SATELLITE_INDEX_NAMES[parseInt(indexValue, 10)];
+            if (SATELLITE_PALETTE_STOPS[indexName]) {
+                // Scalar index - fetch the raw grid and palette-render it in the browser instead of asking the server for a pre-rendered PNG.
+                const gridUrl = `/FarmOpenfield/SatelliteGrid?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
+                renderGridToDataUrl(gridUrl, indexName).then((dataUrl) => {
+                    if (dataUrl && myGeneration === renderGeneration) {
+                        rasterEntries.push({ layer: L.imageOverlay(dataUrl, zoneBounds), validPixelPercent: z.validPixelPercent });
+                        applyReliabilityThreshold();
+                    }
+                });
+            } else {
+                // Composite (SwirComposite/NaturalColor) - already an RGB PNG, no scalar grid to palette-render.
+                // Same-origin passthrough (FarmOpenfieldController.SatelliteImage), not a direct Agrumy.Api link - a plain <img> can't carry the JWT Agrumy.Api requires.
+                const rasterUrl = `/FarmOpenfield/SatelliteImage?idFarmParcelZone=${z.zoneId}&idScene=${z.sceneId}&index=${indexValue}`;
+                rasterEntries.push({ layer: L.imageOverlay(rasterUrl, zoneBounds), validPixelPercent: z.validPixelPercent });
+                applyReliabilityThreshold();
             }
         });
 
         if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [20, 20] });
         }
+        updateSceneClassification(worstValidPixelPercent, worstCloudPercent);
     }
 
-    indexSelect.addEventListener('change', () => { updateLegend(); loadAndRender(); });
-    reliableCheckbox.addEventListener('change', loadAndRender);
-    slider.addEventListener('input', loadAndRender);
+    indexRadios.forEach((r) => r.addEventListener('change', () => { updateLegend(); loadAndRender(); }));
+    reliabilityThreshold.addEventListener('input', () => {
+        reliabilityLabel.textContent = `Minimum reliability: ${reliabilityThreshold.value}%`;
+        applyReliabilityThreshold();
+    });
+    if (slider) {
+        slider.addEventListener('input', () => { selectedIndex = parseInt(slider.value, 10); loadAndRender(); });
+    }
+    if (prevDateBtn) {
+        prevDateBtn.addEventListener('click', () => { if (selectedIndex > 0) { selectedIndex--; loadAndRender(); } });
+    }
+    if (nextDateBtn) {
+        nextDateBtn.addEventListener('click', () => { if (selectedIndex < availableDates.length - 1) { selectedIndex++; loadAndRender(); } });
+    }
 
     if (syncButton) {
         syncButton.addEventListener('click', async () => {

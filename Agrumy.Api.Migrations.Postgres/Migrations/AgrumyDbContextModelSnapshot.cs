@@ -625,6 +625,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IDDeviceFarmUnit"));
 
+                    b.Property<double?>("AreaHectares")
+                        .HasColumnType("double precision");
+
                     b.Property<bool>("Deleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2799,6 +2802,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int?>("RecycleBinRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SatelliteDataPointRetentionDays")
                         .HasColumnType("integer");
 
                     b.Property<int?>("SatelliteRasterRetentionDays")

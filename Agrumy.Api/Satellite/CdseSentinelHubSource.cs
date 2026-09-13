@@ -156,7 +156,7 @@ namespace Agrumy.Api.Satellite
 
             MinimalPng.Decoded valuePixels = MinimalPng.Decode(defaultPng);
             MinimalPng.Decoded maskPixels = MinimalPng.Decode(dataMaskPng);
-            double validPercent = ComputeValidPercent(maskPixels.Pixels);
+            double validPercent = ComputeValidPercent(maskPixels.Pixels, valuePixels.Width, valuePixels.Height, geoJsonPolygon);
 
             byte[]? grid = renderGrid && def.HasStatistics ? BuildQuantizedGrid(valuePixels, maskPixels) : null;
             string statsJson = def.HasStatistics ? BuildStatsJson(valuePixels, maskPixels) : "{}";
@@ -182,6 +182,8 @@ namespace Agrumy.Api.Satellite
             string collectionType = ResolveCollectionType(collection, commercialCollectionId);
             double resolutionMeters = GetCapabilities(collection).ResolutionMeters;
             (int pixelWidth, int pixelHeight) = ComputePixelDimensions(geoJsonPolygon, resolutionMeters, resolutionMeters);
+            // sampleCount/noDataCount below are counted over this same pixelWidth x pixelHeight bbox grid (that's what "width"/"height" in the aggregation body select) - insidePolygonCount is how much of that grid the parcel's own shape actually covers, so a narrow/rotated parcel's always-masked bbox corners don't drag its ValidPixelPercent down forever regardless of date.
+            int insidePolygonCount = CountPixelsInsidePolygon(geoJsonPolygon, pixelWidth, pixelHeight);
 
             var body = new JsonObject
             {
@@ -233,7 +235,7 @@ namespace Agrumy.Api.Satellite
                 }
                 double sampleCount = ReadDouble(bandStats["sampleCount"]) ?? 0;
                 double noDataCount = ReadDouble(bandStats["noDataCount"]) ?? 0;
-                double validPercent = sampleCount > 0 ? 100.0 * (sampleCount - noDataCount) / sampleCount : 0;
+                double validPercent = insidePolygonCount > 0 ? Math.Min(100.0, 100.0 * (sampleCount - noDataCount) / insidePolygonCount) : 0;
                 if (validPercent <= 0)
                 {
                     continue; // every pixel masked (cloud/shadow) - the stats come back as the string "NaN", nothing to plot or render for this day
@@ -368,14 +370,82 @@ namespace Agrumy.Api.Satellite
             return (Math.Clamp(width, 1, MaxRenderPixels), Math.Clamp(height, 1, MaxRenderPixels));
         }
 
-        private static double ComputeValidPercent(byte[] maskPixels)
+        private static double ComputeValidPercent(byte[] maskPixels, int width, int height, string geoJsonPolygon)
         {
             if (maskPixels.Length == 0)
             {
                 return 0;
             }
             int valid = maskPixels.Count(b => b != 0);
-            return 100.0 * valid / maskPixels.Length;
+            int insidePolygonCount = CountPixelsInsidePolygon(geoJsonPolygon, width, height);
+            return insidePolygonCount > 0 ? Math.Min(100.0, 100.0 * valid / insidePolygonCount) : 0;
+        }
+
+        /// How many of the width*height bbox grid cells actually fall inside the parcel's own polygon - a narrow/rotated parcel leaves a chunk of its bounding-box rectangle outside the shape itself, and those cells are always masked (CDSE has no data there) regardless of cloud cover on any given date. Dividing ValidPixelPercent by this instead of the full bbox grid stops a merely oddly-shaped parcel from being permanently stuck below MinValidPixelPercent.
+        internal static int CountPixelsInsidePolygon(string geoJsonPolygon, int width, int height)
+        {
+            List<List<(double Lon, double Lat)>> rings = ParsePolygonRings(geoJsonPolygon);
+            if (rings.Count == 0)
+            {
+                return 0;
+            }
+            IEnumerable<(double Lon, double Lat)> allPoints = rings.SelectMany(r => r);
+            double minLon = allPoints.Min(p => p.Lon), maxLon = allPoints.Max(p => p.Lon);
+            double minLat = allPoints.Min(p => p.Lat), maxLat = allPoints.Max(p => p.Lat);
+
+            int count = 0;
+            for (int row = 0; row < height; row++)
+            {
+                // Row 0 is the north edge (max latitude) - same top-to-bottom raster convention as the PNG/grid CDSE returns.
+                double lat = maxLat - ((row + 0.5) / height * (maxLat - minLat));
+                for (int col = 0; col < width; col++)
+                {
+                    double lon = minLon + ((col + 0.5) / width * (maxLon - minLon));
+                    if (IsInsidePolygon(lon, lat, rings))
+                    {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        /// GeoJSON Polygon "coordinates" is [ring][point][lon,lat] - first ring is the outer boundary, any further rings are holes.
+        private static List<List<(double Lon, double Lat)>> ParsePolygonRings(string geoJsonPolygon)
+        {
+            var rings = new List<List<(double Lon, double Lat)>>();
+            foreach (JsonNode? ringNode in JsonNode.Parse(geoJsonPolygon)?["coordinates"]?.AsArray() ?? [])
+            {
+                var ring = new List<(double Lon, double Lat)>();
+                foreach (JsonNode? point in ringNode?.AsArray() ?? [])
+                {
+                    JsonArray coord = point!.AsArray();
+                    ring.Add((coord[0]!.GetValue<double>(), coord[1]!.GetValue<double>()));
+                }
+                rings.Add(ring);
+            }
+            return rings;
+        }
+
+        /// Standard even-odd ray-casting, run across every ring so a hole correctly excludes the area inside it.
+        private static bool IsInsidePolygon(double lon, double lat, List<List<(double Lon, double Lat)>> rings)
+        {
+            bool inside = false;
+            foreach (List<(double Lon, double Lat)> ring in rings)
+            {
+                int count = ring.Count;
+                for (int i = 0, j = count - 1; i < count; j = i++)
+                {
+                    (double xi, double yi) = ring[i];
+                    (double xj, double yj) = ring[j];
+                    bool crosses = ((yi > lat) != (yj > lat)) && (lon < (((xj - xi) * (lat - yi) / (yj - yi)) + xi));
+                    if (crosses)
+                    {
+                        inside = !inside;
+                    }
+                }
+            }
+            return inside;
         }
 
         private static byte[] ApplyMaskAsAlpha(MinimalPng.Decoded value, MinimalPng.Decoded mask)

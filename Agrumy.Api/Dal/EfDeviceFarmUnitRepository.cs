@@ -357,6 +357,10 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
+        // Its own targeted ExecuteUpdateAsync rather than folding into DeviceFarmUnitUpdateAsync - that method's callers (UnitRename, UnitAssignFarm) build a bare DTO with AreaHectares left at its default null, which would silently wipe a previously-set area on every rename/reassign.
+        public Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaHectares) =>
+            db.DeviceFarmUnits.Where(u => u.IDDeviceFarmUnit == idDeviceFarmUnit).ExecuteUpdateAsync(set => set.SetProperty(u => u.AreaHectares, areaHectares));
+
         /// Scoped to whatever subset the caller drags (one farm's units, or the unassigned bucket) - reused 0..N-1 indices across different farms never collide because DeviceFarmUnitDashboardGetAsync's consumers always filter by DeviceFarmID before comparing DisplayOrder.
         public async Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds)
         {
@@ -400,6 +404,7 @@ namespace Agrumy.Api.Dal
             DeviceFarmUnitName = u.DeviceFarmUnitName,
             DeviceFarmID = u.DeviceFarmID,
             DisplayOrder = u.DisplayOrder,
+            AreaHectares = u.AreaHectares,
         };
 
         private static DeviceFarm ToDtoFarm(DeviceFarmRow f) => new()

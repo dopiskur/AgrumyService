@@ -40,6 +40,8 @@ namespace Agrumy.Dal.Entities
         // Optional (a Farm-less Unit stays valid, no default-farm backfill).
         public int? DeviceFarmID { get; set; }
         public int DisplayOrder { get; set; }
+        // Manually entered (no map/geometry - Greenhouse units aren't GPS-mapped like Open-Field parcels), so the unified Parcels page and Farm Group area rollups have something to sum for Greenhouse.
+        public double? AreaHectares { get; set; }
 
         // Set only as a cascade of its DeviceFarmRow's own Deleted (never independently) - see AgrumyDbContext's HasQueryFilter on this entity.
         public bool Deleted { get; set; }

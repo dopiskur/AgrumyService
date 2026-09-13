@@ -17,13 +17,13 @@ namespace Agrumy.Api.Controllers.API
     {
         [Authorize]
         [HttpGet("Lookup")]
-        public async Task<ActionResult<ArkodParcelLookupResult>> Lookup(string jpaid, CancellationToken ct)
+        public async Task<ActionResult<ArkodParcelLookupResult>> Lookup(string arkodId, CancellationToken ct)
         {
             if (!storage.Exists)
             {
                 return StatusCode(503, "No local ARKOD GeoPackage mirror yet - enable sync or upload one on Server Settings.");
             }
-            ArkodParcelLookupResult? result = await lookup.TryFindByJpaIdAsync(jpaid, ct);
+            ArkodParcelLookupResult? result = await lookup.TryFindByArkodIdAsync(arkodId, ct);
             return result == null ? NotFound() : Ok(result);
         }
 

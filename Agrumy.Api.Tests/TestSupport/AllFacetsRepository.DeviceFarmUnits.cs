@@ -47,6 +47,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task DeviceFarmUnitUpdateAsync(DeviceFarmUnit unit) => deviceFarmUnitRepository.DeviceFarmUnitUpdateAsync(unit);
 
+        public Task DeviceFarmUnitAreaSetAsync(int idDeviceFarmUnit, double? areaHectares) => deviceFarmUnitRepository.DeviceFarmUnitAreaSetAsync(idDeviceFarmUnit, areaHectares);
+
         public Task DeviceFarmUnitDeleteAsync(int idDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitDeleteAsync(idDeviceFarmUnit);
 
         public Task DeviceFarmUnitsReorderAsync(int tenantId, IReadOnlyList<int> orderedUnitIds) => deviceFarmUnitRepository.DeviceFarmUnitsReorderAsync(tenantId, orderedUnitIds);

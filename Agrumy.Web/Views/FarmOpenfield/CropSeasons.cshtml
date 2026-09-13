@@ -1,6 +1,6 @@
 @model CropSeasonsIndexViewModel
 @{
-    ViewData["Title"] = "Crop Seasons";
+    ViewData["Title"] = "Crop";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
 }
@@ -19,7 +19,7 @@
     @if (Model.Farms.Count == 0)
     {
         <p class="text-secondary">
-            No Open-Field farms yet - <a asp-action="Index">add one</a> before starting a sowing.
+            No Open-Field farms yet - create one from a <a asp-controller="FarmGroup" asp-action="Index">Farm Group</a> first.
         </p>
     }
     else if (Model.CatalogCrops.Count == 0)
@@ -141,11 +141,15 @@ else
                 GrowingCycleStatus.Active => "text-bg-success",
                 _ => "text-bg-dark",
             };
-            string farmName = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == s.FarmID)?.DeviceFarmName ?? "";
+            DeviceFarm? sowingFarm = Model.Farms.FirstOrDefault(f => f.IDDeviceFarm == s.FarmID);
+            string? farmGroupName = sowingFarm?.FarmGroupID is int idGroup && Model.FarmGroupNames.TryGetValue(idGroup, out var fgName) ? fgName : null;
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>
                     <a asp-action="Parcels" asp-route-idSowing="@s.IDSowing">@s.SowingName</a>
-                    <span class="text-secondary small ms-2">@farmName</span>
+                    @if (farmGroupName != null)
+                    {
+                        <span class="text-secondary small ms-2">@farmGroupName</span>
+                    }
                 </span>
                 <span class="badge @badge">@s.Status</span>
             </li>

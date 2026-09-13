@@ -4,7 +4,11 @@
 <script src="~/lib/adminlte/plugins/datatables-bs5/dataTables.bootstrap5.min.js"></script>
 <script nonce="@Context.CspNonce()">
     document.addEventListener('DOMContentLoaded', function () {
-        new DataTable(document.getElementById('@Model'), {
+        const el = document.getElementById('@Model');
+        if (!el) {
+            return; // table conditionally omitted (e.g. an empty-state page) - nothing to wire up
+        }
+        new DataTable(el, {
             paging: true,
             searching: true,
             order: [[0, 'asc']],

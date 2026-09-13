@@ -3,6 +3,17 @@
     ViewData["Title"] = "Parcels";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
+    Func<ParcelAreaSummaryViewModel, string, string> areaLine = (summary, label) =>
+    {
+        if (summary.TotalCount == 0)
+        {
+            return $"No {label} yet.";
+        }
+        string total = summary.TotalHectares.ToString("0.##");
+        return summary.WithAreaCount == summary.TotalCount
+            ? $"{total} ha across {summary.TotalCount} {label}"
+            : $"{total} ha across {summary.WithAreaCount} of {summary.TotalCount} {label} ({summary.TotalCount - summary.WithAreaCount} with no area recorded yet)";
+    };
 }
 
 @if (TempData["Message"] is string message)
@@ -14,6 +25,16 @@
     <div class="alert alert-warning">@error</div>
 }
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title">Total area</h6>
+        <p class="mb-1"><i class="bi bi-flower1 me-1"></i> Crop: @areaLine(Model.CropAreaSummary, "parcels")</p>
+        <p class="mb-1"><i class="bi bi-apple me-1"></i> Fruit: no Fruit Plantation module yet.</p>
+        <p class="mb-0"><i class="bi bi-house-door me-1"></i> Greenhouse: @areaLine(Model.GreenhouseAreaSummary, "units")</p>
+    </div>
+</div>
+
+<h4>Crop</h4>
 <p class="text-secondary">
     Every Open-Field parcel (and each of its zones, if split) with its readiness for the current season.
     A parcel starts a new season "Not ready" - confirm pre-season field prep (ploughing, discing,
@@ -25,7 +46,7 @@
     @if (Model.Farms.Count == 0)
     {
         <p class="text-secondary">
-            No Open-Field farms yet - <a asp-action="Index">add one</a> before adding a parcel.
+            No Open-Field farms yet - <a asp-controller="FarmGroup" asp-action="Index">add one</a> before adding a parcel.
         </p>
     }
     else
@@ -62,7 +83,6 @@
             </p>
             @foreach (var farmSection in Model.GroupSections.Where(s => s.Parcels.Count > 0))
             {
-                <h6>@farmSection.FarmName</h6>
                 @foreach (var group in farmSection.Groups)
                 {
                     <details class="mb-2">
@@ -105,10 +125,11 @@
 else
 {
     <div class="table-responsive">
-        <table class="table table-hover align-middle">
+        <table id="parcelsTable" class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th>Farm</th>
+                    <th>Parcels</th>
+                    <th>Status</th>
                     <th>Parcel</th>
                     <th>Boundary</th>
                     <th>Zone</th>
@@ -117,15 +138,46 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var row in Model.Rows)
+                @foreach (var group in Model.Rows.GroupBy(r => r.Parcel.IDFarmParcel))
                 {
+                    var first = group.First();
+                    int zoneCount = group.Count();
                     <tr>
-                        <td>@row.FarmName</td>
-                        <td>@row.Parcel.FarmParcelName</td>
                         <td>
-                            <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@row.Parcel.IDFarmParcel" title="Boundary and zone map">
+                            @if (first.IdFarmGroup is int idGroup)
+                            {
+                                <a asp-controller="FarmGroup" asp-action="Details" asp-route-id="@idGroup">@first.FarmGroupName</a>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">No farm groups defined</span>
+                            }
+                        </td>
+                        <td>
+                            @if (canManage && Model.AvailableFarmGroups.Count > 0)
+                            {
+                                <form asp-action="AssignFarmToGroup" method="post" class="d-flex gap-1">
+                                    <input type="hidden" name="idFarm" value="@first.IdFarm" />
+                                    <select name="idFarmGroup" class="form-select form-select-sm" style="max-width:10rem" required>
+                                        <option value="" selected="@(first.IdFarmGroup == null ? "selected" : null)" disabled>Choose group</option>
+                                        @foreach (var g in Model.AvailableFarmGroups)
+                                        {
+                                            <option value="@g.IDFarmGroup" selected="@(g.IDFarmGroup == first.IdFarmGroup ? "selected" : null)">@g.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">@(first.IdFarmGroup is int ? "Reassign" : "Assign")</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">—</span>
+                            }
+                        </td>
+                        <td>@first.Parcel.FarmParcelName</td>
+                        <td>
+                            <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@first.Parcel.IDFarmParcel" title="Boundary and zone map">
                                 <i class="bi bi-map"></i>
-                                @if (row.Parcel.AreaHectares is double ha)
+                                @if (first.Parcel.AreaHectares is double ha)
                                 {
                                     <text>@ha.ToString("0.##") ha</text>
                                 }
@@ -136,10 +188,17 @@ else
                             </a>
                         </td>
                         <td>
-                            <a asp-action="Parcel" asp-route-idFarmParcelZone="@row.Zone.IDFarmParcelZone">@row.Zone.FarmParcelZoneName</a>
+                            @if (zoneCount > 1)
+                            {
+                                <a asp-action="FarmParcelDetails" asp-route-idFarmParcel="@first.Parcel.IDFarmParcel" title="View all zones for this parcel">@zoneCount</a>
+                            }
+                            else
+                            {
+                                @zoneCount
+                            }
                         </td>
                         <td>
-                            @if (row.Zone.CurrentSowingID != null)
+                            @if (first.Zone.CurrentSowingID != null)
                             {
                                 <span class="badge text-bg-success">occupied</span>
                             }
@@ -153,18 +212,93 @@ else
                             {
                                 <div class="form-check form-switch mb-0 d-inline-flex align-items-center gap-2">
                                     <input class="form-check-input parcel-ready-toggle" type="checkbox" role="switch"
-                                           data-id-farm-parcel-zone="@row.Zone.IDFarmParcelZone"
-                                           checked="@(row.Zone.ReadyForSeason ? "checked" : null)" />
-                                    <span class="badge @(row.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger") ready-badge">
-                                        @(row.Zone.ReadyForSeason ? "Ready" : "Not ready")
+                                           data-id-farm-parcel-zone="@first.Zone.IDFarmParcelZone"
+                                           checked="@(first.Zone.ReadyForSeason ? "checked" : null)" />
+                                    <span class="badge @(first.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger") ready-badge">
+                                        @(first.Zone.ReadyForSeason ? "Ready" : "Not ready")
                                     </span>
                                 </div>
                             }
                             else
                             {
-                                <span class="badge @(row.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger")">
-                                    @(row.Zone.ReadyForSeason ? "Ready" : "Not ready")
+                                <span class="badge @(first.Zone.ReadyForSeason ? "text-bg-success" : "text-bg-danger")">
+                                    @(first.Zone.ReadyForSeason ? "Ready" : "Not ready")
                                 </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h4 class="mt-4">Fruit</h4>
+<p class="text-secondary fst-italic">Fruit Plantation module isn't built yet.</p>
+
+<h4 class="mt-4">Greenhouse</h4>
+@if (Model.GreenhouseRows.Count == 0)
+{
+    <p class="text-secondary">No Greenhouse units yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Farm Group</th>
+                    <th>Unit</th>
+                    <th>Area</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.GreenhouseRows)
+                {
+                    <tr>
+                        <td>
+                            @if (row.IdFarmGroup is int idGroup)
+                            {
+                                <a asp-controller="FarmGroup" asp-action="Details" asp-route-id="@idGroup">@row.FarmGroupName</a>
+                            }
+                            else if (row.IdFarm is not int idFarm)
+                            {
+                                <span class="text-secondary">—</span>
+                            }
+                            else if (!canManage)
+                            {
+                                <span class="text-secondary">Unassigned</span>
+                            }
+                            else if (Model.AvailableFarmGroups.Count == 0)
+                            {
+                                <span class="text-secondary small">No Farm Groups yet - <a asp-controller="FarmGroup" asp-action="Index">create one</a></span>
+                            }
+                            else
+                            {
+                                <form asp-action="AssignFarmToGroup" method="post" class="d-flex gap-1">
+                                    <input type="hidden" name="idFarm" value="@idFarm" />
+                                    <select name="idFarmGroup" class="form-select form-select-sm" style="max-width:10rem" required>
+                                        <option value="" selected disabled>Choose group</option>
+                                        @foreach (var g in Model.AvailableFarmGroups)
+                                        {
+                                            <option value="@g.IDFarmGroup">@g.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>
+                                </form>
+                            }
+                        </td>
+                        <td>
+                            <a asp-controller="DeviceFarmUnit" asp-action="Zones" asp-route-idDeviceFarmUnit="@row.Unit.IDDeviceFarmUnit">@row.Unit.DeviceFarmUnitName</a>
+                        </td>
+                        <td>
+                            @if (row.Unit.AreaHectares is double ha)
+                            {
+                                @(ha.ToString("0.##") + " ha")
+                            }
+                            else
+                            {
+                                <span class="text-secondary">not set</span>
                             }
                         </td>
                     </tr>
@@ -195,6 +329,7 @@ else
 </div>
 
 @section Scripts {
+    <partial name="_DataTableScripts" model="@("parcelsTable")" />
     <script src="~/js/parcel-registry.js"></script>
     <script nonce="@Context.CspNonce()">
         document.addEventListener('DOMContentLoaded', function () {

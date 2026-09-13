@@ -62,7 +62,7 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoScene(row);
         }
 
-        public async Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds)
+        public async Task<IList<SatelliteDateEntry>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds)
         {
             if (farmParcelZoneIds.Count == 0)
             {
@@ -70,9 +70,9 @@ namespace Agrumy.Api.Dal
             }
             return await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
                 .Where(s => farmParcelZoneIds.Contains(s.FarmParcelZoneID))
-                .Select(s => s.SceneDateUtc)
-                .Distinct()
-                .OrderBy(d => d)
+                .GroupBy(s => s.SceneDateUtc)
+                .Select(g => new SatelliteDateEntry { Date = g.Key, MinValidPixelPercent = g.Min(s => s.ValidPixelPercent) })
+                .OrderBy(e => e.Date)
                 .ToListAsync();
         }
 
@@ -120,6 +120,21 @@ namespace Agrumy.Api.Dal
             return await db.ParcelSatelliteIndices
                 .Where(i => sceneIds.Contains(i.SceneID) && i.ImagePath != null)
                 .ExecuteUpdateAsync(set => set.SetProperty(i => i.ImagePath, (string?)null));
+        }
+
+        public async Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate)
+        {
+            var sceneIds = await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
+                .Where(s => s.SceneDateUtc < cutoffDate)
+                .Select(s => s.IDFarmParcelZoneSatelliteScene)
+                .ToListAsync();
+            if (sceneIds.Count == 0)
+            {
+                return 0;
+            }
+            // Index rows first - they carry the FK to the scene.
+            await db.ParcelSatelliteIndices.Where(i => sceneIds.Contains(i.SceneID)).ExecuteDeleteAsync();
+            return await db.FarmParcelZoneSatelliteScenes.Where(s => sceneIds.Contains(s.IDFarmParcelZoneSatelliteScene)).ExecuteDeleteAsync();
         }
 
         public async Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable)

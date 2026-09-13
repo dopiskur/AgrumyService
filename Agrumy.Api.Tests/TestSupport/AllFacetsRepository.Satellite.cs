@@ -36,7 +36,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<FarmParcelZoneSatelliteScene?> SceneAtOrBeforeDateAsync(int farmParcelZoneId, DateOnly date) => satelliteSceneRepository.SceneAtOrBeforeDateAsync(farmParcelZoneId, date);
 
-        public Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds) => satelliteSceneRepository.DistinctSceneDatesAsync(farmParcelZoneIds);
+        public Task<IList<SatelliteDateEntry>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds) => satelliteSceneRepository.DistinctSceneDatesAsync(farmParcelZoneIds);
 
         public Task<ParcelSatelliteIndex> IndexUpsertAsync(ParcelSatelliteIndex index) => satelliteSceneRepository.IndexUpsertAsync(index);
 
@@ -47,6 +47,8 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task IndexGridSetAsync(int idParcelSatelliteIndex, string gridBase64) => satelliteSceneRepository.IndexGridSetAsync(idParcelSatelliteIndex, gridBase64);
 
         public Task<int> ImagePathsClearOlderThanAsync(DateTimeOffset cutoffUtc) => satelliteSceneRepository.ImagePathsClearOlderThanAsync(cutoffUtc);
+
+        public Task<int> ScenesDeleteOlderThanAsync(DateOnly cutoffDate) => satelliteSceneRepository.ScenesDeleteOlderThanAsync(cutoffDate);
 
         public Task<IList<SatelliteSeriesPoint>> SeriesGetAsync(int farmParcelZoneId, SatelliteIndex index, DateOnly? fromUtc, DateOnly? toUtc, bool onlyReliable) => satelliteSceneRepository.SeriesGetAsync(farmParcelZoneId, index, fromUtc, toUtc, onlyReliable);
 

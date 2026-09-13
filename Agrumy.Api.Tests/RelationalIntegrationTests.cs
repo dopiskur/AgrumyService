@@ -4316,6 +4316,29 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task ScenesDeleteOlderThanAsync_DeletesOnlyScenesAndIndexRowsPastTheCutoff(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, zone, _) = await MakeSowingAndZone(tenantId);
+        int zoneId = zone.IDFarmParcelZone!.Value;
+
+        var sceneOld = await _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2020, 1, 1), SourceSceneId = "RETAIN_OLD", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true });
+        var sceneNew = await _repo.SceneAddAsync(new FarmParcelZoneSatelliteScene { FarmParcelZoneID = zoneId, SceneDateUtc = new DateOnly(2024, 6, 1), SourceSceneId = "RETAIN_NEW", CloudPercent = 5, ValidPixelPercent = 95, Reliable = true });
+        await _repo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = sceneOld.IDFarmParcelZoneSatelliteScene, Index = SatelliteIndex.Ndvi, GridBase64 = "AAAA" });
+        await _repo.IndexUpsertAsync(new ParcelSatelliteIndex { SceneID = sceneNew.IDFarmParcelZoneSatelliteScene, Index = SatelliteIndex.Ndvi, GridBase64 = "BBBB" });
+
+        int deleted = await _repo.ScenesDeleteOlderThanAsync(new DateOnly(2022, 1, 1));
+
+        Assert.Equal(1, deleted);
+        IList<FarmParcelZoneSatelliteScene> remaining = await _repo.ScenesGetAsync(zoneId);
+        Assert.DoesNotContain(remaining, s => s.IDFarmParcelZoneSatelliteScene == sceneOld.IDFarmParcelZoneSatelliteScene);
+        Assert.Contains(remaining, s => s.IDFarmParcelZoneSatelliteScene == sceneNew.IDFarmParcelZoneSatelliteScene);
+        Assert.Empty(await _repo.IndicesGetForSceneAsync(sceneOld.IDFarmParcelZoneSatelliteScene));
+        Assert.NotEmpty(await _repo.IndicesGetForSceneAsync(sceneNew.IDFarmParcelZoneSatelliteScene));
+    }
+
+    [SkippableTheory, MemberData(nameof(Providers))]
     public async Task FarmParcelZonesWithGeometryGetAsync_OnlyReturnsZonesWithASavedBoundary(DbProviderKind provider)
     {
         var t = Use(provider);
