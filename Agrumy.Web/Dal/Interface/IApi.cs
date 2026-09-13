@@ -403,7 +403,7 @@ namespace Agrumy.Web.Dal.Interface
         Task<SatelliteMapResponse> SatelliteMapGet(string scope, int id, int index, DateOnly? date);
 
         [Get("/api/FarmOpenfield/{scope}/{id}/Satellite/Dates")]
-        Task<IList<DateOnly>> SatelliteMapDatesGet(string scope, int id);
+        Task<IList<SatelliteDateEntry>> SatelliteMapDatesGet(string scope, int id);
 
         [Post("/api/FarmOpenfield/{scope}/{id}/Satellite/SyncNow")]
         Task<HttpResponseMessage> SatelliteMapSyncNow(string scope, int id);

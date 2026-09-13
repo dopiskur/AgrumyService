@@ -55,16 +55,12 @@
 
                 <div data-sat-role="root" data-scope="Parcel" data-id="@idParcel" data-can-manage="@(canManage ? "1" : "0")" hidden></div>
 
-                <select class="form-select form-select-sm mb-2" data-sat-role="index">
-                    @foreach (Agrumy.Shared.Models.SatelliteIndex index in Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>())
-                    {
-                        <option value="@((int)index)">@index</option>
-                    }
-                </select>
-                <div class="form-check form-check-inline mb-2">
-                    <input type="checkbox" class="form-check-input" id="@(mapId)-reliable" data-sat-role="onlyReliable" checked />
-                    <label class="form-check-label small" for="@(mapId)-reliable">Only reliable</label>
+                @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>()))
+                <div class="mb-2">
+                    <label class="form-label small mb-0" data-sat-role="reliabilityLabel">Minimum reliability: 70%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="70" data-sat-role="reliabilityThreshold" />
                 </div>
+                <div class="alert alert-danger py-1 px-2 small mb-2" data-sat-role="unreliableBanner" hidden>Unreliable</div>
 
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-sat-role="prevDate">&laquo; Previous</button>
@@ -74,6 +70,7 @@
                 <div data-sat-role="calendar" class="mb-2"></div>
                 <p class="small text-secondary fst-italic mt-2" data-sat-role="emptyNotice" hidden>No satellite data yet for this parcel - configure the satellite module and wait for the next daily sync, or use Sync now.</p>
                 <div class="small text-secondary mt-1" data-sat-role="legend"></div>
+                <div class="small text-secondary" data-sat-role="sceneClassification"></div>
 
                 @if (canManage)
                 {

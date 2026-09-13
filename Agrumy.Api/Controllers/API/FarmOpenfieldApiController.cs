@@ -1179,6 +1179,8 @@ namespace Agrumy.Api.Controllers.API
                     HasData = hasData,
                     SceneDateUtc = scene.SceneDateUtc,
                     Reliable = scene.Reliable,
+                    ValidPixelPercent = scene.ValidPixelPercent,
+                    CloudPercent = scene.CloudPercent,
                     SceneId = hasData ? scene.IDFarmParcelZoneSatelliteScene : null,
                     StatsJson = indexRow?.StatsJson,
                 });
@@ -1190,7 +1192,7 @@ namespace Agrumy.Api.Controllers.API
 
         [Authorize]
         [HttpGet("{scope}/{id}/Satellite/Dates")]
-        public async Task<ActionResult<IList<DateOnly>>> SatelliteMapDatesGet(SatelliteMapScope scope, int id)
+        public async Task<ActionResult<IList<SatelliteDateEntry>>> SatelliteMapDatesGet(SatelliteMapScope scope, int id)
         {
             var (zones, _, error) = await ResolveSatelliteScopeAsync(scope, id, forWrite: false);
             if (error != null)

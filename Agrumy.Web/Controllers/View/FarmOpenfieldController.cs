@@ -106,7 +106,7 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult<SatelliteMapResponse>> SatelliteMap(string scope, int id, int index, DateOnly? date) =>
             Json(await api.SatelliteMapGet(scope, id, index, date));
 
-        public async Task<ActionResult<IList<DateOnly>>> SatelliteMapDates(string scope, int id) =>
+        public async Task<ActionResult<IList<SatelliteDateEntry>>> SatelliteMapDates(string scope, int id) =>
             Json(await api.SatelliteMapDatesGet(scope, id));
 
         [Authorize(Roles = RoleNames.DeviceManagers)]

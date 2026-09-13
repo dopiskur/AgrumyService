@@ -36,7 +36,7 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<FarmParcelZoneSatelliteScene?> SceneAtOrBeforeDateAsync(int farmParcelZoneId, DateOnly date) => satelliteSceneRepository.SceneAtOrBeforeDateAsync(farmParcelZoneId, date);
 
-        public Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds) => satelliteSceneRepository.DistinctSceneDatesAsync(farmParcelZoneIds);
+        public Task<IList<SatelliteDateEntry>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds) => satelliteSceneRepository.DistinctSceneDatesAsync(farmParcelZoneIds);
 
         public Task<ParcelSatelliteIndex> IndexUpsertAsync(ParcelSatelliteIndex index) => satelliteSceneRepository.IndexUpsertAsync(index);
 

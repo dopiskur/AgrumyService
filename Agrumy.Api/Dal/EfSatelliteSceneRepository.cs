@@ -62,7 +62,7 @@ namespace Agrumy.Api.Dal
             return row == null ? null : ToDtoScene(row);
         }
 
-        public async Task<IList<DateOnly>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds)
+        public async Task<IList<SatelliteDateEntry>> DistinctSceneDatesAsync(IReadOnlyCollection<int> farmParcelZoneIds)
         {
             if (farmParcelZoneIds.Count == 0)
             {
@@ -70,9 +70,9 @@ namespace Agrumy.Api.Dal
             }
             return await db.FarmParcelZoneSatelliteScenes.AsNoTracking()
                 .Where(s => farmParcelZoneIds.Contains(s.FarmParcelZoneID))
-                .Select(s => s.SceneDateUtc)
-                .Distinct()
-                .OrderBy(d => d)
+                .GroupBy(s => s.SceneDateUtc)
+                .Select(g => new SatelliteDateEntry { Date = g.Key, MinValidPixelPercent = g.Min(s => s.ValidPixelPercent) })
+                .OrderBy(e => e.Date)
                 .ToListAsync();
         }
 

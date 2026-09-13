@@ -1,0 +1,27 @@
+@model (string MapId, IEnumerable<Agrumy.Shared.Models.SatelliteIndex> Indices)
+@{
+    var roleDescriptions = new Dictionary<Agrumy.Shared.Models.SatelliteIndex, string>
+    {
+        [Agrumy.Shared.Models.SatelliteIndex.Ndvi] = "Vegetation health/density",
+        [Agrumy.Shared.Models.SatelliteIndex.Ndmi] = "Plant moisture content",
+        [Agrumy.Shared.Models.SatelliteIndex.Ndwi] = "Surface water content",
+        [Agrumy.Shared.Models.SatelliteIndex.Ndsi] = "Snow/ice cover",
+        [Agrumy.Shared.Models.SatelliteIndex.SwirComposite] = "False-color composite, highlights moisture/vegetation stress",
+        [Agrumy.Shared.Models.SatelliteIndex.NaturalColor] = "Plain visual (true color) image",
+    };
+    var indices = Model.Indices.ToList();
+    var defaultIndex = indices.Contains(Agrumy.Shared.Models.SatelliteIndex.Ndmi) ? Agrumy.Shared.Models.SatelliteIndex.Ndmi : indices.FirstOrDefault();
+}
+<div class="d-flex flex-wrap gap-3 mb-2" data-sat-role="indexPicker">
+    @foreach (var index in indices)
+    {
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="@(Model.MapId)-index" id="@(Model.MapId)-index-@index"
+                   value="@((int)index)" data-sat-role="indexRadio" checked="@(index == defaultIndex)" />
+            <label class="form-check-label small" for="@(Model.MapId)-index-@index">
+                <strong>@index</strong><br />
+                <span class="text-secondary">@roleDescriptions.GetValueOrDefault(index, "")</span>
+            </label>
+        </div>
+    }
+</div>
