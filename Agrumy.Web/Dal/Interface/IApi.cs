@@ -339,9 +339,6 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/HorticultureCatalog")]
         Task<HorticultureCatalogEntry> HorticultureCatalogAdd(HorticultureCatalogType type, [Body] HorticultureCatalogEntry entry);
 
-        [Put("/api/HorticultureCatalog")]
-        Task HorticultureCatalogUpdate(HorticultureCatalogType type, [Body] HorticultureCatalogEntry entry);
-
         [Delete("/api/HorticultureCatalog")]
         Task HorticultureCatalogDelete(HorticultureCatalogType type, int id);
 

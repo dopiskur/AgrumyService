@@ -26,10 +26,6 @@ namespace Agrumy.Web.Controllers.View
         public async Task<ActionResult> Details(HorticultureCatalogType type, int id) =>
             View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
 
-        [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
-        public async Task<ActionResult> Edit(HorticultureCatalogType type, int id) =>
-            View(new HorticultureCatalogEditViewModel { CatalogType = type, Entry = await api.HorticultureCatalogGetById(type, id) });
-
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -39,14 +35,7 @@ namespace Agrumy.Web.Controllers.View
             {
                 return View("Edit", value);
             }
-            if (value.Entry.ID is int)
-            {
-                await api.HorticultureCatalogUpdate(value.CatalogType, value.Entry);
-            }
-            else
-            {
-                await api.HorticultureCatalogAdd(value.CatalogType, value.Entry);
-            }
+            await api.HorticultureCatalogAdd(value.CatalogType, value.Entry);
             return RedirectToAction(nameof(Index), new { type = value.CatalogType });
         }
 
