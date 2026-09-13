@@ -104,6 +104,9 @@ namespace Agrumy.Api.Dal.Interface
         /// The deliberate counterpart to DeviceFarmUnitZoneUpdateAsync, which never touches DeviceFarmUnitID - also moves the zone's own devices' denormalized DeviceFarmUnitID and bumps their ConfigVersion, since their effective Unit-scope rules just changed. False if the zone doesn't exist.
         Task<bool> DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit);
 
+        /// Moves every device out of the source zone into the target zone, leaving the source zone itself in place (emptied) rather than reparenting it like DeviceFarmUnitZoneMigrateAsync above. Fails (false, reason) instead of throwing if either zone is missing, they're on different tenants, the source has no devices, or moving its controller would give the target zone a second one.
+        Task<(bool Success, string? Error)> DeviceFarmUnitZoneMigrateDevicesAsync(int idSourceZone, int idTargetZone);
+
         /// Replaces the zone's whole widget list in one write; saves independently of DeviceFarmUnitZoneUpdateAsync.
         Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets);
 

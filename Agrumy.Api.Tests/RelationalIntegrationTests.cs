@@ -1948,6 +1948,49 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.DoesNotContain(await _repo.RulesGetForUnitAsync(migratedDeviceUnitId), r => r.IDDeviceFarmUnitZoneRule == sourceUnitRuleId);
     }
 
+    // The device-only counterpart to the whole-zone move above (Zone.cshtml's "Migrate" button) - the source zone itself stays put, only its devices relocate, including across units.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZoneMigrateDevicesAsync_MovesDevicesIntoTargetZone_AcrossUnits(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, sourceZone) = await MakeUnitAndZone(tenantId);
+        var (targetUnit, targetZone) = await MakeUnitAndZone(tenantId);
+        var device = await MakeDevice(t, tenantId);
+        device.DeviceControllerEnabled = false;
+        await _repo.DeviceUpdateAsync(device);
+        await _repo.DeviceAssignToZoneAsync(device.IDDevice!.Value, sourceZone.IDDeviceFarmUnitZone!.Value);
+        int configVersionBeforeMigrate = (await _repo.DeviceGetByIdAsync(device.IDDevice))!.ConfigVersion!.Value;
+
+        var (success, error) = await _repo.DeviceFarmUnitZoneMigrateDevicesAsync(sourceZone.IDDeviceFarmUnitZone!.Value, targetZone.IDDeviceFarmUnitZone!.Value);
+
+        Assert.True(success, error);
+        var migratedDevice = await _repo.DeviceGetByIdAsync(device.IDDevice);
+        Assert.Equal(targetZone.IDDeviceFarmUnitZone, migratedDevice!.DeviceFarmUnitZoneID);
+        Assert.Equal(targetUnit.IDDeviceFarmUnit, migratedDevice.DeviceFarmUnitID);
+        Assert.Equal(configVersionBeforeMigrate + 1, migratedDevice.ConfigVersion);
+    }
+
+    // A zone caps at one controller (AssignToZoneEnforcingControllerCapAsync's own rule) - migrating a whole zone's devices must respect the same cap on the target, all-or-nothing rather than silently dropping the controller.
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DeviceFarmUnitZoneMigrateDevicesAsync_RejectsWhenTargetAlreadyHasAController(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var (_, sourceZone) = await MakeUnitAndZone(tenantId);
+        var (_, targetZone) = await MakeUnitAndZone(tenantId);
+        var sourceController = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(sourceController.IDDevice!.Value, sourceZone.IDDeviceFarmUnitZone!.Value, enforceOneControllerPerZone: true);
+        var targetController = await MakeDevice(t, tenantId);
+        await _repo.DeviceAssignToZoneAsync(targetController.IDDevice!.Value, targetZone.IDDeviceFarmUnitZone!.Value, enforceOneControllerPerZone: true);
+
+        var (success, error) = await _repo.DeviceFarmUnitZoneMigrateDevicesAsync(sourceZone.IDDeviceFarmUnitZone!.Value, targetZone.IDDeviceFarmUnitZone!.Value);
+
+        Assert.False(success);
+        Assert.NotNull(error);
+        Assert.Equal(sourceZone.IDDeviceFarmUnitZone, (await _repo.DeviceGetByIdAsync(sourceController.IDDevice))!.DeviceFarmUnitZoneID);
+    }
+
     // Farm CRUD, Unit assignment, and Farm-scope rule end to end against a real DB (not just the in-memory RuleHierarchyResolverTests).
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceFarm_UnitAssignment_And_FarmScopeRule_RoundTrip(DbProviderKind provider)

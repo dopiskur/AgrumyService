@@ -68,6 +68,8 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<bool> DeviceFarmUnitZoneMigrateAsync(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnit) => deviceFarmUnitRepository.DeviceFarmUnitZoneMigrateAsync(idDeviceFarmUnitZone, idTargetDeviceFarmUnit);
 
+        public Task<(bool Success, string? Error)> DeviceFarmUnitZoneMigrateDevicesAsync(int idSourceZone, int idTargetZone) => deviceFarmUnitRepository.DeviceFarmUnitZoneMigrateDevicesAsync(idSourceZone, idTargetZone);
+
         public Task DeviceFarmUnitZoneWidgetsSetAsync(int idDeviceFarmUnitZone, List<DashboardWidget> widgets) => deviceFarmUnitRepository.DeviceFarmUnitZoneWidgetsSetAsync(idDeviceFarmUnitZone, widgets);
 
         public Task DeviceFarmUnitZoneGridColumnsSetAsync(int idDeviceFarmUnitZone, int columns) => deviceFarmUnitRepository.DeviceFarmUnitZoneGridColumnsSetAsync(idDeviceFarmUnitZone, columns);

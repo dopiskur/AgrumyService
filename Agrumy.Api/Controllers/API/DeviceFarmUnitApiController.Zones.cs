@@ -124,6 +124,35 @@ namespace Agrumy.Api.Controllers.API
             return true;
         }
 
+        /// Relocates every device (sensors and its controller, if any) out of one zone into an existing target zone - the source zone stays in place, just emptied, unlike DeviceFarmUnitZoneMigrate above which reparents the whole zone object itself into a different unit. Both ends' ownership checked separately, same Global-admin cross-organization reasoning as above.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPut("Zone/{idDeviceFarmUnitZone}/MigrateDevices")]
+        public async Task<ActionResult<bool>> DeviceFarmUnitZoneMigrateDevices(int idDeviceFarmUnitZone, int idTargetDeviceFarmUnitZone)
+        {
+            var (sourceZone, sourceError) = await EnsureOwnedZoneAsync(idDeviceFarmUnitZone, forWrite: true);
+            if (sourceError != null)
+            {
+                return sourceError;
+            }
+            var (targetZone, targetError) = await EnsureOwnedZoneAsync(idTargetDeviceFarmUnitZone, forWrite: true);
+            if (targetError != null)
+            {
+                return targetError;
+            }
+            if (targetZone!.IDDeviceFarmUnitZone == sourceZone!.IDDeviceFarmUnitZone)
+            {
+                return BadRequest("Source and target zone are the same.");
+            }
+
+            var (success, error) = await deviceFarmUnitRepo.DeviceFarmUnitZoneMigrateDevicesAsync(sourceZone.IDDeviceFarmUnitZone!.Value, targetZone.IDDeviceFarmUnitZone!.Value);
+            if (!success)
+            {
+                return BadRequest(error);
+            }
+            await WriteAuditAsync("DeviceFarmUnitZone.DevicesMigrated", sourceZone.TenantID, "DeviceFarmUnitZone", sourceZone.IDDeviceFarmUnitZone.ToString()!, $"{sourceZone.DeviceFarmUnitZoneName} -> {targetZone.DeviceFarmUnitZoneName}");
+            return true;
+        }
+
         // A Text widget's own Label carries its content, so it's the one type that's never optional; every other type's Label just overrides an auto-generated title.
         private const int MaxWidgetsPerZone = 20;
 
