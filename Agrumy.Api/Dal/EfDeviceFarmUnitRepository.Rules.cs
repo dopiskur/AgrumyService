@@ -45,7 +45,7 @@ namespace Agrumy.Api.Dal
         public async Task<IList<DeviceFarmUnitZoneRule>> RulesGetForTenantGlobalAsync(int tenantId)
         {
             var rows = await db.DeviceFarmUnitZoneRules.AsNoTracking()
-                // SimulationSessionID/ExperimentID excluded - those scopes have the same null Farm/Unit/Zone/Crop/Parcel shape as Global, but must never be evaluated as one.
+                // SimulationSessionID/ExperimentID excluded - those scopes have the same null Farm/Unit/Zone/Arable/Parcel shape as Global, but must never be evaluated as one.
                 .Where(r => r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
                     && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null)
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)
@@ -101,7 +101,7 @@ namespace Agrumy.Api.Dal
                     (idUnit != null && r.DeviceFarmUnitID == idUnit) ||
                     (idSowing != null && r.DeviceSowingID == idSowing) ||
                     (idFarm != null && r.DeviceFarmID == idFarm) ||
-                    // Same SimulationSessionID/ExperimentID exclusion as RulesGetForTenantGlobalAsync - those scopes share Global's null Farm/Unit/Zone/Crop/Parcel shape but must never be evaluated as it.
+                    // Same SimulationSessionID/ExperimentID exclusion as RulesGetForTenantGlobalAsync - those scopes share Global's null Farm/Unit/Zone/Arable/Parcel shape but must never be evaluated as it.
                     (includeGlobal && r.TenantID == tenantId && r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
                         && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null && r.SimulationSessionID == null && r.ExperimentID == null))
                 .OrderBy(r => r.RelayFunction).ThenBy(r => r.Name).ThenBy(r => r.IDDeviceFarmUnitZoneRule)

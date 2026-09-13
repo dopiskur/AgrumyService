@@ -9,7 +9,7 @@ namespace Agrumy.Api.Dal.Interface
 
         Task<Sowing?> SowingGetByIdAsync(int idSowing);
 
-        /// Bare create, Planned status, no zones occupied yet - StartAsync is the step that actually assigns zones and flips CurrentSowingID/Device.SowingID. quotaCheckAsync (TenantQuotaEnforcer.CheckCanAddCropAsync) runs inside the same transaction as the insert.
+        /// Bare create, Planned status, no zones occupied yet - StartAsync is the step that actually assigns zones and flips CurrentSowingID/Device.SowingID. quotaCheckAsync (TenantQuotaEnforcer.CheckCanAddArableAsync) runs inside the same transaction as the insert.
         Task<Sowing> SowingAddAsync(Sowing sowing, Func<Task<string?>>? quotaCheckAsync = null);
 
         Task SowingUpdateAsync(Sowing sowing);

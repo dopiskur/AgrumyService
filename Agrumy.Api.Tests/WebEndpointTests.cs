@@ -96,16 +96,31 @@ public sealed class WebWebApplicationFactory : WebApplicationFactory<Agrumy.Web.
     }
 }
 
-/// A Global reader must see every setting but never a working Save/Delete/Add button; an admin still sees them. ServerConfig/Users/Device-Edit stand in for the whole read-only surface.
+/// A Global reader must see every setting and every button, but every Save/Delete/Add control must render disabled (never a working one); an admin sees the same controls, all enabled. ServerConfig/Users/Device-Edit stand in for the whole read-only surface.
 public sealed class WebEndpointTests : IClassFixture<WebWebApplicationFactory>
 {
     private readonly WebWebApplicationFactory _factory;
 
     public WebEndpointTests(WebWebApplicationFactory factory) => _factory = factory;
 
-    private static void AssertNoWriteControls(string html, string label) =>
-        Assert.False(html.Contains("type=\"submit\"") || html.Contains("data-action="),
-            $"{label}: expected no submit button or data-action control for a Global reader, but found one.");
+    /// A Global reader sees the same buttons/dialogs as anyone else (2026-09-13 policy: visible-but-disabled, not hidden) - so every submit/data-action tag must itself carry `disabled`, rather than being absent from the page entirely. A tag inside `<fieldset disabled>` has no `disabled` of its own, so those are matched too.
+    private static void AssertNoWriteControls(string html, string label)
+    {
+        foreach (System.Text.RegularExpressions.Match tag in System.Text.RegularExpressions.Regex.Matches(html, "<[^>]+>"))
+        {
+            string t = tag.Value;
+            bool isWriteControl = t.Contains("type=\"submit\"") || t.Contains("data-action=");
+            if (!isWriteControl)
+            {
+                continue;
+            }
+            bool ownDisabled = t.Contains("disabled");
+            bool insideDisabledFieldset = html.LastIndexOf("<fieldset disabled", tag.Index, StringComparison.Ordinal) >
+                html.LastIndexOf("</fieldset>", tag.Index, StringComparison.Ordinal);
+            Assert.True(ownDisabled || insideDisabledFieldset,
+                $"{label}: expected every submit/data-action control to be disabled for a Global reader, but found an enabled one: {t}");
+        }
+    }
 
     private static void AssertHasWriteControls(string html, string label) =>
         Assert.True(html.Contains("type=\"submit\"") || html.Contains("data-action="),

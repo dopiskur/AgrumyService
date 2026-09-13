@@ -3856,14 +3856,14 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 1, MaxFarmParcelZones = 1, MaxSowingsActive = 5 });
+        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxArables = 1, MaxFarmParcelZones = 1, MaxSowingsActive = 5 });
         var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo);
 
-        Assert.Null(await enforcer.CheckCanAddCropAsync(tenantId));
+        Assert.Null(await enforcer.CheckCanAddArableAsync(tenantId));
         await MakeSowingAndZone(tenantId);
-        Assert.NotNull(await enforcer.CheckCanAddCropAsync(tenantId));
+        Assert.NotNull(await enforcer.CheckCanAddArableAsync(tenantId));
 
-        // Zone cap is independent of the Crop cap above - the one Sowing we already have is well under MaxCrops' sibling MaxFarmParcelZones check target (its own single zone from MakeSowingAndZone already consumed it).
+        // Zone cap is independent of the Crop cap above - the one Sowing we already have is well under MaxArables' sibling MaxFarmParcelZones check target (its own single zone from MakeSowingAndZone already consumed it).
         Assert.NotNull(await enforcer.CheckCanAddFarmParcelZoneAsync(tenantId));
     }
 
@@ -3894,7 +3894,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
-        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxCrops = 5, MaxFarmParcelZones = 5, MaxSowingsActive = 1 });
+        await _repo.TenantQuotaSetAsync(new TenantQuota { IDTenant = tenantId, MaxFarms = 5, MaxArables = 5, MaxFarmParcelZones = 5, MaxSowingsActive = 1 });
         var enforcer = new Agrumy.Api.Quota.TenantQuotaEnforcer(_repo, _repo, _repo, _repo, _repo, _repo, _repo);
         await MakeSowingAndZone(tenantId); // one Active sowing already occupies the single MaxSowingsActive slot
 
@@ -3934,9 +3934,9 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.False((await _repo.FarmParcelZoneGetByIdAsync(zone.IDFarmParcelZone!.Value))!.ReadyForSeason);
     }
 
-    /// FarmParcelGroupCrop - a named, reusable set of parcels within one farm; starting a sowing against the group's resolved zones occupies every member parcel's zone in one step, and removing a member / deleting the group doesn't orphan rows.
+    /// FarmParcelGroupArable - a named, reusable set of parcels within one farm; starting a sowing against the group's resolved zones occupies every member parcel's zone in one step, and removing a member / deleting the group doesn't orphan rows.
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task FarmParcelGroupCrop_ResolvesToMemberZones_ForOneStepGroupSowing(DbProviderKind provider)
+    public async Task FarmParcelGroupArable_ResolvesToMemberZones_ForOneStepGroupSowing(DbProviderKind provider)
     {
         var t = Use(provider);
         var (tenantId, _, _) = await MakeUser(t);
@@ -3944,7 +3944,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         var (parcel1, zone1) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, FarmParcelName = "P1_" + U() });
         var (parcel2, zone2) = await _repo.FarmParcelAddAsync(new FarmParcel { TenantID = tenantId, FarmID = farm.IDDeviceFarm!.Value, FarmParcelName = "P2_" + U() });
 
-        FarmParcelGroupCrop group = await _repo.FarmParcelGroupCropCreateAsync(new FarmParcelGroupCrop
+        FarmParcelGroupArable group = await _repo.FarmParcelGroupArableCreateAsync(new FarmParcelGroupArable
         {
             TenantID = tenantId,
             FarmID = farm.IDDeviceFarm!.Value,
@@ -3953,7 +3953,7 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         });
         Assert.Equal(2, group.MemberParcelIds.Count);
 
-        List<int> zoneIds = (await _repo.FarmParcelGroupCropResolveZoneIdsAsync(group.IDFarmParcelGroupCrop!.Value)).ToList();
+        List<int> zoneIds = (await _repo.FarmParcelGroupArableResolveZoneIdsAsync(group.IDFarmParcelGroupArable!.Value)).ToList();
         Assert.Equal(
             new[] { zone1.IDFarmParcelZone!.Value, zone2.IDFarmParcelZone!.Value }.OrderBy(z => z),
             zoneIds.OrderBy(z => z));
@@ -3965,12 +3965,12 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Equal(sowing.IDSowing, (await _repo.FarmParcelZoneGetByIdAsync(zone1.IDFarmParcelZone!.Value))!.CurrentSowingID);
         Assert.Equal(sowing.IDSowing, (await _repo.FarmParcelZoneGetByIdAsync(zone2.IDFarmParcelZone!.Value))!.CurrentSowingID);
 
-        await _repo.FarmParcelGroupCropRemoveMemberAsync(group.IDFarmParcelGroupCrop!.Value, parcel2.IDFarmParcel!.Value);
-        FarmParcelGroupCrop? afterRemove = await _repo.FarmParcelGroupCropGetByIdAsync(group.IDFarmParcelGroupCrop!.Value);
+        await _repo.FarmParcelGroupArableRemoveMemberAsync(group.IDFarmParcelGroupArable!.Value, parcel2.IDFarmParcel!.Value);
+        FarmParcelGroupArable? afterRemove = await _repo.FarmParcelGroupArableGetByIdAsync(group.IDFarmParcelGroupArable!.Value);
         Assert.Single(afterRemove!.MemberParcelIds);
 
-        await _repo.FarmParcelGroupCropDeleteAsync(group.IDFarmParcelGroupCrop!.Value);
-        Assert.Null(await _repo.FarmParcelGroupCropGetByIdAsync(group.IDFarmParcelGroupCrop!.Value));
+        await _repo.FarmParcelGroupArableDeleteAsync(group.IDFarmParcelGroupArable!.Value);
+        Assert.Null(await _repo.FarmParcelGroupArableGetByIdAsync(group.IDFarmParcelGroupArable!.Value));
     }
 
     /// #585 - TenantExportService/TenantImportService used to have zero references to sowing/farmParcel/farmParcelZone/fieldLogEntry/fieldLogAttachment/harvestResult/zonePlanting, silently dropping the whole R-restructure layer on export.

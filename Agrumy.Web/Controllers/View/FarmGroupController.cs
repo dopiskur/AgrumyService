@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Farm Groups - a cross-cutting overview ABOVE Farm, spanning FarmType (Greenhouse/Crop/Fruit); purely additive, does not replace or restructure the existing Greenhouse/Open-Field farming pages.
+    /// Farm Groups - a cross-cutting overview ABOVE Farm, spanning FarmType (Greenhouse/Arable/Fruit); purely additive, does not replace or restructure the existing Greenhouse/Open-Field farming pages.
     [Authorize]
     public class FarmGroupController(IApi api) : Controller
     {
@@ -70,10 +70,10 @@ namespace Agrumy.Web.Controllers.View
             {
                 Group = group,
                 GreenhouseFarms = greenhouseFarms,
-                CropFarms = cropFarms,
+                ArableFarms = cropFarms,
                 UngroupedGreenhouseFarms = farms.Where(f => f.FarmGroupID == null && f.FarmType == FarmType.Greenhouse).ToList(),
-                UngroupedCropFarms = farms.Where(f => f.FarmGroupID == null && f.FarmType == FarmType.OpenField).ToList(),
-                CropAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
+                UngroupedArableFarms = farms.Where(f => f.FarmGroupID == null && f.FarmType == FarmType.OpenField).ToList(),
+                ArableAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
                 GreenhouseAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = greenhouseAreaHa, WithAreaCount = greenhouseUnitsWithArea, TotalCount = groupUnits.Count },
             });
         }
@@ -87,11 +87,11 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        /// The only remaining way to create a new Open-Field farm - the old standalone "Farms" register and its Crop-page parking spot are both gone, Farm Groups is the sole entry point now.
+        /// The only remaining way to create a new Open-Field farm - the old standalone "Farms" register and its Arable-page parking spot are both gone, Farm Groups is the sole entry point now.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CreateCropFarm(int id, string farmName)
+        public async Task<ActionResult> CreateArableFarm(int id, string farmName)
         {
             DeviceFarm farm = await api.FarmOpenfieldCreate(farmName);
             await api.FarmAssignToGroup(farm.IDDeviceFarm!.Value, id);

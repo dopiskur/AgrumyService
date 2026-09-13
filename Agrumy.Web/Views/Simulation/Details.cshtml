@@ -20,7 +20,7 @@
     var groups = (IList<SimulationGroup>)ViewBag.Groups;
     var units = (IList<DeviceFarmUnit>)ViewBag.Units;
     var zones = (IList<DeviceFarmUnitZone>)ViewBag.Zones;
-    var crops = (IList<Sowing>)ViewBag.Crops;
+    var arables = (IList<Sowing>)ViewBag.Arables;
     var parcels = (IList<FarmParcelZone>)ViewBag.Parcels;
     bool isReadOnly = ViewBag.IsReadOnly is true;
 
@@ -214,7 +214,7 @@ else
             <select name="Scope" form="groupAddForm" id="groupScopeSelect" class="form-select form-select-sm">
                 <option value="@((int)HierarchyNodeKind.Unit)">Whole Unit</option>
                 <option value="@((int)HierarchyNodeKind.Zone)" selected>Whole Zone</option>
-                <option value="@((int)HierarchyNodeKind.Sowing)">Whole Crop</option>
+                <option value="@((int)HierarchyNodeKind.Sowing)">Whole Arable</option>
                 <option value="@((int)HierarchyNodeKind.FarmParcelZone)">Whole Parcel</option>
             </select>
         </div>
@@ -236,10 +236,10 @@ else
                 }
             </select>
         </div>
-        <div class="col-auto" id="groupCropTargetWrap" style="display:none">
-            <label class="form-label small mb-0">Crop</label>
-            <select name="ScopeID" form="groupAddForm" id="groupCropTargetSelect" class="form-select form-select-sm" disabled>
-                @foreach (var c in crops)
+        <div class="col-auto" id="groupArableTargetWrap" style="display:none">
+            <label class="form-label small mb-0">Arable</label>
+            <select name="ScopeID" form="groupAddForm" id="groupArableTargetSelect" class="form-select form-select-sm" disabled>
+                @foreach (var c in arables)
                 {
                     <option value="@c.IDSowing">@c.SowingName</option>
                 }
@@ -283,7 +283,7 @@ else
         var groups = {};
         groups['@((int)HierarchyNodeKind.Unit)'] = { wrap: document.getElementById('groupUnitTargetWrap'), select: document.getElementById('groupUnitTargetSelect') };
         groups['@((int)HierarchyNodeKind.Zone)'] = { wrap: document.getElementById('groupZoneTargetWrap'), select: document.getElementById('groupZoneTargetSelect') };
-        groups['@((int)HierarchyNodeKind.Sowing)'] = { wrap: document.getElementById('groupCropTargetWrap'), select: document.getElementById('groupCropTargetSelect') };
+        groups['@((int)HierarchyNodeKind.Sowing)'] = { wrap: document.getElementById('groupArableTargetWrap'), select: document.getElementById('groupArableTargetSelect') };
         groups['@((int)HierarchyNodeKind.FarmParcelZone)'] = { wrap: document.getElementById('groupParcelTargetWrap'), select: document.getElementById('groupParcelTargetSelect') };
         function updateVisibility() {
             Object.keys(groups).forEach(function (key) {

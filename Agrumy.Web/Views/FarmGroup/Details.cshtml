@@ -29,7 +29,7 @@
 </div>
 
 <p class="text-secondary">
-    Total area: @areaLine(Model.CropAreaSummary, "Crop parcels"), @areaLine(Model.GreenhouseAreaSummary, "Greenhouse units").
+    Total area: @areaLine(Model.ArableAreaSummary, "Arable parcels"), @areaLine(Model.GreenhouseAreaSummary, "Greenhouse units").
 </p>
 
 <div class="row g-3">
@@ -84,20 +84,20 @@
 
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-flower1 me-1"></i> Crop</h5></div>
+            <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-flower1 me-1"></i> Arable</h5></div>
             <div class="card-body">
                 @if (canManage || isReadOnly)
                 {
-                    <form asp-action="CreateCropFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
-                        <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Crop farm name" required maxlength="100" />
+                    <form asp-action="CreateArableFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-2">
+                        <input type="text" name="farmName" class="form-control form-control-sm" placeholder="New Arable farm name" required maxlength="100" />
                         <button type="submit" class="btn btn-sm btn-primary text-nowrap" disabled="@isReadOnly"><i class="bi bi-plus-lg"></i> Create</button>
                     </form>
-                    @if (Model.UngroupedCropFarms.Count > 0)
+                    @if (Model.UngroupedArableFarms.Count > 0)
                     {
                         <form asp-action="AddFarm" asp-route-id="@Model.Group.IDFarmGroup" method="post" class="d-flex gap-2 mb-3">
                             <select name="idFarm" class="form-select form-select-sm" required>
                                 <option value="" selected disabled>Or add an existing ungrouped farm...</option>
-                                @foreach (var farm in Model.UngroupedCropFarms)
+                                @foreach (var farm in Model.UngroupedArableFarms)
                                 {
                                     <option value="@farm.IDDeviceFarm">@farm.DeviceFarmName</option>
                                 }
@@ -106,19 +106,19 @@
                         </form>
                     }
                 }
-                @if (Model.CropFarms.Count == 0)
+                @if (Model.ArableFarms.Count == 0)
                 {
-                    <p class="text-secondary small">No Crop farms in this group.</p>
+                    <p class="text-secondary small">No Arable farms in this group.</p>
                 }
                 else
                 {
                     <ul class="list-group">
-                        @foreach (var farm in Model.CropFarms)
+                        @foreach (var farm in Model.ArableFarms)
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span>@farm.DeviceFarmName</span>
                                 <span>
-                                    <a asp-controller="FarmOpenfield" asp-action="CropSeasons" class="small me-2">Crop</a>
+                                    <a asp-controller="FarmOpenfield" asp-action="ArableSeasons" class="small me-2">Arable</a>
                                     <a asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="small me-2">Parcels</a>
                                     <a asp-controller="FarmOpenfield" asp-action="FarmSatellite" asp-route-idFarm="@farm.IDDeviceFarm" class="small me-2">Satellite</a>
                                     @if (canManage || isReadOnly)

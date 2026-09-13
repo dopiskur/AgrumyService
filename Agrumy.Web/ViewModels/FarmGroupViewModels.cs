@@ -15,16 +15,16 @@ namespace Agrumy.Web.ViewModels
         public IList<FarmGroupSummaryViewModel> Groups { get; init; } = [];
     }
 
-    /// Drives FarmGroup/Details.cshtml - one group's three vertical sections (Greenhouse/Crop/Fruit); the "ungrouped" lists back each section's "Add" picker (only a farm not already in some group can be added).
+    /// Drives FarmGroup/Details.cshtml - one group's three vertical sections (Greenhouse/Arable/Fruit); the "ungrouped" lists back each section's "Add" picker (only a farm not already in some group can be added).
     public class FarmGroupDetailsViewModel
     {
         public required FarmGroup Group { get; init; }
         public IList<DeviceFarm> GreenhouseFarms { get; init; } = [];
-        public IList<DeviceFarm> CropFarms { get; init; } = [];
+        public IList<DeviceFarm> ArableFarms { get; init; } = [];
         public IList<DeviceFarm> UngroupedGreenhouseFarms { get; init; } = [];
-        public IList<DeviceFarm> UngroupedCropFarms { get; init; } = [];
+        public IList<DeviceFarm> UngroupedArableFarms { get; init; } = [];
         /// Scoped to just this group's own member farms - the "how much area does this group occupy" rollup, same shape as ParcelsRegistry.cshtml's app-wide one.
-        public required ParcelAreaSummaryViewModel CropAreaSummary { get; init; }
+        public required ParcelAreaSummaryViewModel ArableAreaSummary { get; init; }
         public required ParcelAreaSummaryViewModel GreenhouseAreaSummary { get; init; }
     }
 }

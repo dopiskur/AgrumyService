@@ -196,10 +196,10 @@ namespace Agrumy.Shared.Models
     }
 
     /// A named, reusable set of FarmParcels within one Open-Field farm (never mixes parcels from different farms) - the "New sowing" wizard's parcel-selection step can pick one of these instead of individual parcels/zones, expanding to every member parcel's zones on Start. A parcel currently in a group must be removed from it before it could move to a different farm (no such "move parcel to another farm" operation exists today).
-    public class FarmParcelGroupCrop
+    public class FarmParcelGroupArable
     {
         [Microsoft.AspNetCore.Mvc.HiddenInput(DisplayValue = true)]
-        public int? IDFarmParcelGroupCrop { get; set; }
+        public int? IDFarmParcelGroupArable { get; set; }
         public int? TenantID { get; set; }
         public int FarmID { get; set; }
         public string? Name { get; set; }

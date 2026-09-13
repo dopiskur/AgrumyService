@@ -17,10 +17,10 @@ namespace Agrumy.Api.Dal.Interface
         /// The id of whichever active experiment covers this zone via the Zone&gt;Unit&gt;Farm cascade (a Zone-level and its parent Unit/Farm-level experiment can coexist - the most specific one wins here, same precedence the rule hierarchy itself uses), or null if none - DeviceConfigBuilder's per-device lookup.
         Task<int?> ActiveExperimentIdForZoneAsync(int idDeviceFarmUnitZone);
 
-        /// Open-Field's Parcel&gt;Crop&gt;Farm equivalent of ActiveExperimentIdForZoneAsync.
+        /// Open-Field's Parcel&gt;Arable&gt;Farm equivalent of ActiveExperimentIdForZoneAsync.
         Task<int?> ActiveExperimentIdForFarmParcelZoneAsync(int idFarmParcelZone);
 
-        /// Batched organization-wide zone/parcel id -> active experiment id map (same Zone>Unit>Farm and Parcel>Crop>Farm cascades as the single-leaf lookups above, resolved for every zone and parcel at once, same dictionary) - RuleNotificationEvaluator's per-organization lookup, avoiding an N+1 zone/parcel-by-zone/parcel query.
+        /// Batched organization-wide zone/parcel id -> active experiment id map (same Zone>Unit>Farm and Parcel>Arable>Farm cascades as the single-leaf lookups above, resolved for every zone and parcel at once, same dictionary) - RuleNotificationEvaluator's per-organization lookup, avoiding an N+1 zone/parcel-by-zone/parcel query.
         Task<IDictionary<int, int>> ActiveExperimentIdsByZoneAsync(int tenantID);
 
         /// Appends one row per reading, tagged with idExperiment - called from EfSensorDataRepository.SensorDataPushAsync alongside its own normal dataSensor insert, never instead of it.

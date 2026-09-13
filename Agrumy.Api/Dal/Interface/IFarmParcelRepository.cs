@@ -67,22 +67,22 @@ namespace Agrumy.Api.Dal.Interface
         /// S-B - every zone across every organization that has a saved boundary (GeometryGeoJson != null) - the daily satellite job's own per-organization, per-zone loop target.
         Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId);
 
-        /// Every FarmParcelGroupCrop on one farm, with member parcel ids - the "New sowing" wizard's group picker and the Parcel Groups management block on ParcelsRegistry.cshtml.
-        Task<IList<FarmParcelGroupCrop>> FarmParcelGroupCropsGetAsync(int idFarm);
+        /// Every FarmParcelGroupArable on one farm, with member parcel ids - the "New sowing" wizard's group picker and the Parcel Groups management block on ParcelsRegistry.cshtml.
+        Task<IList<FarmParcelGroupArable>> FarmParcelGroupArablesGetAsync(int idFarm);
 
-        Task<FarmParcelGroupCrop?> FarmParcelGroupCropGetByIdAsync(int idFarmParcelGroupCrop);
+        Task<FarmParcelGroupArable?> FarmParcelGroupArableGetByIdAsync(int idFarmParcelGroupArable);
 
-        Task<FarmParcelGroupCrop> FarmParcelGroupCropCreateAsync(FarmParcelGroupCrop group);
+        Task<FarmParcelGroupArable> FarmParcelGroupArableCreateAsync(FarmParcelGroupArable group);
 
-        Task FarmParcelGroupCropRenameAsync(int idFarmParcelGroupCrop, string name);
+        Task FarmParcelGroupArableRenameAsync(int idFarmParcelGroupArable, string name);
 
-        Task FarmParcelGroupCropDeleteAsync(int idFarmParcelGroupCrop);
+        Task FarmParcelGroupArableDeleteAsync(int idFarmParcelGroupArable);
 
-        Task FarmParcelGroupCropAddMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel);
+        Task FarmParcelGroupArableAddMemberAsync(int idFarmParcelGroupArable, int idFarmParcel);
 
-        Task FarmParcelGroupCropRemoveMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel);
+        Task FarmParcelGroupArableRemoveMemberAsync(int idFarmParcelGroupArable, int idFarmParcel);
 
         /// Every zone belonging to every member parcel of a group - the "New sowing" wizard resolves a selected group down to this list, then starts the sowing on it same as any manually-picked zone list.
-        Task<IList<int>> FarmParcelGroupCropResolveZoneIdsAsync(int idFarmParcelGroupCrop);
+        Task<IList<int>> FarmParcelGroupArableResolveZoneIdsAsync(int idFarmParcelGroupArable);
     }
 }

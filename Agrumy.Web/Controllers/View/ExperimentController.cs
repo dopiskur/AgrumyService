@@ -28,7 +28,7 @@ namespace Agrumy.Web.Controllers.View
                     zones.Add(new ZoneOption { IDDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone!.Value, ZoneName = zone.DeviceFarmUnitZoneName ?? "", GroupLabel = groupLabel });
                 }
             }
-            IList<Sowing> crops = await api.CropsGet();
+            IList<Sowing> crops = await api.ArablesGet();
             var parcels = new List<ParcelOption>();
             foreach (Sowing crop in crops)
             {
@@ -46,7 +46,7 @@ namespace Agrumy.Web.Controllers.View
                 Farms = farms,
                 Units = units,
                 Zones = zones,
-                Crops = crops,
+                Arables = crops,
                 Parcels = parcels,
             });
         }

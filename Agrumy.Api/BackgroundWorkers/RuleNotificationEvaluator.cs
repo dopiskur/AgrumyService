@@ -74,7 +74,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 var farmScoped = unit.DeviceFarmID is int unitFarmId
                     ? notificationRules.Where(r => r.DeviceFarmID == unitFarmId).ToList()
                     : [];
-                // Also excludes a Crop/Parcel-scoped rule - without this, a rule meant for one Open-Field crop/parcel would leak into every Greenhouse zone's "Global" set, since it likewise has DeviceFarmID/DeviceFarmUnitID/DeviceFarmUnitZoneID all null.
+                // Also excludes an Arable/Parcel-scoped rule - without this, a rule meant for one Open-Field crop/parcel would leak into every Greenhouse zone's "Global" set, since it likewise has DeviceFarmID/DeviceFarmUnitID/DeviceFarmUnitZoneID all null.
                 var globalScoped = notificationRules.Where(r => r.DeviceFarmID == null && r.DeviceFarmUnitID == null && r.DeviceFarmUnitZoneID == null
                     && r.DeviceSowingID == null && r.DeviceFarmParcelZoneID == null).ToList();
 

@@ -78,14 +78,14 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [Authorize]
-        [HttpGet("Crop/Rule")]
+        [HttpGet("Arable/Rule")]
         public async Task<ActionResult<IList<DeviceFarmUnitZoneRule>>> SowingRulesGet(int? idSowing)
         {
             if (CallerIsDataReaderOnly)
             {
                 return ForbidWith("Data Reader role cannot view crop rules.");
             }
-            var (crop, error) = await EnsureOwnedCropAsync(idSowing, forWrite: false);
+            var (crop, error) = await EnsureOwnedArableAsync(idSowing, forWrite: false);
             if (error != null)
             {
                 return error;
@@ -129,10 +129,10 @@ namespace Agrumy.Api.Controllers.API
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpPost("Crop/Rule")]
+        [HttpPost("Arable/Rule")]
         public async Task<ActionResult<RuleAddResult>> SowingRuleAdd([FromBody] DeviceFarmUnitZoneRule rule)
         {
-            var (crop, error) = await EnsureOwnedCropAsync(rule.DeviceSowingID, forWrite: true);
+            var (crop, error) = await EnsureOwnedArableAsync(rule.DeviceSowingID, forWrite: true);
             if (error != null)
             {
                 return error;
@@ -351,7 +351,7 @@ namespace Agrumy.Api.Controllers.API
         public Task<ActionResult<bool>> GlobalRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
-        [HttpDelete("Crop/Rule")]
+        [HttpDelete("Arable/Rule")]
         public Task<ActionResult<bool>> SowingRuleDelete(int? idDeviceFarmUnitZoneRule) => DeleteRuleAsync(idDeviceFarmUnitZoneRule);
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
@@ -403,7 +403,7 @@ namespace Agrumy.Api.Controllers.API
             }
             if (rule.DeviceSowingID is int idCrop)
             {
-                return (await EnsureOwnedCropAsync(idCrop, forWrite)).Error;
+                return (await EnsureOwnedArableAsync(idCrop, forWrite)).Error;
             }
             bool crossTenantAllowed = forWrite ? CallerManagesDevicesGlobally : CallerReadsDevicesGlobally;
             return rule.TenantID != CallerTenantId && !crossTenantAllowed

@@ -88,21 +88,21 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task<IList<FarmParcelZone>> FarmParcelZonesWithGeometryGetAsync(int tenantId) => farmParcelRepository.FarmParcelZonesWithGeometryGetAsync(tenantId);
 
-        public Task<IList<FarmParcelGroupCrop>> FarmParcelGroupCropsGetAsync(int idFarm) => farmParcelRepository.FarmParcelGroupCropsGetAsync(idFarm);
+        public Task<IList<FarmParcelGroupArable>> FarmParcelGroupArablesGetAsync(int idFarm) => farmParcelRepository.FarmParcelGroupArablesGetAsync(idFarm);
 
-        public Task<FarmParcelGroupCrop?> FarmParcelGroupCropGetByIdAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropGetByIdAsync(idFarmParcelGroupCrop);
+        public Task<FarmParcelGroupArable?> FarmParcelGroupArableGetByIdAsync(int idFarmParcelGroupArable) => farmParcelRepository.FarmParcelGroupArableGetByIdAsync(idFarmParcelGroupArable);
 
-        public Task<FarmParcelGroupCrop> FarmParcelGroupCropCreateAsync(FarmParcelGroupCrop group) => farmParcelRepository.FarmParcelGroupCropCreateAsync(group);
+        public Task<FarmParcelGroupArable> FarmParcelGroupArableCreateAsync(FarmParcelGroupArable group) => farmParcelRepository.FarmParcelGroupArableCreateAsync(group);
 
-        public Task FarmParcelGroupCropRenameAsync(int idFarmParcelGroupCrop, string name) => farmParcelRepository.FarmParcelGroupCropRenameAsync(idFarmParcelGroupCrop, name);
+        public Task FarmParcelGroupArableRenameAsync(int idFarmParcelGroupArable, string name) => farmParcelRepository.FarmParcelGroupArableRenameAsync(idFarmParcelGroupArable, name);
 
-        public Task FarmParcelGroupCropDeleteAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropDeleteAsync(idFarmParcelGroupCrop);
+        public Task FarmParcelGroupArableDeleteAsync(int idFarmParcelGroupArable) => farmParcelRepository.FarmParcelGroupArableDeleteAsync(idFarmParcelGroupArable);
 
-        public Task FarmParcelGroupCropAddMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel) => farmParcelRepository.FarmParcelGroupCropAddMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+        public Task FarmParcelGroupArableAddMemberAsync(int idFarmParcelGroupArable, int idFarmParcel) => farmParcelRepository.FarmParcelGroupArableAddMemberAsync(idFarmParcelGroupArable, idFarmParcel);
 
-        public Task FarmParcelGroupCropRemoveMemberAsync(int idFarmParcelGroupCrop, int idFarmParcel) => farmParcelRepository.FarmParcelGroupCropRemoveMemberAsync(idFarmParcelGroupCrop, idFarmParcel);
+        public Task FarmParcelGroupArableRemoveMemberAsync(int idFarmParcelGroupArable, int idFarmParcel) => farmParcelRepository.FarmParcelGroupArableRemoveMemberAsync(idFarmParcelGroupArable, idFarmParcel);
 
-        public Task<IList<int>> FarmParcelGroupCropResolveZoneIdsAsync(int idFarmParcelGroupCrop) => farmParcelRepository.FarmParcelGroupCropResolveZoneIdsAsync(idFarmParcelGroupCrop);
+        public Task<IList<int>> FarmParcelGroupArableResolveZoneIdsAsync(int idFarmParcelGroupArable) => farmParcelRepository.FarmParcelGroupArableResolveZoneIdsAsync(idFarmParcelGroupArable);
 
         // ---- ICropCatalogRepository ----
 

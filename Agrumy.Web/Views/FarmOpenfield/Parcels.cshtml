@@ -1,4 +1,4 @@
-@model CropParcelsViewModel
+@model ArableParcelsViewModel
 @{
     ViewData["Title"] = Model.Crop.SowingName;
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
@@ -67,12 +67,12 @@
         {
             @if (Model.Crop.Status != GrowingCycleStatus.Closed)
             {
-                <form asp-action="CropRename" method="post" class="d-flex gap-1">
+                <form asp-action="ArableRename" method="post" class="d-flex gap-1">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
                     <input type="text" name="sowingName" class="form-control form-control-sm" value="@Model.Crop.SowingName" required maxlength="100" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly">Rename</button>
                 </form>
-                <form asp-action="CropDelete" method="post" data-confirm="Delete this sowing?" class="ms-auto">
+                <form asp-action="ArableDelete" method="post" data-confirm="Delete this sowing?" class="ms-auto">
                     <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
                     <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" title="Delete sowing"><i class="bi bi-trash"></i></button>
                 </form>
@@ -401,7 +401,7 @@
     </form>
     <form asp-action="SowingReleaseGroup" method="post" class="d-none" id="formSowingReleaseGroup">
         <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-        <input type="hidden" name="idFarmParcelGroupCrop" class="release-group-id" />
+        <input type="hidden" name="idFarmParcelGroupArable" class="release-group-id" />
     </form>
     <form asp-action="SowingStart" method="post" class="d-none" id="formSowingAddZone">
         <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
@@ -409,15 +409,15 @@
     </form>
     <form asp-action="SowingAddGroup" method="post" class="d-none" id="formSowingAddGroup">
         <input type="hidden" name="idSowing" value="@Model.Crop.IDSowing" />
-        <input type="hidden" name="idFarmParcelGroupCrop" class="add-group-id" />
+        <input type="hidden" name="idFarmParcelGroupArable" class="add-group-id" />
     </form>
     <form asp-action="ParcelGroupAddMember" method="post" class="d-none" id="formParcelGroupAddMember">
-        <input type="hidden" name="idFarmParcelGroupCrop" class="assign-group-id" />
+        <input type="hidden" name="idFarmParcelGroupArable" class="assign-group-id" />
         <input type="hidden" name="idFarmParcel" class="assign-parcel-id" />
         <input type="hidden" name="returnUrl" value="@Url.Action("Parcels", new { idSowing = Model.Crop.IDSowing })" />
     </form>
     <form asp-action="ParcelGroupRemoveMember" method="post" class="d-none" id="formParcelGroupRemoveMember">
-        <input type="hidden" name="idFarmParcelGroupCrop" class="ungroup-group-id" />
+        <input type="hidden" name="idFarmParcelGroupArable" class="ungroup-group-id" />
         <input type="hidden" name="idFarmParcel" class="ungroup-parcel-id" />
         <input type="hidden" name="returnUrl" value="@Url.Action("Parcels", new { idSowing = Model.Crop.IDSowing })" />
     </form>
@@ -435,7 +435,7 @@
                 inSowing = z.CurrentSowingID == Model.Crop.IDSowing,
                 locked = z.CurrentSowingID != null && z.CurrentSowingID != Model.Crop.IDSowing,
             })),
-            groups = Model.ParcelGroups.Select(g => new { id = g.IDFarmParcelGroupCrop, name = g.Name, memberParcelIds = g.MemberParcelIds }),
+            groups = Model.ParcelGroups.Select(g => new { id = g.IDFarmParcelGroupArable, name = g.Name, memberParcelIds = g.MemberParcelIds }),
         }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))
     </script>
     <script nonce="@Context.CspNonce()">

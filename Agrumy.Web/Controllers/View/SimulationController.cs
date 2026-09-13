@@ -64,8 +64,8 @@ namespace Agrumy.Web.Controllers.View
                 zones.AddRange(await api.DeviceFarmUnitZonesGet(unit.IDDeviceFarmUnit));
             }
             ViewBag.Zones = zones;
-            IList<Sowing> crops = await api.CropsGet();
-            ViewBag.Crops = crops;
+            IList<Sowing> crops = await api.ArablesGet();
+            ViewBag.Arables = crops;
             var parcels = new List<FarmParcelZone>();
             foreach (Sowing crop in crops)
             {

@@ -26,13 +26,13 @@ namespace Agrumy.Web.ViewModels
         public required int IdFarm { get; init; }
     }
 
-    /// One farm's Parcel Groups management block on ParcelsRegistry.cshtml - its own parcels (for the add-member picker) plus its existing FarmParcelGroupCrop groups.
+    /// One farm's Parcel Groups management block on ParcelsRegistry.cshtml - its own parcels (for the add-member picker) plus its existing FarmParcelGroupArable groups.
     public class ParcelGroupSectionViewModel
     {
         public required string FarmName { get; init; }
         public required int IdFarm { get; init; }
         public IList<FarmParcel> Parcels { get; init; } = [];
-        public IList<FarmParcelGroupCrop> Groups { get; init; } = [];
+        public IList<FarmParcelGroupArable> Groups { get; init; } = [];
     }
 
     /// One Greenhouse DeviceFarmUnit row on the unified Parcels page - a Unit isn't a FarmParcel, but stands in for "the Greenhouse parcel type" there since it's the closest existing concept with an owning Farm and (now) its own AreaHectares. IdFarm is null for a farm-less Unit (valid state), in which case there's nothing to assign to a group.
@@ -52,35 +52,35 @@ namespace Agrumy.Web.ViewModels
         public int TotalCount { get; init; }
     }
 
-    /// Drives FarmOpenfield/ParcelsRegistry.cshtml - the unified "Parcels" overview across all three parcel types (Crop, Fruit, Greenhouse), separated from the farm register (removed) and the Crop page. Fruit has no rows yet (no Fruit Plantation module), it's rendered as an inert placeholder same as elsewhere.
+    /// Drives FarmOpenfield/ParcelsRegistry.cshtml - the unified "Parcels" overview across all three parcel types (Arable, Fruit, Greenhouse), separated from the farm register (removed) and the Arable page. Fruit has no rows yet (no Fruit Plantation module), it's rendered as an inert placeholder same as elsewhere.
     public class ParcelsRegistryViewModel
     {
         public IList<ParcelRegistryRowViewModel> Rows { get; init; } = [];
         public IList<ParcelRegistryFarmOptionViewModel> Farms { get; init; } = [];
         public IList<ParcelGroupSectionViewModel> GroupSections { get; init; } = [];
         public IList<GreenhouseUnitRowViewModel> GreenhouseRows { get; init; } = [];
-        public required ParcelAreaSummaryViewModel CropAreaSummary { get; init; }
+        public required ParcelAreaSummaryViewModel ArableAreaSummary { get; init; }
         public required ParcelAreaSummaryViewModel GreenhouseAreaSummary { get; init; }
         /// Options for the inline "Assign" dropdown on rows whose farm has no Farm Group yet.
         public IList<FarmGroup> AvailableFarmGroups { get; init; } = [];
     }
 
-    /// Drives FarmOpenfield/CropSeasons.cshtml - every sowing across every Open-Field farm, plus what "New sowing" needs to build one (farm picker, catalog-driven crop/variety picker).
-    public class CropSeasonsIndexViewModel
+    /// Drives FarmOpenfield/ArableSeasons.cshtml - every sowing across every Open-Field farm, plus what "New sowing" needs to build one (farm picker, catalog-driven crop/variety picker).
+    public class ArableSeasonsIndexViewModel
     {
         public IList<DeviceFarm> Farms { get; init; } = [];
         public IList<Sowing> Sowings { get; init; } = [];
         /// CropCatalogType.Arable entries (wheat/corn + variety, BBCH-staged) - "New sowing" picks a Name from here instead of typing free text; Sowing.CropID still resolves through the separate lightweight Crop catalog by that same name (ICropCatalogRepository.CropFindOrCreateByNameAsync), no new FK.
         public IList<CropCatalogEntry> CatalogCrops { get; init; } = [];
-        /// Keyed by IDDeviceFarm - the wizard's parcel-selection step swaps between these client-side as the Farm picker changes, same shape as CropParcelsViewModel.AvailableParcels.
+        /// Keyed by IDDeviceFarm - the wizard's parcel-selection step swaps between these client-side as the Farm picker changes, same shape as ArableParcelsViewModel.AvailableParcels.
         public IDictionary<int, IList<FarmParcelWithZonesViewModel>> AvailableParcelsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelWithZonesViewModel>>();
-        public IDictionary<int, IList<FarmParcelGroupCrop>> ParcelGroupsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelGroupCrop>>();
+        public IDictionary<int, IList<FarmParcelGroupArable>> ParcelGroupsByFarm { get; init; } = new Dictionary<int, IList<FarmParcelGroupArable>>();
         /// Farm Group names by IDFarmGroup - the sowing list shows which group a sowing's farm belongs to instead of the farm's own name (Farm is an internal bridge entity now, see ParcelsRegistry.cshtml's own version of this).
         public IDictionary<int, string> FarmGroupNames { get; init; } = new Dictionary<int, string>();
     }
 
     /// Drives FarmOpenfield/Parcels.cshtml - one Sowing's own detail/lifecycle page (Sowing Details, D9), the Open-Field mirror of UnitZonesViewModel.
-    public class CropParcelsViewModel
+    public class ArableParcelsViewModel
     {
         public required Sowing Crop { get; init; }
         public required DeviceFarm Farm { get; init; }
@@ -88,7 +88,7 @@ namespace Agrumy.Web.ViewModels
         /// Every zone on the sowing's own farm, free or not - the Start-sowing zone picker (D3/D9) when the sowing is still Planned, and the Manage-parcels dialog's data source (both its Add pickers and its own-zones table) regardless of status.
         public IList<FarmParcelWithZonesViewModel> AvailableParcels { get; init; } = [];
         /// The farm's saved parcel groups - Manage-parcels' "Add parcel group" picker, its zone table's Group column/Assign-to-group button, and the "Remove parcel group" option.
-        public IList<FarmParcelGroupCrop> ParcelGroups { get; init; } = [];
+        public IList<FarmParcelGroupArable> ParcelGroups { get; init; } = [];
         public IList<FieldLogEntry> LogEntries { get; init; } = [];
         /// D13 - null means no PlantProtection entry has been logged yet, so Harvest is never karenca-gated.
         public DateOnly? EarliestHarvestDate { get; init; }

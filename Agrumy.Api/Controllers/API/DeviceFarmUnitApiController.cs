@@ -294,14 +294,14 @@ namespace Agrumy.Api.Controllers.API
             HierarchyNodeKind.Farm => (await EnsureOwnedFarmAsync(levelId, forWrite)).Error,
             HierarchyNodeKind.Unit => (await EnsureOwnedUnitAsync(levelId, forWrite)).Error,
             HierarchyNodeKind.Zone => (await EnsureOwnedZoneAsync(levelId, forWrite)).Error,
-            HierarchyNodeKind.Sowing => (await EnsureOwnedCropAsync(levelId, forWrite)).Error,
+            HierarchyNodeKind.Sowing => (await EnsureOwnedArableAsync(levelId, forWrite)).Error,
             HierarchyNodeKind.FarmParcelZone => (await EnsureOwnedParcelAsync(levelId, forWrite)).Error,
             _ => BadRequest("Unknown dashboard aggregation level."),
         };
 
         /// Open-Field's mid-level equivalent of EnsureOwnedUnitAsync.
-        private Task<OwnedResult<Sowing>> EnsureOwnedCropAsync(int? idSowing, bool forWrite) =>
-            EnsureOwnedDeviceEntityAsync(() => sowingRepo.SowingGetByIdAsync(idSowing ?? 0), c => c.TenantID, "Crop", forWrite);
+        private Task<OwnedResult<Sowing>> EnsureOwnedArableAsync(int? idSowing, bool forWrite) =>
+            EnsureOwnedDeviceEntityAsync(() => sowingRepo.SowingGetByIdAsync(idSowing ?? 0), c => c.TenantID, "Arable", forWrite);
 
         /// Open-Field's leaf-level equivalent of EnsureOwnedZoneAsync.
         private Task<OwnedResult<FarmParcelZone>> EnsureOwnedParcelAsync(int? idFarmParcelZone, bool forWrite) =>

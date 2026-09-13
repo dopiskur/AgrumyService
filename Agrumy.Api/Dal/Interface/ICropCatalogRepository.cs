@@ -17,7 +17,7 @@ namespace Agrumy.Api.Dal.Interface
 
         Task CropDeleteAsync(int idCrop);
 
-        /// CropAdd's own "find-or-create by name" helper for the interim (pre-R2-wizard) Sowing forms - looks up an existing organization-or-global row by name before inserting a new one, so re-adding the same crop name doesn't fork the catalog.
+        /// ArableAdd's own "find-or-create by name" helper for the interim (pre-R2-wizard) Sowing forms - looks up an existing organization-or-global row by name before inserting a new one, so re-adding the same crop name doesn't fork the catalog.
         Task<int> CropFindOrCreateByNameAsync(int? tenantID, string name);
     }
 }

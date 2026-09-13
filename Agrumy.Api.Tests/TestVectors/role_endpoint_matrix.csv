@@ -2,7 +2,7 @@ HttpMethod,RouteTemplate,Roles
 DELETE,api/Device,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Device/FirmwareUpdate,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit,Global admin;Global Device;Tenant admin;Tenant Device
-DELETE,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/DeviceFarmUnit/Arable/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Farm/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/DeviceFarmUnit/Global/Rule,Global admin;Global Device;Tenant admin;Tenant Device
@@ -14,7 +14,7 @@ DELETE,api/DeviceFarmUnit/Zone/Rule,Global admin;Global Device;Tenant admin;Tena
 DELETE,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/Experiment/{idExperiment}/Rule/{idRule},Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmGroup,Global admin;Global Device;Tenant admin;Tenant Device
-DELETE,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+DELETE,api/FarmOpenfield/Arable,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/ParcelGroup,Global admin;Global Device;Tenant admin;Tenant Device
 DELETE,api/FarmOpenfield/Sowing/FieldLog,Global admin;Global Device;Tenant admin;Tenant Device
@@ -97,7 +97,7 @@ POST,api/DeviceFarmUnit/Assign,Global admin;Global Device;Tenant admin;Tenant De
 POST,api/DeviceFarmUnit/Unit/Area,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/Type,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Unit/Location,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/DeviceFarmUnit/Crop/Rule,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/DeviceFarmUnit/Arable/Rule,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/ManualActuate,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/DeviceFarmUnit/Farm/Reorder,Global admin;Global Device;Tenant admin;Tenant Device
@@ -128,7 +128,7 @@ POST,api/FarmGroup,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmGroup/AssignFarm,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Assign,Global admin;Global Device;Tenant admin;Tenant Device
-POST,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+POST,api/FarmOpenfield/Arable,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/FarmParcel,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/ParcelGroup,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/ParcelGroup/AddMember,Global admin;Global Device;Tenant admin;Tenant Device
@@ -187,7 +187,7 @@ PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/GridColumns,Global admin;Glob
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Migrate,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/DeviceFarmUnit/Zone/{idDeviceFarmUnitZone}/Widgets,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/Discovery/WifiConfigs/{idTenantWifiConfig},Global admin;Global Device;Tenant admin;Tenant Device
-PUT,api/FarmOpenfield/Crop,Global admin;Global Device;Tenant admin;Tenant Device
+PUT,api/FarmOpenfield/Arable,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/FarmParcel/{idFarmParcel}/Geometry,Global admin;Global Device;Tenant admin;Tenant Device
 PUT,api/FarmOpenfield/Parcel,Global admin;Global Device;Tenant admin;Tenant Device
 POST,api/FarmOpenfield/Parcel/ReadyForSeason,Global admin;Global Device;Tenant admin;Tenant Device

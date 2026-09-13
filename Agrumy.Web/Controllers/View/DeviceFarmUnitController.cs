@@ -118,10 +118,10 @@ namespace Agrumy.Web.Controllers.View
 
         private bool hasAnyRole(string csv) => csv.Split(',').Any(User.IsInRole);
 
-        /// Open-Field's equivalent of BuildZoneOptionsAsync - flattens every parcel across every crop into one Crop-labeled list for the wizard's parcel picker.
+        /// Open-Field's equivalent of BuildZoneOptionsAsync - flattens every parcel across every crop into one Arable-labeled list for the wizard's parcel picker.
         private async Task<IList<ParcelOption>> BuildParcelOptionsAsync()
         {
-            IList<Sowing> crops = await api.CropsGet();
+            IList<Sowing> crops = await api.ArablesGet();
             var options = new List<ParcelOption>();
             foreach (Sowing crop in crops)
             {

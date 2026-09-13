@@ -25,7 +25,7 @@ namespace Agrumy.Shared.Models
         public DateTimeOffset? PurgedAtUtc { get; set; }
     }
 
-    /// Cross-cutting grouping ABOVE Farm, spanning FarmType (Greenhouse/Crop/Fruit) - see Agrumy.Dal.Entities.FarmGroupRow for the "why" on not merging FarmType exclusivity away instead.
+    /// Cross-cutting grouping ABOVE Farm, spanning FarmType (Greenhouse/Arable/Fruit) - see Agrumy.Dal.Entities.FarmGroupRow for the "why" on not merging FarmType exclusivity away instead.
     public class FarmGroup
     {
         [HiddenInput(DisplayValue = true)]
@@ -46,7 +46,7 @@ namespace Agrumy.Shared.Models
         public int? DeviceFarmID { get; set; }
         // Cube position within its farm/unassigned grouping on the Farms page, drag-and-drop reorderable - a new unit gets max+1 (bottom), not touched by anything else.
         public int DisplayOrder { get; set; }
-        /// Manually entered - lets the unified Parcels page and Farm Group area rollups sum Greenhouse alongside Crop/Fruit parcels.
+        /// Manually entered - lets the unified Parcels page and Farm Group area rollups sum Greenhouse alongside Arable/Fruit parcels.
         public double? AreaSquareMeters { get; set; }
         public DeviceFarmUnitType UnitType { get; set; } = DeviceFarmUnitType.Greenhouse;
         /// Map pin placed via the Unit configuration dialog - where this unit sits within its DeviceFarm's own complex, not a free-standing GPS position.
@@ -341,7 +341,7 @@ namespace Agrumy.Shared.Models
         public IList<string> RulesSkipped { get; set; } = [];
     }
 
-    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmParcelZoneID/DeviceSowingID mean Parcel/Crop scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-organization). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
+    /// One automation rule at exactly one scope - DeviceFarmUnitZoneID set means Zone scope, DeviceFarmUnitID set means Unit scope, DeviceFarmID set means Farm scope, DeviceFarmParcelZoneID/DeviceSowingID mean Parcel/Arable scope, SimulationSessionID set means Simulation scope, ExperimentID set means Experiment scope, all null means Global (per-organization). Several rules at the SAME scope for the same RelayFunction still fold together by taking the MAX of their TargetPercent; Notification rules override by Name instead (a more specific scope's rule with the SAME Name replaces a less specific one, different names always coexist) since a rule's conditions can now span several metrics. IsSafetyRule rules always survive being overridden regardless of scope - see Agrumy.Rules.RuleHierarchyResolver.
     public class DeviceFarmUnitZoneRule : IValidatableObject
     {
         [HiddenInput(DisplayValue = true)]

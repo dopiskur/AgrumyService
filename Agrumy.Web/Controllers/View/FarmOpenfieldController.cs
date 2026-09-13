@@ -9,22 +9,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Agrumy.Web.Controllers.View
 {
-    /// Sowing/FarmParcel/FarmParcelZone CRUD, the sjetva wizard's Start/Close lifecycle, device assignment, and safety-limit editing (D1/D2/D9) - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new. No standalone "Farms" register page any more - creating a new Open-Field farm and the per-farm Satellite link both live inline on CropSeasons.cshtml/FarmGroup/Details.cshtml now.
+    /// Sowing/FarmParcel/FarmParcelZone CRUD, the sjetva wizard's Start/Close lifecycle, device assignment, and safety-limit editing (D1/D2/D9) - the Open-Field mirror of DeviceFarmUnitController's Zone/Unit pages. Farm-level actions (Add/Rename/Delete/rule pages) stay on DeviceFarmUnitController, shared by both branches - this controller only owns what's genuinely new. No standalone "Farms" register page any more - creating a new Open-Field farm and the per-farm Satellite link both live inline on ArableSeasons.cshtml/FarmGroup/Details.cshtml now.
 
     [Authorize]
     public class FarmOpenfieldController(IApi api) : Controller
     {
-        // ---- Crop Seasons (every sowing across every Open-Field farm) --------------------------------------------
+        // ---- Arable Seasons (every sowing across every Open-Field farm) --------------------------------------------
 
-        public async Task<ActionResult> CropSeasons()
+        public async Task<ActionResult> ArableSeasons()
         {
             List<DeviceFarm> farms = (await api.DeviceFarmsGet()).Where(f => f.FarmType == FarmType.OpenField).ToList();
             List<int?> farmIds = farms.Select(f => f.IDDeviceFarm).ToList();
-            IList<Sowing> sowings = (await api.CropsGet()).Where(s => farmIds.Contains(s.FarmID)).ToList();
+            IList<Sowing> sowings = (await api.ArablesGet()).Where(s => farmIds.Contains(s.FarmID)).ToList();
 
             // Parcel/group picker is keyed per farm so the wizard can swap between them client-side as the Farm choice changes.
             var availableParcelsByFarm = new Dictionary<int, IList<FarmParcelWithZonesViewModel>>();
-            var parcelGroupsByFarm = new Dictionary<int, IList<FarmParcelGroupCrop>>();
+            var parcelGroupsByFarm = new Dictionary<int, IList<FarmParcelGroupArable>>();
             foreach (DeviceFarm farm in farms)
             {
                 int idFarm = farm.IDDeviceFarm!.Value;
@@ -39,7 +39,7 @@ namespace Agrumy.Web.Controllers.View
 
             IList<FarmGroup> farmGroups = await api.FarmGroupsGet();
 
-            return View(new CropSeasonsIndexViewModel
+            return View(new ArableSeasonsIndexViewModel
             {
                 Farms = farms,
                 Sowings = sowings,
@@ -169,11 +169,11 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard (D3/D9): crop (picked from the Crop Catalog's Arable entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name), name, and both dates OPTIONAL - startDate defaults to today when left blank, and expectedDurationDays (client-computed the moment a variety is picked, summed across that variety's own BBCH growth stages - see CropSeasons.cshtml's cropMaturityDays) takes priority over the eed-minus-startDate diff, itself falling back to defaultExpectedDurationDays only when neither is available. No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
+        /// Sjetva wizard (D3/D9): crop (picked from the Crop Catalog's Arable entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name), name, and both dates OPTIONAL - startDate defaults to today when left blank, and expectedDurationDays (client-computed the moment a variety is picked, summed across that variety's own BBCH growth stages - see ArableSeasons.cshtml's cropMaturityDays) takes priority over the eed-minus-startDate diff, itself falling back to defaultExpectedDurationDays only when neither is available. No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? sowingName, string? variety, DateOnly? startDate, DateOnly? expectedEndDate, int? expectedDurationDays, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
+        public async Task<ActionResult> ArableAdd(int idFarm, string farmOpenfieldArableName, string? sowingName, string? variety, DateOnly? startDate, DateOnly? expectedEndDate, int? expectedDurationDays, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupArableIds)
         {
             const int defaultExpectedDurationDays = 90;
             DateOnly resolvedStartDate = startDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
@@ -181,10 +181,10 @@ namespace Agrumy.Web.Controllers.View
             int resolvedExpectedDurationDays = expectedDurationDays is int explicitDays ? Math.Max(1, explicitDays)
                 : expectedEndDate is DateOnly eed && startDate is DateOnly sd ? Math.Max(1, eed.DayNumber - sd.DayNumber)
                 : defaultExpectedDurationDays;
-            Sowing added = await api.CropAdd(new Sowing
+            Sowing added = await api.ArableAdd(new Sowing
             {
                 FarmID = idFarm,
-                SowingName = farmOpenfieldCropName,
+                SowingName = farmOpenfieldArableName,
                 Name = string.IsNullOrWhiteSpace(sowingName) ? null : sowingName,
                 Variety = variety,
                 StartDate = resolvedStartDate,
@@ -192,7 +192,7 @@ namespace Agrumy.Web.Controllers.View
             });
 
             var zoneIds = new HashSet<int>(farmParcelZoneIds ?? []);
-            foreach (int idGroup in farmParcelGroupCropIds ?? [])
+            foreach (int idGroup in farmParcelGroupArableIds ?? [])
             {
                 foreach (int idZone in await api.ParcelGroupZonesGet(idGroup))
                 {
@@ -217,21 +217,21 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropRename(int idSowing, string sowingName)
+        public async Task<ActionResult> ArableRename(int idSowing, string sowingName)
         {
-            Sowing crop = await api.CropGet(idSowing);
+            Sowing crop = await api.ArableGet(idSowing);
             crop.Name = sowingName;
-            await api.CropUpdate(crop);
+            await api.ArableUpdate(crop);
             return RedirectToAction(nameof(Parcels), new { idSowing });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropDelete(int idSowing)
+        public async Task<ActionResult> ArableDelete(int idSowing)
         {
-            await api.CropDelete(idSowing);
-            return RedirectToAction(nameof(CropSeasons));
+            await api.ArableDelete(idSowing);
+            return RedirectToAction(nameof(ArableSeasons));
         }
 
         /// D9 - Planned -> Active: occupies the picked zones, redirects back to Sowing Details.
@@ -256,10 +256,10 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SowingAddGroup(int idSowing, int idFarmParcelGroupCrop)
+        public async Task<ActionResult> SowingAddGroup(int idSowing, int idFarmParcelGroupArable)
         {
             var currentZoneIds = (await api.ParcelsGet(idSowing)).Select(z => z.IDFarmParcelZone).ToHashSet();
-            var zoneIds = (await api.ParcelGroupZonesGet(idFarmParcelGroupCrop)).Where(id => !currentZoneIds.Contains(id)).ToList();
+            var zoneIds = (await api.ParcelGroupZonesGet(idFarmParcelGroupArable)).Where(id => !currentZoneIds.Contains(id)).ToList();
             if (zoneIds.Count == 0)
             {
                 TempData["Message"] = "Every parcel in that group is already part of this sowing.";
@@ -299,10 +299,10 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SowingReleaseGroup(int idSowing, int idFarmParcelGroupCrop)
+        public async Task<ActionResult> SowingReleaseGroup(int idSowing, int idFarmParcelGroupArable)
         {
             var currentZoneIds = (await api.ParcelsGet(idSowing)).Select(z => z.IDFarmParcelZone).ToHashSet();
-            var groupZoneIds = await api.ParcelGroupZonesGet(idFarmParcelGroupCrop);
+            var groupZoneIds = await api.ParcelGroupZonesGet(idFarmParcelGroupArable);
             foreach (int idZone in groupZoneIds.Where(id => currentZoneIds.Contains(id)))
             {
                 await api.SowingReleaseZone(new SowingReleaseZoneRequest { IDSowing = idSowing, FarmParcelZoneID = idZone });
@@ -427,7 +427,7 @@ namespace Agrumy.Web.Controllers.View
 
         public async Task<ActionResult> Parcels(int idSowing)
         {
-            Sowing crop = await api.CropGet(idSowing);
+            Sowing crop = await api.ArableGet(idSowing);
             IList<DeviceFarm> farms = await api.DeviceFarmsGet();
             DeviceFarm? farm = farms.FirstOrDefault(f => f.IDDeviceFarm == crop.FarmID);
 
@@ -437,7 +437,7 @@ namespace Agrumy.Web.Controllers.View
                 availableParcels.Add(new FarmParcelWithZonesViewModel { Parcel = parcel, Zones = await api.FarmParcelZonesGet(parcel.IDFarmParcel!.Value) });
             }
 
-            return View(new CropParcelsViewModel
+            return View(new ArableParcelsViewModel
             {
                 Crop = crop,
                 Farm = farm ?? new DeviceFarm(),
@@ -452,7 +452,7 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Parcels registry (Fleet-style, every parcel/zone across every Open-Field farm) -----------------------------------
 
-        /// Unified across all three parcel types (Crop/Fruit/Greenhouse) - Fruit has no rows yet (no module), Greenhouse stands in via DeviceFarmUnit (its own AreaSquareMeters, no boundary map/Ready-for-season since those are Open-Field-only concepts).
+        /// Unified across all three parcel types (Arable/Fruit/Greenhouse) - Fruit has no rows yet (no module), Greenhouse stands in via DeviceFarmUnit (its own AreaSquareMeters, no boundary map/Ready-for-season since those are Open-Field-only concepts).
         public async Task<ActionResult> ParcelsRegistry()
         {
             IList<DeviceFarm> allFarms = await api.DeviceFarmsGet();
@@ -518,7 +518,7 @@ namespace Agrumy.Web.Controllers.View
                 Farms = farmOptions,
                 GroupSections = groupSections,
                 GreenhouseRows = greenhouseRows,
-                CropAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
+                ArableAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = cropAreaHa, WithAreaCount = cropParcelsWithArea, TotalCount = cropParcelsTotal },
                 GreenhouseAreaSummary = new ParcelAreaSummaryViewModel { TotalHectares = greenhouseAreaHa, WithAreaCount = greenhouseUnitsWithArea, TotalCount = units.Count },
                 AvailableFarmGroups = farmGroups,
             });
@@ -533,41 +533,41 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(ParcelsRegistry));
         }
 
-        // ---- Parcel Groups (FarmParcelGroupCrop) management, from the ParcelsRegistry page -----------------------------------
+        // ---- Parcel Groups (FarmParcelGroupArable) management, from the ParcelsRegistry page -----------------------------------
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> ParcelGroupAdd(int idFarm, string name, List<int>? memberParcelIds)
         {
-            await api.ParcelGroupAdd(new FarmParcelGroupCrop { FarmID = idFarm, Name = name, MemberParcelIds = memberParcelIds ?? [] });
+            await api.ParcelGroupAdd(new FarmParcelGroupArable { FarmID = idFarm, Name = name, MemberParcelIds = memberParcelIds ?? [] });
             return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelGroupDelete(int idFarmParcelGroupCrop)
+        public async Task<ActionResult> ParcelGroupDelete(int idFarmParcelGroupArable)
         {
-            await api.ParcelGroupDelete(idFarmParcelGroupCrop);
+            await api.ParcelGroupDelete(idFarmParcelGroupArable);
             return RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel, string? returnUrl)
+        public async Task<ActionResult> ParcelGroupAddMember(int idFarmParcelGroupArable, int idFarmParcel, string? returnUrl)
         {
-            await api.ParcelGroupAddMember(idFarmParcelGroupCrop, idFarmParcel);
+            await api.ParcelGroupAddMember(idFarmParcelGroupArable, idFarmParcel);
             return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(ParcelsRegistry));
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel, string? returnUrl)
+        public async Task<ActionResult> ParcelGroupRemoveMember(int idFarmParcelGroupArable, int idFarmParcel, string? returnUrl)
         {
-            await api.ParcelGroupRemoveMember(idFarmParcelGroupCrop, idFarmParcel);
+            await api.ParcelGroupRemoveMember(idFarmParcelGroupArable, idFarmParcel);
             return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(ParcelsRegistry));
         }
 
@@ -655,7 +655,7 @@ namespace Agrumy.Web.Controllers.View
         private async Task<ParcelViewModel> BuildParcelViewAsync(int idFarmParcelZone)
         {
             FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
-            Sowing? crop = parcel.CurrentSowingID is int idSowing ? await api.CropGet(idSowing) : null;
+            Sowing? crop = parcel.CurrentSowingID is int idSowing ? await api.ArableGet(idSowing) : null;
             IList<DeviceFarm> farms = await api.DeviceFarmsGet();
             DeviceFarm? farm = crop != null ? farms.FirstOrDefault(f => f.IDDeviceFarm == crop.FarmID) : null;
 
@@ -757,10 +757,10 @@ namespace Agrumy.Web.Controllers.View
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ParcelRename(int idFarmParcelZone, string farmOpenfieldCropParcelName)
+        public async Task<ActionResult> ParcelRename(int idFarmParcelZone, string farmOpenfieldArableParcelName)
         {
             FarmParcelZone parcel = await api.ParcelGetById(idFarmParcelZone);
-            parcel.FarmParcelZoneName = farmOpenfieldCropParcelName;
+            parcel.FarmParcelZoneName = farmOpenfieldArableParcelName;
             await api.ParcelUpdate(parcel);
             return RedirectToAction(nameof(Parcel), new { idFarmParcelZone });
         }
@@ -837,12 +837,12 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Parcel), new { idFarmParcelZone });
         }
 
-        // ---- Rules (Crop/Parcel scope) - Crop's own page, mirrors DeviceFarmUnitController.UnitRules; Parcel's rules are embedded inline in Parcel.cshtml instead, mirroring the Zone page. ----
+        // ---- Rules (Arable/Parcel scope) - Arable's own page, mirrors DeviceFarmUnitController.UnitRules; Parcel's rules are embedded inline in Parcel.cshtml instead, mirroring the Zone page. ----
 
         [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         public async Task<ActionResult> SowingRules(int idSowing) => View(new RuleEditorViewModel
         {
-            Scope = RuleScope.Crop,
+            Scope = RuleScope.Arable,
             ScopeId = idSowing,
             Rules = await api.SowingRulesGet(idSowing),
             RedirectActionName = nameof(SowingRules),

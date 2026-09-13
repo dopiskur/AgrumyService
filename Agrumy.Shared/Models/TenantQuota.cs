@@ -10,10 +10,10 @@ namespace Agrumy.Shared.Models
         public int MaxUnits { get; set; }
         public int MaxZones { get; set; }
         // Open-Field's mid/leaf-level equivalents of MaxUnits/MaxZones - separate caps, not pooled with the Greenhouse branch.
-        public int MaxCrops { get; set; }
+        public int MaxArables { get; set; }
         // The real unit-of-work count (Detaljni dizajn R, D2/D3) - a tenant can split one farmParcel into any number of farmParcelZones, so this has to cap zones directly, not parcels.
         public int MaxFarmParcelZones { get; set; }
-        // Concurrently Active sowings (D9) - separate from MaxCrops, which caps how many sowings a tenant can ever create, not how many are open at once.
+        // Concurrently Active sowings (D9) - separate from MaxArables, which caps how many sowings a tenant can ever create, not how many are open at once.
         public int MaxSowingsActive { get; set; }
         // Per device, not organization-wide - DeviceConfigController.Relays.Count on any single device.
         public int MaxControllersPerDevice { get; set; }
@@ -36,7 +36,7 @@ namespace Agrumy.Shared.Models
             MaxFarms = 1,
             MaxUnits = 1,
             MaxZones = 3,
-            MaxCrops = 1,
+            MaxArables = 1,
             MaxFarmParcelZones = 3,
             MaxSowingsActive = 1,
             MaxControllersPerDevice = 1,

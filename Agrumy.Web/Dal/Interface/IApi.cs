@@ -435,23 +435,23 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/Arkod/GeoPackage/SyncNow")]
         Task<ArkodGeoPackageSyncNowResult> ArkodGeoPackageSyncNow();
 
-        [Get("/api/FarmOpenfield/Crop/All")]
-        Task<IList<Sowing>> CropsGet();
+        [Get("/api/FarmOpenfield/Arable/All")]
+        Task<IList<Sowing>> ArablesGet();
 
-        [Get("/api/FarmOpenfield/Crop/Dashboard")]
-        Task<IList<SowingDashboard>> CropDashboardGet();
+        [Get("/api/FarmOpenfield/Arable/Dashboard")]
+        Task<IList<SowingDashboard>> ArableDashboardGet();
 
-        [Get("/api/FarmOpenfield/Crop")]
-        Task<Sowing> CropGet(int? idSowing);
+        [Get("/api/FarmOpenfield/Arable")]
+        Task<Sowing> ArableGet(int? idSowing);
 
-        [Post("/api/FarmOpenfield/Crop")]
-        Task<Sowing> CropAdd([Body] Sowing crop);
+        [Post("/api/FarmOpenfield/Arable")]
+        Task<Sowing> ArableAdd([Body] Sowing crop);
 
-        [Put("/api/FarmOpenfield/Crop")]
-        Task CropUpdate([Body] Sowing crop);
+        [Put("/api/FarmOpenfield/Arable")]
+        Task ArableUpdate([Body] Sowing crop);
 
-        [Delete("/api/FarmOpenfield/Crop")]
-        Task CropDelete(int? idSowing);
+        [Delete("/api/FarmOpenfield/Arable")]
+        Task ArableDelete(int? idSowing);
 
         [Post("/api/FarmOpenfield/Sowing/Start")]
         Task SowingStart([Body] SowingStartRequest request);
@@ -510,7 +510,7 @@ namespace Agrumy.Web.Dal.Interface
         [Get("/api/FarmOpenfield/Parcel")]
         Task<IList<FarmParcelZone>> ParcelsGet(int? idSowing);
 
-        [Get("/api/FarmOpenfield/Crop/Parcel/Dashboard")]
+        [Get("/api/FarmOpenfield/Arable/Parcel/Dashboard")]
         Task<IList<FarmParcelZoneDashboard>> ParcelDashboardListGet(int? idSowing);
 
         [Get("/api/FarmOpenfield/ParcelById")]
@@ -521,26 +521,26 @@ namespace Agrumy.Web.Dal.Interface
         Task<FarmParcelZone> FarmParcelAdd(int idFarm, string farmParcelName);
 
         [Get("/api/FarmOpenfield/ParcelGroup/All")]
-        Task<IList<FarmParcelGroupCrop>> ParcelGroupsGet(int idFarm);
+        Task<IList<FarmParcelGroupArable>> ParcelGroupsGet(int idFarm);
 
         [Post("/api/FarmOpenfield/ParcelGroup")]
-        Task<FarmParcelGroupCrop> ParcelGroupAdd([Body] FarmParcelGroupCrop group);
+        Task<FarmParcelGroupArable> ParcelGroupAdd([Body] FarmParcelGroupArable group);
 
         [Post("/api/FarmOpenfield/ParcelGroup/Rename")]
-        Task ParcelGroupRename(int idFarmParcelGroupCrop, string name);
+        Task ParcelGroupRename(int idFarmParcelGroupArable, string name);
 
         [Delete("/api/FarmOpenfield/ParcelGroup")]
-        Task ParcelGroupDelete(int idFarmParcelGroupCrop);
+        Task ParcelGroupDelete(int idFarmParcelGroupArable);
 
         [Post("/api/FarmOpenfield/ParcelGroup/AddMember")]
-        Task ParcelGroupAddMember(int idFarmParcelGroupCrop, int idFarmParcel);
+        Task ParcelGroupAddMember(int idFarmParcelGroupArable, int idFarmParcel);
 
         [Post("/api/FarmOpenfield/ParcelGroup/RemoveMember")]
-        Task ParcelGroupRemoveMember(int idFarmParcelGroupCrop, int idFarmParcel);
+        Task ParcelGroupRemoveMember(int idFarmParcelGroupArable, int idFarmParcel);
 
         /// The "New sowing" wizard resolves a picked group down to this list before calling SowingStart, same as any manually-picked zone list.
-        [Get("/api/FarmOpenfield/ParcelGroup/{idFarmParcelGroupCrop}/Zones")]
-        Task<IList<int>> ParcelGroupZonesGet(int idFarmParcelGroupCrop);
+        [Get("/api/FarmOpenfield/ParcelGroup/{idFarmParcelGroupArable}/Zones")]
+        Task<IList<int>> ParcelGroupZonesGet(int idFarmParcelGroupArable);
 
         [Put("/api/FarmOpenfield/Parcel")]
         Task ParcelUpdate([Body] FarmParcelZone parcel);
@@ -570,13 +570,13 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/FarmOpenfield/Unassign")]
         Task ParcelDeviceUnassign(int? idDevice);
 
-        [Get("/api/DeviceFarmUnit/Crop/Rule")]
+        [Get("/api/DeviceFarmUnit/Arable/Rule")]
         Task<IList<DeviceFarmUnitZoneRule>> SowingRulesGet(int? idSowing);
 
-        [Post("/api/DeviceFarmUnit/Crop/Rule")]
+        [Post("/api/DeviceFarmUnit/Arable/Rule")]
         Task<RuleAddResult> SowingRuleAdd([Body] DeviceFarmUnitZoneRule rule);
 
-        [Delete("/api/DeviceFarmUnit/Crop/Rule")]
+        [Delete("/api/DeviceFarmUnit/Arable/Rule")]
         Task SowingRuleDelete(int? idDeviceFarmUnitZoneRule);
 
         [Get("/api/DeviceFarmUnit/Parcel/Rule")]

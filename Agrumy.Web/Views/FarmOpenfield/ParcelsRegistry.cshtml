@@ -29,13 +29,13 @@
 <div class="card mb-4">
     <div class="card-body">
         <h6 class="card-title">Total area</h6>
-        <p class="mb-1"><i class="bi bi-flower1 me-1"></i> Crop: @areaLine(Model.CropAreaSummary, "parcels")</p>
+        <p class="mb-1"><i class="bi bi-flower1 me-1"></i> Arable: @areaLine(Model.ArableAreaSummary, "parcels")</p>
         <p class="mb-1"><i class="bi bi-apple me-1"></i> Fruit: no Fruit Plantation module yet.</p>
         <p class="mb-0"><i class="bi bi-house-door me-1"></i> Greenhouse: @areaLine(Model.GreenhouseAreaSummary, "units")</p>
     </div>
 </div>
 
-<h4>Crop</h4>
+<h4>Arable</h4>
 <p class="text-secondary">
     Every Open-Field parcel (and each of its zones, if split) with its readiness for the current season.
     A parcel starts a new season "Not ready" - confirm pre-season field prep (ploughing, discing,
@@ -95,7 +95,7 @@
                             {
                                 bool isMember = group.MemberParcelIds.Contains(parcel.IDFarmParcel!.Value);
                                 <form asp-action="@(isMember ? "ParcelGroupRemoveMember" : "ParcelGroupAddMember")" method="post" class="d-inline">
-                                    <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
+                                    <input type="hidden" name="idFarmParcelGroupArable" value="@group.IDFarmParcelGroupArable" />
                                     <input type="hidden" name="idFarmParcel" value="@parcel.IDFarmParcel" />
                                     <button type="submit" class="btn btn-sm @(isMember ? "btn-outline-success" : "btn-outline-secondary") mb-1" disabled="@isReadOnly">
                                         <i class="bi @(isMember ? "bi-check-square" : "bi-square")"></i> @parcel.FarmParcelName
@@ -103,7 +103,7 @@
                                 </form>
                             }
                             <form asp-action="ParcelGroupDelete" method="post" class="d-inline ms-2">
-                                <input type="hidden" name="idFarmParcelGroupCrop" value="@group.IDFarmParcelGroupCrop" />
+                                <input type="hidden" name="idFarmParcelGroupArable" value="@group.IDFarmParcelGroupArable" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@isReadOnly" data-confirm="Delete this parcel group?"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>

@@ -96,19 +96,19 @@ namespace Agrumy.Dal.Entities
         public DateTimeOffset? ReleasedUtc { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.FarmParcelGroupCrop - always scoped to one Farm, never mixes parcels from different farms.
-    public class FarmParcelGroupCropRow
+    /// See Agrumy.Shared.Models.FarmParcelGroupArable - always scoped to one Farm, never mixes parcels from different farms.
+    public class FarmParcelGroupArableRow
     {
-        public int IDFarmParcelGroupCrop { get; set; }
+        public int IDFarmParcelGroupArable { get; set; }
         public int? TenantID { get; set; }
         public int FarmID { get; set; }
         public string? Name { get; set; }
     }
 
-    /// Static membership only (no assigned/released timestamps, unlike SowingFarmParcelZoneRow) - composite PK (FarmParcelGroupCropID, FarmParcelID).
-    public class FarmParcelGroupCropMemberRow
+    /// Static membership only (no assigned/released timestamps, unlike SowingFarmParcelZoneRow) - composite PK (FarmParcelGroupArableID, FarmParcelID).
+    public class FarmParcelGroupArableMemberRow
     {
-        public int FarmParcelGroupCropID { get; set; }
+        public int FarmParcelGroupArableID { get; set; }
         public int FarmParcelID { get; set; }
     }
 

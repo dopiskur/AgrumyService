@@ -432,7 +432,7 @@ namespace Agrumy.Shared.Models
         /// Same "filter one shared response" role as DeviceFarmUnitZoneID above, for the Open-Field branch.
         public int? SowingID { get; set; }
         public int? FarmParcelZoneID { get; set; }
-        /// The top-level DeviceFarm name, resolved through either branch (Unit->Farm or Crop->FarmOpenfield->Farm) so the Fleet table's single "Farm" column never has to branch on which hierarchy a device is in.
+        /// The top-level DeviceFarm name, resolved through either branch (Unit->Farm or Arable->FarmOpenfield->Farm) so the Fleet table's single "Farm" column never has to branch on which hierarchy a device is in.
         public string? FarmName { get; set; }
         /// Only the relay functions this device has ever reported a state for - empty for a sensor-only device or one whose firmware predates ControllerData.
         public IList<ControllerDataStatus>? RelayStates { get; set; }
@@ -544,7 +544,7 @@ namespace Agrumy.Shared.Models
         public IList<DeviceDto> Devices { get; set; } = [];
     }
 
-    /// A whole Unit/Zone/Crop/Parcel added to a simulation session at once - one set of sensor-override values fanned out to every member device's own DeviceSimulation, editable/removable as a single unit instead of per-device. Same fields as DeviceSimulation (minus the per-device Enabled, implicit here) plus the group's own identity. Only Unit/Zone/Crop/Parcel are valid here (not Farm/Global) - checked at the API layer, not the DB.
+    /// A whole Unit/Zone/Arable/Parcel added to a simulation session at once - one set of sensor-override values fanned out to every member device's own DeviceSimulation, editable/removable as a single unit instead of per-device. Same fields as DeviceSimulation (minus the per-device Enabled, implicit here) plus the group's own identity. Only Unit/Zone/Arable/Parcel are valid here (not Farm/Global) - checked at the API layer, not the DB.
     public class SimulationGroup
     {
         public int? IDSimulationGroup { get; set; }

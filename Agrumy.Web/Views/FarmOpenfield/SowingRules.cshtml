@@ -1,13 +1,13 @@
 @model RuleEditorViewModel
 @{
-    ViewData["Title"] = "Crop rules";
+    ViewData["Title"] = "Arable rules";
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="DeviceFarmUnit" asp-action="Farms">Greenhouse</a></li>
+        <li class="breadcrumb-item"><a asp-action="ArableSeasons">Arable</a></li>
         <li class="breadcrumb-item"><a asp-action="Parcels" asp-route-idSowing="@Model.ScopeId">Parcels</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Crop rules</li>
+        <li class="breadcrumb-item active" aria-current="page">Arable rules</li>
     </ol>
 </nav>
 

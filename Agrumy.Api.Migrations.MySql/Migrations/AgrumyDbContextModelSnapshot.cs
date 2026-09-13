@@ -2043,28 +2043,28 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("farmGroup", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropMemberRow", b =>
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupArableMemberRow", b =>
                 {
-                    b.Property<int>("FarmParcelGroupCropID")
+                    b.Property<int>("FarmParcelGroupArableID")
                         .HasColumnType("int");
 
                     b.Property<int>("FarmParcelID")
                         .HasColumnType("int");
 
-                    b.HasKey("FarmParcelGroupCropID", "FarmParcelID");
+                    b.HasKey("FarmParcelGroupArableID", "FarmParcelID");
 
                     b.HasIndex("FarmParcelID");
 
-                    b.ToTable("farmParcelGroupCropMember", (string)null);
+                    b.ToTable("farmParcelGroupArableMember", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropRow", b =>
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupArableRow", b =>
                 {
-                    b.Property<int>("IDFarmParcelGroupCrop")
+                    b.Property<int>("IDFarmParcelGroupArable")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcelGroupCrop"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDFarmParcelGroupArable"));
 
                     b.Property<int>("FarmID")
                         .HasColumnType("int");
@@ -2076,11 +2076,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int?>("TenantID")
                         .HasColumnType("int");
 
-                    b.HasKey("IDFarmParcelGroupCrop");
+                    b.HasKey("IDFarmParcelGroupArable");
 
                     b.HasIndex("FarmID");
 
-                    b.ToTable("farmParcelGroupCrop", (string)null);
+                    b.ToTable("farmParcelGroupArable", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelRow", b =>
@@ -3245,10 +3245,10 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<bool>("LoRaEnabled")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("MaxControllersPerDevice")
+                    b.Property<int>("MaxArables")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaxCrops")
+                    b.Property<int>("MaxControllersPerDevice")
                         .HasColumnType("int");
 
                     b.Property<int>("MaxDataRetentionDays")
@@ -4113,11 +4113,11 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropMemberRow", b =>
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupArableMemberRow", b =>
                 {
-                    b.HasOne("Agrumy.Dal.Entities.FarmParcelGroupCropRow", null)
+                    b.HasOne("Agrumy.Dal.Entities.FarmParcelGroupArableRow", null)
                         .WithMany()
-                        .HasForeignKey("FarmParcelGroupCropID")
+                        .HasForeignKey("FarmParcelGroupArableID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4128,7 +4128,7 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupCropRow", b =>
+            modelBuilder.Entity("Agrumy.Dal.Entities.FarmParcelGroupArableRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.DeviceFarmRow", null)
                         .WithMany()

@@ -15,7 +15,7 @@ namespace Agrumy.Web.ViewModels
         /// Same Farm scope/rule set as RuleScope.Farm, Notification-only like UnitAlert.
         FarmAlert,
         /// Open-Field's mid-level equivalent of Unit.
-        Crop,
+        Arable,
         /// Open-Field's leaf-level equivalent of Zone.
         Parcel,
     }
@@ -39,7 +39,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleAdd",
             RuleScope.Simulation => "SessionRuleAdd",
             RuleScope.Experiment => "ExperimentRuleAdd",
-            RuleScope.Crop => "SowingRuleAdd",
+            RuleScope.Arable => "SowingRuleAdd",
             RuleScope.Parcel => "FarmParcelZoneRuleAdd",
             _ => "GlobalRuleAdd",
         };
@@ -53,7 +53,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.FarmAlert => "DeviceFarmAlertRuleDelete",
             RuleScope.Simulation => "SessionRuleDelete",
             RuleScope.Experiment => "ExperimentRuleDelete",
-            RuleScope.Crop => "SowingRuleDelete",
+            RuleScope.Arable => "SowingRuleDelete",
             RuleScope.Parcel => "FarmParcelZoneRuleDelete",
             _ => "GlobalRuleDelete",
         };
@@ -66,7 +66,7 @@ namespace Agrumy.Web.ViewModels
             RuleScope.Farm or RuleScope.FarmAlert => "idDeviceFarm",
             RuleScope.Simulation => "idSimulationSession",
             RuleScope.Experiment => "idExperiment",
-            RuleScope.Crop => "idSowing",
+            RuleScope.Arable => "idSowing",
             RuleScope.Parcel => "idFarmParcelZone",
             _ => "",
         };

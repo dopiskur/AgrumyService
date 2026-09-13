@@ -101,7 +101,7 @@
                 </a>
                 <form asp-action="ParcelRename" method="post" class="d-flex gap-1">
                     <input type="hidden" name="idFarmParcelZone" value="@parcel.IDFarmParcelZone" />
-                    <input type="text" name="farmOpenfieldCropParcelName" class="form-control form-control-sm" value="@parcel.FarmParcelZoneName" required maxlength="120" />
+                    <input type="text" name="farmOpenfieldArableParcelName" class="form-control form-control-sm" value="@parcel.FarmParcelZoneName" required maxlength="120" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@isReadOnly">Rename</button>
                 </form>
                 <form asp-action="ParcelDelete" method="post" data-confirm="Delete this parcel? Its devices are unassigned, not deleted.">

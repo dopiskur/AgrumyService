@@ -1,7 +1,7 @@
 @using System.Text.Json
-@model CropSeasonsIndexViewModel
+@model ArableSeasonsIndexViewModel
 @{
-    ViewData["Title"] = "Crop";
+    ViewData["Title"] = "Arable";
     Func<string, bool> hasAnyRole = csv => csv.Split(',').Any(User.IsInRole);
     bool canManage = hasAnyRole(RoleNames.DeviceManagers);
     bool isReadOnly = ViewBag.IsReadOnly is true;
@@ -12,11 +12,11 @@
         f =>
         {
             IList<FarmParcelWithZonesViewModel> farmParcels = Model.AvailableParcelsByFarm.TryGetValue(f.IDDeviceFarm!.Value, out var fp) ? fp : [];
-            IList<FarmParcelGroupCrop> farmGroups = Model.ParcelGroupsByFarm.TryGetValue(f.IDDeviceFarm!.Value, out var fg) ? fg : [];
+            IList<FarmParcelGroupArable> farmGroups = Model.ParcelGroupsByFarm.TryGetValue(f.IDDeviceFarm!.Value, out var fg) ? fg : [];
             return new
             {
                 parcels = farmParcels.SelectMany(pz => pz.Zones.Select(z => new { id = z.IDFarmParcelZone, name = $"{pz.Parcel.FarmParcelName} - {z.FarmParcelZoneName}", locked = z.CurrentSowingID != null })),
-                groups = farmGroups.Select(g => new { id = g.IDFarmParcelGroupCrop, name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))" }),
+                groups = farmGroups.Select(g => new { id = g.IDFarmParcelGroupArable, name = $"{g.Name} ({g.MemberParcelIds.Count} parcel(s))" }),
             };
         }), jsonOpts);
 
@@ -68,7 +68,7 @@
             <div class="card mt-2 sowing-add-form" hidden>
                 <div class="card-header"><h3 class="card-title mb-0">New sowing</h3></div>
                 <div class="card-body">
-                    <form asp-action="CropAdd" method="post" id="sowingAddForm">
+                    <form asp-action="ArableAdd" method="post" id="sowingAddForm">
                         <div class="sowing-wizard-step">
                             @if (Model.Farms.Count > 1)
                             {
@@ -105,7 +105,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Crop / variety</label>
-                                <input type="hidden" name="farmOpenfieldCropName" class="crop-picker-value" />
+                                <input type="hidden" name="farmOpenfieldArableName" class="crop-picker-value" />
                                 <input type="hidden" name="expectedDurationDays" class="crop-picker-duration-value" />
                                 <div class="text-danger small mb-1 crop-picker-error" hidden>Pick a crop first.</div>
 
@@ -312,7 +312,7 @@
 
                         var input = document.createElement('input');
                         input.type = 'hidden';
-                        input.name = item.type === 'group' ? 'farmParcelGroupCropIds' : 'farmParcelZoneIds';
+                        input.name = item.type === 'group' ? 'farmParcelGroupArableIds' : 'farmParcelZoneIds';
                         input.value = item.id;
                         selectedInputsContainer.appendChild(input);
                     });

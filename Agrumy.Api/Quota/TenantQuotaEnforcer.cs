@@ -63,7 +63,7 @@ namespace Agrumy.Api.Quota
             return current >= quota.MaxZones ? LimitMessage : null;
         }
 
-        public async Task<string?> CheckCanAddCropAsync(int? tenantId)
+        public async Task<string?> CheckCanAddArableAsync(int? tenantId)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
             if (quota == null)
@@ -71,7 +71,7 @@ namespace Agrumy.Api.Quota
                 return null;
             }
             int current = (await sowingRepo.SowingsGetAsync(tenantId)).Count;
-            return current >= quota.MaxCrops ? LimitMessage : null;
+            return current >= quota.MaxArables ? LimitMessage : null;
         }
 
         /// Same "not queryable organization-wide, summed across the organization's parcels instead" shape as CheckCanAddZoneAsync, bounded by the organization's small admin-managed Farm/FarmParcel counts. additionalZones lets one call cover an operation that creates more than one zone at once (ParcelSplit replacing 1 zone with N nets N-1 new zones) - a plain "current >= limit" would let a single oversized split through since it never re-checks between the N inserts.
@@ -93,7 +93,7 @@ namespace Agrumy.Api.Quota
             return current + additionalZones > quota.MaxFarmParcelZones ? LimitMessage : null;
         }
 
-        /// D9 - counts only Status==Active sowings, separate from CheckCanAddCropAsync's all-time MaxCrops cap; checked at SowingStartAsync (the Planned->Active transition), not at creation, since a Planned sowing does not yet occupy the "concurrently open" slot.
+        /// D9 - counts only Status==Active sowings, separate from CheckCanAddArableAsync's all-time MaxArables cap; checked at SowingStartAsync (the Planned->Active transition), not at creation, since a Planned sowing does not yet occupy the "concurrently open" slot.
         public async Task<string?> CheckCanStartSowingAsync(int? tenantId)
         {
             TenantQuota? quota = await GetQuotaAsync(tenantId);
