@@ -22,6 +22,20 @@ namespace Agrumy.Shared.Models
         NaturalColor = 6,
     }
 
+    /// Display order for every satellite index picker/checklist in the UI - SwirComposite first (the default view) - kept separate from the enum's own int values, which are already persisted (DefaultIndicesJson, ParcelSatelliteIndexRow) and must not be renumbered.
+    public static class SatelliteIndexDisplayOrder
+    {
+        public static readonly IReadOnlyList<SatelliteIndex> Values =
+        [
+            SatelliteIndex.SwirComposite,
+            SatelliteIndex.Ndvi,
+            SatelliteIndex.Ndmi,
+            SatelliteIndex.Ndwi,
+            SatelliteIndex.Ndsi,
+            SatelliteIndex.NaturalColor,
+        ];
+    }
+
     /// S-B2 - which imagery source an organization reads from, all through the same CdseSentinelHubSource provider (D2); only PlanTier=Paid unlocks anything but Sentinel2.
     public enum SatelliteCollection
     {

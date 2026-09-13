@@ -10,7 +10,7 @@
         [Agrumy.Shared.Models.SatelliteIndex.NaturalColor] = "Plain visual (true color) image",
     };
     var indices = Model.Indices.ToList();
-    var defaultIndex = indices.Contains(Agrumy.Shared.Models.SatelliteIndex.Ndmi) ? Agrumy.Shared.Models.SatelliteIndex.Ndmi : indices.FirstOrDefault();
+    var defaultIndex = indices.Contains(Agrumy.Shared.Models.SatelliteIndex.SwirComposite) ? Agrumy.Shared.Models.SatelliteIndex.SwirComposite : indices.FirstOrDefault();
 }
 <div class="d-flex flex-wrap gap-3 mb-2" data-sat-role="indexPicker">
     @foreach (var index in indices)

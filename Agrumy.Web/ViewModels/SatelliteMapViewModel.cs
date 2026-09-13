@@ -7,7 +7,7 @@ namespace Agrumy.Web.ViewModels
     {
         public required SatelliteMapScope Scope { get; init; }
         public required int Id { get; init; }
-        public IList<SatelliteIndex> AvailableIndices { get; init; } = Enum.GetValues<SatelliteIndex>().ToList();
+        public IList<SatelliteIndex> AvailableIndices { get; init; } = SatelliteIndexDisplayOrder.Values.ToList();
         public bool CanManage { get; init; }
     }
 }

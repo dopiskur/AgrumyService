@@ -55,7 +55,7 @@
 
                 <div data-sat-role="root" data-scope="Parcel" data-id="@idParcel" data-can-manage="@(canManage ? "1" : "0")" hidden></div>
 
-                @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Enum.GetValues<Agrumy.Shared.Models.SatelliteIndex>()))
+                @await Html.PartialAsync("_SatelliteIndexPicker", (mapId, (IEnumerable<Agrumy.Shared.Models.SatelliteIndex>)Agrumy.Shared.Models.SatelliteIndexDisplayOrder.Values))
                 <div class="alert py-1 px-2 small mb-2" data-sat-role="resolutionWarning" hidden></div>
 
                 <div class="d-flex align-items-center gap-2 mb-2">
