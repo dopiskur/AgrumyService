@@ -169,13 +169,14 @@ namespace Agrumy.Web.Controllers.View
 
         // ---- Sowing CRUD --------------------------------------------------
 
-        /// Sjetva wizard (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + EXPECTED end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
+        /// Sjetva wizard (D3/D9): crop (picked from the Horticulture Catalog's Crop entries - wheat/corn + variety, BBCH-staged; resolved/created in the separate lightweight Crop catalog server-side by that same name) + start date + an OPTIONAL expected end date (not a hard deadline, just the estimate ExpectedDurationDays is derived from - falls back to DefaultExpectedDurationDays when left blank, since neither Sowing nor HorticultureCatalogEntry carries a per-crop growth-length default). No field-operation picker here - ploughing/fertilizing/etc. are dnevnik entries added once the sowing exists (FieldLogEntryAdd on the Details page), not part of this form. When the wizard's parcel/group picker supplied individual zones and/or parcel groups, the sowing is created AND started in this one request (group ids resolve to their member parcels' zones, deduplicated against any individually-picked ones) instead of being left Planned for a manual Start step; an empty selection keeps the old create-as-Planned behavior.
         [Authorize(Roles = RoleNames.DeviceManagers)]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly expectedEndDate, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
+        public async Task<ActionResult> CropAdd(int idFarm, string farmOpenfieldCropName, string? variety, DateOnly startDate, DateOnly? expectedEndDate, List<int>? farmParcelZoneIds, List<int>? farmParcelGroupCropIds)
         {
-            int expectedDurationDays = Math.Max(1, expectedEndDate.DayNumber - startDate.DayNumber);
+            const int defaultExpectedDurationDays = 90;
+            int expectedDurationDays = expectedEndDate is DateOnly eed ? Math.Max(1, eed.DayNumber - startDate.DayNumber) : defaultExpectedDurationDays;
             Sowing added = await api.CropAdd(new Sowing
             {
                 FarmID = idFarm,
@@ -205,11 +206,7 @@ namespace Agrumy.Web.Controllers.View
                     TempData["Error"] = ex.Body;
                 }
             }
-            else
-            {
-                TempData["Message"] = "Sowing created.";
-            }
-            return RedirectToAction(nameof(CropSeasons));
+            return RedirectToAction(nameof(Parcels), new { idSowing = added.IDSowing });
         }
 
         [Authorize(Roles = RoleNames.DeviceManagers)]
