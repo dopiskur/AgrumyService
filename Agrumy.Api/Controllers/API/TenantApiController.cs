@@ -216,12 +216,12 @@ namespace Agrumy.Api.Controllers.API
         }
 
         /// Lets the Web layout show a persistent banner without needing the wider TenantReaders role TenantGet requires.
-        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [Authorize(Roles = RoleNames.DeviceManagersOrGlobalReader)]
         [HttpGet("EmergencyStop")]
         public async Task<ActionResult<bool>> EmergencyStopStatus(int? idTenant = null)
         {
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
-            if (!CallerManagesDevices(targetTenantId))
+            if (!CallerReadsDevicesGlobally && !CallerManagesDevices(targetTenantId))
             {
                 return ForbidWith("Emergency stop requires managing devices in this tenant.");
             }

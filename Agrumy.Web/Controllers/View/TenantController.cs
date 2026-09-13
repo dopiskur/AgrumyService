@@ -35,7 +35,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
-        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Edit(int idTenant)
         {
             Tenant tenant = await api.TenantGet(idTenant);
@@ -117,7 +117,7 @@ namespace Agrumy.Web.Controllers.View
         // ---- Quota --------------------------------------------------------
 
         /// The default organization (IDTenant=0) has no configurable quota - GlobalAdmin never reaches this route for it (Index hides the button), but redirect defensively rather than surface a raw 404/400 if it's ever hit directly.
-        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         public async Task<ActionResult> Quota(int idTenant)
         {
             if (idTenant == 0)

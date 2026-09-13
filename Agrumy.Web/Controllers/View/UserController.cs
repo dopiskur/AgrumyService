@@ -180,7 +180,7 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Index));
         }
 
-        [Authorize(Roles = RoleNames.Admins)]
+        [Authorize(Roles = RoleNames.UserManagersOrGlobalReader)]
         public async Task<ActionResult> Roles(int? idUser)
         {
             var user = await api.UserGet(idUser);
@@ -189,7 +189,12 @@ namespace Agrumy.Web.Controllers.View
             {
                 IDUser = idUser.Value,
                 Email = user.Email,
-                AllRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin), await IsTenantManagementEnabledAsync()),
+                // A Global reader can't submit this form (fieldset disabled, see Roles.cshtml) but still needs
+                // the full catalog to see which of a user's roles are actually checked - narrowing it to
+                // Selectable(false, ...) here (the "can this caller grant Global-tier roles" question) would
+                // silently truncate the list to nothing when TenantManagementEnabled is off, hiding assigned
+                // roles instead of just disabling their checkboxes.
+                AllRoles = RoleNames.Selectable(User.IsInRole(RoleNames.GlobalAdmin) || User.IsInRole(RoleNames.GlobalReader), await IsTenantManagementEnabledAsync()),
                 AssignedRoles = assigned,
             });
         }
