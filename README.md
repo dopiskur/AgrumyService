@@ -27,25 +27,6 @@ having to adopt tooling built for the other.
 Agrumy is free, open-source software that runs on hardware priced like
 AliExpress components, not a purpose-built appliance costing thousands.
 
-**.NET 10 SDK required.**
-
-`agrumy.sln` splits into these projects:
-
-| Project | Type | What it is |
-| --- | --- | --- |
-| `Agrumy.Shared` | class library | Models (`api.Models`), `Config`, `Security` (`JwtTokenProvider`, `AuthenticationProvider`). Referenced by both apps. |
-| `Agrumy.Dal` | class library | Data-access model: `AgrumyDbContext`, EF entities (`api.Dal.Entities`), provider selection (`DbProviderKind`, `DbOptionsFactory`). No stored procedures - every query is LINQ. |
-| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), one domain-repository interface per facet (`Dal/Interface/I*Repository`, each implemented by its own `Dal/EfXxxRepository` class - `EfDeviceRepository`, `EfUserRepository`, etc., no single god-class), EF Core over `Agrumy.Dal`, MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + migration/schema bootstrap on an empty or legacy database. |
-| `Agrumy.Web` | MVC app | Admin UI (`Controllers/View`, `Views/`, `wwwroot/`). Talks to `Agrumy.Api` **only over HTTP** (`Dal/ApiRepository` + `HttpClient` with a JWT bearer token). No direct database access. |
-| `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
-| `Agrumy.Rules` | class library | Pure rule-tree evaluation - fold logic, hierarchy precedence, astronomical/day-night resolvers - with no EF Core or ASP.NET Core dependency, only `Agrumy.Shared` model types; mirrors `AgrumyFirmware`'s `RelayLogic.cpp`/`ActuatorController` as a genuinely separate C# runtime rather than sharing code with it. |
-| `Agrumy.Api.Migrations.MySql`, `Agrumy.Api.Migrations.Postgres` | class library | Per-provider EF Core migrations for `AgrumyDbContext` - see "Database & schema provisioning" below for how a schema change gets added to both. |
-| `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
-| `tools/Agrumy.ContractGen`, `tools/Agrumy.MqttCredentialSync` | console apps | Small standalone utilities, not part of the running system - ContractGen regenerates `contracts/device-api/*.schema.json` from the `Agrumy.Shared` DTOs (see "Practical advantages" below); MqttCredentialSync provisions/rotates a device's MQTT broker credentials directly against `Agrumy.Dal`, no `Agrumy.Api` host involved. |
-
-`db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
-is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
-
 ## How it works
 
 1. **Registration.** A device calls `POST /api/Device/Register` with the owning
@@ -137,6 +118,119 @@ several true rules for the same function MAX-fold their percentages together
 instead of a plain OR. Every other relay function still resolves to the same
 0/100 shape underneath, so the fold is one engine, not a special case for the
 positional functions.
+
+## Practical advantages
+
+A handful of smaller, concrete things that make Agrumy easier to trust and
+run day-to-day:
+
+- **Offline-resilient by design.** Relay control runs entirely on-device against
+  its last-saved config (see "Control is local to the device" above) - a lost
+  connection to the API doesn't stop irrigation/climate control, it just delays
+  picking up config changes.
+- **A Farm > Unit > Zone hierarchy with a live dashboard**, or Farm > Crop >
+  Parcel for an Open-Field farm (`api/FarmOpenfield`) - the same dashboard
+  rollup and rule scoping either way. `GET /api/DeviceFarmUnit/Dashboard` rolls
+  up status across an entire fleet of installations, not just one controller.
+- **Fleet-wide commands with server-side fan-out.** `POST /api/DeviceCommand`
+  targets a unit or zone and the server resolves that into the actual set of
+  devices to deliver Reboot/ForceOTA/ForceConfigSync to on their next poll.
+- **Zero-touch device provisioning.** `POST /api/Discovery/Scan` +
+  `POST /api/Discovery/Register` let an already-configured sensor-only device
+  find and register a brand-new one over WiFi, no direct access to the new
+  device needed.
+- **LoRa reach without extra bridge hardware.** A device can relay other
+  LoRa-only nodes' uplinks over its own WiFi connection (`POST
+  /api/Gateway/RelayUplink`), or a dedicated `Agrumy.Gateway` process can do
+  the same over LoRaWAN/ChirpStack or a private radio protocol.
+- **Simulation Mode.** Fully virtual devices, driven by a real background
+  worker calling the real registration/config/sensor endpoints, let a whole
+  fleet be tested and demoed without any physical hardware; a per-device
+  Latitude/Longitude override lets a demo device appear anywhere on the map
+  without touching its real GPS/manual location, reverting automatically the
+  moment the simulation is disabled.
+- **25 native firmware unit tests in CI**, no hardware required
+  (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
+  AND-OR-fold/discovery/LoRa/manual-override/PID/output-kind-dispatch logic is
+  regression-tested on every push, not just checked by hand on a bench; the
+  threshold-evaluation suite runs against a `threshold_vectors.csv` shared
+  verbatim between this repo and `AgrumyFirmware`, so both sides agree on the
+  same inputs/outputs.
+- **Contract-first device↔API.** Every device request/response shape is a JSON
+  Schema in `contracts/device-api/`, checked against both the firmware and the
+  API's actual field usage (`AgrumyFirmware/tools/contract-check`) - firmware and
+  server can't silently drift apart on wire format.
+- **Account export/import and a one-click Emergency Stop.** An account admin can
+  export their whole farm hierarchy (users, devices, rules, optionally sensor
+  history) as a portable ZIP and bring it back in under a different name -
+  useful for migrating between servers or standing up a demo from real data,
+  without server-side access. Emergency Stop forces every actuator in an
+  account off ahead of any rule, pushed immediately rather than waiting for the
+  next config poll, and stays off until explicitly cleared - deliberately a
+  single click with no confirmation step, since hesitation is the wrong default
+  for a safety control.
+- **OTA plus fully offline firmware distribution.** The same firmware catalog
+  that drives normal OTA updates also supports offline USB installs and
+  Local/Custom repository sources - useful anywhere internet access to GitHub
+  isn't guaranteed.
+- **One-line self-hosted install** (see below) - no config file to hand-write,
+  no database to prepare first, safe to re-run.
+- **On-device safety limits, not just server-side policy.** `ActuatorController`
+  enforces cooldown/max-run ordering for every relay function directly on the
+  device, so a bad or delayed config can't leave a pump or heater running
+  unbounded even during an outage.
+- **A predictable, bounded rule model, not a hidden DSL.** See "Automation rule
+  engine" above - fold-based AND/OR conditions and a Zone/Unit/Farm/Global rule
+  hierarchy cover most real automation needs without becoming a general rule
+  engine to learn.
+- **Battery-powered devices as a first-class case**, not an afterthought -
+  battery telemetry, low-battery alerting and deep sleep for sensor-only nodes
+  are built in, not bolted on.
+- **A tiered storage strategy that scales down as well as up.** Plain MySQL/
+  MariaDB for a small deployment, TimescaleDB hypertables for a large one -
+  the same schema and queries either way, chosen by one config value.
+- **A clear vertical focus.** Agrumy isn't trying to be a general home-automation
+  hub - every model and rule is shaped around greenhouse/citrus micro-climate
+  and irrigation specifically, not a generic "IoT platform."
+- **Crop-specific configuration templates.** A Horticulture Catalog (Crop/Fruit/
+  Hydroponic/Perma entries, each a recommended AirTemp/SoilTemp/Humidity/
+  Moisture/Light range, and Crop entries additionally broken down by BBCH
+  growth stage) lets a new zone start from agronomy know-how already built
+  into the product - `POST .../Zone/ApplyHorticultureCatalog` turns a chosen
+  catalog entry straight into a starter set of threshold rules, skipping any
+  that don't fit under the zone's rule-count cap rather than failing outright.
+  A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
+  day threshold + one night threshold for a plain on/off function.
+- **Satellite crop monitoring paired with a real parcel registry.** An
+  Open-Field zone gets Sentinel-2 NDVI/NDMI/NDWI/NDSI trend charts and true-
+  color/SWIR composites (opt-in per account via the Copernicus Data Space
+  Ecosystem, a Paid plan tier unlocking commercial PlanetScope/Pléiades
+  collections) plotted against its own soil-moisture sensor series on the same
+  timeline - and ARKOD, Croatia's public land-parcel registry, lets an admin
+  trace a parcel's real government-recorded boundary onto the map instead of
+  hand-drawing it, backed by an offline GeoPackage mirror so the lookup still
+  works without a live connection to the registry.
+
+## Architecture
+
+**.NET 10 SDK required.**
+
+`agrumy.sln` splits into these projects:
+
+| Project | Type | What it is |
+| --- | --- | --- |
+| `Agrumy.Shared` | class library | Models (`api.Models`), `Config`, `Security` (`JwtTokenProvider`, `AuthenticationProvider`). Referenced by both apps. |
+| `Agrumy.Dal` | class library | Data-access model: `AgrumyDbContext`, EF entities (`api.Dal.Entities`), provider selection (`DbProviderKind`, `DbOptionsFactory`). No stored procedures - every query is LINQ. |
+| `Agrumy.Api` | Web API | Device/sensor communication + admin API (`Controllers/API`), one domain-repository interface per facet (`Dal/Interface/I*Repository`, each implemented by its own `Dal/EfXxxRepository` class - `EfDeviceRepository`, `EfUserRepository`, etc., no single god-class), EF Core over `Agrumy.Dal`, MySQL/MariaDB **or** PostgreSQL, JWT bearer auth, Swagger, startup DB health-check + migration/schema bootstrap on an empty or legacy database. |
+| `Agrumy.Web` | MVC app | Admin UI (`Controllers/View`, `Views/`, `wwwroot/`). Talks to `Agrumy.Api` **only over HTTP** (`Dal/ApiRepository` + `HttpClient` with a JWT bearer token). No direct database access. |
+| `Agrumy.Gateway` | standalone process | Optional LoRa/WiFi-repeater gateway - registers as an ordinary device (`api.Models.Device.IsGateway`), then forwards other devices' Config/SensorData/Event/Command traffic to `Agrumy.Api`'s `GatewayApiController` instead of reporting its own sensors. Three profiles (`GatewayProfile`): WiFi repeater (transparent HTTP forwarder), LoRaWAN via ChirpStack MQTT, or the private (non-LoRaWAN) protocol over a serial-attached RadioLib radio. Not needed at all when a device relays LoRa uplinks over its own WiFi instead (see "Gateway" below). |
+| `Agrumy.Rules` | class library | Pure rule-tree evaluation - fold logic, hierarchy precedence, astronomical/day-night resolvers - with no EF Core or ASP.NET Core dependency, only `Agrumy.Shared` model types; mirrors `AgrumyFirmware`'s `RelayLogic.cpp`/`ActuatorController` as a genuinely separate C# runtime rather than sharing code with it. |
+| `Agrumy.Api.Migrations.MySql`, `Agrumy.Api.Migrations.Postgres` | class library | Per-provider EF Core migrations for `AgrumyDbContext` - see "Database & schema provisioning" below for how a schema change gets added to both. |
+| `Agrumy.Api.Tests` | test project | Integration tests that run the real EF Core stack against both providers in parallel (`AGRUMY_TEST_MYSQL`/`AGRUMY_TEST_POSTGRES` connection strings, both provisioned as CI service containers in `build.yml`), `WebApplicationFactory`-driven HTTP tests covering auth/rate-limiting/exception-handling through the real middleware pipeline, plus unit tests for the alert/schedule/hysteresis evaluators and the rule-engine fold/hierarchy logic. |
+| `tools/Agrumy.ContractGen`, `tools/Agrumy.MqttCredentialSync` | console apps | Small standalone utilities, not part of the running system - ContractGen regenerates `contracts/device-api/*.schema.json` from the `Agrumy.Shared` DTOs (see "Practical advantages" above); MqttCredentialSync provisions/rotates a device's MQTT broker credentials directly against `Agrumy.Dal`, no `Agrumy.Api` host involved. |
+
+`db/migrations/baseline.sql` documents the pre-EF schema for reference only - the schema
+is now owned by the `AgrumyDbContext` model and applied via EF Core migrations.
 
 ## Quickstart
 
@@ -539,98 +633,6 @@ next step - not required today.
 | `GET /api/health` | no auth | Liveness probe (DB + cache-backend checks) for a load balancer or an auto-update rollback step; reports the deployed build's version and commit |
 | `GET /api/metrics` | Metrics readers (Global admin/reader, or an account's own data-reader role) | Per-route+method request count/error count/avg/min/max duration, from an in-memory aggregate |
 | `GET /api/metrics/prometheus` | Metrics readers | The same counters exposed as a Prometheus scrape endpoint (OpenTelemetry exporter on the same `Agrumy.Api` meter) |
-
-## Practical advantages
-
-Beyond the architecture points above, a handful of smaller, concrete
-things that make Agrumy easier to trust and run day-to-day:
-
-- **Offline-resilient by design.** Relay control runs entirely on-device against
-  its last-saved config (see "Control is local to the device" above) - a lost
-  connection to the API doesn't stop irrigation/climate control, it just delays
-  picking up config changes.
-- **A Farm > Unit > Zone hierarchy with a live dashboard**, or Farm > Crop >
-  Parcel for an Open-Field farm (`api/FarmOpenfield`) - the same dashboard
-  rollup and rule scoping either way. `GET /api/DeviceFarmUnit/Dashboard` rolls
-  up status across an entire fleet of installations, not just one controller.
-- **Fleet-wide commands with server-side fan-out.** `POST /api/DeviceCommand`
-  targets a unit or zone and the server resolves that into the actual set of
-  devices to deliver Reboot/ForceOTA/ForceConfigSync to on their next poll.
-- **Zero-touch device provisioning.** `POST /api/Discovery/Scan` +
-  `POST /api/Discovery/Register` let an already-configured sensor-only device
-  find and register a brand-new one over WiFi, no direct access to the new
-  device needed.
-- **LoRa reach without extra bridge hardware.** A device can relay other
-  LoRa-only nodes' uplinks over its own WiFi connection (`POST
-  /api/Gateway/RelayUplink`), or a dedicated `Agrumy.Gateway` process can do
-  the same over LoRaWAN/ChirpStack or a private radio protocol.
-- **Simulation Mode.** Fully virtual devices, driven by a real background
-  worker calling the real registration/config/sensor endpoints, let a whole
-  fleet be tested and demoed without any physical hardware; a per-device
-  Latitude/Longitude override lets a demo device appear anywhere on the map
-  without touching its real GPS/manual location, reverting automatically the
-  moment the simulation is disabled.
-- **25 native firmware unit tests in CI**, no hardware required
-  (`AgrumyFirmware/test/test_native_*`) - relay/hysteresis/schedule/safety-limit/
-  AND-OR-fold/discovery/LoRa/manual-override/PID/output-kind-dispatch logic is
-  regression-tested on every push, not just checked by hand on a bench; the
-  threshold-evaluation suite runs against a `threshold_vectors.csv` shared
-  verbatim between this repo and `AgrumyFirmware`, so both sides agree on the
-  same inputs/outputs.
-- **Contract-first device↔API.** Every device request/response shape is a JSON
-  Schema in `contracts/device-api/`, checked against both the firmware and the
-  API's actual field usage (`AgrumyFirmware/tools/contract-check`) - firmware and
-  server can't silently drift apart on wire format.
-- **Account export/import and a one-click Emergency Stop.** An account admin can
-  export their whole farm hierarchy (users, devices, rules, optionally sensor
-  history) as a portable ZIP and bring it back in under a different name -
-  useful for migrating between servers or standing up a demo from real data,
-  without server-side access. Emergency Stop forces every actuator in an
-  account off ahead of any rule, pushed immediately rather than waiting for the
-  next config poll, and stays off until explicitly cleared - deliberately a
-  single click with no confirmation step, since hesitation is the wrong default
-  for a safety control.
-- **OTA plus fully offline firmware distribution.** The same firmware catalog
-  that drives normal OTA updates also supports offline USB installs and
-  Local/Custom repository sources - useful anywhere internet access to GitHub
-  isn't guaranteed.
-- **One-line self-hosted install** (see below) - no config file to hand-write,
-  no database to prepare first, safe to re-run.
-- **On-device safety limits, not just server-side policy.** `ActuatorController`
-  enforces cooldown/max-run ordering for every relay function directly on the
-  device, so a bad or delayed config can't leave a pump or heater running
-  unbounded even during an outage.
-- **A predictable, bounded rule model, not a hidden DSL.** See "Automation rule
-  engine" above - fold-based AND/OR conditions and a Zone/Unit/Farm/Global rule
-  hierarchy cover most real automation needs without becoming a general rule
-  engine to learn.
-- **Battery-powered devices as a first-class case**, not an afterthought -
-  battery telemetry, low-battery alerting and deep sleep for sensor-only nodes
-  are built in, not bolted on.
-- **A tiered storage strategy that scales down as well as up.** Plain MySQL/
-  MariaDB for a small deployment, TimescaleDB hypertables for a large one -
-  the same schema and queries either way, chosen by one config value.
-- **A clear vertical focus.** Agrumy isn't trying to be a general home-automation
-  hub - every model and rule is shaped around greenhouse/citrus micro-climate
-  and irrigation specifically, not a generic "IoT platform."
-- **Crop-specific configuration templates.** A Horticulture Catalog (Crop/Fruit/
-  Hydroponic/Perma entries, each a recommended AirTemp/SoilTemp/Humidity/
-  Moisture/Light range, and Crop entries additionally broken down by BBCH
-  growth stage) lets a new zone start from agronomy know-how already built
-  into the product - `POST .../Zone/ApplyHorticultureCatalog` turns a chosen
-  catalog entry straight into a starter set of threshold rules, skipping any
-  that don't fit under the zone's rule-count cap rather than failing outright.
-  A separate `POST .../Zone/ApplyDayNightPreset` covers the simpler case of one
-  day threshold + one night threshold for a plain on/off function.
-- **Satellite crop monitoring paired with a real parcel registry.** An
-  Open-Field zone gets Sentinel-2 NDVI/NDMI/NDWI/NDSI trend charts and true-
-  color/SWIR composites (opt-in per account via the Copernicus Data Space
-  Ecosystem, a Paid plan tier unlocking commercial PlanetScope/Pléiades
-  collections) plotted against its own soil-moisture sensor series on the same
-  timeline - and ARKOD, Croatia's public land-parcel registry, lets an admin
-  trace a parcel's real government-recorded boundary onto the map instead of
-  hand-drawing it, backed by an offline GeoPackage mirror so the lookup still
-  works without a live connection to the registry.
 
 ## Self-hosted install
 
