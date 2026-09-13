@@ -56,7 +56,6 @@
     // children use below, so navigating straight to a child (not via the group header) still shows
     // it expanded instead of hiding the very page you're on.
     bool farmingOpen = navActive("FarmGroup") == "active" || navActiveAction("FarmOpenfield", "CropSeasons") == "active" || navActive("Fruit") == "active"
-        || string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) && navActive("DeviceFarmUnit") == "active"
         || navActiveAction("FarmOpenfield", "ParcelsRegistry") == "active" || navActive("Satellite") == "active";
     bool fleetOpen = navActive("Device") == "active" || navActive("Firmware") == "active" || navActive("WifiConfig") == "active" || navActive("Gateway") == "active";
     bool scientificOpen = navActive("Simulation") == "active" || navActive("Experiment") == "active";
@@ -184,7 +183,7 @@
                         @* Farm Groups is the cross-cutting overview above Farm (spans FarmType); Crop/Fruit/Greenhouse/Parcels/Satellite are all crop- or field-monitoring domains - no "Open-Field farming"/"Farms" parent item itself (removed, see FarmGroup and the Crop page's own inline Add-Farm form for where those capabilities live now), just this group. *@
                         <li class="nav-item @(farmingOpen ? "menu-open" : "")">
                             <a href="#" class="nav-link" data-lte-toggle="treeview" role="button">
-                                <i class="nav-icon bi bi-tree"></i>
+                                <i class="nav-icon bi bi-flower2"></i>
                                 <p>
                                     @Localizer["Farming"]
                                     <i class="nav-arrow bi bi-chevron-right"></i>
@@ -210,12 +209,6 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
-                                        <i class="nav-icon bi bi-house-door"></i>
-                                        <p>@Localizer["Greenhouse"]</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
                                     <a asp-area="" asp-controller="FarmOpenfield" asp-action="ParcelsRegistry" class="nav-link @navActiveAction("FarmOpenfield", "ParcelsRegistry")">
                                         <i class="nav-icon bi bi-map"></i>
                                         <p>@Localizer["Parcels"]</p>
@@ -231,6 +224,13 @@
                                     </li>
                                 }
                             </ul>
+                        </li>
+
+                        <li class="nav-item">
+                            <a asp-area="" asp-controller="DeviceFarmUnit" asp-action="Farms" class="nav-link @(string.Equals(currentAction, "Farms", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                                <i class="nav-icon bi bi-house-door"></i>
+                                <p>@Localizer["Greenhouse"]</p>
+                            </a>
                         </li>
 
                         <li class="nav-item @(fleetOpen ? "menu-open" : "")">
