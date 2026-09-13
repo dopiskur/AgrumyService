@@ -128,8 +128,38 @@ namespace Agrumy.Api.Dal
             await SyncDevicesAsync(zoneIds, null);
         }
 
-        public async Task SowingDeleteAsync(int idSowing) =>
+        public async Task SowingDeleteAsync(int idSowing)
+        {
+            // Release any zones still occupied first (same cleanup as SowingCloseAsync) so no Device.SowingID/FarmParcelZone.CurrentSowingID is left pointing at a row about to disappear.
+            var occupied = await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing && l.ReleasedUtc == null).ToListAsync();
+            if (occupied.Count > 0)
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                List<int> zoneIds = occupied.Select(l => l.FarmParcelZoneID).ToList();
+                foreach (var link in occupied)
+                {
+                    link.ReleasedUtc = now;
+                }
+                await db.FarmParcelZones.Where(z => zoneIds.Contains(z.IDFarmParcelZone))
+                    .ExecuteUpdateAsync(set => set.SetProperty(z => z.CurrentSowingID, (int?)null));
+                await db.SaveChangesAsync();
+                await SyncDevicesAsync(zoneIds, null);
+            }
+
+            // App-level cleanup for every DeleteBehavior.NoAction FK a Sowing can carry - same "cascade wins" precedent as EfDeviceFarmUnitRepository.DeviceFarmUnitZoneDeleteAsync.
+            var ruleIds = await db.DeviceFarmUnitZoneRules.AsNoTracking().Where(r => r.DeviceSowingID == idSowing).Select(r => r.IDDeviceFarmUnitZoneRule).ToListAsync();
+            await db.RuleNotificationStates.Where(s => ruleIds.Contains(s.RuleID)).ExecuteDeleteAsync();
+            await db.DeviceFarmUnitZoneRules.Where(r => r.DeviceSowingID == idSowing).ExecuteDeleteAsync();
+
+            var fieldLogIds = await db.FieldLogEntries.AsNoTracking().Where(f => f.SowingID == idSowing).Select(f => f.IDFieldLogEntry).ToListAsync();
+            await db.FieldLogAttachments.Where(a => fieldLogIds.Contains(a.FieldLogEntryID)).ExecuteDeleteAsync();
+            await db.FieldLogEntries.Where(f => f.SowingID == idSowing).ExecuteDeleteAsync();
+
+            await db.HarvestResults.Where(h => h.SowingID == idSowing).ExecuteDeleteAsync();
+            await db.SowingFarmParcelZones.Where(l => l.SowingID == idSowing).ExecuteDeleteAsync();
+
             await db.Sowings.Where(s => s.IDSowing == idSowing).ExecuteDeleteAsync();
+        }
 
         public async Task<Sowing> SowingRestoreAsync(Sowing sowing, IReadOnlyList<int> occupiedFarmParcelZoneIds)
         {
