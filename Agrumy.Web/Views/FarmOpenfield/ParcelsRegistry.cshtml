@@ -46,7 +46,7 @@
     @if (Model.Farms.Count == 0)
     {
         <p class="text-secondary">
-            No Open-Field farms yet - <a asp-action="Index">add one</a> before adding a parcel.
+            No Open-Field farms yet - <a asp-controller="FarmGroup" asp-action="Index">add one</a> before adding a parcel.
         </p>
     }
     else
