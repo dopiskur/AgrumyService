@@ -45,7 +45,7 @@ namespace Agrumy.Shared.Models
         public string? CommercialCollectionId { get; set; }
         public List<SatelliteIndex> DefaultIndices { get; set; } = [];
         public int MaxCloudPercent { get; set; } = 40;
-        public int MinValidPixelPercent { get; set; } = 70;
+        public int MinValidPixelPercent { get; set; } = 30;
         public bool Enabled { get; set; }
         public DateTimeOffset? LastTokenIssuedUtc { get; set; }
         public string? LastQuotaSnapshotJson { get; set; }
