@@ -48,4 +48,8 @@ function startLiveRefresh({ url, applyHtml, intervalMs = 10000 }) {
     if (!document.hidden) {
         start();
     }
+
+    // Lets an unrelated action elsewhere on the page (e.g. a toggle that just changed a row) force an
+    // immediate refresh instead of waiting out the poll interval.
+    return { refresh };
 }

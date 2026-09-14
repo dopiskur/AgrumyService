@@ -87,6 +87,37 @@ namespace Agrumy.Web.Controllers.View
             return RedirectToAction(nameof(Fleet));
         }
 
+        /// Backs the Fleet table's Model column "Set"/"Change" button - a narrower one-field counterpart to Edit/Advanced's full form, same reasoning as QuickSettings.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SetDeviceType(int idDevice, int? manualDeviceTypeID)
+        {
+            DeviceDto device = await api.DeviceGet(idDevice);
+            device.ManualDeviceTypeID = manualDeviceTypeID;
+            await api.DeviceUpdate(device);
+            return RedirectToAction(nameof(Fleet));
+        }
+
+        /// Backs the Fleet table's Enabled toggle switch - fetched via fleet-row-actions.js, returns a bare status code (no redirect) since the caller patches the row itself.
+        [Authorize(Roles = RoleNames.DeviceManagers)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SetEnabled(int idDevice, bool enabled)
+        {
+            try
+            {
+                DeviceDto device = await api.DeviceGet(idDevice);
+                device.Enabled = enabled;
+                await api.DeviceUpdate(device);
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode((int)ex.StatusCode, ex.Body);
+            }
+        }
+
         private async Task<IList<DeviceFleetStatus>> GetFleetForDisplayAsync()
         {
             IList<DeviceFleetStatus> fleet = await api.DeviceFleetGet();

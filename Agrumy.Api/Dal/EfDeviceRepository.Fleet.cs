@@ -236,6 +236,8 @@ namespace Agrumy.Api.Dal
                     FirmwareVersion = r.Diag?.FirmwareVersion,
                     Board = r.Diag?.Board,
                     Kit = r.Diag?.DeviceTypeID is int diagTypeId && deviceTypesById.TryGetValue(diagTypeId, out var diagType) ? diagType.Kit : null,
+                    ManualDeviceTypeID = r.Device.ManualDeviceTypeID,
+                    ManualDeviceTypeKit = r.Device.ManualDeviceTypeID is int manualTypeId && deviceTypesById.TryGetValue(manualTypeId, out var manualType) ? manualType.Kit : null,
                     // Admin's explicit DeviceControllerEnabled choice always wins if set - a recognized DeviceType only adds capability, never takes it away. ManualDeviceTypeID is the fallback for a device whose firmware never auto-reports one; the diagnostic-reported DeviceTypeID takes priority whenever both are set.
                     ControllerCapable = r.Device.DeviceControllerEnabled == true
                         || ((r.Diag?.DeviceTypeID ?? r.Device.ManualDeviceTypeID) is int effectiveTypeId && deviceTypesById.TryGetValue(effectiveTypeId, out var effectiveType) && effectiveType.ControllerCapable),

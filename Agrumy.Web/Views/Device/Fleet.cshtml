@@ -42,6 +42,7 @@
             <thead>
                 <tr>
                     <th>Device</th>
+                    <th>Model</th>
                     <th>Farm</th>
                     <th>Status</th>
                     <th class="d-none d-md-table-cell">Enabled</th>
@@ -153,6 +154,43 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="setModelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Device" asp-action="SetDeviceType" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Set device model</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="idDevice" id="setModelDeviceId" />
+                    @if (Model.DeviceTypes.Count == 0)
+                    {
+                        <p class="text-secondary mb-0">No models in the catalog yet.</p>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="setModelSelect">Model</label>
+                            <select class="form-select" name="manualDeviceTypeID" id="setModelSelect">
+                                <option value="">-- not set --</option>
+                                @foreach (var deviceType in Model.DeviceTypes)
+                                {
+                                    <option value="@deviceType.IDDeviceType">@deviceType.Kit</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@(isReadOnly || Model.DeviceTypes.Count == 0)">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <script type="application/json" id="assignZonesData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Zones.Select(z => new { id = z.IDDeviceFarmUnitZone, unitId = z.DeviceFarmUnitID, name = z.DeviceFarmUnitZoneName })))</script>
 
 @section Scripts {
@@ -175,7 +213,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             fleetTable = initFleetTable();
 
-            startLiveRefresh({
+            var fleetLiveRefresh = startLiveRefresh({
                 url: '@Url.Action("FleetRows")',
                 applyHtml: function (html) {
                     fleetTable.destroy();
@@ -183,6 +221,9 @@
                     fleetTable = initFleetTable();
                 }
             });
+            // fleet-row-actions.js calls this after an Enabled toggle succeeds - the Status badge in
+            // the same row depends on Enabled too, so a full row refresh beats hand-patching one cell.
+            window.onFleetRowsChanged = fleetLiveRefresh.refresh;
 
             var zones = JSON.parse(document.getElementById('assignZonesData').textContent);
             function populateZonesInto(select, unitId) {
@@ -223,6 +264,19 @@
                     populateZonesInto(registerZoneSelect, '');
                 }
             });
+
+            var setModelModal = document.getElementById('setModelModal');
+            if (setModelModal)
+            {
+                setModelModal.addEventListener('show.bs.modal', function (event) {
+                    document.getElementById('setModelDeviceId').value = event.relatedTarget.getAttribute('data-device-id');
+                    var select = document.getElementById('setModelSelect');
+                    if (select)
+                    {
+                        select.value = event.relatedTarget.getAttribute('data-current-type-id') || '';
+                    }
+                });
+            }
         });
     </script>
 }

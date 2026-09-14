@@ -55,7 +55,15 @@ namespace Agrumy.Api.Dal
                     DateReported = r.DateReported,
                 }).ToListAsync();
 
-            return DiscoveryResultPicker.Pick(reports);
+            // Once a discovered AP is actually registered (Discovery/Register, or the owner just walked through its own captive portal), its MacAddress now exists as a real device row - the scan report is stale noise at that point, not a pending action, so it must not keep showing up here.
+            HashSet<string> registeredMacs = (await db.Devices.AsNoTracking()
+                .Select(d => d.MacAddress)
+                .Where(m => m != null)
+                .ToListAsync())
+                .Select(m => m!.ToUpperInvariant())
+                .ToHashSet();
+
+            return DiscoveryResultPicker.Pick(reports.Where(r => !registeredMacs.Contains(r.DiscoveredApMac.ToUpperInvariant())).ToList());
         }
 
         public async Task<DiscoveryResult?> DiscoveryResultGetAsync(string discoveredApMac, int? tenantId)

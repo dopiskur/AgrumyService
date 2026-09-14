@@ -30,6 +30,23 @@
         @if (!zoneScoped)
         {
             <td>
+                @if (!string.IsNullOrEmpty(item.Kit))
+                {
+                    @item.Kit
+                }
+                else
+                {
+                    @if (!string.IsNullOrEmpty(item.ManualDeviceTypeKit))
+                    {
+                        <span class="text-secondary me-1">@item.ManualDeviceTypeKit</span>
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-secondary fleet-set-model-btn" data-bs-toggle="modal" data-bs-target="#setModelModal"
+                            data-device-id="@item.IDDevice" data-current-type-id="@item.ManualDeviceTypeID" disabled="@isReadOnly">
+                        @(string.IsNullOrEmpty(item.ManualDeviceTypeKit) ? "Set" : "Change")
+                    </button>
+                }
+            </td>
+            <td>
                 @if (item.DeviceFarmUnitID is null && item.FarmParcelZoneID is null)
                 {
                     <button type="button" class="btn btn-sm btn-outline-primary fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
@@ -62,7 +79,12 @@
                 <span class="badge text-bg-danger fleet-status-badge">Offline</span>
             }
         </td>
-        <td class="d-none d-md-table-cell">@(item.Enabled == true ? "Yes" : "No")</td>
+        <td class="d-none d-md-table-cell">
+            <div class="form-check form-switch mb-0">
+                <input type="checkbox" class="form-check-input" role="switch" data-fleet-enabled-toggle
+                       data-device-id="@item.IDDevice" checked="@(item.Enabled == true)" disabled="@isReadOnly" />
+            </div>
+        </td>
         <td class="d-none d-md-table-cell">
             @if (FleetRowDisplay.IsOffline(item))
             {

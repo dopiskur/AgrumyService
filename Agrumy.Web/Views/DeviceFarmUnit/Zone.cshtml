@@ -476,12 +476,14 @@
     <script src="~/js/live-refresh.js"></script>
     <script nonce="@Context.CspNonce()">
         document.addEventListener('DOMContentLoaded', function () {
-            startLiveRefresh({
+            var zoneLiveRefresh = startLiveRefresh({
                 url: '@Url.Action("ZoneDetails", new { idDeviceFarmUnitZone = zone.IDDeviceFarmUnitZone })',
                 applyHtml: function (html) {
                     document.getElementById('zoneDetails').innerHTML = html;
                 }
             });
+            // fleet-row-actions.js calls this after an Enabled toggle succeeds in the devices table below.
+            window.onFleetRowsChanged = zoneLiveRefresh.refresh;
 
             var registerModal = document.getElementById('registerDeviceModal');
             if (registerModal)

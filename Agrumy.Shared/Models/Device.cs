@@ -434,6 +434,9 @@ namespace Agrumy.Shared.Models
         public bool IsVirtual { get; set; }
         // Commercial board last reported in the heartbeat; empty = generic chip-target, null = never reported.
         public string? Kit { get; set; }
+        // Admin's manual fallback pick (Device.ManualDeviceTypeID) - the Fleet table's Model column falls back to this only while Kit above is unset, matching ControllerCapable's own precedence below.
+        public int? ManualDeviceTypeID { get; set; }
+        public string? ManualDeviceTypeKit { get; set; }
         // True when the device has real relay hardware - admin set DeviceRole to Sensor+Controller, or Kit maps to a deviceTypeKit board with relays; drives the Web UI's Controller tab.
         public bool ControllerCapable { get; set; }
         // Lets the Web layer filter one shared DeviceFleetGet() response down to a single zone's devices (DeviceFarmUnitController.ZoneDetails) instead of a second endpoint.

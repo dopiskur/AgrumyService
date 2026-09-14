@@ -1037,6 +1037,38 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.NotNull(back);
     }
 
+    // Once a discovered AP's MAC becomes a real registered device row, the scan report is stale noise, not a pending action - it must stop showing up in "Discovered devices".
+    [SkippableTheory, MemberData(nameof(Providers))]
+    public async Task DiscoveryResultsGet_ExcludesAnApMac_OnceItIsARegisteredDevice(DbProviderKind provider)
+    {
+        var t = Use(provider);
+        var (tenantId, _, _) = await MakeUser(t);
+        var scanner = await MakeDevice(t, tenantId);
+        string discoveredMac = U();
+
+        await _repo.DiscoveryReportAddAsync(scanner.IDDevice!.Value, discoveredMac, -55);
+
+        var beforeRegistration = await _repo.DiscoveryResultsGetAsync(tenantId, null, null);
+        Assert.Contains(beforeRegistration, r => r.DiscoveredApMac == discoveredMac);
+
+        var newlyRegistered = new Device
+        {
+            TenantID = tenantId,
+            DeviceRoleID = t.DeviceRoleId,
+            DeviceTypeServiceID = 1,
+            ConfigVersion = 1,
+            DeviceName = "dev_" + U(),
+            MacAddress = discoveredMac,
+            ApiId = Guid.NewGuid().ToString(),
+            ApiKey = Guid.NewGuid().ToString(),
+            ServicePoint = "api.agrumy.com",
+        };
+        await _repo.DeviceAddAsync(newlyRegistered);
+
+        var afterRegistration = await _repo.DiscoveryResultsGetAsync(tenantId, null, null);
+        Assert.DoesNotContain(afterRegistration, r => r.DiscoveredApMac == discoveredMac);
+    }
+
     [SkippableTheory, MemberData(nameof(Providers))]
     public async Task DeviceGet_Lookups_Are_Tenant_Scoped(DbProviderKind provider)
     {
