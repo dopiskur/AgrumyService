@@ -33,19 +33,21 @@
             <p class="text-secondary">@Model.Entry.Description</p>
         }
 
-        <h5>Base parameter ranges</h5>
-        <div class="table-responsive mb-4">
-            <table class="table table-sm table-bordered" style="max-width:48rem">
-                <tbody>
-                    <tr><th>Air Temp (°C)</th><td>@Range(Model.Entry.AirTempMin, Model.Entry.AirTempMax)</td><th>Soil Temp (°C)</th><td>@Range(Model.Entry.SoilTempMin, Model.Entry.SoilTempMax)</td></tr>
-                    <tr><th>Air Humidity (%)</th><td>@Range(Model.Entry.AirHumidityMin, Model.Entry.AirHumidityMax)</td><th>Soil Moisture (%)</th><td>@Range(Model.Entry.SoilMoistureMin, Model.Entry.SoilMoistureMax)</td></tr>
-                    <tr><th>Light (lx)</th><td>@Range(Model.Entry.LightMin, Model.Entry.LightMax)</td><th>Soil pH <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilPHMin, Model.Entry.SoilPHMax)</td></tr>
-                    <tr><th>Soil EC <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilECMin, Model.Entry.SoilECMax)</td><th>CO2 (ppm) <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.Co2Min, Model.Entry.Co2Max)</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        @if (Model.Entry.GrowthStages.Count > 0)
+        @if (Model.Entry.GrowthStages.Count == 0)
+        {
+            <h5>Base parameter ranges</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-bordered" style="max-width:48rem">
+                    <tbody>
+                        <tr><th>Air Temp (°C)</th><td>@Range(Model.Entry.AirTempMin, Model.Entry.AirTempMax)</td><th>Soil Temp (°C)</th><td>@Range(Model.Entry.SoilTempMin, Model.Entry.SoilTempMax)</td></tr>
+                        <tr><th>Air Humidity (%)</th><td>@Range(Model.Entry.AirHumidityMin, Model.Entry.AirHumidityMax)</td><th>Soil Moisture (%)</th><td>@Range(Model.Entry.SoilMoistureMin, Model.Entry.SoilMoistureMax)</td></tr>
+                        <tr><th>Light (lx)</th><td>@Range(Model.Entry.LightMin, Model.Entry.LightMax)</td><th>Soil pH <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilPHMin, Model.Entry.SoilPHMax)</td></tr>
+                        <tr><th>Soil EC <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.SoilECMin, Model.Entry.SoilECMax)</td><th>CO2 (ppm) <span class="text-muted small">(reference)</span></th><td>@Range(Model.Entry.Co2Min, Model.Entry.Co2Max)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
         {
             <h5>BBCH growth stages</h5>
             <p class="text-secondary small">
