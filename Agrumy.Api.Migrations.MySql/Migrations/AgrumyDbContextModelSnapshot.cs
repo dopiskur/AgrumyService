@@ -1779,6 +1779,18 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int?>("RainLevel")
                         .HasColumnType("int");
 
+                    b.Property<double?>("SimulatedOutdoorHumidity")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SimulatedOutdoorPressure")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SimulatedOutdoorTemperature")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("SimulatedOutdoorWind")
+                        .HasColumnType("double");
+
                     b.Property<double?>("SoilTemperature")
                         .HasColumnType("double");
 
@@ -3001,6 +3013,9 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int?>("WaterPumpMaxRunSeconds")
                         .HasColumnType("int");
 
+                    b.Property<string>("WeatherApiKey")
+                        .HasColumnType("longtext");
+
                     b.Property<double?>("WeatherLocationLat")
                         .HasColumnType("double");
 
@@ -3464,43 +3479,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.ToTable("tenantUsageSnapshot", (string)null);
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.TenantWeatherStateRow", b =>
-                {
-                    b.Property<int>("TenantID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("FrostPredicted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int?>("FrostPredictedHoursAhead")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("OutdoorCheckedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<double?>("OutdoorHumidityPercent")
-                        .HasColumnType("double");
-
-                    b.Property<double?>("OutdoorTemperatureC")
-                        .HasColumnType("double");
-
-                    b.Property<double?>("OutdoorWindSpeedMetersPerSecond")
-                        .HasColumnType("double");
-
-                    b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("WeatherRainPredicted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.HasKey("TenantID");
-
-                    b.ToTable("tenantWeatherState", (string)null);
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.TenantWifiConfigRow", b =>
                 {
                     b.Property<int>("IDTenantWifiConfig")
@@ -3714,6 +3692,61 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.HasIndex("UserRoleID");
 
                     b.ToTable("userUserRole", (string)null);
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.WeatherLocationStateRow", b =>
+                {
+                    b.Property<int>("IDWeatherLocationState")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("IDWeatherLocationState"));
+
+                    b.Property<DateTimeOffset?>("FrostCheckedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("FrostPredicted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("FrostPredictedHoursAhead")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
+
+                    b.Property<DateTimeOffset?>("OutdoorCheckedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<double?>("OutdoorHumidityPercent")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("OutdoorPressureHpa")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("OutdoorTemperatureC")
+                        .HasColumnType("double");
+
+                    b.Property<double?>("OutdoorWindSpeedMetersPerSecond")
+                        .HasColumnType("double");
+
+                    b.Property<int>("TenantID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("WeatherCheckedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("WeatherRainPredicted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.HasKey("IDWeatherLocationState");
+
+                    b.HasIndex("TenantID", "Latitude", "Longitude")
+                        .IsUnique();
+
+                    b.ToTable("weatherLocationState", (string)null);
                 });
 
             modelBuilder.Entity("Agrumy.Dal.Entities.WebhookSsrfAllowlistEntryRow", b =>
@@ -4398,15 +4431,6 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Agrumy.Dal.Entities.TenantWeatherStateRow", b =>
-                {
-                    b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
-                        .WithOne()
-                        .HasForeignKey("Agrumy.Dal.Entities.TenantWeatherStateRow", "TenantID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Agrumy.Dal.Entities.UserNotificationPreferenceRow", b =>
                 {
                     b.HasOne("Agrumy.Dal.Entities.UserRow", null)
@@ -4428,6 +4452,15 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                         .WithMany()
                         .HasForeignKey("UserRoleID")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Agrumy.Dal.Entities.WeatherLocationStateRow", b =>
+                {
+                    b.HasOne("Agrumy.Dal.Entities.TenantRow", null)
+                        .WithMany()
+                        .HasForeignKey("TenantID")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

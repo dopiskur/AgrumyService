@@ -178,6 +178,9 @@ namespace Agrumy.Shared.Models
 
     public sealed class WeatherSettings : IServerConfigSection
     {
+        /// Never returned by GET; blank on PUT keeps the stored value - same convention as MqttPassword/EmailPassword/WebhookSecret.
+        [Display(Name = "OpenWeatherMap API key")]
+        public string? WeatherApiKey { get; set; }
         [Display(Name = "Default latitude")]
         public double? WeatherLocationLat { get; set; }
         [Display(Name = "Default longitude")]
@@ -209,6 +212,7 @@ namespace Agrumy.Shared.Models
 
         public void ApplyTo(ServerConfig c)
         {
+            c.WeatherApiKey = WeatherApiKey;
             c.WeatherLocationLat = WeatherLocationLat;
             c.WeatherLocationLon = WeatherLocationLon;
             c.WeatherPollIntervalMinutes = WeatherPollIntervalMinutes;

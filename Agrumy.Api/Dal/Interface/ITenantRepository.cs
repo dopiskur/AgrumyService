@@ -52,16 +52,16 @@ namespace Agrumy.Api.Dal.Interface
 
         Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config);
 
-        /// Never null - an organization with no row yet gets an all-default/false instance (same convention as TenantAlertConfigGetAsync).
-        Task<TenantWeatherState> TenantWeatherStateGetAsync(int idTenant);
+        /// Never null - a (tenant, resolved location) pair with no row yet gets an all-default/false instance (same convention as TenantAlertConfigGetAsync). Latitude/Longitude are rounded to 6 decimals internally, so callers can pass a resolver result straight through.
+        Task<WeatherLocationState> WeatherLocationStateGetAsync(int idTenant, double latitude, double longitude);
 
         /// The only writer of WeatherRainPredicted/WeatherCheckedAtUtc, called exclusively by WeatherEvaluator.
-        Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc);
+        Task WeatherLocationStateSetWeatherAsync(int idTenant, double latitude, double longitude, bool rainPredicted, DateTimeOffset checkedAtUtc);
 
-        /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as TenantWeatherStateSetWeatherAsync.
-        Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc);
+        /// The only writer of FrostPredicted/FrostPredictedHoursAhead/FrostCheckedAtUtc, called exclusively by FrostAlertEvaluator - same isolation reasoning as WeatherLocationStateSetWeatherAsync.
+        Task WeatherLocationStateSetFrostAsync(int idTenant, double latitude, double longitude, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc);
 
-        /// The only writer of OutdoorTemperatureC/OutdoorHumidityPercent/OutdoorWindSpeedMetersPerSecond/OutdoorCheckedAtUtc, called exclusively by WeatherEvaluator - same isolation reasoning as TenantWeatherStateSetWeatherAsync.
-        Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc);
+        /// The only writer of Outdoor*/OutdoorCheckedAtUtc, called exclusively by WeatherEvaluator - same isolation reasoning as WeatherLocationStateSetWeatherAsync.
+        Task WeatherLocationStateSetOutdoorAsync(int idTenant, double latitude, double longitude, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, double? pressureHpa, DateTimeOffset checkedAtUtc);
     }
 }

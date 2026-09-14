@@ -209,6 +209,8 @@ namespace Agrumy.Shared.Models
         OutdoorTemperature = 18,
         OutdoorHumidity = 19,
         OutdoorWind = 20,
+        /// PSEUDO - same OpenWeatherMap source and restrictions as OutdoorTemperature above.
+        OutdoorPressure = 21,
     }
 
     /// What a rule does once its Conditions fold to true - Relay is evaluated on-device (AgrumyFirmware's ActuatorController), Notification is evaluated server-side (Agrumy.Api.BackgroundWorkers.RuleNotificationEvaluator) since firmware has no notification capability.

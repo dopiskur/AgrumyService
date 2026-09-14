@@ -1,3 +1,4 @@
+using Agrumy.Api.Weather;
 using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Tests.TestSupport
@@ -5,6 +6,8 @@ namespace Agrumy.Api.Tests.TestSupport
     /// ISimulationRepository members - forwarded to the standalone EfSimulationRepository so RelationalIntegrationTests can drive many facets through one object.
     internal partial class AllFacetsRepository
     {
+        public Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession) => simulationRepository.SimulationSessionWeatherOverrideGetAsync(idSimulationSession);
+
         public Task VirtualDeviceRegisterAsync(int deviceID) => simulationRepository.VirtualDeviceRegisterAsync(deviceID);
 
         public Task<IList<int>> VirtualDeviceIdsGetAsync() => simulationRepository.VirtualDeviceIdsGetAsync();

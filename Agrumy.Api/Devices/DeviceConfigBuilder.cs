@@ -1,6 +1,7 @@
 using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Firmware;
+using Agrumy.Api.Weather;
 using Agrumy.Rules;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Utils;
@@ -153,10 +154,22 @@ namespace Agrumy.Api.Devices
                     controller.WaterPumpMinLevel = leafNode?.WaterPumpMinLevel;
                     controller.WaterLevelRawEmpty = leafNode?.WaterLevelRawEmpty;
                     controller.WaterLevelRawFull = leafNode?.WaterLevelRawFull;
-                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks. Per-organization, so the lookup is skipped entirely unless the zone actually opted in.
+                    // Computed here as a single AND-NOT gate, not sent as two separate flags - see DeviceConfigController.SkipWaterPumpForRain's remarks. Skipped entirely unless the zone actually opted in, so the extra Unit/Farm/Parcel lookups below only run when they'll matter.
+                    (double Lat, double Lon)? weatherLocation = null;
+                    if (leafNode?.SkipWaterPumpWhenRainPredicted == true)
+                    {
+                        Tenant weatherTenant = tenant ?? new Tenant();
+                        weatherLocation = leafNode is FarmParcelZone parcelZone
+                            ? WeatherLocationResolver.ForParcelZone(parcelZone, await farmParcelRepo.FarmParcelGetByIdAsync(parcelZone.FarmParcelID), weatherTenant, serverConfig)
+                            : WeatherLocationResolver.ForGreenhouseUnit(
+                                idUnit is int gUnitId ? await deviceFarmUnitRepo.DeviceFarmUnitGetByIdAsync(gUnitId) : null,
+                                idFarm is int gFarmId ? await deviceFarmUnitRepo.DeviceFarmGetByIdAsync(gFarmId) : null,
+                                weatherTenant, serverConfig);
+                    }
                     controller.SkipWaterPumpForRain = leafNode?.SkipWaterPumpWhenRainPredicted == true
                         && device.TenantID is int weatherTenantId
-                        && (await tenantRepo.TenantWeatherStateGetAsync(weatherTenantId)).WeatherRainPredicted;
+                        && weatherLocation is (double wLat, double wLon)
+                        && (await tenantRepo.WeatherLocationStateGetAsync(weatherTenantId, wLat, wLon)).WeatherRainPredicted;
                     controller.HeatingFailSafePolicy = leafNode?.HeatingFailSafePolicy;
 
                     // Only what's still active (not yet past ExpiresAtUtc) rides along; a naturally-expired command simply stops appearing on the next poll, no explicit "stop" needed.

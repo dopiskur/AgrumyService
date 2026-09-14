@@ -30,7 +30,7 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-database" type="button" role="tab">Database</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-weather" type="button" role="tab">Weather</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-weather" type="button" role="tab">OpenWeather</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-gateway" type="button" role="tab">Gateway</button>
@@ -406,18 +406,19 @@
                     <p class="text-secondary">
                         When a zone's WaterPump has "Skip when rain predicted" checked
                         (Zone page &rarr; Automation rules), it also stays off whenever the forecast
-                        for the location below predicts rain - regardless of what its Threshold/
-                        Interval/Schedule rules decide. Requires an OpenWeatherMap API key configured
-                        server-side (<code>Weather:ApiKey</code>) - the location/interval/threshold
-                        below are inert until both that key AND a location are set.
+                        for its own greenhouse complex/unit or Open-Field parcel predicts rain -
+                        regardless of what its Threshold/Interval/Schedule rules decide. A site with no
+                        pin of its own (set on its own Farm/Unit/Parcel page) falls back to the default
+                        location below. Requires the OpenWeatherMap API key below (or the gitignored
+                        appsettings.json <code>Weather:ApiKey</code>) - everything else on this tab is
+                        inert until a key is set.
                     </p>
-                    <div class="mb-2">
-                        <button type="button" id="weatherUseMyLocation" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-geo-alt"></i> My Location
-                        </button>
-                        <span id="weatherLocationStatus" class="text-secondary small ms-2"></span>
+                    <div class="mb-3" style="max-width:24rem">
+                        <label asp-for="WeatherApiKey" class="form-label"></label>
+                        <input asp-for="WeatherApiKey" type="password" class="form-control" autocomplete="new-password" placeholder="unchanged" />
+                        <span asp-validation-for="WeatherApiKey" class="text-danger"></span>
+                        <div class="form-text">Blank keeps the currently saved key (or the appsettings.json one, if neither has ever been set).</div>
                     </div>
-                    <div id="weatherLocationMap" class="mb-3 rounded border" style="height:320px"></div>
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6">
                             <label asp-for="WeatherLocationLat" class="form-label"></label>
@@ -429,7 +430,7 @@
                             <input asp-for="WeatherLocationLon" class="form-control" placeholder="e.g. 15.982" />
                             <span asp-validation-for="WeatherLocationLon" class="text-danger"></span>
                         </div>
-                        <div class="form-text">Click the map, drag the marker, use "My Location", or type coordinates directly - all four stay in sync.</div>
+                        <div class="form-text">Last-resort default when a site has no pin of its own and this tenant has no default location either (Tenant Edit page) - no map here, since a real site's location is set on its own Farm/Unit/Parcel page instead.</div>
                     </div>
                     <div class="mb-3">
                         <label asp-for="WeatherPollIntervalMinutes" class="form-label"></label>
@@ -444,9 +445,9 @@
                         <div class="form-text">Forecast rain probability (%) at or above which watering is skipped.</div>
                     </div>
                     <hr />
-                    @{ var weatherState = (Agrumy.Shared.Models.TenantWeatherState)ViewBag.WeatherState; }
+                    @{ var weatherState = (Agrumy.Shared.Models.WeatherLocationState)ViewBag.WeatherState; }
                     <p class="mb-0">
-                        <strong>Current forecast</strong> <span class="text-secondary small">(default tenant - each tenant has its own on its Tenant Edit page):</span>
+                        <strong>Current forecast</strong> <span class="text-secondary small">(default location above - a Farm/Unit/Parcel with its own pin has its own forecast, shown on its own page instead):</span>
                         @if (weatherState.WeatherCheckedAtUtc is DateTimeOffset checkedAt)
                         {
                             <span class="badge @(weatherState.WeatherRainPredicted ? "text-bg-info" : "text-bg-secondary")">
@@ -490,7 +491,7 @@
                         </div>
                     </div>
                     <p class="mb-0">
-                        <strong>Current forecast</strong> <span class="text-secondary small">(default tenant - each tenant has its own on its Tenant Edit page):</span>
+                        <strong>Current forecast</strong> <span class="text-secondary small">(default location above - a Farm/Unit/Parcel with its own pin has its own forecast, shown on its own page instead):</span>
                         @if (weatherState.FrostCheckedAtUtc is DateTimeOffset frostCheckedAt)
                         {
                             <span class="badge @(weatherState.FrostPredicted ? "text-bg-danger" : "text-bg-secondary")">
@@ -968,14 +969,8 @@
     </div>
 </div>
 
-@section Styles {
-    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
-}
-
 @section Scripts {
     <script src="~/js/data-maintenance.js"></script>
-    <script src="~/lib/leaflet/leaflet.js"></script>
-    <script src="~/js/weather-location.js"></script>
     <script src="~/js/send-test-email.js"></script>
     <script src="~/js/send-test-webhook.js"></script>
     <script src="~/js/archive-settings.js"></script>

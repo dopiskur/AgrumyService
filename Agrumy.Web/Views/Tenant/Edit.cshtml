@@ -48,13 +48,15 @@
                     <span asp-validation-for="Longitude" class="text-danger"></span>
                 </div>
                 <div class="form-text">
-                    This tenant's own site location for astronomical (sunrise/sunset) schedule
-                    conditions, and for its rain-skip/frost forecast below. Leave both blank to use
-                    the server-wide default (Server Settings &rarr; Weather).
+                    This tenant's default site location for astronomical (sunrise/sunset) schedule
+                    conditions, and for the rain-skip/frost forecast below. Leave both blank to use
+                    the server-wide default (Server Settings &rarr; OpenWeather). A greenhouse
+                    complex/unit or Open-Field parcel with its own pin gets its own forecast instead
+                    of this default one.
                 </div>
             </div>
 
-            @{ var weatherState = (Agrumy.Shared.Models.TenantWeatherState)ViewBag.WeatherState; }
+            @{ var weatherState = (Agrumy.Shared.Models.WeatherLocationState)ViewBag.WeatherState; }
             <div class="mb-3">
                 <p class="mb-1">
                     <strong>Rain forecast:</strong>

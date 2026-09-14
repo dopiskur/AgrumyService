@@ -12,15 +12,15 @@ namespace Agrumy.Api.Weather
         /// The coldest forecast bucket within the lookahead window, with the cloudiness/wind reading from that same bucket - null means the request failed (already logged), same "leave the last state alone" convention as GetMaxRainProbabilityPercentAsync.
         Task<FrostForecastResult?> GetFrostForecastAsync(double lat, double lon, string apiKey, int lookaheadHours, CancellationToken ct);
 
-        /// The nearest forecast bucket (closest available reading to "now") - feeds WeatherEvaluator's TenantWeatherState.Outdoor* fields, which RuleConditionEvaluator exposes as SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind. Null means the request failed (already logged), same "leave the last state alone" convention as the other two methods.
+        /// The nearest forecast bucket (closest available reading to "now") - feeds WeatherEvaluator's WeatherLocationState.Outdoor* fields, which RuleConditionEvaluator exposes as SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure. Null means the request failed (already logged), same "leave the last state alone" convention as the other two methods.
         Task<OutdoorConditions?> GetCurrentOutdoorConditionsAsync(double lat, double lon, string apiKey, CancellationToken ct);
     }
 
     /// HoursAhead is the coldest bucket's distance from now, in whole hours (3h-bucket granularity); MinTemperatureC/CloudinessPercent/WindSpeedMetersPerSecond are null only if that bucket's JSON omitted the field.
     public sealed record FrostForecastResult(double? MinTemperatureC, double? CloudinessPercent, double? WindSpeedMetersPerSecond, int HoursAhead);
 
-    /// TemperatureC/HumidityPercent/WindSpeedMetersPerSecond are null only if the nearest bucket's JSON omitted that field.
-    public sealed record OutdoorConditions(double? TemperatureC, double? HumidityPercent, double? WindSpeedMetersPerSecond);
+    /// TemperatureC/HumidityPercent/WindSpeedMetersPerSecond/PressureHpa are null only if the nearest bucket's JSON omitted that field.
+    public sealed record OutdoorConditions(double? TemperatureC, double? HumidityPercent, double? WindSpeedMetersPerSecond, double? PressureHpa);
 
     /// Uses OpenWeatherMap's free "5 day / 3 hour forecast" endpoint, not the paid One Call 3.0 - each bucket's "pop" (0-1) is a closer match to "will it rain soon" than the current-conditions endpoint.
     public sealed class OpenWeatherMapClient(HttpClient httpClient, ILogger<OpenWeatherMapClient> logger) : IWeatherForecastClient
@@ -143,8 +143,9 @@ namespace Agrumy.Api.Weather
                 JsonElement nearest = list[0];
                 double? temp = nearest.TryGetProperty("main", out JsonElement main) && main.TryGetProperty("temp", out JsonElement tempEl) && tempEl.TryGetDouble(out double t) ? t : null;
                 double? humidity = nearest.TryGetProperty("main", out JsonElement main2) && main2.TryGetProperty("humidity", out JsonElement humEl) && humEl.TryGetDouble(out double h) ? h : null;
+                double? pressure = nearest.TryGetProperty("main", out JsonElement main3) && main3.TryGetProperty("pressure", out JsonElement presEl) && presEl.TryGetDouble(out double p) ? p : null;
                 double? wind = nearest.TryGetProperty("wind", out JsonElement windEl) && windEl.TryGetProperty("speed", out JsonElement speedEl) && speedEl.TryGetDouble(out double w) ? w : null;
-                return new OutdoorConditions(temp, humidity, wind);
+                return new OutdoorConditions(temp, humidity, wind, pressure);
             }
             catch (Exception ex) when (ex is HttpRequestException or JsonException)
             {

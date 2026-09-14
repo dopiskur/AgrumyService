@@ -21,7 +21,11 @@
     "waterLevel",
     "wind",
     "latitude",
-    "longitude"
+    "longitude",
+    "simulatedOutdoorTemperature",
+    "simulatedOutdoorHumidity",
+    "simulatedOutdoorWind",
+    "simulatedOutdoorPressure"
   ],
   "properties": {
     "enabled": {
@@ -72,6 +76,18 @@
       "type": ["number", "null"]
     },
     "longitude": {
+      "type": ["number", "null"]
+    },
+    "simulatedOutdoorTemperature": {
+      "type": ["number", "null"]
+    },
+    "simulatedOutdoorHumidity": {
+      "type": ["number", "null"]
+    },
+    "simulatedOutdoorWind": {
+      "type": ["number", "null"]
+    },
+    "simulatedOutdoorPressure": {
       "type": ["number", "null"]
     }
   }

@@ -6,8 +6,9 @@
     ViewData["Title"] = "Simulation Mode";
     var device = Model.Device!;
     var sim = Model.DeviceSimulation!;
+    bool isVirtual = (bool)(ViewBag.IsVirtualDevice ?? false);
 
-    // One row per overridable metric - the checkbox toggles whether the slider posts a value (checked) or is disabled (unchecked, so the browser omits it and the bound field stays null, i.e. "use the real reading"). Enabled/disabled state is inferred from the current value being non-null, not a separate stored flag.
+    // One row per overridable metric - the toggle switch both enables/disables the slider client-side AND auto-submits the whole form immediately (data-autosubmit, confirm-submit.js), so turning a metric on/off takes effect right away instead of waiting for a separate Save click. A null field means "use the real reading".
     string Field(string name) => $"{nameof(Model.DeviceSimulation)}.{name}";
 
     IHtmlContent MetricRow(string name, string label, double? value, (double Min, double Max) range, string unit, double step = 1)
@@ -19,7 +20,9 @@
         sb.Append($"""
         <div class="mb-3 row align-items-center">
             <div class="col-sm-1">
-                <input type="checkbox" class="form-check-input sim-toggle" data-target="{id}" {(active ? "checked" : "")} />
+                <div class="form-check form-switch mb-0">
+                    <input type="checkbox" class="form-check-input sim-toggle" role="switch" data-target="{id}" data-autosubmit {(active ? "checked" : "")} />
+                </div>
             </div>
             <label class="col-sm-2 col-form-label">{label}</label>
             <div class="col-sm-7">
@@ -37,7 +40,7 @@
 <h1>Simulation Mode</h1>
 <h4>@device.DeviceName</h4>
 <p class="text-muted">Per-metric overrides for THIS physical device. A metric left off keeps its real, physical reading; a metric turned on replaces the reading with the slider value before the device's own controller logic runs. Turning off "Simulation Mode" below returns the device to fully real readings without deleting anything.</p>
-@if (!(bool)(ViewBag.IsVirtualDevice ?? false))
+@if (!isVirtual)
 {
     @* A virtual device has no physical relay to move, so this warning is physical-device-only. *@
     <div class="alert alert-warning">
@@ -57,37 +60,68 @@
         <label class="form-check-label" for="simEnabled"><strong>Simulation Mode enabled</strong></label>
     </div>
 
-    @MetricRow(nameof(DeviceSimulation.Temperature), "Temperature", sim.Temperature, SimulationMetricRange.Temperature, "&deg;C", 0.5)
-    @MetricRow(nameof(DeviceSimulation.SoilTemperature), "Soil temperature", sim.SoilTemperature, SimulationMetricRange.SoilTemperature, "&deg;C", 0.5)
-    @MetricRow(nameof(DeviceSimulation.Humidity), "Humidity", sim.Humidity, SimulationMetricRange.Humidity, "%")
-    @MetricRow(nameof(DeviceSimulation.Battery), "Battery", sim.Battery, SimulationMetricRange.Battery, "%")
-    @MetricRow(nameof(DeviceSimulation.Moisture), "Moisture", sim.Moisture, SimulationMetricRange.Moisture, "%")
-    @MetricRow(nameof(DeviceSimulation.Light), "Light", sim.Light, SimulationMetricRange.Light, "lux", 100)
-    @MetricRow(nameof(DeviceSimulation.Co2), "CO2", sim.Co2, SimulationMetricRange.Co2, "ppm", 100)
-    @MetricRow(nameof(DeviceSimulation.Tvoc), "TVOC", sim.Tvoc, SimulationMetricRange.Tvoc, "ppb")
-    @MetricRow(nameof(DeviceSimulation.Barometer), "Barometer", sim.Barometer, SimulationMetricRange.Barometer, "Pa", 1000)
-    @MetricRow(nameof(DeviceSimulation.LiquidPH), "Liquid pH", sim.LiquidPH, SimulationMetricRange.LiquidPH, "pH", 0.1)
-    @MetricRow(nameof(DeviceSimulation.RainLevel), "Rain level", sim.RainLevel, SimulationMetricRange.RainLevel, "")
-    @MetricRow(nameof(DeviceSimulation.WaterLevel), "Water level", sim.WaterLevel, SimulationMetricRange.WaterLevel, "")
-    @MetricRow(nameof(DeviceSimulation.Wind), "Wind", sim.Wind, SimulationMetricRange.Wind, "m/s", 0.5)
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-sensor" type="button" role="tab">Sensor override</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-geolocation" type="button" role="tab">Geolocation override</button>
+        </li>
+    </ul>
+    <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3">
+        <div class="tab-pane fade show active" id="tab-sensor" role="tabpanel">
+            @MetricRow(nameof(DeviceSimulation.Temperature), "Temperature", sim.Temperature, SimulationMetricRange.Temperature, "&deg;C", 0.5)
+            @MetricRow(nameof(DeviceSimulation.SoilTemperature), "Soil temperature", sim.SoilTemperature, SimulationMetricRange.SoilTemperature, "&deg;C", 0.5)
+            @MetricRow(nameof(DeviceSimulation.Humidity), "Humidity", sim.Humidity, SimulationMetricRange.Humidity, "%")
+            @MetricRow(nameof(DeviceSimulation.Battery), "Battery", sim.Battery, SimulationMetricRange.Battery, "%")
+            @MetricRow(nameof(DeviceSimulation.Moisture), "Moisture", sim.Moisture, SimulationMetricRange.Moisture, "%")
+            @MetricRow(nameof(DeviceSimulation.Light), "Light", sim.Light, SimulationMetricRange.Light, "lux", 100)
+            @MetricRow(nameof(DeviceSimulation.Co2), "CO2", sim.Co2, SimulationMetricRange.Co2, "ppm", 100)
+            @MetricRow(nameof(DeviceSimulation.Tvoc), "TVOC", sim.Tvoc, SimulationMetricRange.Tvoc, "ppb")
+            @MetricRow(nameof(DeviceSimulation.Barometer), "Barometer", sim.Barometer, SimulationMetricRange.Barometer, "Pa", 1000)
+            @MetricRow(nameof(DeviceSimulation.LiquidPH), "Liquid pH", sim.LiquidPH, SimulationMetricRange.LiquidPH, "pH", 0.1)
+            @MetricRow(nameof(DeviceSimulation.RainLevel), "Rain level", sim.RainLevel, SimulationMetricRange.RainLevel, "")
+            @MetricRow(nameof(DeviceSimulation.WaterLevel), "Water level", sim.WaterLevel, SimulationMetricRange.WaterLevel, "")
+            @MetricRow(nameof(DeviceSimulation.Wind), "Wind", sim.Wind, SimulationMetricRange.Wind, "m/s", 0.5)
 
-    <hr />
-    <h6 class="fw-semibold">Location override</h6>
-    <p class="text-muted">
-        Test "what if this device were somewhere else" - overrides the device's location on its Edit page
-        even if it reports a real GPS fix. Not sent to the device itself, and never overwrites its real
-        location: clears the moment this is turned off, leaving the real GPS/manual value untouched underneath.
-    </p>
-    <div class="mb-3 row align-items-center">
-        <div class="col-sm-1">
-            <input type="checkbox" class="form-check-input sim-toggle" data-target="sim_location" @(sim.Latitude.HasValue && sim.Longitude.HasValue ? "checked" : "") />
+            @if (isVirtual)
+            {
+                <hr />
+                <h6 class="fw-semibold">Simulate OpenWeather feed</h6>
+                <p class="text-muted">
+                    Stands in for this session's own outdoor-weather forecast (SensorMetric.OutdoorTemperature/
+                    OutdoorHumidity/OutdoorWind/OutdoorPressure) instead of this device's own sensor - lets you test a
+                    rule that reads the organization's real OpenWeatherMap forecast without waiting for actual weather
+                    to cooperate. A metric left off here keeps the real forecast for every zone this session covers.
+                </p>
+                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorTemperature), "Outdoor temperature", sim.SimulatedOutdoorTemperature, SimulationMetricRange.Temperature, "&deg;C", 0.5)
+                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorPressure), "Outdoor pressure", sim.SimulatedOutdoorPressure, SimulationMetricRange.OutdoorPressure, "hPa", 1)
+                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorHumidity), "Outdoor humidity", sim.SimulatedOutdoorHumidity, SimulationMetricRange.Humidity, "%")
+                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorWind), "Outdoor wind", sim.SimulatedOutdoorWind, SimulationMetricRange.Wind, "m/s", 0.5)
+            }
         </div>
-        <label class="col-sm-2 col-form-label">Location</label>
-        <div class="col-sm-4">
-            <input type="number" step="any" min="-90" max="90" class="form-control" id="sim_location" name="@Field(nameof(DeviceSimulation.Latitude))" placeholder="Latitude" value="@sim.Latitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
-        </div>
-        <div class="col-sm-4">
-            <input type="number" step="any" min="-180" max="180" class="form-control" id="sim_location_lon" name="@Field(nameof(DeviceSimulation.Longitude))" placeholder="Longitude" value="@sim.Longitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
+        <div class="tab-pane fade" id="tab-geolocation" role="tabpanel">
+            <p class="text-muted">
+                Test "what if this device were somewhere else" - overrides the device's location on its Edit page
+                even if it reports a real GPS fix. Not sent to the device itself, and never overwrites its real
+                location: clears the moment this is turned off, leaving the real GPS/manual value untouched underneath.
+            </p>
+            <div class="mb-2 row align-items-center">
+                <div class="col-sm-1">
+                    <div class="form-check form-switch mb-0">
+                        <input type="checkbox" class="form-check-input sim-toggle" role="switch" data-target="sim_location" data-autosubmit @(sim.Latitude.HasValue && sim.Longitude.HasValue ? "checked" : "") />
+                    </div>
+                </div>
+                <label class="col-sm-2 col-form-label">Location</label>
+                <div class="col-sm-4">
+                    <input type="number" step="any" min="-90" max="90" class="form-control" id="sim_location" name="@Field(nameof(DeviceSimulation.Latitude))" placeholder="Latitude" value="@sim.Latitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
+                </div>
+                <div class="col-sm-4">
+                    <input type="number" step="any" min="-180" max="180" class="form-control" id="sim_location_lon" name="@Field(nameof(DeviceSimulation.Longitude))" placeholder="Longitude" value="@sim.Longitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
+                </div>
+            </div>
+            <p class="text-muted small">Click the map, or drag the marker, to set the pin - the two fields above stay in sync. Turn the switch on first if the fields above are greyed out.</p>
+            <div class="point-location-map mb-3 rounded border" style="height:360px" data-lat-input="sim_location" data-lon-input="sim_location_lon"></div>
         </div>
     </div>
 
@@ -102,7 +136,13 @@
     }
 </form>
 
+@section Styles {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+}
+
 @section Scripts {
+    <script src="~/lib/leaflet/leaflet.js"></script>
+    <script src="~/js/point-location-map.js"></script>
     <script nonce="@Context.CspNonce()">
         document.querySelectorAll('.sim-toggle').forEach(function (cb) {
             cb.addEventListener('change', function () {

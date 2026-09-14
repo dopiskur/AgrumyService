@@ -479,13 +479,14 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
     }
 
     [SkippableTheory, MemberData(nameof(Providers))]
-    public async Task TenantWeatherState_SetWeatherAndFrost_RoundTrips_IndependentlyOfEachOther(DbProviderKind provider)
+    public async Task WeatherLocationState_SetWeatherAndFrost_RoundTrips_IndependentlyOfEachOther(DbProviderKind provider)
     {
-        // Weather/frost/outdoor state moved out of the single global ServerConfig row into a per-organization table - each organization's own row, and the three writers (WeatherEvaluator writes both Weather* and Outdoor*, FrostAlertEvaluator writes Frost*) must not clobber each other's half of it.
+        // Weather/frost/outdoor state moved out of the single global ServerConfig row into a per-(organization, resolved location) table - each site's own row, and the three writers (WeatherEvaluator writes both Weather* and Outdoor*, FrostAlertEvaluator writes Frost*) must not clobber each other's half of it.
         Use(provider);
         int tenantId = await _repo.TenantAddAsync($"weather-state-{Guid.NewGuid():N}");
+        const double lat = 45.8, lon = 16.0;
 
-        var empty = await _repo.TenantWeatherStateGetAsync(tenantId);
+        var empty = await _repo.WeatherLocationStateGetAsync(tenantId, lat, lon);
         Assert.False(empty.WeatherRainPredicted);
         Assert.Null(empty.WeatherCheckedAtUtc);
         Assert.False(empty.FrostPredicted);
@@ -494,30 +495,31 @@ public sealed class RelationalIntegrationTests : IClassFixture<RelationalIntegra
         Assert.Null(empty.OutdoorCheckedAtUtc);
 
         DateTimeOffset checkedAt = DateTimeOffset.UtcNow;
-        await _repo.TenantWeatherStateSetWeatherAsync(tenantId, true, checkedAt);
+        await _repo.WeatherLocationStateSetWeatherAsync(tenantId, lat, lon, true, checkedAt);
 
-        var afterWeather = await _repo.TenantWeatherStateGetAsync(tenantId);
+        var afterWeather = await _repo.WeatherLocationStateGetAsync(tenantId, lat, lon);
         Assert.True(afterWeather.WeatherRainPredicted);
         Assert.NotNull(afterWeather.WeatherCheckedAtUtc);
         Assert.False(afterWeather.FrostPredicted); // untouched by the weather writer
         Assert.Null(afterWeather.OutdoorTemperatureC); // untouched by the weather writer
 
-        await _repo.TenantWeatherStateSetFrostAsync(tenantId, true, 6, checkedAt);
+        await _repo.WeatherLocationStateSetFrostAsync(tenantId, lat, lon, true, 6, checkedAt);
 
-        var afterFrost = await _repo.TenantWeatherStateGetAsync(tenantId);
+        var afterFrost = await _repo.WeatherLocationStateGetAsync(tenantId, lat, lon);
         Assert.True(afterFrost.WeatherRainPredicted); // untouched by the frost writer
         Assert.True(afterFrost.FrostPredicted);
         Assert.Equal(6, afterFrost.FrostPredictedHoursAhead);
         Assert.Null(afterFrost.OutdoorTemperatureC); // untouched by the frost writer
 
-        await _repo.TenantWeatherStateSetOutdoorAsync(tenantId, 22.5, 61.0, 3.2, checkedAt);
+        await _repo.WeatherLocationStateSetOutdoorAsync(tenantId, lat, lon, 22.5, 61.0, 3.2, 1013.0, checkedAt);
 
-        var afterOutdoor = await _repo.TenantWeatherStateGetAsync(tenantId);
+        var afterOutdoor = await _repo.WeatherLocationStateGetAsync(tenantId, lat, lon);
         Assert.True(afterOutdoor.WeatherRainPredicted); // untouched by the outdoor writer
         Assert.True(afterOutdoor.FrostPredicted); // untouched by the outdoor writer
         Assert.Equal(22.5, afterOutdoor.OutdoorTemperatureC);
         Assert.Equal(61.0, afterOutdoor.OutdoorHumidityPercent);
         Assert.Equal(3.2, afterOutdoor.OutdoorWindSpeedMetersPerSecond);
+        Assert.Equal(1013.0, afterOutdoor.OutdoorPressureHpa);
         Assert.NotNull(afterOutdoor.OutdoorCheckedAtUtc);
     }
 

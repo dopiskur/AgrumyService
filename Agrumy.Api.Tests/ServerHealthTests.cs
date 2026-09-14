@@ -203,16 +203,21 @@ public class ServerHealthTests
 
     // ---- WeatherHealthCheck ------------------------------------------------
 
-    private static WeatherHealthCheck NewWeatherHealthCheck(ServerConfig config, TenantWeatherState? state = null)
+    private static WeatherHealthCheck NewWeatherHealthCheck(ServerConfig config, WeatherLocationState? state = null)
     {
         var tenants = new Mock<ITenantRepository>();
-        tenants.Setup(t => t.TenantWeatherStateGetAsync(0)).ReturnsAsync(state ?? new TenantWeatherState());
+        tenants.Setup(t => t.TenantGetByIdAsync(0)).ReturnsAsync(new Tenant { IDTenant = 0 });
+        if (config.WeatherLocationLat is double lat && config.WeatherLocationLon is double lon)
+        {
+            tenants.Setup(t => t.WeatherLocationStateGetAsync(0, lat, lon)).ReturnsAsync(state ?? new WeatherLocationState());
+        }
         return new WeatherHealthCheck(new FakeServerConfigRepository(config), tenants.Object);
     }
 
     [Fact]
     public async Task WeatherHealthCheck_NeverChecked_ReturnsDegraded()
     {
+        // No default location resolvable (neither Tenant 0 nor ServerConfig has one set) - falls straight to the all-default state, same "not checked yet" outcome.
         var check = NewWeatherHealthCheck(new ServerConfig());
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);
@@ -223,8 +228,8 @@ public class ServerHealthTests
     [Fact]
     public async Task WeatherHealthCheck_RecentlyChecked_ReturnsHealthy()
     {
-        var config = new ServerConfig { WeatherPollIntervalMinutes = 30 };
-        var state = new TenantWeatherState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5) };
+        var config = new ServerConfig { WeatherPollIntervalMinutes = 30, WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 };
+        var state = new WeatherLocationState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5) };
         var check = NewWeatherHealthCheck(config, state);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);
@@ -235,8 +240,8 @@ public class ServerHealthTests
     [Fact]
     public async Task WeatherHealthCheck_Stale_ReturnsDegraded()
     {
-        var config = new ServerConfig { WeatherPollIntervalMinutes = 30 };
-        var state = new TenantWeatherState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddHours(-5) };
+        var config = new ServerConfig { WeatherPollIntervalMinutes = 30, WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 };
+        var state = new WeatherLocationState { WeatherCheckedAtUtc = DateTimeOffset.UtcNow.AddHours(-5) };
         var check = NewWeatherHealthCheck(config, state);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context);

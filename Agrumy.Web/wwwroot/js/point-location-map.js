@@ -1,12 +1,19 @@
 // One draggable-marker Leaflet map per .point-location-map element - click anywhere to
 // place/move the pin, updates the two hidden lat/lon inputs named by data-lat-input/
-// data-lon-input. Same "init on first shown.bs.modal, not on page load" convention as
-// parcel-geometry-map.js, since Leaflet can't measure a display:none container.
+// data-lon-input. Same "init on first shown, not on page load" convention as
+// parcel-geometry-map.js, since Leaflet can't measure a display:none container - covers both
+// a modal (shown.bs.modal) and a Bootstrap tab pane (shown.bs.tab on its own tab button).
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.point-location-map').forEach(function (mapEl) {
         const modal = mapEl.closest('.modal');
+        const tabPane = mapEl.closest('.tab-pane');
+        const tabButton = tabPane && !tabPane.classList.contains('active')
+            ? document.querySelector('button[data-bs-target="#' + tabPane.id + '"]')
+            : null;
         if (modal) {
             modal.addEventListener('shown.bs.modal', function () { initPointLocationMap(mapEl); }, { once: true });
+        } else if (tabButton) {
+            tabButton.addEventListener('shown.bs.tab', function () { initPointLocationMap(mapEl); }, { once: true });
         } else {
             initPointLocationMap(mapEl);
         }
@@ -34,11 +41,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const centerLon = initialLon ?? parsedOrNull(mapEl.dataset.centerLon) ?? DEFAULT_LON;
 
         const map = L.map(mapEl).setView([centerLat, centerLon], initialLat != null ? 17 : 14);
+        // Bootstrap's shown.bs.tab/shown.bs.modal fires as soon as the fade class flips, which can be a tick before the container's layout box actually settles to its final size - Leaflet caches the size it measured at construction, so a stale (usually zero-height) reading here shows as a broken, partially-tiled map until the window is later resized. One extra measurement next tick is the standard fix.
+        setTimeout(() => map.invalidateSize(), 0);
         // Same-origin passthrough (Agrumy.Web/Controllers/View/MapController.cs) to Agrumy.Api's TileProxy - see parcel-geometry-map.js's own remark on why a plain <img> tile request can't be used directly.
-        L.tileLayer('/Map/Tile/{z}/{x}/{y}.png', {
+        const osmLayer = L.tileLayer('/Map/Tile/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(map);
+        // Same satellite source as parcel-geometry-map.js's "ARKOD karta" base layer, minus the ARKOD boundary overlay - a plain aerial view is all a point pin needs.
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri',
+        });
+        L.control.layers({ 'OpenStreetMap': osmLayer, 'Satellite': satelliteLayer }).addTo(map);
 
         function setCoords(latlng) {
             if (latInput) { latInput.value = latlng.lat.toFixed(6); }

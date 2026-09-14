@@ -270,14 +270,21 @@ namespace Agrumy.Api.Dal
             await db.SaveChangesAsync();
         }
 
-        public async Task<TenantWeatherState> TenantWeatherStateGetAsync(int idTenant)
+        // 6 decimals (~11cm) - fine enough to treat a genuinely different pin as a different location, coarse enough that the unique (TenantID, Latitude, Longitude) index actually dedupes repeat lookups of the same stored pin instead of missing on float noise.
+        private static double RoundCoord(double v) => Math.Round(v, 6);
+
+        public async Task<WeatherLocationState> WeatherLocationStateGetAsync(int idTenant, double latitude, double longitude)
         {
-            var row = await db.TenantWeatherStates.AsNoTracking().FirstOrDefaultAsync(x => x.TenantID == idTenant);
+            latitude = RoundCoord(latitude);
+            longitude = RoundCoord(longitude);
+            var row = await db.WeatherLocationStates.AsNoTracking().FirstOrDefaultAsync(x => x.TenantID == idTenant && x.Latitude == latitude && x.Longitude == longitude);
             return row == null
-                ? new TenantWeatherState { TenantID = idTenant }
-                : new TenantWeatherState
+                ? new WeatherLocationState { TenantID = idTenant, Latitude = latitude, Longitude = longitude }
+                : new WeatherLocationState
                 {
                     TenantID = row.TenantID,
+                    Latitude = row.Latitude,
+                    Longitude = row.Longitude,
                     WeatherRainPredicted = row.WeatherRainPredicted,
                     WeatherCheckedAtUtc = row.WeatherCheckedAtUtc,
                     FrostPredicted = row.FrostPredicted,
@@ -286,44 +293,46 @@ namespace Agrumy.Api.Dal
                     OutdoorTemperatureC = row.OutdoorTemperatureC,
                     OutdoorHumidityPercent = row.OutdoorHumidityPercent,
                     OutdoorWindSpeedMetersPerSecond = row.OutdoorWindSpeedMetersPerSecond,
+                    OutdoorPressureHpa = row.OutdoorPressureHpa,
                     OutdoorCheckedAtUtc = row.OutdoorCheckedAtUtc,
                 };
         }
 
-        private async Task<TenantWeatherStateRow> TenantWeatherStateRowGetOrCreateAsync(int idTenant)
+        private async Task<WeatherLocationStateRow> WeatherLocationStateRowGetOrCreateAsync(int idTenant, double latitude, double longitude)
         {
-            var row = await db.TenantWeatherStates.FirstOrDefaultAsync(x => x.TenantID == idTenant);
+            var row = await db.WeatherLocationStates.FirstOrDefaultAsync(x => x.TenantID == idTenant && x.Latitude == latitude && x.Longitude == longitude);
             if (row == null)
             {
-                row = new TenantWeatherStateRow { TenantID = idTenant };
-                db.TenantWeatherStates.Add(row);
+                row = new WeatherLocationStateRow { TenantID = idTenant, Latitude = latitude, Longitude = longitude };
+                db.WeatherLocationStates.Add(row);
             }
             return row;
         }
 
-        public async Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc)
+        public async Task WeatherLocationStateSetWeatherAsync(int idTenant, double latitude, double longitude, bool rainPredicted, DateTimeOffset checkedAtUtc)
         {
-            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            var row = await WeatherLocationStateRowGetOrCreateAsync(idTenant, RoundCoord(latitude), RoundCoord(longitude));
             row.WeatherRainPredicted = rainPredicted;
             row.WeatherCheckedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
         }
 
-        public async Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc)
+        public async Task WeatherLocationStateSetFrostAsync(int idTenant, double latitude, double longitude, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc)
         {
-            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            var row = await WeatherLocationStateRowGetOrCreateAsync(idTenant, RoundCoord(latitude), RoundCoord(longitude));
             row.FrostPredicted = frostPredicted;
             row.FrostPredictedHoursAhead = hoursAhead;
             row.FrostCheckedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
         }
 
-        public async Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc)
+        public async Task WeatherLocationStateSetOutdoorAsync(int idTenant, double latitude, double longitude, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, double? pressureHpa, DateTimeOffset checkedAtUtc)
         {
-            var row = await TenantWeatherStateRowGetOrCreateAsync(idTenant);
+            var row = await WeatherLocationStateRowGetOrCreateAsync(idTenant, RoundCoord(latitude), RoundCoord(longitude));
             row.OutdoorTemperatureC = temperatureC;
             row.OutdoorHumidityPercent = humidityPercent;
             row.OutdoorWindSpeedMetersPerSecond = windSpeedMetersPerSecond;
+            row.OutdoorPressureHpa = pressureHpa;
             row.OutdoorCheckedAtUtc = checkedAtUtc;
             await db.SaveChangesAsync();
         }

@@ -2,6 +2,7 @@ using Agrumy.Dal;
 using Agrumy.Dal.Entities;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Quota;
+using Agrumy.Api.Weather;
 using Agrumy.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -393,5 +394,18 @@ namespace Agrumy.Api.Dal
             ExpiresAtUtc = r.ExpiresAtUtc,
             StoppedAtUtc = r.StoppedAtUtc,
         };
+
+        public async Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession)
+        {
+            var row = await (
+                from membership in db.SimulationSessionDevices
+                join sim in db.DeviceSimulations on membership.DeviceID equals sim.DeviceID
+                where membership.IDSimulationSession == idSimulationSession
+                    && (sim.SimulatedOutdoorTemperature != null || sim.SimulatedOutdoorHumidity != null
+                        || sim.SimulatedOutdoorWind != null || sim.SimulatedOutdoorPressure != null)
+                select new { sim.SimulatedOutdoorTemperature, sim.SimulatedOutdoorHumidity, sim.SimulatedOutdoorWind, sim.SimulatedOutdoorPressure })
+                .AsNoTracking().FirstOrDefaultAsync();
+            return row == null ? null : new OutdoorConditions(row.SimulatedOutdoorTemperature, row.SimulatedOutdoorHumidity, row.SimulatedOutdoorWind, row.SimulatedOutdoorPressure);
+        }
     }
 }

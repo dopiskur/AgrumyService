@@ -45,13 +45,15 @@ namespace Agrumy.Api.Tests.TestSupport
 
         public Task TenantAlertConfigUpdateAsync(int idTenant, TenantAlertConfig config) => tenantRepository.TenantAlertConfigUpdateAsync(idTenant, config);
 
-        public Task<TenantWeatherState> TenantWeatherStateGetAsync(int idTenant) => tenantRepository.TenantWeatherStateGetAsync(idTenant);
+        public Task<WeatherLocationState> WeatherLocationStateGetAsync(int idTenant, double latitude, double longitude) => tenantRepository.WeatherLocationStateGetAsync(idTenant, latitude, longitude);
 
-        public Task TenantWeatherStateSetWeatherAsync(int idTenant, bool rainPredicted, DateTimeOffset checkedAtUtc) => tenantRepository.TenantWeatherStateSetWeatherAsync(idTenant, rainPredicted, checkedAtUtc);
+        public Task WeatherLocationStateSetWeatherAsync(int idTenant, double latitude, double longitude, bool rainPredicted, DateTimeOffset checkedAtUtc) =>
+            tenantRepository.WeatherLocationStateSetWeatherAsync(idTenant, latitude, longitude, rainPredicted, checkedAtUtc);
 
-        public Task TenantWeatherStateSetFrostAsync(int idTenant, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc) => tenantRepository.TenantWeatherStateSetFrostAsync(idTenant, frostPredicted, hoursAhead, checkedAtUtc);
+        public Task WeatherLocationStateSetFrostAsync(int idTenant, double latitude, double longitude, bool frostPredicted, int? hoursAhead, DateTimeOffset checkedAtUtc) =>
+            tenantRepository.WeatherLocationStateSetFrostAsync(idTenant, latitude, longitude, frostPredicted, hoursAhead, checkedAtUtc);
 
-        public Task TenantWeatherStateSetOutdoorAsync(int idTenant, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, DateTimeOffset checkedAtUtc) =>
-            tenantRepository.TenantWeatherStateSetOutdoorAsync(idTenant, temperatureC, humidityPercent, windSpeedMetersPerSecond, checkedAtUtc);
+        public Task WeatherLocationStateSetOutdoorAsync(int idTenant, double latitude, double longitude, double? temperatureC, double? humidityPercent, double? windSpeedMetersPerSecond, double? pressureHpa, DateTimeOffset checkedAtUtc) =>
+            tenantRepository.WeatherLocationStateSetOutdoorAsync(idTenant, latitude, longitude, temperatureC, humidityPercent, windSpeedMetersPerSecond, pressureHpa, checkedAtUtc);
     }
 }

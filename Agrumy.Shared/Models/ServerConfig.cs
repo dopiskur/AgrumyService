@@ -93,7 +93,11 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Schedule daily orphaned sensor data purge")]
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
-        // Server-wide default location OpenWeatherMap forecasts are pulled for - Tenant.Latitude/Longitude overrides this per organization (same cascade as ScheduleTimeZone); null (and no organization override) leaves WeatherBackgroundService inert rather than failing loudly.
+        // DB-editable alternative to the gitignored appsettings.json "Weather:ApiKey" - WeatherEvaluator/FrostAlertEvaluator prefer this over AgrumySettings.WeatherApiKey when set, so a key can be rotated from Server Settings without a redeploy.
+        [Display(Name = "OpenWeatherMap API key")]
+        public string? WeatherApiKey { get; set; }
+
+        // Last-resort default location OpenWeatherMap forecasts are pulled for when neither a Tenant nor any of its Farms/Units/Parcels has its own pin (WeatherLocationResolver's final fallback tier).
         [Display(Name = "Default latitude")]
         public double? WeatherLocationLat { get; set; }
         [Display(Name = "Default longitude")]

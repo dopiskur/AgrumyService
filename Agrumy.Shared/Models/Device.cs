@@ -543,6 +543,12 @@ namespace Agrumy.Shared.Models
         // Unlike the sensor metrics above, never sent to the device (DeviceSimulationPoll) - Device.Latitude/Longitude is server-stored metadata, not a firmware-reported reading, so the override is applied server-side wherever a device's location is read (see DeviceApiController.DeviceGet), overriding even a device with a real GPS fix. Nothing to revert on simulation delete: the real Device.Latitude/Longitude/LocationSource row is never touched, so it's already there the moment the override stops applying.
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+
+        // Simulates what OpenWeatherMap itself would report, not this device's own sensor - feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure for every zone this device's Simulation session covers (RuleNotificationEvaluator), in place of the real per-location forecast; a null field here still falls back to the real reading, same "null means real" convention as every field above. Meant for a virtual device standing in for a weather station, but nothing stops setting it on a physical one too.
+        public double? SimulatedOutdoorTemperature { get; set; }
+        public double? SimulatedOutdoorHumidity { get; set; }
+        public double? SimulatedOutdoorWind { get; set; }
+        public double? SimulatedOutdoorPressure { get; set; }
     }
 
     /// The "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.
@@ -617,6 +623,8 @@ namespace Agrumy.Shared.Models
         public static readonly (double Min, double Max) Wind = (0, 40);
         public static readonly (double Min, double Max) Ec = (0, 20);
         public static readonly (double Min, double Max) Weight = (0, 5000);
+        // hPa, OpenWeatherMap's own native unit for DeviceSimulation.SimulatedOutdoorPressure - NOT the same scale as Barometer above (that one's a device sensor reading in Pa).
+        public static readonly (double Min, double Max) OutdoorPressure = (870, 1085);
     }
 
     /// Unified demand model - which physical output type a DeviceRelaySlot drives; AgrumyFirmware's OutputKindType mirrors this exactly. Relay is the migration default - every slot written before this field existed behaves exactly as it always did.

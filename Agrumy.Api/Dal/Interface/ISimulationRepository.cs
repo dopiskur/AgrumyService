@@ -1,3 +1,4 @@
+using Agrumy.Api.Weather;
 using Agrumy.Shared.Models;
 
 namespace Agrumy.Api.Dal.Interface
@@ -65,5 +66,8 @@ namespace Agrumy.Api.Dal.Interface
 
         /// Turns off every physical member's override first, then drops the membership rows and the group itself.
         Task SimulationGroupDeleteAsync(int idSimulationGroup);
+
+        /// The session's shared "simulate OpenWeather" reading, if any member device (a virtual "weather station" device, in practice) has set one on its own DeviceSimulation - first match among members wins, null when none has any of the four fields set. RuleNotificationEvaluator overlays this on top of the real per-location forecast for every zone/parcel this session covers, field by field (a null field here still falls back to the real reading).
+        Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession);
     }
 }

@@ -46,6 +46,10 @@ namespace Agrumy.Api.Dal
             row.Wind = value.Wind;
             row.Latitude = value.Latitude;
             row.Longitude = value.Longitude;
+            row.SimulatedOutdoorTemperature = value.SimulatedOutdoorTemperature;
+            row.SimulatedOutdoorHumidity = value.SimulatedOutdoorHumidity;
+            row.SimulatedOutdoorWind = value.SimulatedOutdoorWind;
+            row.SimulatedOutdoorPressure = value.SimulatedOutdoorPressure;
             await db.SaveChangesAsync();
         }
 
@@ -67,6 +71,10 @@ namespace Agrumy.Api.Dal
             Wind = s.Wind,
             Latitude = s.Latitude,
             Longitude = s.Longitude,
+            SimulatedOutdoorTemperature = s.SimulatedOutdoorTemperature,
+            SimulatedOutdoorHumidity = s.SimulatedOutdoorHumidity,
+            SimulatedOutdoorWind = s.SimulatedOutdoorWind,
+            SimulatedOutdoorPressure = s.SimulatedOutdoorPressure,
         };
     }
 }

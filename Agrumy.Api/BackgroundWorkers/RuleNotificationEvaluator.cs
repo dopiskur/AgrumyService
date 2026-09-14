@@ -1,5 +1,6 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Devices;
+using Agrumy.Api.Weather;
 using Agrumy.Rules;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
@@ -17,7 +18,7 @@ namespace Agrumy.Api.BackgroundWorkers
         INotificationDispatcher dispatcher, IServerConfigRepository serverConfigRepo, ISimulationRepository simulationRepo,
         IExperimentRepository experimentRepo)
     {
-        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend, TenantWeatherState WeatherState);
+        private sealed record EvalItem(DeviceFarmUnitZoneRule Rule, int ZoneId, int TenantId, bool WasTrue, SensorAverages? Averages, int UtcOffsetSeconds, SensorTrend? Trend, WeatherLocationState WeatherState);
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
@@ -51,8 +52,73 @@ namespace Agrumy.Api.BackgroundWorkers
             DateOnly localDate = DateOnly.FromDateTime(utcNow.AddSeconds(utcOffsetSeconds));
             notificationRules = AstronomicalRuleResolver.Resolve(notificationRules, lat, lon, localDate, utcOffsetSeconds);
 
-            // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind below - one fetch per organization, not per rule/zone.
-            TenantWeatherState weatherState = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
+            // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure below - a zone/parcel resolves to its own Unit/Farm/parcel pin (WeatherLocationResolver) when it has one, so two sites in the same organization no longer share one reading; cached per resolved point so a farm/unit shared by many zones is looked up once, not once per zone.
+            var weatherStateCache = new Dictionary<(double, double), WeatherLocationState>();
+            async Task<WeatherLocationState> WeatherStateForAsync((double Lat, double Lon)? location)
+            {
+                if (location is not (double lat2, double lon2))
+                {
+                    return new WeatherLocationState { TenantID = tenantId };
+                }
+                if (!weatherStateCache.TryGetValue((lat2, lon2), out WeatherLocationState? cached))
+                {
+                    cached = await tenantRepo.WeatherLocationStateGetAsync(tenantId, lat2, lon2);
+                    weatherStateCache[(lat2, lon2)] = cached;
+                }
+                return cached;
+            }
+
+            // A zone under an active Simulation session can have its own "simulate OpenWeather" override (a virtual device's DeviceSimulation) - only the four Outdoor* readings are ever overridden this way, never WeatherRainPredicted/FrostPredicted (those stay real, same as every other rule not covered by the session).
+            var weatherOverrideCache = new Dictionary<int, OutdoorConditions?>();
+            async Task<WeatherLocationState> EffectiveWeatherStateAsync((double Lat, double Lon)? location, int? simSessionId)
+            {
+                WeatherLocationState baseState = await WeatherStateForAsync(location);
+                if (simSessionId is not int sid)
+                {
+                    return baseState;
+                }
+                if (!weatherOverrideCache.TryGetValue(sid, out OutdoorConditions? sim))
+                {
+                    sim = await simulationRepo.SimulationSessionWeatherOverrideGetAsync(sid);
+                    weatherOverrideCache[sid] = sim;
+                }
+                if (sim == null)
+                {
+                    return baseState;
+                }
+                return new WeatherLocationState
+                {
+                    TenantID = baseState.TenantID,
+                    Latitude = baseState.Latitude,
+                    Longitude = baseState.Longitude,
+                    WeatherRainPredicted = baseState.WeatherRainPredicted,
+                    WeatherCheckedAtUtc = baseState.WeatherCheckedAtUtc,
+                    FrostPredicted = baseState.FrostPredicted,
+                    FrostPredictedHoursAhead = baseState.FrostPredictedHoursAhead,
+                    FrostCheckedAtUtc = baseState.FrostCheckedAtUtc,
+                    OutdoorTemperatureC = sim.TemperatureC ?? baseState.OutdoorTemperatureC,
+                    OutdoorHumidityPercent = sim.HumidityPercent ?? baseState.OutdoorHumidityPercent,
+                    OutdoorWindSpeedMetersPerSecond = sim.WindSpeedMetersPerSecond ?? baseState.OutdoorWindSpeedMetersPerSecond,
+                    OutdoorPressureHpa = sim.PressureHpa ?? baseState.OutdoorPressureHpa,
+                    OutdoorCheckedAtUtc = baseState.OutdoorCheckedAtUtc,
+                };
+            }
+
+            IList<DeviceFarm> farms = await unitRepo.DeviceFarmsGetAsync(tenantId);
+            Dictionary<int, DeviceFarm> farmsById = farms.Where(f => f.IDDeviceFarm is int).ToDictionary(f => f.IDDeviceFarm!.Value);
+            var parcelsById = new Dictionary<int, FarmParcel>();
+            async Task<FarmParcel?> ParcelForAsync(int idFarmParcel)
+            {
+                if (!parcelsById.TryGetValue(idFarmParcel, out FarmParcel? parcel))
+                {
+                    parcel = await farmParcelRepo.FarmParcelGetByIdAsync(idFarmParcel);
+                    if (parcel != null)
+                    {
+                        parcelsById[idFarmParcel] = parcel;
+                    }
+                }
+                return parcel;
+            }
 
             // Which zones (if any) currently have a member device of an active simulation session, and which session - fetched once per organization, not once per zone. Simulation-scoped rules for each such session are also fetched lazily and cached here (a session commonly covers several zones).
             IDictionary<int, int> simulationSessionIdByZone = await simulationRepo.ActiveSimulationSessionIdsByZoneAsync(tenantId);
@@ -85,8 +151,9 @@ namespace Agrumy.Api.BackgroundWorkers
                         continue;
                     }
                     var zoneScoped = notificationRules.Where(r => r.DeviceFarmUnitZoneID == zoneId).ToList();
+                    bool hasSimulation = simulationSessionIdByZone.TryGetValue(zoneId, out int simSessionId);
                     List<DeviceFarmUnitZoneRule> simulationScoped = [];
-                    if (simulationSessionIdByZone.TryGetValue(zoneId, out int simSessionId))
+                    if (hasSimulation)
                     {
                         if (!simulationRulesBySession.TryGetValue(simSessionId, out List<DeviceFarmUnitZoneRule>? cached))
                         {
@@ -112,6 +179,8 @@ namespace Agrumy.Api.BackgroundWorkers
                     }
 
                     DeviceFarmUnitZoneDashboard? dashboard = await unitRepo.DeviceFarmUnitZoneDashboardGetAsync(zoneId);
+                    DeviceFarm? farm = unit.DeviceFarmID is int farmId2 && farmsById.TryGetValue(farmId2, out DeviceFarm? f2) ? f2 : null;
+                    WeatherLocationState zoneWeatherState = await EffectiveWeatherStateAsync(WeatherLocationResolver.ForGreenhouseUnit(unit, farm, tenant, serverConfig), hasSimulation ? simSessionId : null);
                     foreach (DeviceFarmUnitZoneRule rule in effective)
                     {
                         if (rule.IDDeviceFarmUnitZoneRule is not int ruleId)
@@ -119,7 +188,7 @@ namespace Agrumy.Api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, zoneId);
-                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend, weatherState));
+                        items.Add(new EvalItem(rule, zoneId, tenantId, wasTrue, dashboard?.Averages, utcOffsetSeconds, dashboard?.Trend, zoneWeatherState));
                     }
                 }
             }
@@ -143,8 +212,9 @@ namespace Agrumy.Api.BackgroundWorkers
                         continue;
                     }
                     var parcelScoped = notificationRules.Where(r => r.DeviceFarmParcelZoneID == parcelId).ToList();
+                    bool hasSimulation = simulationSessionIdByZone.TryGetValue(parcelId, out int simSessionId);
                     List<DeviceFarmUnitZoneRule> simulationScoped = [];
-                    if (simulationSessionIdByZone.TryGetValue(parcelId, out int simSessionId))
+                    if (hasSimulation)
                     {
                         if (!simulationRulesBySession.TryGetValue(simSessionId, out List<DeviceFarmUnitZoneRule>? cached))
                         {
@@ -170,6 +240,8 @@ namespace Agrumy.Api.BackgroundWorkers
                     }
 
                     (SensorAverages averages, SensorTrend trend) = await farmParcelRepo.FarmParcelZoneAggregateAsync(parcelId);
+                    FarmParcel? parcelContainer = await ParcelForAsync(parcel.FarmParcelID);
+                    WeatherLocationState parcelWeatherState = await EffectiveWeatherStateAsync(WeatherLocationResolver.ForParcelZone(parcel, parcelContainer, tenant, serverConfig), hasSimulation ? simSessionId : null);
                     foreach (DeviceFarmUnitZoneRule rule in effective)
                     {
                         if (rule.IDDeviceFarmUnitZoneRule is not int ruleId)
@@ -177,7 +249,7 @@ namespace Agrumy.Api.BackgroundWorkers
                             continue;
                         }
                         bool wasTrue = await unitRepo.RuleNotificationWasTrueGetAsync(ruleId, parcelId);
-                        items.Add(new EvalItem(rule, parcelId, tenantId, wasTrue, averages, utcOffsetSeconds, trend, weatherState));
+                        items.Add(new EvalItem(rule, parcelId, tenantId, wasTrue, averages, utcOffsetSeconds, trend, parcelWeatherState));
                     }
                 }
             }
@@ -252,12 +324,13 @@ namespace Agrumy.Api.BackgroundWorkers
                 .Replace("{metric}", firstComparison?.Metric?.ToString() ?? "");
         }
 
-        /// Outdoor* metrics read from the organization's own WeatherEvaluator-computed state regardless of averages (a zone with no reporting device can still have a working outdoor-weather rule); every other metric is a zone SensorAverages reading and needs one.
-        private static double? ReadMetric(SensorAverages? averages, SensorMetric metric, TenantWeatherState weatherState) => metric switch
+        /// Outdoor* metrics read from that zone's own resolved-location WeatherEvaluator state regardless of averages (a zone with no reporting device can still have a working outdoor-weather rule); every other metric is a zone SensorAverages reading and needs one.
+        private static double? ReadMetric(SensorAverages? averages, SensorMetric metric, WeatherLocationState weatherState) => metric switch
         {
             SensorMetric.OutdoorTemperature => weatherState.OutdoorTemperatureC,
             SensorMetric.OutdoorHumidity => weatherState.OutdoorHumidityPercent,
             SensorMetric.OutdoorWind => weatherState.OutdoorWindSpeedMetersPerSecond,
+            SensorMetric.OutdoorPressure => weatherState.OutdoorPressureHpa,
             _ when averages == null => null,
             SensorMetric.Temperature => averages.Temperature,
             SensorMetric.SoilTemperature => averages.SoilTemperature,

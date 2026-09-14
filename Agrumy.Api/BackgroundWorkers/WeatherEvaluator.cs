@@ -6,40 +6,44 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Computes each organization's own TenantWeatherState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind). Runs once per organization - an organization can sit at a genuinely different physical site than the server-wide default location (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon).
+    /// Computes each organization's own WeatherLocationState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure). Runs once per distinct real-world location a tenant's greenhouse Units/Farms or Open-Field parcels/zones resolve to (TenantWeatherLocations, WeatherLocationResolver) - two sites under the same organization no longer share one forecast just because they share a TenantID.
     public sealed class WeatherEvaluator(
-        IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions,
-        ILogger<WeatherEvaluator> logger)
+        IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo,
+        IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions, ILogger<WeatherEvaluator> logger)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(settings.WeatherApiKey))
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
+            string? apiKey = config.WeatherApiKey ?? settings.WeatherApiKey;
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
-                return; // not configured (Weather:ApiKey unset) - inert, same as location below
+                return; // not configured (neither Server Settings nor appsettings.json's Weather:ApiKey) - inert, same as location below
             }
 
-            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
             IList<Tenant> tenants = await tenantRepo.TenantsGetAllAsync();
             foreach (Tenant tenant in tenants)
             {
                 ct.ThrowIfCancellationRequested();
-                await RunForTenantAsync(tenant, config, ct);
+                await RunForTenantAsync(tenant, config, apiKey, ct);
             }
         }
 
-        private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, CancellationToken ct)
+        private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, string apiKey, CancellationToken ct)
         {
             int tenantId = tenant.IDTenant!.Value;
-            double? lat = tenant.Latitude ?? config.WeatherLocationLat;
-            double? lon = tenant.Longitude ?? config.WeatherLocationLon;
-            if (lat is not double latitude || lon is not double longitude)
+            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, tenantId, tenant, config);
+            foreach ((double latitude, double longitude) in locations)
             {
-                return; // null = neither this organization nor the server-wide default has a location set yet
+                ct.ThrowIfCancellationRequested();
+                await RunForLocationAsync(tenantId, latitude, longitude, config, apiKey, ct);
             }
+        }
 
-            TenantWeatherState state = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
+        private async Task RunForLocationAsync(int tenantId, double latitude, double longitude, ServerConfig config, string apiKey, CancellationToken ct)
+        {
+            WeatherLocationState state = await tenantRepo.WeatherLocationStateGetAsync(tenantId, latitude, longitude);
             // WeatherBackgroundService ticks on a fixed 1-minute cadence and re-reads the current value here every tick, so an admin's edit takes effect without a restart.
             int pollMinutes = Math.Max(1, config.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes);
             if (state.WeatherCheckedAtUtc is DateTimeOffset lastChecked && DateTimeOffset.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
@@ -47,7 +51,7 @@ namespace Agrumy.Api.BackgroundWorkers
                 return; // not due yet
             }
 
-            double? maxRainPercent = await weatherClient.GetMaxRainProbabilityPercentAsync(latitude, longitude, settings.WeatherApiKey!, ct);
+            double? maxRainPercent = await weatherClient.GetMaxRainProbabilityPercentAsync(latitude, longitude, apiKey, ct);
             if (maxRainPercent is not double pop)
             {
                 return; // fetch failed (already logged in the client) - leave the last good reading in place
@@ -57,15 +61,15 @@ namespace Agrumy.Api.BackgroundWorkers
             bool rainPredicted = pop >= threshold;
             if (logger.IsEnabled(LogLevel.Information))
             {
-                logger.LogInformation("Weather check (tenant {TenantId}): max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", tenantId, pop, threshold, rainPredicted);
+                logger.LogInformation("Weather check (tenant {TenantId}, {Lat},{Lon}): max rain probability {Pop}% (threshold {Threshold}%) -> RainPredicted={RainPredicted}.", tenantId, latitude, longitude, pop, threshold, rainPredicted);
             }
-            await tenantRepo.TenantWeatherStateSetWeatherAsync(tenantId, rainPredicted, DateTimeOffset.UtcNow);
+            await tenantRepo.WeatherLocationStateSetWeatherAsync(tenantId, latitude, longitude, rainPredicted, DateTimeOffset.UtcNow);
 
             // Separate forecast call, same endpoint as GetFrostForecastAsync - failure here (unlike above) doesn't block the rain-skip feature, so it never returns early.
-            OutdoorConditions? outdoor = await weatherClient.GetCurrentOutdoorConditionsAsync(latitude, longitude, settings.WeatherApiKey!, ct);
+            OutdoorConditions? outdoor = await weatherClient.GetCurrentOutdoorConditionsAsync(latitude, longitude, apiKey, ct);
             if (outdoor != null)
             {
-                await tenantRepo.TenantWeatherStateSetOutdoorAsync(tenantId, outdoor.TemperatureC, outdoor.HumidityPercent, outdoor.WindSpeedMetersPerSecond, DateTimeOffset.UtcNow);
+                await tenantRepo.WeatherLocationStateSetOutdoorAsync(tenantId, latitude, longitude, outdoor.TemperatureC, outdoor.HumidityPercent, outdoor.WindSpeedMetersPerSecond, outdoor.PressureHpa, DateTimeOffset.UtcNow);
             }
         }
     }

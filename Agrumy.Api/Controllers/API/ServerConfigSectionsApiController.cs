@@ -297,6 +297,7 @@ namespace Agrumy.Api.Controllers.API
             current.EmailPassword = null;
             current.WebhookSecret = null;
             current.ArchivePassword = null;
+            current.WeatherApiKey = null;
             section.ApplyTo(current);
             current.IDServerConfig = 1;
             await serverConfigRepo.ServerConfigUpdateAsync(current);

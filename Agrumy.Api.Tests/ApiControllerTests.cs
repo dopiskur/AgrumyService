@@ -69,7 +69,7 @@ public class ApiControllerTests
     private DeviceFarmUnitApiController NewDeviceFarmUnitController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, TestSettings, new Agrumy.Api.Commands.ManualActuateService(_repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), NewQuotaEnforcer(), new Agrumy.Api.Devices.RuleValidationService(_repo.Object),
         new Agrumy.Api.Devices.RuleScopeConflictService(_repo.Object), _repo.Object);
-    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
+    private TenantApiController NewTenantController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object,
         new Agrumy.Api.Migration.TenantExportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new Agrumy.Api.Migration.TenantImportService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object, _repo.Object),
         new DeviceOutboxService(_repo.Object, _repo.Object, _repo.Object, _repo.Object, new NoOpMqttCommandPublisher()), _repo.Object, _cdseTokenProvider.Object);

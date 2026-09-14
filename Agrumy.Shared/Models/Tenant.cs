@@ -39,24 +39,27 @@ namespace Agrumy.Shared.Models
         public int? EventDedupeMinutes { get; set; }
     }
 
-    /// Per-organization derived weather/frost state - WeatherEvaluator/FrostAlertEvaluator's own last result for this
-    /// organization's resolved location (Tenant.Latitude/Longitude falling back to ServerConfig.WeatherLocationLat/Lon,
-    /// same cascade as ScheduleTimeZone) - replaces the old single global ServerConfig row, since a per-organization
-    /// location can no longer share one forecast state. Never null for a real organization - an organization with no row yet
-    /// gets an all-default/false instance (same convention as TenantAlertConfigGetAsync). Self-scoped: GET
-    /// /api/Tenant/WeatherState always acts on the caller's own organization.
-    public class TenantWeatherState
+    /// Derived weather/frost state for one resolved (Latitude, Longitude) point within an organization - WeatherEvaluator/
+    /// FrostAlertEvaluator's own last result there. Replaces the old one-row-per-tenant shape: a greenhouse complex/unit or
+    /// Open-Field parcel with its own real-world pin (Agrumy.Api.Weather.WeatherLocationResolver) now gets its own forecast
+    /// state instead of every zone in the organization sharing one, since sensors can genuinely sit at different sites.
+    /// Never null for a resolvable location - one with no row yet gets an all-default/false instance (same convention as
+    /// TenantAlertConfigGetAsync).
+    public class WeatherLocationState
     {
         public int TenantID { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
         public bool WeatherRainPredicted { get; set; }
         public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
         public bool FrostPredicted { get; set; }
         public int? FrostPredictedHoursAhead { get; set; }
         public DateTimeOffset? FrostCheckedAtUtc { get; set; }
-        /// Nearest-bucket reading from the same forecast call WeatherEvaluator already makes - feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind (RuleConditionEvaluator, "climate mirroring") as a live value alongside a zone's own SensorAverages, never a device's own SensorData.
+        /// Nearest-bucket reading from the same forecast call WeatherEvaluator already makes - feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure (RuleConditionEvaluator, "climate mirroring") as a live value alongside a zone's own SensorAverages, never a device's own SensorData.
         public double? OutdoorTemperatureC { get; set; }
         public double? OutdoorHumidityPercent { get; set; }
         public double? OutdoorWindSpeedMetersPerSecond { get; set; }
+        public double? OutdoorPressureHpa { get; set; }
         public DateTimeOffset? OutdoorCheckedAtUtc { get; set; }
     }
 }

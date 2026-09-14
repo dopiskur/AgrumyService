@@ -804,7 +804,7 @@ namespace Agrumy.Web.Dal.Interface
         Task TenantAlertConfigUpdate([Body] TenantAlertConfig config);
 
         [Get("/api/Tenant/WeatherState")]
-        Task<TenantWeatherState> TenantWeatherStateGet(int? idTenant = null);
+        Task<WeatherLocationState> TenantWeatherStateGet(int? idTenant = null);
 
         [Get("/api/Tenant/Satellite")]
         Task<TenantSatelliteConfig> TenantSatelliteConfigGet(int? idTenant);

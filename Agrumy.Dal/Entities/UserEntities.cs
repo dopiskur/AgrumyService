@@ -59,10 +59,13 @@ namespace Agrumy.Dal.Entities
         public bool Enabled { get; set; }
     }
 
-    /// See Agrumy.Shared.Models.TenantWeatherState - one row per organization, upserted by WeatherEvaluator/FrostAlertEvaluator.
-    public class TenantWeatherStateRow
+    /// See Agrumy.Shared.Models.WeatherLocationState - one row per resolved (TenantID, Latitude, Longitude), upserted by WeatherEvaluator/FrostAlertEvaluator; Latitude/Longitude are rounded to 6 decimals before every read/write (EfTenantRepository) so the unique index actually dedupes repeat lookups of the same pin.
+    public class WeatherLocationStateRow
     {
+        public int IDWeatherLocationState { get; set; }
         public int TenantID { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
         public bool WeatherRainPredicted { get; set; }
         public DateTimeOffset? WeatherCheckedAtUtc { get; set; }
         public bool FrostPredicted { get; set; }
@@ -71,6 +74,7 @@ namespace Agrumy.Dal.Entities
         public double? OutdoorTemperatureC { get; set; }
         public double? OutdoorHumidityPercent { get; set; }
         public double? OutdoorWindSpeedMetersPerSecond { get; set; }
+        public double? OutdoorPressureHpa { get; set; }
         public DateTimeOffset? OutdoorCheckedAtUtc { get; set; }
     }
 
@@ -186,6 +190,7 @@ namespace Agrumy.Dal.Entities
         public bool PurgeOrphanedSensorDataScheduleEnabled { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
+        public string? WeatherApiKey { get; set; }
         public double? WeatherLocationLat { get; set; }
         public double? WeatherLocationLon { get; set; }
         public int? WeatherPollIntervalMinutes { get; set; }

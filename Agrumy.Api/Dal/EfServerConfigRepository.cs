@@ -64,6 +64,7 @@ namespace Agrumy.Api.Dal
                 RecycleBinRetentionDays = 30,
                 SatelliteRasterRetentionDays = 30,
                 SatelliteDataPointRetentionDays = 730,
+                WeatherApiKey = string.IsNullOrEmpty(settings.WeatherApiKey) ? null : secretProtector.Protect(settings.WeatherApiKey),
                 WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes,
                 WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold,
                 FrostLookaheadHours = settings.FrostLookaheadHours,
@@ -173,6 +174,11 @@ namespace Agrumy.Api.Dal
             {
                 row.WebhookSecret = secretProtector.Protect(config.WebhookSecret);
             }
+            // Same "blank keeps existing" handling as MqttPassword/EmailPassword/WebhookSecret above.
+            if (!string.IsNullOrEmpty(config.WeatherApiKey))
+            {
+                row.WeatherApiKey = secretProtector.Protect(config.WeatherApiKey);
+            }
             row.ArchiveEnabled = config.ArchiveEnabled;
             row.ArchiveCutoffMode = (int)config.ArchiveCutoffMode;
             row.ArchiveCustomCutoffDate = config.ArchiveCustomCutoffDate;
@@ -224,6 +230,11 @@ namespace Agrumy.Api.Dal
             row.AllowSelfServiceTenantCreation = settings.AllowSelfServiceTenantCreation;
             row.TenantManagementEnabled = settings.TenantManagementEnabled;
             row.SensorDataRetentionDays = settings.SensorDataRetentionDays;
+            // Same "absent keeps existing" handling as MqttPassword/EmailPassword/WebhookSecret - an appsettings.json with no key configured shouldn't wipe out one already saved via Server Settings.
+            if (!string.IsNullOrEmpty(settings.WeatherApiKey))
+            {
+                row.WeatherApiKey = secretProtector.Protect(settings.WeatherApiKey);
+            }
             row.WeatherPollIntervalMinutes = settings.WeatherPollIntervalMinutes;
             row.WeatherRainSkipThreshold = settings.WeatherRainSkipThreshold;
             row.FrostLookaheadHours = settings.FrostLookaheadHours;
@@ -334,6 +345,8 @@ namespace Agrumy.Api.Dal
             SatelliteRasterRetentionDays = r.SatelliteRasterRetentionDays ?? 30,
             SatelliteDataPointRetentionDays = r.SatelliteDataPointRetentionDays ?? 730,
             PurgeOrphanedSensorDataScheduleEnabled = r.PurgeOrphanedSensorDataScheduleEnabled,
+            // Real value, decrypted - WeatherEvaluator/FrostAlertEvaluator need it to actually call OpenWeatherMap. The API/edit-form response redacts this at the controller boundary, same as MqttPassword/EmailPassword above.
+            WeatherApiKey = secretProtector.Unprotect(r.WeatherApiKey),
             WeatherLocationLat = r.WeatherLocationLat,
             WeatherLocationLon = r.WeatherLocationLon,
             // An older row has NULL here - same appsettings-seed fallback as FirmwareGitHubRepository, rather than surfacing an empty interval/threshold.

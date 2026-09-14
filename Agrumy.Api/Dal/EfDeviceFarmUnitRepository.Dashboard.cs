@@ -461,19 +461,70 @@ namespace Agrumy.Api.Dal
             };
         }
 
-        /// "Currently active" per alert type, reusing each evaluator's own existing dedup state instead of a new persistence layer: Device.OfflineNotifiedAt/LowBatteryNotifiedAt, DeviceFarmUnitZoneRow.TankRefillNotifiedAt, TenantWeatherStateRow.FrostPredicted. RuleTriggered/Satellite* have no such continuous state and are rejected by the caller before this is reached.
+        /// "Currently active" per alert type, reusing each evaluator's own existing dedup state instead of a new persistence layer: Device.OfflineNotifiedAt/LowBatteryNotifiedAt, DeviceFarmUnitZoneRow.TankRefillNotifiedAt, WeatherLocationStateRow.FrostPredicted. RuleTriggered/Satellite* have no such continuous state and are rejected by the caller before this is reached.
         public async Task<bool> DashboardAlertStatusGetAsync(HierarchyNodeKind level, int levelId, NotificationEventType eventType)
         {
             if (eventType == NotificationEventType.Frost)
             {
-                int? tenantId = level switch
+                // Same Unit->Farm->Tenant->ServerConfig cascade as WeatherLocationResolver.ForGreenhouseUnit - resolved from a few simple single-table reads rather than a nested projection, which EF's MySQL/Postgres providers are not guaranteed to translate.
+                int? tenantId = null;
+                double? unitLat = null, unitLon = null, farmId2Lat = null, farmId2Lon = null;
+                if (level == HierarchyNodeKind.Farm)
                 {
-                    HierarchyNodeKind.Farm => await db.DeviceFarms.AsNoTracking().Where(f => f.IDDeviceFarm == levelId).Select(f => f.TenantID).FirstOrDefaultAsync(),
-                    HierarchyNodeKind.Unit => await db.DeviceFarmUnits.AsNoTracking().Where(u => u.IDDeviceFarmUnit == levelId).Select(u => u.TenantID).FirstOrDefaultAsync(),
-                    HierarchyNodeKind.Zone => await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.IDDeviceFarmUnitZone == levelId).Select(z => z.TenantID).FirstOrDefaultAsync(),
-                    _ => null,
-                };
-                return tenantId is int tid && await db.TenantWeatherStates.AsNoTracking().Where(t => t.TenantID == tid).Select(t => t.FrostPredicted).FirstOrDefaultAsync();
+                    var farm = await db.DeviceFarms.AsNoTracking().Where(f => f.IDDeviceFarm == levelId).Select(f => new { f.TenantID, f.Latitude, f.Longitude }).FirstOrDefaultAsync();
+                    if (farm != null) { tenantId = farm.TenantID; farmId2Lat = farm.Latitude; farmId2Lon = farm.Longitude; }
+                }
+                else if (level == HierarchyNodeKind.Unit || level == HierarchyNodeKind.Zone)
+                {
+                    int? unitId = level == HierarchyNodeKind.Unit
+                        ? levelId
+                        : await db.DeviceFarmUnitZones.AsNoTracking().Where(z => z.IDDeviceFarmUnitZone == levelId).Select(z => (int?)z.DeviceFarmUnitID).FirstOrDefaultAsync();
+                    if (unitId is int uid)
+                    {
+                        var unit = await db.DeviceFarmUnits.AsNoTracking().Where(u => u.IDDeviceFarmUnit == uid).Select(u => new { u.TenantID, u.Latitude, u.Longitude, u.DeviceFarmID }).FirstOrDefaultAsync();
+                        if (unit != null)
+                        {
+                            tenantId = unit.TenantID;
+                            unitLat = unit.Latitude;
+                            unitLon = unit.Longitude;
+                            if (unit.DeviceFarmID is int fid)
+                            {
+                                var farm = await db.DeviceFarms.AsNoTracking().Where(f => f.IDDeviceFarm == fid).Select(f => new { f.Latitude, f.Longitude }).FirstOrDefaultAsync();
+                                if (farm != null) { farmId2Lat = farm.Latitude; farmId2Lon = farm.Longitude; }
+                            }
+                        }
+                    }
+                }
+
+                if (tenantId is not int tid)
+                {
+                    return false;
+                }
+
+                double? resolvedLat = unitLat ?? farmId2Lat;
+                double? resolvedLon = unitLon ?? farmId2Lon;
+                if (resolvedLat is null || resolvedLon is null)
+                {
+                    var tenant = await db.Tenants.AsNoTracking().Where(t => t.IDTenant == tid).Select(t => new { t.Latitude, t.Longitude }).FirstOrDefaultAsync();
+                    resolvedLat ??= tenant?.Latitude;
+                    resolvedLon ??= tenant?.Longitude;
+                }
+                if (resolvedLat is null || resolvedLon is null)
+                {
+                    var serverConfig = await db.ServerConfigs.AsNoTracking().Select(c => new { c.WeatherLocationLat, c.WeatherLocationLon }).FirstOrDefaultAsync();
+                    resolvedLat ??= serverConfig?.WeatherLocationLat;
+                    resolvedLon ??= serverConfig?.WeatherLocationLon;
+                }
+                if (resolvedLat is not double lat || resolvedLon is not double lon)
+                {
+                    return false; // no resolvable location anywhere in the cascade
+                }
+
+                double checkLat = Math.Round(lat, 6);
+                double checkLon = Math.Round(lon, 6);
+                return await db.WeatherLocationStates.AsNoTracking()
+                    .Where(w => w.TenantID == tid && w.Latitude == checkLat && w.Longitude == checkLon)
+                    .Select(w => w.FrostPredicted).FirstOrDefaultAsync();
             }
 
             List<int> unitIds = level switch

@@ -2,6 +2,7 @@ using Agrumy.Api.Commands;
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Api.Migration;
 using Agrumy.Api.Satellite;
+using Agrumy.Api.Weather;
 using Agrumy.Shared.Models;
 using Agrumy.Shared.Security;
 using Agrumy.Shared.Utils;
@@ -12,7 +13,7 @@ namespace Agrumy.Api.Controllers.API
 {
     /// Organization Management CRUD - write is Global admin only since an organization has no meaningful self-management of its own existence, unlike Device/User management.
     [Route("/api/Tenant")]
-    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class TenantApiController(ITenantRepository tenantRepo, IDeviceFarmUnitRepository deviceFarmUnitRepo, IServerConfigRepository serverConfigRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, TenantExportService exportService, TenantImportService importService, DeviceOutboxService commandQueue, ISatelliteConfigRepository satelliteConfigRepo, ICdseTokenProvider cdseTokenProvider) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
         [Authorize(Roles = RoleNames.GlobalAdminOrReader)]
         [HttpGet("All")]
@@ -168,17 +169,26 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// idTenant defaults to the caller's own organization - same optional-query-param shape as EmergencyStopStatus above, so an Organization admin's plain GET "just works" while a Global admin/reader can still target any organization explicitly. Read-only (WeatherEvaluator/FrostAlertEvaluator are the only writers), so no PUT counterpart.
+        /// idTenant defaults to the caller's own organization - same optional-query-param shape as EmergencyStopStatus above, so an Organization admin's plain GET "just works" while a Global admin/reader can still target any organization explicitly. Read-only (WeatherEvaluator/FrostAlertEvaluator are the only writers), so no PUT counterpart. Always the organization's own default location (WeatherLocationResolver.ForTenantDefault) - a Farm/Unit/Parcel with its own more specific pin has its own state, not surfaced by this summary endpoint.
         [Authorize(Roles = RoleNames.AdminsOrGlobalReader)]
         [HttpGet("WeatherState")]
-        public async Task<ActionResult<TenantWeatherState>> WeatherStateGet(int? idTenant = null)
+        public async Task<ActionResult<WeatherLocationState>> WeatherStateGet(int? idTenant = null)
         {
             int targetTenantId = idTenant ?? CallerTenantId ?? -1;
             if (!CallerReadsTenantConfig(targetTenantId))
             {
                 return ForbidWith("Not authorized to view this tenant's weather state.");
             }
-            return Ok(await tenantRepo.TenantWeatherStateGetAsync(targetTenantId));
+            Tenant? tenant = await tenantRepo.TenantGetByIdAsync(targetTenantId);
+            if (tenant == null)
+            {
+                return Ok(new WeatherLocationState { TenantID = targetTenantId });
+            }
+            ServerConfig serverConfig = await serverConfigRepo.ServerConfigGetAsync(1);
+            (double Lat, double Lon)? location = WeatherLocationResolver.ForTenantDefault(tenant, serverConfig);
+            return Ok(location is (double lat, double lon)
+                ? await tenantRepo.WeatherLocationStateGetAsync(targetTenantId, lat, lon)
+                : new WeatherLocationState { TenantID = targetTenantId });
         }
 
         // ---- Emergency stop -----------------------------------

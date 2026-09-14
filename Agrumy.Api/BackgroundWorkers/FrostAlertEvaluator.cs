@@ -8,11 +8,11 @@ using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.BackgroundWorkers
 {
-    /// Forecast-based early warning (temperature + cloudiness + wind - the three factors radiative frost actually depends on) fires hours before frost sets in, refined with a same-tick local DewPoint-spread reading where sensors report one; local readings only ever add confidence to the message, never gate the alert, since the whole point is to warn before local conditions would show it. Runs once per organization, since each organization can sit at a genuinely different physical site (Tenant.Latitude/Longitude, falling back to ServerConfig.WeatherLocationLat/Lon - same cascade AstronomicalRuleResolver's callers already use).
+    /// Forecast-based early warning (temperature + cloudiness + wind - the three factors radiative frost actually depends on) fires hours before frost sets in, refined with a same-tick local DewPoint-spread reading where sensors report one; local readings only ever add confidence to the message, never gate the alert, since the whole point is to warn before local conditions would show it. Runs once per distinct real-world location a tenant's greenhouse Units/Farms or Open-Field parcels/zones resolve to (TenantWeatherLocations, WeatherLocationResolver), since two sites under the same organization can genuinely differ (one frosting over, one not).
     public sealed class FrostAlertEvaluator(
-        IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceRepository deviceRepo, IUserRepository userRepo,
-        IWeatherForecastClient weatherClient, INotificationDispatcher dispatcher, IOptions<AgrumySettings> settingsOptions,
-        ILogger<FrostAlertEvaluator> logger)
+        IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo,
+        IDeviceRepository deviceRepo, IUserRepository userRepo, IWeatherForecastClient weatherClient, INotificationDispatcher dispatcher,
+        IOptions<AgrumySettings> settingsOptions, ILogger<FrostAlertEvaluator> logger)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -21,31 +21,35 @@ namespace Agrumy.Api.BackgroundWorkers
 
         public async Task RunOnceAsync(CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(settings.WeatherApiKey))
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
+            string? apiKey = config.WeatherApiKey ?? settings.WeatherApiKey;
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
-                return; // not configured (Weather:ApiKey unset) - inert, same as WeatherEvaluator
+                return; // not configured (neither Server Settings nor appsettings.json's Weather:ApiKey) - inert, same as WeatherEvaluator
             }
 
-            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
             IList<Tenant> tenants = await tenantRepo.TenantsGetAllAsync();
             foreach (Tenant tenant in tenants)
             {
                 ct.ThrowIfCancellationRequested();
-                await RunForTenantAsync(tenant, config, ct);
+                await RunForTenantAsync(tenant, config, apiKey, ct);
             }
         }
 
-        private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, CancellationToken ct)
+        private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, string apiKey, CancellationToken ct)
         {
             int tenantId = tenant.IDTenant!.Value;
-            double? lat = tenant.Latitude ?? config.WeatherLocationLat;
-            double? lon = tenant.Longitude ?? config.WeatherLocationLon;
-            if (lat is not double latitude || lon is not double longitude)
+            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, tenantId, tenant, config);
+            foreach ((double latitude, double longitude) in locations)
             {
-                return; // null = neither this organization nor the server-wide default has a location set yet
+                ct.ThrowIfCancellationRequested();
+                await RunForLocationAsync(tenantId, latitude, longitude, config, apiKey, ct);
             }
+        }
 
-            TenantWeatherState state = await tenantRepo.TenantWeatherStateGetAsync(tenantId);
+        private async Task RunForLocationAsync(int tenantId, double latitude, double longitude, ServerConfig config, string apiKey, CancellationToken ct)
+        {
+            WeatherLocationState state = await tenantRepo.WeatherLocationStateGetAsync(tenantId, latitude, longitude);
             int pollMinutes = Math.Max(1, config.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes);
             if (state.FrostCheckedAtUtc is DateTimeOffset lastChecked && DateTimeOffset.UtcNow - lastChecked < TimeSpan.FromMinutes(pollMinutes))
             {
@@ -53,7 +57,7 @@ namespace Agrumy.Api.BackgroundWorkers
             }
 
             int lookaheadHours = Math.Max(1, config.FrostLookaheadHours ?? settings.FrostLookaheadHours);
-            FrostForecastResult? forecast = await weatherClient.GetFrostForecastAsync(latitude, longitude, settings.WeatherApiKey!, lookaheadHours, ct);
+            FrostForecastResult? forecast = await weatherClient.GetFrostForecastAsync(latitude, longitude, apiKey, lookaheadHours, ct);
             if (forecast is null)
             {
                 return; // fetch failed (already logged in the client) - leave the last good reading in place
@@ -68,13 +72,13 @@ namespace Agrumy.Api.BackgroundWorkers
                 && (forecast.WindSpeedMetersPerSecond is not double wind || wind <= windMax);
 
             bool wasPredicted = state.FrostPredicted;
-            await tenantRepo.TenantWeatherStateSetFrostAsync(tenantId, frostPredicted, frostPredicted ? forecast.HoursAhead : null, DateTimeOffset.UtcNow);
+            await tenantRepo.WeatherLocationStateSetFrostAsync(tenantId, latitude, longitude, frostPredicted, frostPredicted ? forecast.HoursAhead : null, DateTimeOffset.UtcNow);
 
             if (logger.IsEnabled(LogLevel.Information))
             {
                 logger.LogInformation(
-                    "Frost check (tenant {TenantId}): {MinTemp}C in {HoursAhead}h, cloudiness {Clouds}%, wind {Wind}m/s -> FrostPredicted={FrostPredicted}.",
-                    tenantId, forecast.MinTemperatureC, forecast.HoursAhead, forecast.CloudinessPercent, forecast.WindSpeedMetersPerSecond, frostPredicted);
+                    "Frost check (tenant {TenantId}, {Lat},{Lon}): {MinTemp}C in {HoursAhead}h, cloudiness {Clouds}%, wind {Wind}m/s -> FrostPredicted={FrostPredicted}.",
+                    tenantId, latitude, longitude, forecast.MinTemperatureC, forecast.HoursAhead, forecast.CloudinessPercent, forecast.WindSpeedMetersPerSecond, frostPredicted);
             }
 
             if (!frostPredicted || wasPredicted)
