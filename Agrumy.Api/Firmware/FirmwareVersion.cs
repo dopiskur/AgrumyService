@@ -5,8 +5,8 @@ namespace Agrumy.Api.Firmware
     /// Semver ordering for catalog versions and the release file naming convention, in one place - a string sort would wrongly put "1.10.0" before "1.9.0".
     public readonly partial record struct FirmwareVersion(int Major, int Minor, int Patch, string? PreRelease) : IComparable<FirmwareVersion>
     {
-        /// agrumy-{board}-v{version}.bin - what AgrumyFirmware's release.yml produces, what the GitHub/Custom syncs accept, and what the import scanner/upload validate before a file enters the catalog.
-        [GeneratedRegex(@"^agrumy-(?<board>[a-z0-9]+)-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\.bin$")]
+        /// agrumy-{board}-v{version}.bin - what AgrumyFirmware's release.yml produces, what the GitHub/Custom syncs accept, and what the import scanner/upload validate before a file enters the catalog. Board allows '-'/'_' - most PlatformIO env names have one or the other (kc868-a6, seeed_xiao_esp32c3). The (?&lt;!-full) lookbehind keeps this from also swallowing a full-image name as board="...-full" now that '-' is a legal board character - see FullImageFileNameRegex below.
+        [GeneratedRegex(@"^agrumy-(?<board>[a-z0-9_-]+)(?<!-full)-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\.bin$")]
         private static partial Regex FileNameRegex();
 
         [GeneratedRegex(@"^v?(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:-(?<pre>[0-9A-Za-z][0-9A-Za-z.-]*))?$")]
@@ -16,8 +16,8 @@ namespace Agrumy.Api.Firmware
         [GeneratedRegex(@"^\d+-g[0-9a-f]+(-dirty)?$")]
         private static partial Regex GitDescribeCommitSuffixRegex();
 
-        /// agrumy-{board}-full-v{version}.bin, the blank-chip web-installer image (bootloader+partition table+boot_app0+OTA app merged to one flashable file) - "full-" sits BEFORE "v" so it can't be swallowed as a bogus pre-release tail by FileNameRegex.
-        [GeneratedRegex(@"^agrumy-(?<board>[a-z0-9]+)-full-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\.bin$")]
+        /// agrumy-{board}-full-v{version}.bin, the blank-chip web-installer image (bootloader+partition table+boot_app0+OTA app merged to one flashable file) - "full-" sits BEFORE "v" so it can't be swallowed as a bogus pre-release tail by FileNameRegex. Same board charset as FileNameRegex above.
+        [GeneratedRegex(@"^agrumy-(?<board>[a-z0-9_-]+)-full-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)\.bin$")]
         private static partial Regex FullImageFileNameRegex();
 
         public static bool TryParse(string? text, out FirmwareVersion version)

@@ -70,6 +70,9 @@ public class FirmwareVersionTests
     [Theory]
     [InlineData("agrumy-esp32dev-v1.2.0.bin", "esp32dev", "1.2.0")]
     [InlineData("agrumy-esp32s3usbotg-v0.3.1-rc1.bin", "esp32s3usbotg", "0.3.1-rc1")]
+    // Board segments with '-' or '_' - most env names newer than the original two have one or the other (kc868-a6, esp32-s3-relay-6ch, seeed_xiao_esp32c3).
+    [InlineData("agrumy-kc868-a6-v1.2.0.bin", "kc868-a6", "1.2.0")]
+    [InlineData("agrumy-seeed_xiao_esp32c3-v1.2.0.bin", "seeed_xiao_esp32c3", "1.2.0")]
     public void FileName_Convention_Parses(string name, string board, string version)
     {
         Assert.True(FirmwareVersion.TryParseFileName(name, out var b, out var v));
