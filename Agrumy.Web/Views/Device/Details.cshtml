@@ -23,8 +23,6 @@
     var batteryToggle = new EnabledToggleFieldViewModel { Name = "batteryEnabled", Label = "Device battery", Value = Model.BatteryEnabled };
     var debugToggle = new EnabledToggleFieldViewModel { Name = "debug", Label = "Debug", Value = Model.Debug };
     var enabledToggle = new EnabledToggleFieldViewModel { Name = "enabled", Label = "Device", Value = Model.Enabled };
-    // Power rail toggles only make sense to expose for a device currently running sensor-only (see EfDeviceRepository.DevicesSensorOnlyGetAsync's same definition) - a controller-enabled device needs both rails powered continuously. SleepDeep itself has no such restriction and stays visible regardless.
-    bool showPowerRailToggles = Model.DeviceSensorEnabled == true && Model.DeviceControllerEnabled != true;
 }
 
 @if (TempData["HardResetMessage"] is string hardResetMessage)
@@ -82,7 +80,7 @@
         <div class="row g-3">
             <div class="col-12 col-md-6">
                 <div class="border rounded p-3 h-100">
-                    <form asp-action="QuickSettings" method="post">
+                    <form asp-action="QuickSettings" method="post" id="quick-settings-form">
                         <fieldset disabled="@isReadOnly" class="border-0 p-0 m-0">
                             <input type="hidden" name="idDevice" value="@Model.IDDevice" />
                             <partial name="_EnabledToggleField" model="sensorToggle" />
@@ -98,14 +96,8 @@
                                 <label class="form-label">Sleep seconds</label>
                                 <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
                             </div>
-                            @if (showPowerRailToggles)
-                            {
-                                <div id="power-rail-toggles">
-                                    <partial name="_EnabledToggleField" model="powerRailPrimaryToggle" />
-                                    <partial name="_EnabledToggleField" model="powerRailSecondaryToggle" />
-                                </div>
-                            }
-                            <input type="submit" value="Save" class="btn btn-primary" />
+                            <partial name="_EnabledToggleField" model="powerRailPrimaryToggle" />
+                            <partial name="_EnabledToggleField" model="powerRailSecondaryToggle" />
                         </fieldset>
                     </form>
                 </div>
@@ -211,21 +203,17 @@
 
 @section Scripts {
     <script nonce="@Context.CspNonce()">
-        // SleepSeconds only makes sense once SleepDeep is on - mirror the radio toggle's state instead of a full page round-trip.
+        var quickSettingsForm = document.getElementById('quick-settings-form');
+        // SleepSeconds only makes sense once SleepDeep is on - mirror the toggle's state instead of waiting for the reload below.
         document.querySelectorAll('input[name="sleepDeepEnabled"]').forEach(function (input) {
             input.addEventListener('change', function () {
                 document.getElementById('sleep-seconds-field').hidden = document.querySelector('input[name="sleepDeepEnabled"]:checked') === null;
             });
         });
-        // A controller-enabled device needs both power rails powered continuously - grey the toggles the moment Controller is checked, not the value they'll submit (that stays whatever it already was), so the admin sees why before saving.
-        document.querySelectorAll('input[name="deviceControllerEnabled"]').forEach(function (input) {
+        // No Save button - every switch and the sleep-seconds field submit (and persist) the moment they change.
+        quickSettingsForm.querySelectorAll('input[type="checkbox"], input[type="number"]').forEach(function (input) {
             input.addEventListener('change', function () {
-                var powerRailToggles = document.getElementById('power-rail-toggles');
-                if (powerRailToggles) {
-                    var controllerEnabled = document.querySelector('input[name="deviceControllerEnabled"]:checked') !== null;
-                    powerRailToggles.classList.toggle('opacity-50', controllerEnabled);
-                    powerRailToggles.classList.toggle('pe-none', controllerEnabled);
-                }
+                quickSettingsForm.submit();
             });
         });
     </script>

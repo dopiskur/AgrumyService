@@ -300,9 +300,9 @@ namespace Agrumy.Web.Controllers.View
             bool loRaGatewayEnabled, bool batteryEnabled, bool debug, bool enabled)
         {
             DeviceDto device = await api.DeviceGet(idDevice);
+            // No RecomputeSensorControllerEnabled() here (unlike Edit) - this form never touches DeviceRoleID, so recomputing from it would just re-derive the OLD values and silently discard the toggle the admin just flipped.
             device.DeviceSensorEnabled = deviceSensorEnabled;
             device.DeviceControllerEnabled = deviceControllerEnabled;
-            device.RecomputeSensorControllerEnabled();
             device.SleepSeconds = sleepSeconds;
             device.SleepDeepEnabled = sleepDeepEnabled;
             device.PowerRailPrimaryEnabled = powerRailPrimaryEnabled;
