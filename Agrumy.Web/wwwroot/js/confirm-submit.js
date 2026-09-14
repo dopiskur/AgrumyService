@@ -14,3 +14,20 @@ document.addEventListener('click', function (e) {
         e.preventDefault();
     }
 });
+
+// data-autosubmit replaces inline onchange="this.form.requestSubmit()" - same CSP restriction as above.
+document.addEventListener('change', function (e) {
+    var el = e.target.closest('[data-autosubmit]');
+    if (el && el.form) {
+        el.form.requestSubmit();
+    }
+});
+
+// A .js-return-url hidden field replaces inline onsubmit="..." that filled it from window.location - the
+// server-rendered Request.Path can be wrong when the form lives inside an AJAX-swapped fragment.
+document.addEventListener('submit', function (e) {
+    var field = e.target.querySelector && e.target.querySelector('.js-return-url');
+    if (field) {
+        field.value = window.location.pathname + window.location.search;
+    }
+});

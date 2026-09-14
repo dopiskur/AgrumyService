@@ -43,7 +43,7 @@
             <form asp-action="@gridColumnsAction" method="post" class="d-flex align-items-center gap-1">
                 <input type="hidden" name="@leafFieldName" value="@idZone" />
                 <label class="form-label small mb-0" for="gridColumnsSelect">Columns</label>
-                <select id="gridColumnsSelect" name="columns" class="form-select form-select-sm" style="width:5rem" onchange="this.form.requestSubmit()">
+                <select id="gridColumnsSelect" name="columns" class="form-select form-select-sm" style="width:5rem" data-autosubmit>
                     @for (int c = 1; c <= 6; c++)
                     {
                         <option value="@c" selected="@(c == gridColumns ? "selected" : null)">@c</option>

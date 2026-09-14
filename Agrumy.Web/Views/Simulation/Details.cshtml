@@ -80,7 +80,7 @@ else
         <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
         <div class="col-auto">
             <label class="form-label" for="simDurationPreset">Duration</label>
-            <select id="simDurationPreset" class="form-select" onchange="document.getElementById('simDurationMinutes').value = this.value === 'custom' ? '' : this.value; document.getElementById('simCustomDurationWrap').style.display = this.value === 'custom' ? 'block' : 'none';">
+            <select id="simDurationPreset" class="form-select">
                 <option value="5">5 minutes</option>
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
@@ -94,8 +94,7 @@ else
         </div>
         <div class="col-auto" id="simCustomDurationWrap" style="display:none">
             <label class="form-label" for="simDurationMinutesInput">Custom minutes</label>
-            <input type="number" id="simDurationMinutesInput" class="form-control" min="1" max="2880"
-                   oninput="document.getElementById('simDurationMinutes').value = this.value" />
+            <input type="number" id="simDurationMinutesInput" class="form-control" min="1" max="2880" />
         </div>
         <input type="hidden" id="simDurationMinutes" name="durationMinutes" value="1440" />
         <div class="col-auto">
@@ -296,6 +295,21 @@ else
         }
         scopeSelect.addEventListener('change', updateVisibility);
         updateVisibility();
+    })();
+    (function () {
+        var preset = document.getElementById('simDurationPreset');
+        var minutes = document.getElementById('simDurationMinutes');
+        var customWrap = document.getElementById('simCustomDurationWrap');
+        var customInput = document.getElementById('simDurationMinutesInput');
+        if (!preset) { return; }
+        preset.addEventListener('change', function () {
+            var isCustom = preset.value === 'custom';
+            minutes.value = isCustom ? '' : preset.value;
+            customWrap.style.display = isCustom ? 'block' : 'none';
+        });
+        customInput.addEventListener('input', function () {
+            minutes.value = customInput.value;
+        });
     })();
 </script>
 
