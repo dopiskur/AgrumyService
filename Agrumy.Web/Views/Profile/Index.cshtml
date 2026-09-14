@@ -121,7 +121,7 @@
                                         <form asp-action="NotificationPreferenceToggle" class="d-inline">
                                             <input type="hidden" name="eventType" value="@((int)eventType)" />
                                             <input type="hidden" name="channel" value="@channel" />
-                                            <input type="hidden" name="enabled" value="@(!enabled)" />
+                                            <input type="hidden" name="enabled" value="@((!enabled).ToString())" />
                                             <button type="submit" class="btn btn-sm @(enabled ? "btn-success" : "btn-outline-secondary")" title="@(enabled ? "Enabled - click to disable" : "Disabled - click to enable")">
                                                 @(enabled ? "On" : "Off")
                                             </button>
