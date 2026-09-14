@@ -16,6 +16,7 @@ public class WeatherEvaluatorTests
     private readonly Mock<ITenantRepository> _tenants = new(MockBehavior.Strict);
     private readonly Mock<IDeviceFarmUnitRepository> _units = new(MockBehavior.Strict);
     private readonly Mock<IFarmParcelRepository> _farmParcels = new(MockBehavior.Strict);
+    private readonly Mock<ISimulationRepository> _simulation = new(MockBehavior.Strict);
     private readonly Mock<IWeatherForecastClient> _weatherClient = new(MockBehavior.Strict);
 
     private const int TenantId = 5;
@@ -23,7 +24,7 @@ public class WeatherEvaluatorTests
     private const double Lon = 16.0;
 
     private WeatherEvaluator NewEvaluator(string? apiKey = "test-key") =>
-        new(_serverConfig.Object, _tenants.Object, _units.Object, _farmParcels.Object, _weatherClient.Object,
+        new(_serverConfig.Object, _tenants.Object, _units.Object, _farmParcels.Object, _simulation.Object, _weatherClient.Object,
             Options.Create(new AgrumySettings { WeatherApiKey = apiKey, WeatherPollIntervalMinutes = 15, WeatherRainSkipThreshold = 50.0 }),
             NullLogger<WeatherEvaluator>.Instance);
 
@@ -33,10 +34,11 @@ public class WeatherEvaluatorTests
     private void SetupTenant(double? lat, double? lon)
     {
         _tenants.Setup(t => t.TenantsGetAllAsync()).ReturnsAsync(new List<Tenant> { new() { IDTenant = TenantId, Latitude = lat, Longitude = lon } });
-        // No Farms/Units/Parcels of its own - TenantWeatherLocations.ResolveDistinctAsync always walks these regardless of whether a location ends up resolvable.
+        // No Farms/Units/Parcels/weather-feed devices of its own - TenantWeatherLocations.ResolveDistinctAsync always walks these regardless of whether a location ends up resolvable.
         _units.Setup(u => u.DeviceFarmsGetAsync(TenantId)).ReturnsAsync(Array.Empty<DeviceFarm>());
         _units.Setup(u => u.DeviceFarmUnitsGetAsync(TenantId)).ReturnsAsync(Array.Empty<DeviceFarmUnit>());
         _farmParcels.Setup(f => f.FarmParcelZonesWithGeometryGetAsync(TenantId)).ReturnsAsync(Array.Empty<FarmParcelZone>());
+        _simulation.Setup(s => s.ActiveWeatherFeedDeviceLocationsGetAsync(TenantId)).ReturnsAsync(Array.Empty<(double, double)>());
     }
 
     private void SetupState(DateTimeOffset? checkedAtUtc) =>

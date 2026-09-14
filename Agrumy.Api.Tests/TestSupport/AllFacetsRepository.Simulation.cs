@@ -8,6 +8,8 @@ namespace Agrumy.Api.Tests.TestSupport
     {
         public Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession) => simulationRepository.SimulationSessionWeatherOverrideGetAsync(idSimulationSession);
 
+        public Task<IReadOnlyList<(double Lat, double Lon)>> ActiveWeatherFeedDeviceLocationsGetAsync(int tenantId) => simulationRepository.ActiveWeatherFeedDeviceLocationsGetAsync(tenantId);
+
         public Task VirtualDeviceRegisterAsync(int deviceID) => simulationRepository.VirtualDeviceRegisterAsync(deviceID);
 
         public Task<IList<int>> VirtualDeviceIdsGetAsync() => simulationRepository.VirtualDeviceIdsGetAsync();

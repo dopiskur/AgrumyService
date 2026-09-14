@@ -11,7 +11,7 @@ namespace Agrumy.Api.BackgroundWorkers
     /// Forecast-based early warning (temperature + cloudiness + wind - the three factors radiative frost actually depends on) fires hours before frost sets in, refined with a same-tick local DewPoint-spread reading where sensors report one; local readings only ever add confidence to the message, never gate the alert, since the whole point is to warn before local conditions would show it. Runs once per distinct real-world location a tenant's greenhouse Units/Farms or Open-Field parcels/zones resolve to (TenantWeatherLocations, WeatherLocationResolver), since two sites under the same organization can genuinely differ (one frosting over, one not).
     public sealed class FrostAlertEvaluator(
         IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo,
-        IDeviceRepository deviceRepo, IUserRepository userRepo, IWeatherForecastClient weatherClient, INotificationDispatcher dispatcher,
+        ISimulationRepository simulationRepo, IDeviceRepository deviceRepo, IUserRepository userRepo, IWeatherForecastClient weatherClient, INotificationDispatcher dispatcher,
         IOptions<AgrumySettings> settingsOptions, ILogger<FrostAlertEvaluator> logger)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
@@ -39,7 +39,7 @@ namespace Agrumy.Api.BackgroundWorkers
         private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, string apiKey, CancellationToken ct)
         {
             int tenantId = tenant.IDTenant!.Value;
-            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, tenantId, tenant, config);
+            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, simulationRepo, tenantId, tenant, config);
             foreach ((double latitude, double longitude) in locations)
             {
                 ct.ThrowIfCancellationRequested();

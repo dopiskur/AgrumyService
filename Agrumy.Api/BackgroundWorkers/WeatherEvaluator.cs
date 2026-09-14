@@ -9,7 +9,7 @@ namespace Agrumy.Api.BackgroundWorkers
     /// Computes each organization's own WeatherLocationState.WeatherRainPredicted flag (DeviceConfigBuilder combines it with each zone's own opt-in into the per-device veto) and its live Outdoor* readings (RuleConditionEvaluator's SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure). Runs once per distinct real-world location a tenant's greenhouse Units/Farms or Open-Field parcels/zones resolve to (TenantWeatherLocations, WeatherLocationResolver) - two sites under the same organization no longer share one forecast just because they share a TenantID.
     public sealed class WeatherEvaluator(
         IServerConfigRepository serverConfigRepo, ITenantRepository tenantRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo,
-        IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions, ILogger<WeatherEvaluator> logger)
+        ISimulationRepository simulationRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions, ILogger<WeatherEvaluator> logger)
     {
         private readonly AgrumySettings settings = settingsOptions.Value;
 
@@ -33,7 +33,7 @@ namespace Agrumy.Api.BackgroundWorkers
         private async Task RunForTenantAsync(Tenant tenant, ServerConfig config, string apiKey, CancellationToken ct)
         {
             int tenantId = tenant.IDTenant!.Value;
-            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, tenantId, tenant, config);
+            IReadOnlyList<(double Lat, double Lon)> locations = await TenantWeatherLocations.ResolveDistinctAsync(unitRepo, farmParcelRepo, simulationRepo, tenantId, tenant, config);
             foreach ((double latitude, double longitude) in locations)
             {
                 ct.ThrowIfCancellationRequested();

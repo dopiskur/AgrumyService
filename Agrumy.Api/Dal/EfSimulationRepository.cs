@@ -397,15 +397,56 @@ namespace Agrumy.Api.Dal
 
         public async Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession)
         {
-            var row = await (
+            // The feed pulls OpenWeatherMap's own REAL, currently-cached reading for wherever this member device's own Geolocation override pin sits (WeatherEvaluator/TenantWeatherLocations poll it same as any Farm/Unit/Parcel pin) - not a value typed in here, so a device with the feed flagged on but no pin set yet has nothing to return.
+            var candidate = await (
                 from membership in db.SimulationSessionDevices
                 join sim in db.DeviceSimulations on membership.DeviceID equals sim.DeviceID
                 where membership.IDSimulationSession == idSimulationSession
-                    && (sim.SimulatedOutdoorTemperature != null || sim.SimulatedOutdoorHumidity != null
-                        || sim.SimulatedOutdoorWind != null || sim.SimulatedOutdoorPressure != null)
-                select new { sim.SimulatedOutdoorTemperature, sim.SimulatedOutdoorHumidity, sim.SimulatedOutdoorWind, sim.SimulatedOutdoorPressure })
+                    && sim.Latitude != null && sim.Longitude != null
+                    && (sim.SimulateOutdoorTemperature || sim.SimulateOutdoorHumidity || sim.SimulateOutdoorWind || sim.SimulateOutdoorPressure)
+                select new { sim.Latitude, sim.Longitude, sim.SimulateOutdoorTemperature, sim.SimulateOutdoorHumidity, sim.SimulateOutdoorWind, sim.SimulateOutdoorPressure })
                 .AsNoTracking().FirstOrDefaultAsync();
-            return row == null ? null : new OutdoorConditions(row.SimulatedOutdoorTemperature, row.SimulatedOutdoorHumidity, row.SimulatedOutdoorWind, row.SimulatedOutdoorPressure);
+            if (candidate == null)
+            {
+                return null;
+            }
+
+            int? tenantId = await db.SimulationSessions.AsNoTracking()
+                .Where(s => s.IDSimulationSession == idSimulationSession).Select(s => (int?)s.TenantID).FirstOrDefaultAsync();
+            if (tenantId is not int tid)
+            {
+                return null;
+            }
+
+            double lat = Math.Round(candidate.Latitude!.Value, 6);
+            double lon = Math.Round(candidate.Longitude!.Value, 6);
+            var weather = await db.WeatherLocationStates.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.TenantID == tid && w.Latitude == lat && w.Longitude == lon);
+            if (weather == null)
+            {
+                return null; // not polled yet - WeatherEvaluator picks this pin up on its own next tick now that a session member flags it
+            }
+
+            return new OutdoorConditions(
+                candidate.SimulateOutdoorTemperature ? weather.OutdoorTemperatureC : null,
+                candidate.SimulateOutdoorHumidity ? weather.OutdoorHumidityPercent : null,
+                candidate.SimulateOutdoorWind ? weather.OutdoorWindSpeedMetersPerSecond : null,
+                candidate.SimulateOutdoorPressure ? weather.OutdoorPressureHpa : null);
+        }
+
+        public async Task<IReadOnlyList<(double Lat, double Lon)>> ActiveWeatherFeedDeviceLocationsGetAsync(int tenantId)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var rows = await (
+                from membership in db.SimulationSessionDevices
+                join session in db.SimulationSessions.Where(s => s.TenantID == tenantId && s.StoppedAtUtc == null && s.ExpiresAtUtc > now)
+                    on membership.IDSimulationSession equals session.IDSimulationSession
+                join sim in db.DeviceSimulations on membership.DeviceID equals sim.DeviceID
+                where sim.Latitude != null && sim.Longitude != null
+                    && (sim.SimulateOutdoorTemperature || sim.SimulateOutdoorHumidity || sim.SimulateOutdoorWind || sim.SimulateOutdoorPressure)
+                select new { sim.Latitude, sim.Longitude })
+                .AsNoTracking().Distinct().ToListAsync();
+            return rows.Select(r => (r.Latitude!.Value, r.Longitude!.Value)).ToList();
         }
     }
 }

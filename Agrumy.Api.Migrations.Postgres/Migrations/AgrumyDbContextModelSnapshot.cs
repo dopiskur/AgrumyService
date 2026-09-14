@@ -1779,17 +1779,17 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<int?>("RainLevel")
                         .HasColumnType("integer");
 
-                    b.Property<double?>("SimulatedOutdoorHumidity")
-                        .HasColumnType("double precision");
+                    b.Property<bool>("SimulateOutdoorHumidity")
+                        .HasColumnType("boolean");
 
-                    b.Property<double?>("SimulatedOutdoorPressure")
-                        .HasColumnType("double precision");
+                    b.Property<bool>("SimulateOutdoorPressure")
+                        .HasColumnType("boolean");
 
-                    b.Property<double?>("SimulatedOutdoorTemperature")
-                        .HasColumnType("double precision");
+                    b.Property<bool>("SimulateOutdoorTemperature")
+                        .HasColumnType("boolean");
 
-                    b.Property<double?>("SimulatedOutdoorWind")
-                        .HasColumnType("double precision");
+                    b.Property<bool>("SimulateOutdoorWind")
+                        .HasColumnType("boolean");
 
                     b.Property<double?>("SoilTemperature")
                         .HasColumnType("double precision");

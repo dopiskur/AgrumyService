@@ -69,5 +69,8 @@ namespace Agrumy.Api.Dal.Interface
 
         /// The session's shared "simulate OpenWeather" reading, if any member device (a virtual "weather station" device, in practice) has set one on its own DeviceSimulation - first match among members wins, null when none has any of the four fields set. RuleNotificationEvaluator overlays this on top of the real per-location forecast for every zone/parcel this session covers, field by field (a null field here still falls back to the real reading).
         Task<OutdoorConditions?> SimulationSessionWeatherOverrideGetAsync(int idSimulationSession);
+
+        /// Every distinct (Latitude, Longitude) an active session's own member device flags for the OpenWeather feed (Simulate Outdoor* + a Geolocation override pin both set) - TenantWeatherLocations folds this into WeatherEvaluator/FrostAlertEvaluator's own poll list, so a "weather station" virtual device's pin gets real forecast data cached for SimulationSessionWeatherOverrideGetAsync to read back, same as any Farm/Unit/Parcel pin.
+        Task<IReadOnlyList<(double Lat, double Lon)>> ActiveWeatherFeedDeviceLocationsGetAsync(int tenantId);
     }
 }

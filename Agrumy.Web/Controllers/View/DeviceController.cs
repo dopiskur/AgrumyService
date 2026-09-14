@@ -474,6 +474,11 @@ namespace Agrumy.Web.Controllers.View
         {
             int idDevice = deviceView.Device!.IDDevice!.Value;
             await api.DeviceSimulationSet(idDevice, deviceView.DeviceSimulation!);
+            // A toggle/slider auto-save (Simulation.cshtml's silentSave()) must never navigate the browser away from Configure Overrides - same "fetch() gets a plain status, not a redirect" convention as ApiAuthExceptionFilter's live-refresh.js handling. Only the explicit Save button (a real form submit, Geolocation tab only) reaches the redirect below.
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return NoContent();
+            }
             return idSimulationSession is int sessionId
                 ? RedirectToAction("Details", "Simulation", new { idSimulationSession = sessionId })
                 : RedirectToAction(nameof(Details), new { idDevice });

@@ -11,7 +11,7 @@ namespace Agrumy.Api.Weather
     public static class TenantWeatherLocations
     {
         public static async Task<IReadOnlyList<(double Lat, double Lon)>> ResolveDistinctAsync(
-            IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo, int tenantId, Tenant tenant, ServerConfig config)
+            IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo, ISimulationRepository simulationRepo, int tenantId, Tenant tenant, ServerConfig config)
         {
             var locations = new HashSet<(double, double)>();
             if (WeatherLocationResolver.ForTenantDefault(tenant, config) is (double, double) def)
@@ -53,6 +53,11 @@ namespace Agrumy.Api.Weather
                 {
                     locations.Add(zoneLoc);
                 }
+            }
+
+            foreach ((double Lat, double Lon) feedLoc in await simulationRepo.ActiveWeatherFeedDeviceLocationsGetAsync(tenantId))
+            {
+                locations.Add(feedLoc);
             }
 
             return locations.ToList();

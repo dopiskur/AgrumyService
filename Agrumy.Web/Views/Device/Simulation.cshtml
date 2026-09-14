@@ -8,10 +8,10 @@
     var sim = Model.DeviceSimulation!;
     bool isVirtual = (bool)(ViewBag.IsVirtualDevice ?? false);
 
-    // One row per overridable metric - the toggle switch both enables/disables the slider client-side AND auto-submits the whole form immediately (data-autosubmit, confirm-submit.js), so turning a metric on/off takes effect right away instead of waiting for a separate Save click. A null field means "use the real reading".
+    // One row per overridable metric - the toggle switch both enables/disables the slider client-side AND silently auto-saves the whole form right away (no page navigation - see silentSave() below), so turning a metric on/off takes effect immediately without a separate Save click. A null field means "use the real reading".
     string Field(string name) => $"{nameof(Model.DeviceSimulation)}.{name}";
 
-    IHtmlContent MetricRow(string name, string label, double? value, (double Min, double Max) range, string unit, double step = 1)
+    IHtmlContent MetricRow(string name, string label, double? value, (double Min, double Max) range, string unit, double step = 1, string? exclusiveWith = null)
     {
         string field = Field(name);
         string id = $"sim_{name}";
@@ -21,7 +21,7 @@
         <div class="mb-3 row align-items-center">
             <div class="col-sm-1">
                 <div class="form-check form-switch mb-0">
-                    <input type="checkbox" class="form-check-input sim-toggle" role="switch" data-target="{id}" data-autosubmit {(active ? "checked" : "")} />
+                    <input type="checkbox" class="form-check-input sim-toggle" role="switch" id="{id}_toggle" data-target="{id}" {(exclusiveWith != null ? $"data-exclusive=\"{exclusiveWith}\"" : "")} {(active ? "checked" : "")} />
                 </div>
             </div>
             <label class="col-sm-2 col-form-label">{label}</label>
@@ -31,6 +31,26 @@
             <div class="col-sm-2">
                 <span id="{id}_val">{value ?? (range.Min + range.Max) / 2}</span> {unit}
             </div>
+        </div>
+        """);
+        return new HtmlString(sb.ToString());
+    }
+
+    // No slider - the feed pulls OpenWeatherMap's real current reading for wherever the Geolocation override tab's pin sits, not a typed-in number. Mutually exclusive with its matching sensor-override toggle above (exclusiveWith): only one source can drive a given metric at a time, enforced client-side in silentSave()'s change handler.
+    IHtmlContent OpenWeatherToggleRow(string name, string label, bool value, string exclusiveWith)
+    {
+        string field = Field(name);
+        string id = $"sim_{name}";
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"""
+        <div class="mb-3 row align-items-center">
+            <div class="col-sm-1">
+                <div class="form-check form-switch mb-0">
+                    <input type="checkbox" class="form-check-input sim-toggle" role="switch" id="{id}_toggle" name="{field}" value="true" data-exclusive="{exclusiveWith}" {(value ? "checked" : "")} />
+                    <input type="hidden" name="{field}" value="false" />
+                </div>
+            </div>
+            <label class="col-sm-4 col-form-label" for="{id}_toggle">{label}</label>
         </div>
         """);
         return new HtmlString(sb.ToString());
@@ -51,7 +71,7 @@
     </div>
 }
 
-<form asp-action="Simulation" method="post">
+<form id="simForm" asp-action="Simulation" method="post">
     <input type="hidden" asp-for="Device!.IDDevice" />
     <input type="hidden" name="idSimulationSession" value="@ViewBag.IdSimulationSession" />
 
@@ -70,35 +90,37 @@
     </ul>
     <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3">
         <div class="tab-pane fade show active" id="tab-sensor" role="tabpanel">
-            @MetricRow(nameof(DeviceSimulation.Temperature), "Temperature", sim.Temperature, SimulationMetricRange.Temperature, "&deg;C", 0.5)
-            @MetricRow(nameof(DeviceSimulation.SoilTemperature), "Soil temperature", sim.SoilTemperature, SimulationMetricRange.SoilTemperature, "&deg;C", 0.5)
-            @MetricRow(nameof(DeviceSimulation.Humidity), "Humidity", sim.Humidity, SimulationMetricRange.Humidity, "%")
-            @MetricRow(nameof(DeviceSimulation.Battery), "Battery", sim.Battery, SimulationMetricRange.Battery, "%")
-            @MetricRow(nameof(DeviceSimulation.Moisture), "Moisture", sim.Moisture, SimulationMetricRange.Moisture, "%")
-            @MetricRow(nameof(DeviceSimulation.Light), "Light", sim.Light, SimulationMetricRange.Light, "lux", 100)
-            @MetricRow(nameof(DeviceSimulation.Co2), "CO2", sim.Co2, SimulationMetricRange.Co2, "ppm", 100)
-            @MetricRow(nameof(DeviceSimulation.Tvoc), "TVOC", sim.Tvoc, SimulationMetricRange.Tvoc, "ppb")
-            @MetricRow(nameof(DeviceSimulation.Barometer), "Barometer", sim.Barometer, SimulationMetricRange.Barometer, "Pa", 1000)
-            @MetricRow(nameof(DeviceSimulation.LiquidPH), "Liquid pH", sim.LiquidPH, SimulationMetricRange.LiquidPH, "pH", 0.1)
-            @MetricRow(nameof(DeviceSimulation.RainLevel), "Rain level", sim.RainLevel, SimulationMetricRange.RainLevel, "")
-            @MetricRow(nameof(DeviceSimulation.WaterLevel), "Water level", sim.WaterLevel, SimulationMetricRange.WaterLevel, "")
-            @MetricRow(nameof(DeviceSimulation.Wind), "Wind", sim.Wind, SimulationMetricRange.Wind, "m/s", 0.5)
-
             @if (isVirtual)
             {
-                <hr />
                 <h6 class="fw-semibold">Simulate OpenWeather feed</h6>
                 <p class="text-muted">
                     Stands in for this session's own outdoor-weather forecast (SensorMetric.OutdoorTemperature/
                     OutdoorHumidity/OutdoorWind/OutdoorPressure) instead of this device's own sensor - lets you test a
                     rule that reads the organization's real OpenWeatherMap forecast without waiting for actual weather
-                    to cooperate. A metric left off here keeps the real forecast for every zone this session covers.
+                    to cooperate. <strong>Set a location on the Geolocation override tab first</strong> - a metric
+                    turned on here pulls OpenWeatherMap's real, current reading for that pin, not a typed-in value.
+                    Turning one on here turns its matching sensor override below off, and vice versa - only one can
+                    drive a given metric at a time.
                 </p>
-                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorTemperature), "Outdoor temperature", sim.SimulatedOutdoorTemperature, SimulationMetricRange.Temperature, "&deg;C", 0.5)
-                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorPressure), "Outdoor pressure", sim.SimulatedOutdoorPressure, SimulationMetricRange.OutdoorPressure, "hPa", 1)
-                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorHumidity), "Outdoor humidity", sim.SimulatedOutdoorHumidity, SimulationMetricRange.Humidity, "%")
-                @MetricRow(nameof(DeviceSimulation.SimulatedOutdoorWind), "Outdoor wind", sim.SimulatedOutdoorWind, SimulationMetricRange.Wind, "m/s", 0.5)
+                @OpenWeatherToggleRow(nameof(DeviceSimulation.SimulateOutdoorTemperature), "Outdoor temperature", sim.SimulateOutdoorTemperature, "sim_Temperature_toggle")
+                @OpenWeatherToggleRow(nameof(DeviceSimulation.SimulateOutdoorPressure), "Outdoor pressure", sim.SimulateOutdoorPressure, "sim_Barometer_toggle")
+                @OpenWeatherToggleRow(nameof(DeviceSimulation.SimulateOutdoorHumidity), "Outdoor humidity", sim.SimulateOutdoorHumidity, "sim_Humidity_toggle")
+                @OpenWeatherToggleRow(nameof(DeviceSimulation.SimulateOutdoorWind), "Outdoor wind", sim.SimulateOutdoorWind, "sim_Wind_toggle")
+                <hr />
             }
+            @MetricRow(nameof(DeviceSimulation.Temperature), "Temperature", sim.Temperature, SimulationMetricRange.Temperature, "&deg;C", 0.5, isVirtual ? "sim_SimulateOutdoorTemperature_toggle" : null)
+            @MetricRow(nameof(DeviceSimulation.SoilTemperature), "Soil temperature", sim.SoilTemperature, SimulationMetricRange.SoilTemperature, "&deg;C", 0.5)
+            @MetricRow(nameof(DeviceSimulation.Humidity), "Humidity", sim.Humidity, SimulationMetricRange.Humidity, "%", 1, isVirtual ? "sim_SimulateOutdoorHumidity_toggle" : null)
+            @MetricRow(nameof(DeviceSimulation.Battery), "Battery", sim.Battery, SimulationMetricRange.Battery, "%")
+            @MetricRow(nameof(DeviceSimulation.Moisture), "Moisture", sim.Moisture, SimulationMetricRange.Moisture, "%")
+            @MetricRow(nameof(DeviceSimulation.Light), "Light", sim.Light, SimulationMetricRange.Light, "lux", 100)
+            @MetricRow(nameof(DeviceSimulation.Co2), "CO2", sim.Co2, SimulationMetricRange.Co2, "ppm", 100)
+            @MetricRow(nameof(DeviceSimulation.Tvoc), "TVOC", sim.Tvoc, SimulationMetricRange.Tvoc, "ppb")
+            @MetricRow(nameof(DeviceSimulation.Barometer), "Barometer", sim.Barometer, SimulationMetricRange.Barometer, "Pa", 1000, isVirtual ? "sim_SimulateOutdoorPressure_toggle" : null)
+            @MetricRow(nameof(DeviceSimulation.LiquidPH), "Liquid pH", sim.LiquidPH, SimulationMetricRange.LiquidPH, "pH", 0.1)
+            @MetricRow(nameof(DeviceSimulation.RainLevel), "Rain level", sim.RainLevel, SimulationMetricRange.RainLevel, "")
+            @MetricRow(nameof(DeviceSimulation.WaterLevel), "Water level", sim.WaterLevel, SimulationMetricRange.WaterLevel, "")
+            @MetricRow(nameof(DeviceSimulation.Wind), "Wind", sim.Wind, SimulationMetricRange.Wind, "m/s", 0.5, isVirtual ? "sim_SimulateOutdoorWind_toggle" : null)
         </div>
         <div class="tab-pane fade" id="tab-geolocation" role="tabpanel">
             <p class="text-muted">
@@ -109,10 +131,10 @@
             <div class="mb-2 row align-items-center">
                 <div class="col-sm-1">
                     <div class="form-check form-switch mb-0">
-                        <input type="checkbox" class="form-check-input sim-toggle" role="switch" data-target="sim_location" data-autosubmit @(sim.Latitude.HasValue && sim.Longitude.HasValue ? "checked" : "") />
+                        <input type="checkbox" class="form-check-input sim-toggle" role="switch" data-target="sim_location" @(sim.Latitude.HasValue && sim.Longitude.HasValue ? "checked" : "") />
                     </div>
                 </div>
-                <label class="col-sm-2 col-form-label">Location</label>
+                <label class="col-sm-3 col-form-label">Enable geolocation override</label>
                 <div class="col-sm-4">
                     <input type="number" step="any" min="-90" max="90" class="form-control" id="sim_location" name="@Field(nameof(DeviceSimulation.Latitude))" placeholder="Latitude" value="@sim.Latitude" disabled="@(!(sim.Latitude.HasValue && sim.Longitude.HasValue))" />
                 </div>
@@ -122,17 +144,18 @@
             </div>
             <p class="text-muted small">Click the map, or drag the marker, to set the pin - the two fields above stay in sync. Turn the switch on first if the fields above are greyed out.</p>
             <div class="point-location-map mb-3 rounded border" style="height:360px" data-lat-input="sim_location" data-lon-input="sim_location_lon"></div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
         </div>
     </div>
 
-    <button type="submit" class="btn btn-primary">Save</button>
     @if (ViewBag.IdSimulationSession != null)
     {
-        <a asp-controller="Simulation" asp-action="Details" asp-route-idSimulationSession="@ViewBag.IdSimulationSession" class="btn btn-outline-secondary">Cancel</a>
+        <a asp-controller="Simulation" asp-action="Details" asp-route-idSimulationSession="@ViewBag.IdSimulationSession" class="btn btn-outline-secondary">Back</a>
     }
     else
     {
-        <a asp-action="Details" asp-route-idDevice="@device.IDDevice" class="btn btn-outline-secondary">Cancel</a>
+        <a asp-action="Details" asp-route-idDevice="@device.IDDevice" class="btn btn-outline-secondary">Back</a>
     }
 </form>
 
@@ -144,22 +167,43 @@
     <script src="~/lib/leaflet/leaflet.js"></script>
     <script src="~/js/point-location-map.js"></script>
     <script nonce="@Context.CspNonce()">
+        var simForm = document.getElementById('simForm');
+        // A toggle/slider must never navigate away from this page (the server redirects on a real form submit, which is fine for the Geolocation tab's own Save button, but would otherwise kick the admin out of Configure Overrides on every single toggle). X-Requested-With tells DeviceController.Simulation(POST) to reply with a plain status instead.
+        function silentSave() {
+            fetch(simForm.action, { method: 'POST', body: new FormData(simForm), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        }
+
+        function setSliderDisabled(toggle) {
+            var target = toggle.dataset.target;
+            if (!target) { return; }
+            document.getElementById(target).disabled = !toggle.checked;
+            // Location is the one toggle target with a paired second field (longitude) that must enable/disable together.
+            var pair = document.getElementById(target + '_lon');
+            if (pair) { pair.disabled = !toggle.checked; }
+        }
+
         document.querySelectorAll('.sim-toggle').forEach(function (cb) {
             cb.addEventListener('change', function () {
-                document.getElementById(cb.dataset.target).disabled = !cb.checked;
-                // Location is the one toggle target with a paired second field (longitude) that must enable/disable together.
-                var pair = document.getElementById(cb.dataset.target + '_lon');
-                if (pair) {
-                    pair.disabled = !cb.checked;
+                setSliderDisabled(cb);
+                // Sensor override and OpenWeather feed toggles for the same metric point at each other via data-exclusive - only one may drive that metric at a time.
+                if (cb.checked && cb.dataset.exclusive) {
+                    var other = document.getElementById(cb.dataset.exclusive);
+                    if (other && other.checked) {
+                        other.checked = false;
+                        setSliderDisabled(other);
+                    }
                 }
+                silentSave();
             });
         });
+        document.getElementById('simEnabled').addEventListener('change', silentSave);
         // CSP has no 'unsafe-inline', which also blocks inline oninput="..." attributes - addEventListener isn't inline markup, so it isn't subject to that rule.
         document.querySelectorAll('.sim-range').forEach(function (input) {
             var target = document.getElementById(input.dataset.valTarget);
             input.addEventListener('input', function () {
                 target.textContent = input.value;
             });
+            input.addEventListener('change', silentSave);
         });
     </script>
 }

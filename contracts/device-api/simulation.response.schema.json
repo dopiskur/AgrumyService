@@ -22,10 +22,10 @@
     "wind",
     "latitude",
     "longitude",
-    "simulatedOutdoorTemperature",
-    "simulatedOutdoorHumidity",
-    "simulatedOutdoorWind",
-    "simulatedOutdoorPressure"
+    "simulateOutdoorTemperature",
+    "simulateOutdoorHumidity",
+    "simulateOutdoorWind",
+    "simulateOutdoorPressure"
   ],
   "properties": {
     "enabled": {
@@ -78,17 +78,17 @@
     "longitude": {
       "type": ["number", "null"]
     },
-    "simulatedOutdoorTemperature": {
-      "type": ["number", "null"]
+    "simulateOutdoorTemperature": {
+      "type": "boolean"
     },
-    "simulatedOutdoorHumidity": {
-      "type": ["number", "null"]
+    "simulateOutdoorHumidity": {
+      "type": "boolean"
     },
-    "simulatedOutdoorWind": {
-      "type": ["number", "null"]
+    "simulateOutdoorWind": {
+      "type": "boolean"
     },
-    "simulatedOutdoorPressure": {
-      "type": ["number", "null"]
+    "simulateOutdoorPressure": {
+      "type": "boolean"
     }
   }
 }

@@ -544,11 +544,11 @@ namespace Agrumy.Shared.Models
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
 
-        // Simulates what OpenWeatherMap itself would report, not this device's own sensor - feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure for every zone this device's Simulation session covers (RuleNotificationEvaluator), in place of the real per-location forecast; a null field here still falls back to the real reading, same "null means real" convention as every field above. Meant for a virtual device standing in for a weather station, but nothing stops setting it on a physical one too.
-        public double? SimulatedOutdoorTemperature { get; set; }
-        public double? SimulatedOutdoorHumidity { get; set; }
-        public double? SimulatedOutdoorWind { get; set; }
-        public double? SimulatedOutdoorPressure { get; set; }
+        // Feeds SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure for every zone this device's Simulation session covers (RuleNotificationEvaluator), in place of the real per-location forecast - no value to type in here, since the point is to pull OpenWeatherMap's REAL current reading for wherever Latitude/Longitude above is set, not to fake an arbitrary number. False (or no Latitude/Longitude set) falls back to the zone's own real reading, same "off means real" convention as the sensor overrides above. Mutually exclusive with the matching sensor-override field at the UI layer (Simulation.cshtml) - only one source can drive a given metric at a time. Meant for a virtual device standing in for a weather station, but nothing stops setting it on a physical one too.
+        public bool SimulateOutdoorTemperature { get; set; }
+        public bool SimulateOutdoorHumidity { get; set; }
+        public bool SimulateOutdoorWind { get; set; }
+        public bool SimulateOutdoorPressure { get; set; }
     }
 
     /// The "Add Simulation" container a device (physical or virtual) is added to; replaces the old per-device toggle as the entry point. StoppedAtUtc null means still running.
