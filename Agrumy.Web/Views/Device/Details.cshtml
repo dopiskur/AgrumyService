@@ -23,8 +23,8 @@
     var batteryToggle = new EnabledToggleFieldViewModel { Name = "batteryEnabled", Label = "Device battery", Value = Model.BatteryEnabled };
     var debugToggle = new EnabledToggleFieldViewModel { Name = "debug", Label = "Debug", Value = Model.Debug };
     var enabledToggle = new EnabledToggleFieldViewModel { Name = "enabled", Label = "Device", Value = Model.Enabled };
-    // Power rails only make sense to expose for a device currently running sensor-only (see EfDeviceRepository.DevicesSensorOnlyGetAsync's same definition) - a controller-enabled device needs both rails powered continuously.
-    bool showPowerSavingOptions = Model.DeviceSensorEnabled == true && Model.DeviceControllerEnabled != true;
+    // Power rail toggles only make sense to expose for a device currently running sensor-only (see EfDeviceRepository.DevicesSensorOnlyGetAsync's same definition) - a controller-enabled device needs both rails powered continuously. SleepDeep itself has no such restriction and stays visible regardless.
+    bool showPowerRailToggles = Model.DeviceSensorEnabled == true && Model.DeviceControllerEnabled != true;
 }
 
 @if (TempData["HardResetMessage"] is string hardResetMessage)
@@ -91,15 +91,15 @@
                             <partial name="_EnabledToggleField" model="batteryToggle" />
                             <partial name="_EnabledToggleField" model="debugToggle" />
                             <partial name="_EnabledToggleField" model="enabledToggle" />
-                            @if (showPowerSavingOptions)
+                            <hr class="my-3" />
+                            <div class="mb-2 fw-semibold">Power saving options</div>
+                            <partial name="_EnabledToggleField" model="sleepDeepToggle" />
+                            <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
+                                <label class="form-label">Sleep seconds</label>
+                                <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
+                            </div>
+                            @if (showPowerRailToggles)
                             {
-                                <hr class="my-3" />
-                                <div class="mb-2 fw-semibold">Power saving options</div>
-                                <partial name="_EnabledToggleField" model="sleepDeepToggle" />
-                                <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
-                                    <label class="form-label">Sleep seconds</label>
-                                    <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
-                                </div>
                                 <div id="power-rail-toggles">
                                     <partial name="_EnabledToggleField" model="powerRailPrimaryToggle" />
                                     <partial name="_EnabledToggleField" model="powerRailSecondaryToggle" />
