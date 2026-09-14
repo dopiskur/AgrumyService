@@ -161,6 +161,39 @@ public class DeviceOutboxServiceTests
         _outbox.Verify(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>()), Times.Once);
     }
 
+    /// ScanForDevices gets a 24h window, not the ordinary 30-minute DefaultExpiry every other command type uses below - the scanning device isn't necessarily online the moment an admin clicks Scan.
+    [Fact]
+    public async Task ScanForDevices_GetsA24HourExpiry_NotTheOrdinary30MinuteDefault()
+    {
+        DateTime before = DateTime.UtcNow;
+        _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.ScanForDevices, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.ScanForDevices, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(2);
+        _outbox.Setup(c => c.MarkPublishedAsync(2, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+
+        await NewService().IssueCommandAsync(CommandTargetType.Device, 500, CommandActionType.ScanForDevices);
+
+        _outbox.Verify(c => c.AddOutboxItemAsync(500, CommandActionType.ScanForDevices, It.IsAny<DateTime>(),
+            It.Is<DateTime>(expiresAt => expiresAt >= before.AddHours(24) && expiresAt <= DateTime.UtcNow.AddHours(24))), Times.Once);
+    }
+
+    [Fact]
+    public async Task Reboot_StillGetsTheOrdinary30MinuteDefaultExpiry_NotScanForDevices24Hours()
+    {
+        DateTime before = DateTime.UtcNow;
+        _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(3);
+        _outbox.Setup(c => c.MarkPublishedAsync(3, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+
+        await NewService().IssueCommandAsync(CommandTargetType.Device, 500, CommandActionType.Reboot);
+
+        _outbox.Verify(c => c.AddOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>(),
+            It.Is<DateTime>(expiresAt => expiresAt >= before.AddMinutes(30) && expiresAt <= DateTime.UtcNow.AddMinutes(30))), Times.Once);
+    }
+
     [Fact]
     public async Task Unit_FanOut_One_Zone_Already_Pending_Is_Skipped_Not_The_Whole_Batch()
     {

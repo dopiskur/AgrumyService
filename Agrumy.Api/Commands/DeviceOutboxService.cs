@@ -21,8 +21,13 @@ namespace Agrumy.Api.Commands
     public sealed class DeviceOutboxService(IDeviceOutboxRepository outboxRepo, IDeviceRepository deviceRepo, IDeviceFarmUnitRepository unitRepo, IFarmParcelRepository farmParcelRepo, IMqttCommandPublisher mqttPublisher)
     {
         private static readonly TimeSpan DefaultExpiry = TimeSpan.FromMinutes(30);
+        // The scanning device isn't necessarily powered/online the moment an admin clicks Scan - 30 minutes is too tight a window for it to next poll and pick the command up.
+        private static readonly TimeSpan ScanExpiry = TimeSpan.FromHours(24);
         // A hard-reset intent must survive until the device actually checks in (which may be days away for a long-sleep node), not expire like an ordinary 30-minute command.
         private static readonly TimeSpan HardResetExpiry = TimeSpan.FromDays(365);
+
+        private static TimeSpan ExpiryFor(CommandActionType actionType) =>
+            actionType == CommandActionType.ScanForDevices ? ScanExpiry : DefaultExpiry;
 
         /// Resolves TargetType/TargetId to the actual device(s), then per-device dedup against an active unexpired command of that ActionType; a fan-out is Success unless EVERY resolved device already had one, which is AllDuplicates.
         public async Task<IssueCommandResult> IssueCommandAsync(CommandTargetType targetType, int targetId, CommandActionType actionType)
@@ -198,7 +203,7 @@ namespace Agrumy.Api.Commands
         private async Task<IssueCommandResult> IssueToTargetsAsync(IList<Device> targets, CommandActionType actionType)
         {
             DateTime utcNow = DateTime.UtcNow;
-            DateTime expiresAt = utcNow + DefaultExpiry;
+            DateTime expiresAt = utcNow + ExpiryFor(actionType);
             var created = new List<int>();
 
             foreach (var target in targets)
