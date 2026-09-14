@@ -191,7 +191,7 @@ namespace Agrumy.Api.Controllers.API
             return Ok();
         }
 
-        /// Same physical-override cleanup as StopSession first (a running session must never leave a device stuck simulating just because its session was deleted); a virtual-only member is soft-deleted (Recycle Bin, same VirtualDeviceDeleteAsync path as the explicit DeleteVirtualDevice action) since it exists only for this session, then the session and its remaining device memberships are hard-removed.
+        /// Same physical-override cleanup as StopSession first (a running session must never leave a device stuck simulating just because its session was deleted); a virtual member is left alone (SimulationSessionDeleteAsync already drops the membership row) - a virtual device now persists independently of whichever session(s) it has belonged to, same as a physical one, only deleted via the explicit DeleteVirtualDevice action.
         [Authorize(Roles = RoleNames.SimulationManagers)]
         [HttpDelete("Session/{idSimulationSession}")]
         public async Task<ActionResult> DeleteSession(int idSimulationSession)
@@ -209,11 +209,7 @@ namespace Agrumy.Api.Controllers.API
             IList<int> virtualIds = await simulationRepo.VirtualDeviceIdsGetAsync(session.TenantID);
             foreach (DeviceDto member in session.Devices)
             {
-                if (virtualIds.Contains(member.IDDevice!.Value))
-                {
-                    await simulationRepo.VirtualDeviceDeleteAsync(member.IDDevice!.Value, session.TenantID);
-                }
-                else
+                if (!virtualIds.Contains(member.IDDevice!.Value))
                 {
                     await deviceRepo.DeviceSimulationSetAsync(member.IDDevice!.Value, new DeviceSimulation { Enabled = false });
                 }

@@ -10,6 +10,8 @@
     var fleet = (IList<DeviceFleetStatus>)ViewBag.Fleet;
     var memberIds = Model.Devices.Select(d => d.IDDevice).ToHashSet();
     var candidates = fleet.Where(f => !memberIds.Contains(f.IDDevice)).ToList();
+    var virtualCandidates = candidates.Where(f => f.IsVirtual).ToList();
+    var physicalCandidates = candidates.Where(f => !f.IsVirtual).ToList();
     var ruleEditorModel = new Agrumy.Web.ViewModels.RuleEditorViewModel
     {
         Scope = Agrumy.Web.ViewModels.RuleScope.Simulation,
@@ -297,31 +299,96 @@ else
     })();
 </script>
 
-@* "Create new virtual device" first, "Add existing physical device" second (was reversed); devices can be added/removed regardless of running/stopped/not-started state. *@
+@* Devices can be added/removed regardless of running/stopped/not-started state. Virtual devices persist independently of any one session now - "Add virtual device" offers reusing an existing one alongside creating a fresh one, same as how a physical device is only ever picked from the existing fleet. *@
 @if (!isReadOnly)
 {
-<form asp-action="CreateVirtualDevice" method="post" class="mb-3">
-    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-    <button type="submit" class="btn btn-outline-primary" data-action="add">Create new virtual device and add it</button>
-</form>
-
-<h4>Add existing physical device</h4>
-<form asp-action="AddDevice" method="post" class="row g-2 align-items-end mb-3">
-    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
-    <div class="col-auto">
-        <select name="idDevice" class="form-select" required>
-            <option value="">Choose an existing device...</option>
-            @foreach (var candidate in candidates)
-            {
-                <option value="@candidate.IDDevice">@candidate.DeviceName</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-primary" data-action="add">Add to simulation</button>
-    </div>
-</form>
+<div class="mb-3 d-flex gap-2">
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addVirtualDeviceModal">Add virtual device</button>
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addPhysicalDeviceModal">Add physical device</button>
+</div>
 }
+
+<div class="modal fade" id="addVirtualDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add virtual device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="CreateVirtualDevice" method="post" class="mb-3">
+                    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                    <button type="submit" class="btn btn-outline-primary" disabled="@isReadOnly" data-action="add">Add new virtual device</button>
+                </form>
+                <hr />
+                <form asp-action="AddDevice" method="post" class="row g-2 align-items-end">
+                    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                    <div class="col-auto">
+                        <label class="form-label" for="addVirtualDeviceSelect">Or reuse an existing one</label>
+                        <select name="idDevice" id="addVirtualDeviceSelect" class="form-select" required disabled="@(virtualCandidates.Count == 0)">
+                            @if (virtualCandidates.Count == 0)
+                            {
+                                <option value="">No existing virtual devices available</option>
+                            }
+                            else
+                            {
+                                <option value="">Choose an existing virtual device...</option>
+                                @foreach (var candidate in virtualCandidates)
+                                {
+                                    <option value="@candidate.IDDevice">@candidate.DeviceName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary" disabled="@(isReadOnly || virtualCandidates.Count == 0)" data-action="add">Add to simulation</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addPhysicalDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add physical device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="AddDevice" method="post" class="row g-2 align-items-end">
+                    <input type="hidden" name="idSimulationSession" value="@Model.IDSimulationSession" />
+                    <div class="col-auto">
+                        <select name="idDevice" class="form-select" required disabled="@(physicalCandidates.Count == 0)">
+                            @if (physicalCandidates.Count == 0)
+                            {
+                                <option value="">No existing physical devices available</option>
+                            }
+                            else
+                            {
+                                <option value="">Choose an existing device...</option>
+                                @foreach (var candidate in physicalCandidates)
+                                {
+                                    <option value="@candidate.IDDevice">@candidate.DeviceName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary" disabled="@(isReadOnly || physicalCandidates.Count == 0)" data-action="add">Add to simulation</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <h4 class="mt-4">Simulation-scoped rules</h4>
 <p class="text-secondary small">
