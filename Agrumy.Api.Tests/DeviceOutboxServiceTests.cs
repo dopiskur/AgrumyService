@@ -45,6 +45,7 @@ public class DeviceOutboxServiceTests
     {
         DateTime before = DateTime.UtcNow;
         _units.Setup(u => u.DeviceFarmUnitZoneGetControllerAsync(10)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(1);
         _outbox.Setup(c => c.MarkPublishedAsync(1, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
@@ -71,6 +72,8 @@ public class DeviceOutboxServiceTests
     public async Task Unit_Target_FansOut_To_Every_Controller_Across_All_Its_Zones()
     {
         _units.Setup(u => u.DeviceFarmUnitGetControllersAsync(7)).ReturnsAsync(new List<Device> { ControllerDevice(500), ControllerDevice(501) });
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(501, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.ForceOTA, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(501, CommandActionType.ForceOTA, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.ForceOTA, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(1);
@@ -98,6 +101,8 @@ public class DeviceOutboxServiceTests
     public async Task TenantWide_FansOut_To_Every_Device_In_The_Tenant()
     {
         _devices.Setup(d => d.DevicesGetAsync(7)).ReturnsAsync(new List<Device> { ControllerDevice(500), ControllerDevice(501) });
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(501, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(1);
@@ -114,6 +119,7 @@ public class DeviceOutboxServiceTests
     public async Task Device_With_Active_Command_Of_Same_ActionType_Is_Deduplicated()
     {
         _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(true);
 
         var result = await NewService().IssueCommandAsync(CommandTargetType.Device, 500, CommandActionType.Reboot);
@@ -128,6 +134,7 @@ public class DeviceOutboxServiceTests
     public async Task Device_Losing_The_DB_Level_Dedup_Race_Is_Treated_As_AllDuplicates_Not_A_Crash()
     {
         _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync((int?)null);
 
@@ -137,12 +144,32 @@ public class DeviceOutboxServiceTests
         Assert.Empty(result.CreatedCommandIds);
     }
 
+    /// A device that never polls again never reaches GetPendingAsync's own lazy-expire, so a past-expiry row it left behind must be expired here instead - otherwise its ActiveKey permanently blocks every future command of that type, with no way to recover short of a manual DB fix (the actual bug behind "Scan for new devices" silently doing nothing: the fake/offline scanning device's stale ScanForDevices row from days earlier still held the slot).
+    [Fact]
+    public async Task IssueCommand_ExpiresTheDevicesOwnStaleRow_SoANewCommandOfTheSameTypeCanBeIssued()
+    {
+        _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.ScanForDevices, It.IsAny<DateTime>())).ReturnsAsync(false);
+        _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.ScanForDevices, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(2);
+        _outbox.Setup(c => c.MarkPublishedAsync(2, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+
+        var result = await NewService().IssueCommandAsync(CommandTargetType.Device, 500, CommandActionType.ScanForDevices);
+
+        Assert.Equal(IssueCommandOutcome.Success, result.Outcome);
+        Assert.Equal([2], result.CreatedCommandIds);
+        _outbox.Verify(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>()), Times.Once);
+    }
+
     [Fact]
     public async Task Unit_FanOut_One_Zone_Already_Pending_Is_Skipped_Not_The_Whole_Batch()
     {
         // A Unit with three controllers, one already holding an active command of this ActionType: that one is skipped, the other two still get created, outcome is still Success (not AllDuplicates).
         _units.Setup(u => u.DeviceFarmUnitGetControllersAsync(7))
             .ReturnsAsync(new List<Device> { ControllerDevice(500), ControllerDevice(501), ControllerDevice(502) });
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(501, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(502, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(true);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(501, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(502, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
@@ -161,6 +188,8 @@ public class DeviceOutboxServiceTests
     public async Task Unit_FanOut_Every_Controller_Already_Pending_Returns_AllDuplicates()
     {
         _units.Setup(u => u.DeviceFarmUnitGetControllersAsync(7)).ReturnsAsync(new List<Device> { ControllerDevice(500), ControllerDevice(501) });
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(501, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(true);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(501, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(true);
 
@@ -343,6 +372,7 @@ public class DeviceOutboxServiceTests
     public async Task IssueWifiUpdate_Success_PublishesPayloadCarryingCommand()
     {
         DateTime before = DateTime.UtcNow;
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>(), It.IsAny<DateTime>(),
             It.Is<string?>(p => p != null && p.Contains("NewSsid") && p.Contains("NewPass")))).ReturnsAsync(9);
@@ -360,6 +390,7 @@ public class DeviceOutboxServiceTests
     [Fact]
     public async Task IssueWifiUpdate_AlreadyPendingForDevice_ReturnsAllDuplicates()
     {
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(true);
 
         var result = await NewService().IssueWifiUpdateCommandAsync(500, "NewSsid", "NewPass");
@@ -372,6 +403,7 @@ public class DeviceOutboxServiceTests
     [Fact]
     public async Task IssueWifiUpdate_LosingTheDbLevelDedupRace_IsTreatedAsAllDuplicates_NotACrash()
     {
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>()))
             .ReturnsAsync((int?)null);

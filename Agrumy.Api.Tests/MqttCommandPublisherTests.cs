@@ -32,6 +32,7 @@ public class MqttCommandPublisherTests
     public async Task IssueCommand_Success_PublishesToMqtt()
     {
         _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(false);
         _outbox.Setup(c => c.AddOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(1);
         _mqtt.Setup(m => m.PublishAsync(
@@ -50,6 +51,7 @@ public class MqttCommandPublisherTests
     public async Task IssueCommand_Deduplicated_NeverPublishesToMqtt()
     {
         _devices.Setup(d => d.DeviceGetByIdAsync(500)).ReturnsAsync(ControllerDevice(500));
+        _outbox.Setup(c => c.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _outbox.Setup(c => c.HasActiveOutboxItemAsync(500, CommandActionType.Reboot, It.IsAny<DateTime>())).ReturnsAsync(true);
 
         var result = await NewService().IssueCommandAsync(CommandTargetType.Device, 500, CommandActionType.Reboot);

@@ -51,6 +51,8 @@ public class DeviceFarmUnitApiControllerTests
             new() { IDDevice = 10, DeviceName = "A" },
             new() { IDDevice = 11, DeviceName = "B" },
         });
+        _repo.Setup(r => r.ExpirePendingOutboxItemsAsync(10, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.ExpirePendingOutboxItemsAsync(11, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.HasActiveOutboxItemAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>())).ReturnsAsync(false);
         _repo.Setup(r => r.AddOutboxItemAsync(10, CommandActionType.UpdateWifiCredentials, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string>())).ReturnsAsync(101);
         _repo.Setup(r => r.DeviceGetByIdAsync(10)).ReturnsAsync(new Device { IDDevice = 10, ApiId = "a1" });

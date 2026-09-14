@@ -16,4 +16,9 @@
             data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ForceConfigSync)">
         <i class="bi bi-arrow-repeat"></i> Force Config Sync
     </button>
+    @* Targets exactly this device, unlike Fleet's "Scan for new devices" button (fans out to every sensor-only device in the caller's organization) - useful when only one specific device should go looking, e.g. it's the one physically near the new unregistered devices. *@
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-device-command disabled="@isReadOnly"
+            data-target-type="@((int)Model.TargetType)" data-target-id="@Model.TargetId" data-action-type="@((int)CommandActionType.ScanForDevices)">
+        <i class="bi bi-broadcast"></i> Scan for new devices
+    </button>
 </span>

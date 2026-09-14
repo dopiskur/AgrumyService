@@ -2149,6 +2149,8 @@ public class ApiControllerTests
         _repo.Setup(r => r.TenantEmergencyStopSetAsync(5, true)).Returns(Task.CompletedTask);
         _repo.Setup(r => r.AuditLogAddAsync(It.IsAny<AuditLogEntry>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.DevicesGetAsync(5)).ReturnsAsync(new List<Device> { new() { IDDevice = 500 }, new() { IDDevice = 501 } });
+        _repo.Setup(r => r.ExpirePendingOutboxItemsAsync(500, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.ExpirePendingOutboxItemsAsync(501, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         _repo.Setup(r => r.HasActiveOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
         _repo.Setup(r => r.HasActiveOutboxItemAsync(501, CommandActionType.ForceConfigSync, It.IsAny<DateTime>())).ReturnsAsync(false);
         _repo.Setup(r => r.AddOutboxItemAsync(500, CommandActionType.ForceConfigSync, It.IsAny<DateTime>(), It.IsAny<DateTime>(), null)).ReturnsAsync(1);

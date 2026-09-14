@@ -112,6 +112,8 @@ namespace Agrumy.Api.Commands
         public async Task<IssueCommandResult> IssueProvisionCommandAsync(int deviceId, string payloadJson)
         {
             DateTime utcNow = DateTime.UtcNow;
+            // See IssueToTargetsAsync's own call - a past-expiry row nothing has consumed yet would otherwise still occupy this device's ActiveKey slot.
+            await outboxRepo.ExpirePendingOutboxItemsAsync(deviceId, utcNow);
             if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, CommandActionType.ProvisionDevice, utcNow))
             {
                 return new IssueCommandResult(IssueCommandOutcome.AllDuplicates, [], "A provisioning command is already pending for this device.");
@@ -139,6 +141,8 @@ namespace Agrumy.Api.Commands
         public async Task<IssueCommandResult> IssueWifiUpdateCommandAsync(int deviceId, string ssid, string wifiPassword)
         {
             DateTime utcNow = DateTime.UtcNow;
+            // See IssueToTargetsAsync's own call - a past-expiry row nothing has consumed yet would otherwise still occupy this device's ActiveKey slot.
+            await outboxRepo.ExpirePendingOutboxItemsAsync(deviceId, utcNow);
             if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, CommandActionType.UpdateWifiCredentials, utcNow))
             {
                 return new IssueCommandResult(IssueCommandOutcome.AllDuplicates, [], "A WiFi update is already pending for this device.");
@@ -203,6 +207,8 @@ namespace Agrumy.Api.Commands
                 {
                     continue;
                 }
+                // A device that never polls again (offline, decommissioned, or just a test row) never reaches GetPendingAsync's own lazy-expire, so a past-expiry row here would otherwise keep occupying the (DeviceID, ActiveKey) slot forever - expire it up front so a genuinely new command isn't dedup-rejected against a stale one nothing will ever consume.
+                await outboxRepo.ExpirePendingOutboxItemsAsync(deviceId, utcNow);
                 if (await outboxRepo.HasActiveOutboxItemAsync(deviceId, actionType, utcNow))
                 {
                     continue; // this one device is skipped, not the whole batch
