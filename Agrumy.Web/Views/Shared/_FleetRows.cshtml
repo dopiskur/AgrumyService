@@ -49,11 +49,11 @@
             <td>
                 @if (item.DeviceFarmUnitID is null && item.FarmParcelZoneID is null)
                 {
-                    <button type="button" class="btn btn-sm btn-outline-primary fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Assign</button>
                 }
                 else if (item.DeviceFarmUnitName == "Default")
                 {
-                    <button type="button" class="btn btn-sm btn-outline-primary fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Reassign</button>
+                    <button type="button" class="btn btn-sm btn-outline-success fleet-assign-btn" data-bs-toggle="modal" data-bs-target="#assignZoneModal" data-device-id="@item.IDDevice">Reassign</button>
                 }
                 else
                 {
