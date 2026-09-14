@@ -23,8 +23,7 @@
             </div>
             <label class="col-sm-2 col-form-label">{label}</label>
             <div class="col-sm-7">
-                <input type="range" class="form-range" id="{id}" name="{field}" min="{range.Min}" max="{range.Max}" step="{step}" value="{value ?? (range.Min + range.Max) / 2}" {(active ? "" : "disabled")}
-                       oninput="document.getElementById('{id}_val').textContent = this.value" />
+                <input type="range" class="form-range sim-range" id="{id}" name="{field}" min="{range.Min}" max="{range.Max}" step="{step}" value="{value ?? (range.Min + range.Max) / 2}" data-val-target="{id}_val" {(active ? "" : "disabled")} />
             </div>
             <div class="col-sm-2">
                 <span id="{id}_val">{value ?? (range.Min + range.Max) / 2}</span> {unit}
@@ -113,6 +112,13 @@
                 if (pair) {
                     pair.disabled = !cb.checked;
                 }
+            });
+        });
+        // CSP has no 'unsafe-inline', which also blocks inline oninput="..." attributes - addEventListener isn't inline markup, so it isn't subject to that rule.
+        document.querySelectorAll('.sim-range').forEach(function (input) {
+            var target = document.getElementById(input.dataset.valTarget);
+            input.addEventListener('input', function () {
+                target.textContent = input.value;
             });
         });
     </script>
