@@ -70,6 +70,10 @@ namespace Agrumy.Shared.Models
         public bool? SleepDeepEnabled { get; set; } = false;
         // Lets an ordinary, already-registered device also relay LoRa private-protocol uplinks via its own WiFi/HTTP connection (GatewayApiController treats it like IsGateway); firmware only actually starts listening if it detects the radio chip physically present.
         public bool? LoRaGatewayEnabled { get; set; } = false;
+        // Analog-component power rail; true preserves the always-on-then-cycled behavior firmware already had before these two became configurable.
+        public bool? PowerRailPrimaryEnabled { get; set; } = true;
+        // Digital-component power rail, same default reasoning as PowerRailPrimaryEnabled.
+        public bool? PowerRailSecondaryEnabled { get; set; } = true;
 
         [HiddenInput(DisplayValue = true)]
         public bool? DeviceSensorEnabled { get; set; } = false;
@@ -134,6 +138,8 @@ namespace Agrumy.Shared.Models
         public int? SleepSeconds { get; set; } = 60;
         public bool? SleepDeepEnabled { get; set; } = false;
         public bool? LoRaGatewayEnabled { get; set; } = false;
+        public bool? PowerRailPrimaryEnabled { get; set; } = true;
+        public bool? PowerRailSecondaryEnabled { get; set; } = true;
         public bool? DeviceSensorEnabled { get; set; } = false;
         public bool? DeviceControllerEnabled { get; set; } = false;
         public bool? BatteryEnabled { get; set; } = false;
@@ -192,6 +198,8 @@ namespace Agrumy.Shared.Models
             SleepSeconds = d.SleepSeconds,
             SleepDeepEnabled = d.SleepDeepEnabled,
             LoRaGatewayEnabled = d.LoRaGatewayEnabled,
+            PowerRailPrimaryEnabled = d.PowerRailPrimaryEnabled,
+            PowerRailSecondaryEnabled = d.PowerRailSecondaryEnabled,
             DeviceSensorEnabled = d.DeviceSensorEnabled,
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,
@@ -233,6 +241,8 @@ namespace Agrumy.Shared.Models
             SleepSeconds = dto.SleepSeconds,
             SleepDeepEnabled = dto.SleepDeepEnabled,
             LoRaGatewayEnabled = dto.LoRaGatewayEnabled,
+            PowerRailPrimaryEnabled = dto.PowerRailPrimaryEnabled,
+            PowerRailSecondaryEnabled = dto.PowerRailSecondaryEnabled,
             DeviceSensorEnabled = dto.DeviceSensorEnabled,
             DeviceControllerEnabled = dto.DeviceControllerEnabled,
             BatteryEnabled = dto.BatteryEnabled,
@@ -327,6 +337,8 @@ namespace Agrumy.Shared.Models
         public bool? SleepDeep { get; set; } = false;
         // See Agrumy.Shared.Models.Device.LoRaGatewayEnabled; firmware only actually listens if it detects the LoRa radio chip physically present, reporting DeviceEventType.LoRaHardwareNotDetected otherwise.
         public bool? LoRaGatewayEnabled { get; set; } = false;
+        public bool? PowerRailPrimaryEnabled { get; set; } = true;
+        public bool? PowerRailSecondaryEnabled { get; set; } = true;
 
         // UTC offset (seconds, positive east) for ServerConfig.ScheduleTimeZone, computed fresh each sync so firmware needs no timezone database of its own; 0 when unconfigured.
         public int? UtcOffsetSeconds { get; set; }

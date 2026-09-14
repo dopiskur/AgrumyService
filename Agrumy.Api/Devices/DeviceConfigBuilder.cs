@@ -49,6 +49,8 @@ namespace Agrumy.Api.Devices
                 SleepSeconds = device.SleepSeconds,
                 SleepDeep = device.SleepDeepEnabled,
                 LoRaGatewayEnabled = device.LoRaGatewayEnabled,
+                PowerRailPrimaryEnabled = device.PowerRailPrimaryEnabled,
+                PowerRailSecondaryEnabled = device.PowerRailSecondaryEnabled,
                 UtcOffsetSeconds = utcOffsetSeconds,
                 ServerUtcEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 DeviceSensorEnabled = device.DeviceSensorEnabled,

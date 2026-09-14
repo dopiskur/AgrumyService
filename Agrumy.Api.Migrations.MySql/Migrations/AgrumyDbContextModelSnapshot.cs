@@ -1674,6 +1674,16 @@ namespace Agrumy.Api.Migrations.MySql.Migrations
                     b.Property<int?>("ManualDeviceTypeID")
                         .HasColumnType("int");
 
+                    b.Property<bool?>("PowerRailPrimaryEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool?>("PowerRailSecondaryEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("Purged")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")

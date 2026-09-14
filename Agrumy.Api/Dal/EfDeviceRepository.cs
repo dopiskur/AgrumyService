@@ -308,6 +308,8 @@ namespace Agrumy.Api.Dal
             row.SleepSeconds = device.SleepSeconds;
             row.SleepDeepEnabled = device.SleepDeepEnabled;
             row.LoRaGatewayEnabled = device.LoRaGatewayEnabled;
+            row.PowerRailPrimaryEnabled = device.PowerRailPrimaryEnabled;
+            row.PowerRailSecondaryEnabled = device.PowerRailSecondaryEnabled;
             row.DeviceSensorEnabled = device.DeviceSensorEnabled;
             row.DeviceControllerEnabled = device.DeviceControllerEnabled;
             row.BatteryEnabled = device.BatteryEnabled;
@@ -446,6 +448,8 @@ namespace Agrumy.Api.Dal
             SleepSeconds = d.SleepSeconds,
             SleepDeepEnabled = d.SleepDeepEnabled,
             LoRaGatewayEnabled = d.LoRaGatewayEnabled,
+            PowerRailPrimaryEnabled = d.PowerRailPrimaryEnabled,
+            PowerRailSecondaryEnabled = d.PowerRailSecondaryEnabled,
             DeviceSensorEnabled = d.DeviceSensorEnabled,
             DeviceControllerEnabled = d.DeviceControllerEnabled,
             BatteryEnabled = d.BatteryEnabled,

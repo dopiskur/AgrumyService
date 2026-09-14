@@ -379,6 +379,8 @@ namespace Agrumy.Dal.Entities
         public bool? SleepDeepEnabled { get; set; }
         // See Agrumy.Shared.Models.Device.LoRaGatewayEnabled.
         public bool? LoRaGatewayEnabled { get; set; }
+        public bool? PowerRailPrimaryEnabled { get; set; }
+        public bool? PowerRailSecondaryEnabled { get; set; }
         public bool? DeviceSensorEnabled { get; set; }
         public bool? DeviceControllerEnabled { get; set; }
         public bool? BatteryEnabled { get; set; }

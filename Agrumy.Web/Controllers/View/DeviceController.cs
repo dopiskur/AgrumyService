@@ -296,7 +296,8 @@ namespace Agrumy.Web.Controllers.View
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> QuickSettings(int idDevice, bool deviceSensorEnabled, bool deviceControllerEnabled,
-            int sleepSeconds, bool sleepDeepEnabled, bool loRaGatewayEnabled, bool batteryEnabled, bool debug, bool enabled)
+            int sleepSeconds, bool sleepDeepEnabled, bool powerRailPrimaryEnabled, bool powerRailSecondaryEnabled,
+            bool loRaGatewayEnabled, bool batteryEnabled, bool debug, bool enabled)
         {
             DeviceDto device = await api.DeviceGet(idDevice);
             device.DeviceSensorEnabled = deviceSensorEnabled;
@@ -304,6 +305,8 @@ namespace Agrumy.Web.Controllers.View
             device.RecomputeSensorControllerEnabled();
             device.SleepSeconds = sleepSeconds;
             device.SleepDeepEnabled = sleepDeepEnabled;
+            device.PowerRailPrimaryEnabled = powerRailPrimaryEnabled;
+            device.PowerRailSecondaryEnabled = powerRailSecondaryEnabled;
             device.LoRaGatewayEnabled = loRaGatewayEnabled;
             device.BatteryEnabled = batteryEnabled;
             device.Debug = debug;

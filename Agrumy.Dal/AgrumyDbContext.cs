@@ -633,6 +633,9 @@ namespace Agrumy.Dal
                 e.Property(x => x.ServicePoint).HasMaxLength(200);
                 e.Property(x => x.DateCreated).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 e.Property(x => x.DateModified).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                // True by default so an existing device keeps firmware's current always-cycled rail behavior until an admin opts out.
+                e.Property(x => x.PowerRailPrimaryEnabled).HasDefaultValue(true);
+                e.Property(x => x.PowerRailSecondaryEnabled).HasDefaultValue(true);
                 e.HasIndex(x => x.ApiId).IsUnique().HasDatabaseName("ApiID_UNIQUE");
                 // Neither MySQL/MariaDB nor (for provider-parity, though Postgres could use a real partial index) this codebase's Postgres path support a WHERE clause on CREATE INDEX directly - a generated column that collapses to NULL for a soft-deleted row is the standard cross-provider workaround, since a unique index never treats two NULLs as a collision. Without this, a soft-deleted device still blocks re-registering the same physical MAC until an admin explicitly purges it from the Recycle Bin - the constraint violation surfaces as a raw 500, not "this device is in the Recycle Bin".
                 e.Property<string?>("ActiveMacAddress")

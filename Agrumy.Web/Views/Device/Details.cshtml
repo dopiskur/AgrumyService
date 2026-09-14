@@ -16,11 +16,15 @@
     var sensorToggle = new EnabledToggleFieldViewModel { Name = "deviceSensorEnabled", Label = "Sensor", Value = Model.DeviceSensorEnabled };
     var controllerToggle = new EnabledToggleFieldViewModel { Name = "deviceControllerEnabled", Label = "Controller", Value = Model.DeviceControllerEnabled };
     var sleepDeepToggle = new EnabledToggleFieldViewModel { Name = "sleepDeepEnabled", Label = "SleepDeep", Value = Model.SleepDeepEnabled };
+    var powerRailPrimaryToggle = new EnabledToggleFieldViewModel { Name = "powerRailPrimaryEnabled", Label = "Power rail - analog", Value = Model.PowerRailPrimaryEnabled };
+    var powerRailSecondaryToggle = new EnabledToggleFieldViewModel { Name = "powerRailSecondaryEnabled", Label = "Power rail - digital", Value = Model.PowerRailSecondaryEnabled };
     // Standalone/dual-role LoRa Gateway relay; firmware only actually starts listening if it detects the LoRa radio chip physically present (see the event log otherwise).
     var loRaGatewayToggle = new EnabledToggleFieldViewModel { Name = "loRaGatewayEnabled", Label = "LoRa", Value = Model.LoRaGatewayEnabled };
     var batteryToggle = new EnabledToggleFieldViewModel { Name = "batteryEnabled", Label = "Device battery", Value = Model.BatteryEnabled };
     var debugToggle = new EnabledToggleFieldViewModel { Name = "debug", Label = "Debug", Value = Model.Debug };
     var enabledToggle = new EnabledToggleFieldViewModel { Name = "enabled", Label = "Device", Value = Model.Enabled };
+    // Power rails only make sense to expose for a device currently running sensor-only (see EfDeviceRepository.DevicesSensorOnlyGetAsync's same definition) - a controller-enabled device needs both rails powered continuously.
+    bool showPowerSavingOptions = Model.DeviceSensorEnabled == true && Model.DeviceControllerEnabled != true;
 }
 
 @if (TempData["HardResetMessage"] is string hardResetMessage)
@@ -79,19 +83,28 @@
             <div class="col-12 col-md-6">
                 <div class="border rounded p-3 h-100">
                     <form asp-action="QuickSettings" method="post">
-                        <fieldset disabled="@isReadOnly">
+                        <fieldset disabled="@isReadOnly" class="border-0 p-0 m-0">
                             <input type="hidden" name="idDevice" value="@Model.IDDevice" />
                             <partial name="_EnabledToggleField" model="sensorToggle" />
                             <partial name="_EnabledToggleField" model="controllerToggle" />
-                            <partial name="_EnabledToggleField" model="sleepDeepToggle" />
-                            <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
-                                <label class="form-label">Sleep seconds</label>
-                                <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
-                            </div>
                             <partial name="_EnabledToggleField" model="loRaGatewayToggle" />
                             <partial name="_EnabledToggleField" model="batteryToggle" />
                             <partial name="_EnabledToggleField" model="debugToggle" />
                             <partial name="_EnabledToggleField" model="enabledToggle" />
+                            @if (showPowerSavingOptions)
+                            {
+                                <hr class="my-3" />
+                                <div class="mb-2 fw-semibold">Power saving options</div>
+                                <partial name="_EnabledToggleField" model="sleepDeepToggle" />
+                                <div id="sleep-seconds-field" class="mb-3" hidden="@(Model.SleepDeepEnabled != true)">
+                                    <label class="form-label">Sleep seconds</label>
+                                    <input type="number" name="sleepSeconds" value="@Model.SleepSeconds" class="form-control" />
+                                </div>
+                                <div id="power-rail-toggles">
+                                    <partial name="_EnabledToggleField" model="powerRailPrimaryToggle" />
+                                    <partial name="_EnabledToggleField" model="powerRailSecondaryToggle" />
+                                </div>
+                            }
                             <input type="submit" value="Save" class="btn btn-primary" />
                         </fieldset>
                     </form>
@@ -202,6 +215,17 @@
         document.querySelectorAll('input[name="sleepDeepEnabled"]').forEach(function (input) {
             input.addEventListener('change', function () {
                 document.getElementById('sleep-seconds-field').hidden = document.querySelector('input[name="sleepDeepEnabled"]:checked') === null;
+            });
+        });
+        // A controller-enabled device needs both power rails powered continuously - grey the toggles the moment Controller is checked, not the value they'll submit (that stays whatever it already was), so the admin sees why before saving.
+        document.querySelectorAll('input[name="deviceControllerEnabled"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var powerRailToggles = document.getElementById('power-rail-toggles');
+                if (powerRailToggles) {
+                    var controllerEnabled = document.querySelector('input[name="deviceControllerEnabled"]:checked') !== null;
+                    powerRailToggles.classList.toggle('opacity-50', controllerEnabled);
+                    powerRailToggles.classList.toggle('pe-none', controllerEnabled);
+                }
             });
         });
     </script>
