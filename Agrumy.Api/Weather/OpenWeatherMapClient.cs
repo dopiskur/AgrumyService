@@ -14,6 +14,9 @@ namespace Agrumy.Api.Weather
 
         /// The nearest forecast bucket (closest available reading to "now") - feeds WeatherEvaluator's WeatherLocationState.Outdoor* fields, which RuleConditionEvaluator exposes as SensorMetric.OutdoorTemperature/OutdoorHumidity/OutdoorWind/OutdoorPressure. Null means the request failed (already logged), same "leave the last state alone" convention as the other two methods.
         Task<OutdoorConditions?> GetCurrentOutdoorConditionsAsync(double lat, double lon, string apiKey, CancellationToken ct);
+
+        /// The Server Settings Weather tab's own "Test API key" button (ServerConfigApiController.TestWeatherApiKey) - unlike the three methods above, this one returns WHY a failed call failed instead of just logging it, since the caller shows the reason directly to an admin.
+        Task<(bool Success, string? Error)> TestApiKeyAsync(double lat, double lon, string apiKey, CancellationToken ct);
     }
 
     /// HoursAhead is the coldest bucket's distance from now, in whole hours (3h-bucket granularity); MinTemperatureC/CloudinessPercent/WindSpeedMetersPerSecond are null only if that bucket's JSON omitted the field.
@@ -151,6 +154,25 @@ namespace Agrumy.Api.Weather
             {
                 logger.LogWarning(ex, "OpenWeatherMap current-conditions fetch failed.");
                 return null;
+            }
+        }
+
+        public async Task<(bool Success, string? Error)> TestApiKeyAsync(double lat, double lon, string apiKey, CancellationToken ct)
+        {
+            string url = $"{ForecastUrl}?lat={lat.ToString(CultureInfo.InvariantCulture)}&lon={lon.ToString(CultureInfo.InvariantCulture)}&appid={Uri.EscapeDataString(apiKey)}";
+            try
+            {
+                using HttpResponseMessage response = await httpClient.GetAsync(url, ct);
+                if (response.IsSuccessStatusCode)
+                {
+                    return (true, null);
+                }
+                string body = await response.Content.ReadAsStringAsync(ct);
+                return (false, $"{(int)response.StatusCode} {response.ReasonPhrase}: {(body.Length > 300 ? body[..300] : body)}");
+            }
+            catch (HttpRequestException ex)
+            {
+                return (false, ex.Message);
             }
         }
     }

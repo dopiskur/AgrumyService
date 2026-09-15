@@ -195,6 +195,7 @@ namespace Agrumy.Dal.Entities
         public double? WeatherLocationLon { get; set; }
         public int? WeatherPollIntervalMinutes { get; set; }
         public double? WeatherRainSkipThreshold { get; set; }
+        public DateTimeOffset? WeatherApiKeyValidatedUtc { get; set; }
 
         // See Agrumy.Shared.Models.ServerConfig's own copies of these for the full explanation.
         public int? FrostLookaheadHours { get; set; }

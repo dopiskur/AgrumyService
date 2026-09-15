@@ -1,17 +1,22 @@
 using Agrumy.Api.Dal.Interface;
 using Agrumy.Shared.Models;
 using Agrumy.Api.Notifications;
+using Agrumy.Api.Weather;
+using Agrumy.Shared;
 using Agrumy.Shared.Security;
 using Agrumy.Api.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Agrumy.Api.Controllers.API
 {
     /// Server-wide settings, admin-only; there is exactly one row (id 1), auto-created on first read. Writes go through ServerConfigSectionsApiController - this controller only reads the whole row and hosts the non-section actions (tests, health, allowlists).
     [Route("api/ServerConfig")]
-    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, Agrumy.Api.Diagnostics.IServerHealthService serverHealthService, ISsrfAllowlistRepository ssrfAllowlistRepo) : ApiControllerBase(userRepo, auditLogRepo, cache)
+    public class ServerConfigApiController(IServerConfigRepository serverConfigRepo, IUserRepository userRepo, IAuditLogRepository auditLogRepo, ICache cache, IEnumerable<INotificationChannel> notificationChannels, Agrumy.Api.Diagnostics.IServerHealthService serverHealthService, ISsrfAllowlistRepository ssrfAllowlistRepo, IWeatherForecastClient weatherClient, IOptions<AgrumySettings> settingsOptions) : ApiControllerBase(userRepo, auditLogRepo, cache)
     {
+        private readonly AgrumySettings settings = settingsOptions.Value;
+
         // These are SERVER-WIDE settings, so Global admin only.
 
         [HttpGet]
@@ -85,6 +90,36 @@ namespace Agrumy.Api.Controllers.API
                 new NotificationRecipient());
             NotificationResult result = await webhook.SendAsync(notification);
             return result.Sent ? Ok() : BadRequest(result.Detail ?? "Send failed.");
+        }
+
+        /// Tests the SAVED OpenWeatherMap key against the SAVED default location (Save first, then test - same convention as TestEmail/TestWebhook above). Success also refreshes WeatherApiKeyValidatedUtc, the same field WeatherEvaluator's own passive polling writes, so this doubles as an on-demand refresh of the Weather tab's badge.
+        [HttpPost("TestWeatherApiKey")]
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        public async Task<ActionResult> TestWeatherApiKey()
+        {
+            if (!CallerIsGlobalAdmin)
+            {
+                return ForbidWith("Server-wide settings require the Global admin role");
+            }
+
+            ServerConfig config = await serverConfigRepo.ServerConfigGetAsync(1);
+            string? apiKey = config.WeatherApiKey ?? settings.WeatherApiKey;
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return BadRequest("No OpenWeatherMap API key is saved - enter one on the Weather tab and Save first.");
+            }
+            if (config.WeatherLocationLat is not double lat || config.WeatherLocationLon is not double lon)
+            {
+                return BadRequest("Default latitude/longitude must be set on the Weather tab first - the test needs a location to query.");
+            }
+
+            (bool success, string? error) = await weatherClient.TestApiKeyAsync(lat, lon, apiKey, HttpContext.RequestAborted);
+            if (!success)
+            {
+                return BadRequest(error);
+            }
+            await serverConfigRepo.ServerConfigWeatherApiKeyValidatedStateSetAsync(DateTimeOffset.UtcNow, 1);
+            return Ok();
         }
 
         /// Tests the UNSAVED form's archive DB credentials before SaveArchiveSettings ever persists them, so a bad host/port/password never silently disables archiving later. Password blank means "use whatever's already saved" (see ArchiveDbTestRequest's own remarks).

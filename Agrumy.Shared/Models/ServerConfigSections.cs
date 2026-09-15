@@ -189,6 +189,8 @@ namespace Agrumy.Shared.Models
         public int? WeatherPollIntervalMinutes { get; set; }
         [Display(Name = "Rain-skip threshold (%)")]
         public double? WeatherRainSkipThreshold { get; set; }
+        /// Read-only here - WeatherEvaluator/the "Test API key" button are its only writers.
+        public DateTimeOffset? WeatherApiKeyValidatedUtc { get; set; }
         [Display(Name = "Frost lookahead (hours)")]
         public int? FrostLookaheadHours { get; set; }
         [Display(Name = "Frost temperature threshold (°C)")]
@@ -204,6 +206,7 @@ namespace Agrumy.Shared.Models
             WeatherLocationLon = c.WeatherLocationLon,
             WeatherPollIntervalMinutes = c.WeatherPollIntervalMinutes,
             WeatherRainSkipThreshold = c.WeatherRainSkipThreshold,
+            WeatherApiKeyValidatedUtc = c.WeatherApiKeyValidatedUtc,
             FrostLookaheadHours = c.FrostLookaheadHours,
             FrostTempThresholdC = c.FrostTempThresholdC,
             FrostCloudinessMaxPercent = c.FrostCloudinessMaxPercent,

@@ -20,6 +20,9 @@ namespace Agrumy.Api.Dal.Interface
         /// Narrow writer for ArkodGeoPackageSyncService's last-run timestamp, same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
         Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig);
 
+        /// Narrow writer for WeatherApiKeyValidatedUtc, called by WeatherEvaluator on every successful poll and by ServerConfigApiController.TestWeatherApiKey, same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
+        Task ServerConfigWeatherApiKeyValidatedStateSetAsync(DateTimeOffset validatedAtUtc, int idServerConfig);
+
         /// PostgreSQL/TimescaleDB side of sensorData retention (MariaDB's equivalent is SensorDataRetentionBackgroundService's daily purge) - re-applied on every ServerConfig save plus once at startup by ISystemRepository.EnsureSchemaAsync.
         Task ApplyRetentionPolicyAsync(int? retentionDays);
     }

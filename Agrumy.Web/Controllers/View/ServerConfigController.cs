@@ -178,6 +178,23 @@ namespace Agrumy.Web.Controllers.View
             }
         }
 
+        /// Tests through the SAVED settings (Save first, then test) - not whatever is currently typed into the unsaved form. Success also moves WeatherApiKeyValidatedUtc forward, so the Weather tab's badge reflects this test too.
+        [Authorize(Roles = RoleNames.GlobalAdmin)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> TestWeatherApiKey()
+        {
+            try
+            {
+                await api.ServerConfigTestWeatherApiKey();
+                return Ok();
+            }
+            catch (ApiException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Body);
+            }
+        }
+
         /// Tests the CURRENTLY TYPED (unsaved) archive DB fields, opposite of TestEmail above - see ServerConfigApiController.TestArchiveDatabase.
         [Authorize(Roles = RoleNames.GlobalAdmin)]
         [HttpPost]

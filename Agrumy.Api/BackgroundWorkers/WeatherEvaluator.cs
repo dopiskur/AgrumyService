@@ -56,6 +56,8 @@ namespace Agrumy.Api.BackgroundWorkers
             {
                 return; // fetch failed (already logged in the client) - leave the last good reading in place
             }
+            // A successful call proves the key/quota are currently good - feeds the Weather tab's badge, same signal CdseTokenProvider.GetAccessTokenAsync writes for the satellite module.
+            await serverConfigRepo.ServerConfigWeatherApiKeyValidatedStateSetAsync(DateTimeOffset.UtcNow, 1);
 
             double threshold = config.WeatherRainSkipThreshold ?? settings.WeatherRainSkipThreshold;
             bool rainPredicted = pop >= threshold;

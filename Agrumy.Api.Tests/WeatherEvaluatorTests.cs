@@ -44,6 +44,9 @@ public class WeatherEvaluatorTests
     private void SetupState(DateTimeOffset? checkedAtUtc) =>
         _tenants.Setup(t => t.WeatherLocationStateGetAsync(TenantId, Lat, Lon)).ReturnsAsync(new WeatherLocationState { TenantID = TenantId, Latitude = Lat, Longitude = Lon, WeatherCheckedAtUtc = checkedAtUtc });
 
+    private void SetupKeyValidatedWrite() =>
+        _serverConfig.Setup(s => s.ServerConfigWeatherApiKeyValidatedStateSetAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>())).Returns(Task.CompletedTask);
+
     [Fact]
     public async Task No_ApiKey_Configured_Does_Nothing()
     {
@@ -85,6 +88,7 @@ public class WeatherEvaluatorTests
         SetupState(null);
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(10.0);
+        SetupKeyValidatedWrite();
         _tenants.Setup(t => t.WeatherLocationStateSetWeatherAsync(TenantId, Lat, Lon, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
         _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync((OutdoorConditions?)null);
@@ -102,6 +106,7 @@ public class WeatherEvaluatorTests
         SetupState(DateTimeOffset.UtcNow.AddHours(-1));
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(50.0); // exactly at threshold - counts as predicted, same >= convention as LowBatteryAlertEvaluator's threshold check
+        SetupKeyValidatedWrite();
         _tenants.Setup(t => t.WeatherLocationStateSetWeatherAsync(TenantId, Lat, Lon, true, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
         _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync((OutdoorConditions?)null);
@@ -119,6 +124,7 @@ public class WeatherEvaluatorTests
         SetupState(DateTimeOffset.UtcNow.AddHours(-1));
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(49.9);
+        SetupKeyValidatedWrite();
         _tenants.Setup(t => t.WeatherLocationStateSetWeatherAsync(TenantId, Lat, Lon, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
         _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync((OutdoorConditions?)null);
@@ -136,6 +142,7 @@ public class WeatherEvaluatorTests
         SetupState(DateTimeOffset.UtcNow.AddHours(-1));
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(10.0);
+        SetupKeyValidatedWrite();
         _tenants.Setup(t => t.WeatherLocationStateSetWeatherAsync(TenantId, Lat, Lon, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
         _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OutdoorConditions(22.5, 61.0, 3.2, 1013.0));
@@ -154,6 +161,7 @@ public class WeatherEvaluatorTests
         SetupState(DateTimeOffset.UtcNow.AddHours(-1));
         _weatherClient.Setup(c => c.GetMaxRainProbabilityPercentAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync(10.0);
+        SetupKeyValidatedWrite();
         _tenants.Setup(t => t.WeatherLocationStateSetWeatherAsync(TenantId, Lat, Lon, false, It.IsAny<DateTimeOffset>())).Returns(Task.CompletedTask);
         _weatherClient.Setup(c => c.GetCurrentOutdoorConditionsAsync(Lat, Lon, "test-key", It.IsAny<CancellationToken>()))
             .ReturnsAsync((OutdoorConditions?)null);

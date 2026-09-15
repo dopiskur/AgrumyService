@@ -860,6 +860,10 @@ namespace Agrumy.Web.Dal.Interface
         [Post("/api/ServerConfig/TestWebhook")]
         Task ServerConfigTestWebhook();
 
+        /// Tests through the SAVED OpenWeatherMap key/location, not the unsaved form - see ServerConfigApiController.TestWeatherApiKey.
+        [Post("/api/ServerConfig/TestWeatherApiKey")]
+        Task ServerConfigTestWeatherApiKey();
+
         /// Tests the UNSAVED form's archive DB credentials before Update ever persists them - see ServerConfigApiController.TestArchiveDatabase.
         [Post("/api/ServerConfig/TestArchiveDatabase")]
         Task ServerConfigTestArchiveDatabase([Body] ArchiveDbTestRequest request);

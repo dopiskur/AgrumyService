@@ -161,6 +161,7 @@ POST,api/ServerConfig/FirmwareSsrfAllowlist,Global admin
 POST,api/ServerConfig/TestArchiveDatabase,Global admin
 POST,api/ServerConfig/TestEmail,Global admin
 POST,api/ServerConfig/TestWebhook,Global admin
+POST,api/ServerConfig/TestWeatherApiKey,Global admin
 POST,api/ServerConfig/WebhookSsrfAllowlist,Global admin
 POST,api/Simulation/Device,Global admin;Simulation administrator;Tenant admin
 POST,api/Simulation/Session,Global admin;Simulation administrator;Tenant admin

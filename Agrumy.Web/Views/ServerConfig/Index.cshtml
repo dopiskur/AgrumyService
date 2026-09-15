@@ -413,11 +413,27 @@
                         appsettings.json <code>Weather:ApiKey</code>) - everything else on this tab is
                         inert until a key is set.
                     </p>
+                    @{
+                        bool weatherKeyEverValidated = Model.WeatherApiKeyValidatedUtc.HasValue;
+                        bool weatherKeyHealthy = weatherKeyEverValidated && Model.WeatherApiKeyValidatedUtc!.Value > DateTimeOffset.UtcNow.AddHours(-24);
+                    }
                     <div class="mb-3" style="max-width:24rem">
                         <label asp-for="WeatherApiKey" class="form-label"></label>
+                        @if (weatherKeyEverValidated)
+                        {
+                            <span class="badge @(weatherKeyHealthy ? "bg-success" : "bg-danger") align-middle" title="Last confirmed working: @Model.WeatherApiKeyValidatedUtc!.Value.ToString("yyyy-MM-dd HH:mm") UTC">
+                                @(weatherKeyHealthy ? "Key OK (24h)" : "Key not confirmed working (24h)")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary align-middle">Not tested yet</span>
+                        }
                         <input asp-for="WeatherApiKey" type="password" class="form-control" autocomplete="new-password" placeholder="unchanged" />
                         <span asp-validation-for="WeatherApiKey" class="text-danger"></span>
                         <div class="form-text">Blank keeps the currently saved key (or the appsettings.json one, if neither has ever been set).</div>
+                        <button type="button" id="testWeatherApiKeyButton" class="btn btn-outline-secondary btn-sm mt-1">Test API key</button>
+                        <div id="testWeatherApiKeyStatus" class="mt-2"></div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6">
@@ -973,6 +989,7 @@
     <script src="~/js/data-maintenance.js"></script>
     <script src="~/js/send-test-email.js"></script>
     <script src="~/js/send-test-webhook.js"></script>
+    <script src="~/js/test-weather-api-key.js"></script>
     <script src="~/js/archive-settings.js"></script>
     <script src="~/js/webhook-ssrf-allowlist.js"></script>
     <script src="~/js/live-refresh.js"></script>

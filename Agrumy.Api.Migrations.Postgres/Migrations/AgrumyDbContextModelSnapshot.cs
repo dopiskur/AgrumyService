@@ -3016,6 +3016,9 @@ namespace Agrumy.Api.Migrations.Postgres.Migrations
                     b.Property<string>("WeatherApiKey")
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("WeatherApiKeyValidatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<double?>("WeatherLocationLat")
                         .HasColumnType("double precision");
 

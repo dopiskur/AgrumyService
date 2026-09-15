@@ -111,6 +111,9 @@ namespace Agrumy.Shared.Models
         [Display(Name = "Rain-skip threshold (%)")]
         public double? WeatherRainSkipThreshold { get; set; }
 
+        // Last time a live OpenWeatherMap call with this key actually succeeded - written by WeatherEvaluator on every successful poll, or by the Weather tab's own "Test API key" button; read-only here, same isolation as FirmwareLastRefreshedAtUtc/ArchiveLastRunAtUtc.
+        public DateTimeOffset? WeatherApiKeyValidatedUtc { get; set; }
+
         // Same default lat/lon + WeatherApiKey as the rain-skip forecast above - FrostAlertEvaluator just asks a different question of the same OpenWeatherMap forecast.
         [Display(Name = "Frost lookahead (hours)")]
         public int? FrostLookaheadHours { get; set; }

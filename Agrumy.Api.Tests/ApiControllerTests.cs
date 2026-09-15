@@ -1824,7 +1824,7 @@ public class ApiControllerTests
     }
 
 
-    private ServerConfigApiController NewServerConfigController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>(), _repo.Object);
+    private ServerConfigApiController NewServerConfigController() => new(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>(), _repo.Object, Mock.Of<Agrumy.Api.Weather.IWeatherForecastClient>(), Options.Create(new AgrumySettings()));
     private SensorDataController NewSensorDataController() => new(_repo.Object, _repo.Object, _repo.Object, _repo.Object, _cache.Object, NewQuotaEnforcer());
 
     [Fact]
@@ -2507,7 +2507,7 @@ public class ApiControllerTests
         var email = new Mock<INotificationChannel>(MockBehavior.Strict);
         email.SetupGet(c => c.Name).Returns("email");
         email.Setup(c => c.SendAsync(It.IsAny<Notification>(), default)).ReturnsAsync(NotificationResult.Ok("sent"));
-        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>(), _repo.Object);
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>(), _repo.Object, Mock.Of<Agrumy.Api.Weather.IWeatherForecastClient>(), Options.Create(new AgrumySettings()));
         SetCaller(controller, "admin", 0);
 
         var result = await controller.TestEmail("grower@example.com");
@@ -2522,13 +2522,80 @@ public class ApiControllerTests
         var email = new Mock<INotificationChannel>(MockBehavior.Strict);
         email.SetupGet(c => c.Name).Returns("email");
         email.Setup(c => c.SendAsync(It.IsAny<Notification>(), default)).ReturnsAsync(NotificationResult.Skipped("email channel disabled or missing Host/FromAddress"));
-        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>(), _repo.Object);
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [email.Object], Mock.Of<IServerHealthService>(), _repo.Object, Mock.Of<Agrumy.Api.Weather.IWeatherForecastClient>(), Options.Create(new AgrumySettings()));
         SetCaller(controller, "admin", 0);
 
         var result = await controller.TestEmail("grower@example.com");
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("email channel disabled or missing Host/FromAddress", badRequest.Value);
+    }
+
+    [Fact]
+    public async Task TestWeatherApiKey_NotGlobalAdmin_Returns403()
+    {
+        var controller = NewServerConfigController();
+        SetCallerRoles(controller, 0, "user", RoleNames.TenantAdmin);
+
+        var result = await controller.TestWeatherApiKey();
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task TestWeatherApiKey_NoKeySaved_Returns400()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig());
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestWeatherApiKey();
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TestWeatherApiKey_NoLocationSaved_Returns400()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { WeatherApiKey = "key" });
+        var controller = NewServerConfigController();
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestWeatherApiKey();
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TestWeatherApiKey_Success_UpdatesValidatedTimestamp()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { WeatherApiKey = "key", WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 });
+        _repo.Setup(r => r.ServerConfigWeatherApiKeyValidatedStateSetAsync(It.IsAny<DateTimeOffset>(), 1)).Returns(Task.CompletedTask);
+        var weatherClient = new Mock<Agrumy.Api.Weather.IWeatherForecastClient>(MockBehavior.Strict);
+        weatherClient.Setup(c => c.TestApiKeyAsync(45.8, 16.0, "key", It.IsAny<CancellationToken>())).ReturnsAsync((true, (string?)null));
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>(), _repo.Object, weatherClient.Object, Options.Create(new AgrumySettings()));
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestWeatherApiKey();
+
+        Assert.IsType<OkResult>(result);
+        _repo.Verify(r => r.ServerConfigWeatherApiKeyValidatedStateSetAsync(It.IsAny<DateTimeOffset>(), 1), Times.Once);
+    }
+
+    [Fact]
+    public async Task TestWeatherApiKey_InvalidKey_Returns400WithDetail()
+    {
+        _repo.Setup(r => r.ServerConfigGetAsync(1)).ReturnsAsync(new ServerConfig { WeatherApiKey = "bad-key", WeatherLocationLat = 45.8, WeatherLocationLon = 16.0 });
+        var weatherClient = new Mock<Agrumy.Api.Weather.IWeatherForecastClient>(MockBehavior.Strict);
+        weatherClient.Setup(c => c.TestApiKeyAsync(45.8, 16.0, "bad-key", It.IsAny<CancellationToken>())).ReturnsAsync((false, "401 Unauthorized: Invalid API key"));
+        var controller = new ServerConfigApiController(_repo.Object, _repo.Object, _repo.Object, _cache.Object, [], Mock.Of<IServerHealthService>(), _repo.Object, weatherClient.Object, Options.Create(new AgrumySettings()));
+        SetCaller(controller, "admin", 0);
+
+        var result = await controller.TestWeatherApiKey();
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("401 Unauthorized: Invalid API key", badRequest.Value);
+        // Strict repo mock: ServerConfigWeatherApiKeyValidatedStateSetAsync would throw if called - a failed test must not touch the badge.
     }
 
     /// These only cover the validation short-circuits (missing fields, bad port) that return before ArchiveDbConnectionTester ever attempts a real network connection; the connection itself is untestable here, same status as MqttCommandPublisherTests' own network call.

@@ -21,6 +21,9 @@ namespace Agrumy.Api.Tests.TestSupport
         public Task ServerConfigArkodSyncStateSetAsync(DateTimeOffset syncedAtUtc, int idServerConfig = 1) =>
             serverConfigRepository.ServerConfigArkodSyncStateSetAsync(syncedAtUtc, idServerConfig);
 
+        public Task ServerConfigWeatherApiKeyValidatedStateSetAsync(DateTimeOffset validatedAtUtc, int idServerConfig = 1) =>
+            serverConfigRepository.ServerConfigWeatherApiKeyValidatedStateSetAsync(validatedAtUtc, idServerConfig);
+
         public Task ApplyRetentionPolicyAsync(int? retentionDays) => serverConfigRepository.ApplyRetentionPolicyAsync(retentionDays);
     }
 }

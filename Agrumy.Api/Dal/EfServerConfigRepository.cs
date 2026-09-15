@@ -286,6 +286,19 @@ namespace Agrumy.Api.Dal
             await InvalidateCacheAsync(idServerConfig);
         }
 
+        /// The only writer of WeatherApiKeyValidatedUtc, called by WeatherEvaluator on every successful poll and by ServerConfigApiController.TestWeatherApiKey - same isolation reasoning as ServerConfigFirmwareRefreshStateSetAsync.
+        public async Task ServerConfigWeatherApiKeyValidatedStateSetAsync(DateTimeOffset validatedAtUtc, int idServerConfig = 1)
+        {
+            var row = await db.ServerConfigs.FirstOrDefaultAsync(s => s.IDServerConfig == idServerConfig);
+            if (row == null)
+            {
+                return;
+            }
+            row.WeatherApiKeyValidatedUtc = validatedAtUtc;
+            await db.SaveChangesAsync();
+            await InvalidateCacheAsync(idServerConfig);
+        }
+
         /// add_retention_policy's interval can only change by remove-then-add, so this runs unconditionally on every save; also called once at startup by ISystemRepository.EnsureSchemaAsync via EnsureTimescaleHypertableAsync.
         public async Task ApplyRetentionPolicyAsync(int? retentionDays)
         {
@@ -352,6 +365,7 @@ namespace Agrumy.Api.Dal
             // An older row has NULL here - same appsettings-seed fallback as FirmwareGitHubRepository, rather than surfacing an empty interval/threshold.
             WeatherPollIntervalMinutes = r.WeatherPollIntervalMinutes ?? settings.WeatherPollIntervalMinutes,
             WeatherRainSkipThreshold = r.WeatherRainSkipThreshold ?? settings.WeatherRainSkipThreshold,
+            WeatherApiKeyValidatedUtc = r.WeatherApiKeyValidatedUtc,
             // Same appsettings-seed fallback as the WeatherPollIntervalMinutes/WeatherRainSkipThreshold pair above.
             FrostLookaheadHours = r.FrostLookaheadHours ?? settings.FrostLookaheadHours,
             FrostTempThresholdC = r.FrostTempThresholdC ?? settings.FrostTempThresholdC,
