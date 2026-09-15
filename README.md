@@ -1,8 +1,7 @@
 # Agrumy
 
-> This repository (the backend API + admin UI) is free and open source under
-> the [GNU AGPLv3 license](LICENSE.txt), same as the mobile apps. Firmware and
-> enclosures live in separate repositories under their own license terms.
+> Agrumy core (API, firmware, enclosures) is free and open source under the
+> [Apache 2.0 license](LICENSE.txt); the mobile apps are under AGPL-3.0.
 > If you use Agrumy, I'd genuinely love to hear about it — open an issue or
 > drop me a line.
 
@@ -742,18 +741,13 @@ lives only on the server.
 
 Copyright 2016-2026 Domagoj Piškur
 
-Licensed under the GNU Affero General Public License, Version 3 (the
-"License"); you may not use this project except in compliance with the
-License. You may obtain a copy of the License at
-https://www.gnu.org/licenses/agpl-3.0.html
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this project except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the License for more details.
-
-The AGPLv3's network-use clause applies: if you run a modified version of
-this project as a network service, you must make the modified source
-available to that service's users.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied.
 
 The Android and iOS applications (AgrumyAndroid, AgrumyiOS) are separate
-projects, also licensed under AGPL-3.0.
+projects licensed under AGPL-3.0, not this Apache 2.0 license.
